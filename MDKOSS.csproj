@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MDKOSS</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="sample.setting.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="src\gui\Program.cs" />
+    <Compile Remove="src\gui\obj\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="src\configs\" />
+    <Folder Include="src\tasks\" />
+  </ItemGroup>
+</Project>
