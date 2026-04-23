@@ -1,12 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>MDKOSS</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NLog" Version="6.1.2" />
+  </ItemGroup>
   <ItemGroup>
     <None Include="sample.setting.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

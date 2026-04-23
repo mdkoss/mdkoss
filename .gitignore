@@ -1,0 +1,5 @@
+bin/
+obj/
+_build_verify/
+.vs/
+*.user

@@ -11,6 +11,18 @@
 
 ---
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=mdkoss%2Fmdkoss&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=mdkoss/mdkoss&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=mdkoss/mdkoss&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=mdkoss/mdkoss&type=date&legend=top-left" />
+ </picture>
+</a>
+
+---
+
 ## 1. 当前设计目标
 
 以最小依赖实现“可编译、可运行、可观测、可扩展”的运行时内核，保留 `mdkruntime` 的核心思想，去掉第一阶段非必需复杂度（桌面容器、复杂服务编排、Redis 同步等）。
@@ -229,14 +241,3 @@ documents are included:
 For public release, it is recommended to also mark the repository license as
 `MIT` in your hosting platform metadata (for example, GitHub About).
 
----
-
-## 11. Star History
-
-项目 Star 趋势（Star History）：
-
-[![Star History Chart](https://starchart.cc/mdkoss/mdkoss.svg?variant=adaptive)](https://starchart.cc/mdkoss/mdkoss)
-
-Star trend chart for this project:
-
-[![Star History Chart](https://starchart.cc/mdkoss/mdkoss.svg?variant=adaptive)](https://starchart.cc/mdkoss/mdkoss)

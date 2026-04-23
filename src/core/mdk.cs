@@ -40,10 +40,15 @@ public sealed class MdkRuntime : IDisposable
     /// </summary>
     public void Initialize()
     {
+        AppLog.Configure();
+        AppLog.Info("MdkRuntime initializing.");
+
         BootstrapVars();
         BootstrapDrivers();
         BootstrapDevices();
         BootstrapTasks();
+
+        AppLog.Info($"MdkRuntime initialized (project: {Setting.ProjectName}).");
     }
 
     /// <summary>
@@ -61,6 +66,7 @@ public sealed class MdkRuntime : IDisposable
 
         _scheduler.Start();
         IsRunning = true;
+        AppLog.Info("MdkRuntime started.");
     }
 
     /// <summary>
@@ -68,6 +74,7 @@ public sealed class MdkRuntime : IDisposable
     /// </summary>
     public async Task StopAsync()
     {
+        AppLog.Info("MdkRuntime stopping.");
         IsRunning = false;
         await _scheduler.StopAsync().ConfigureAwait(false);
 
@@ -206,6 +213,7 @@ public sealed class MdkRuntime : IDisposable
 
     public void Dispose()
     {
+        AppLog.Info("MdkRuntime disposing.");
         IsRunning = false;
         _monitoringServer?.Dispose();
         _monitoringServer = null;
@@ -222,6 +230,8 @@ public sealed class MdkRuntime : IDisposable
         _drivers.Clear();
         _devices.Clear();
         _tasks.Clear();
+
+        AppLog.Shutdown();
     }
 
 
