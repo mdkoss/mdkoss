@@ -14,13 +14,16 @@
     <None Include="sample.setting.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="views\monitoringpage.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="src\gui\Program.cs" />
-    <Compile Remove="src\gui\obj\**\*.cs" />
+    <Compile Remove="gui\Program.cs" />
+    <Compile Remove="gui\obj\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="src\configs\" />
-    <Folder Include="src\tasks\" />
+    <Folder Include="configs\" />
+    <Folder Include="tasks\" />
   </ItemGroup>
 </Project>

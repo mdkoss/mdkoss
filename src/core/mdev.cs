@@ -114,15 +114,41 @@ public abstract class MDeviceBase : IDisposable
 /// <summary>Basic GPIO device abstraction.</summary>
 public sealed class GpioDevice : MDeviceBase
 {
-    public GpioDevice(string id, string name, IDriver driver, MVarStore vars)
-        : base(id, name, MDeviceType.Gpio, driver, vars)
+    private readonly IReadOnlyDictionary<string, IDriver> _drivers;
+    private readonly Dictionary<string, GpioPoint> _points = new(StringComparer.OrdinalIgnoreCase);
+
+    public GpioDevice(string id, string name, IReadOnlyDictionary<string, IDriver> drivers, MVarStore vars)
+        : base(id, name, MDeviceType.Gpio, SelectPrimaryDriver(drivers), vars)
     {
+        _drivers = drivers;
     }
 
-    public bool ReadInput(string address)
+
+    public int PointCount => _points.Count;
+
+    public void RegisterInput(string alias, string driverId, string address)
     {
-        EnsureConnected();
-        if (!Driver.TryRead(address, out var raw) || raw is null)
+        RegisterPoint(alias, driverId, address, isOutput: false);
+    }
+
+    public void RegisterOutput(string alias, string driverId, string address)
+    {
+        RegisterPoint(alias, driverId, address, isOutput: true);
+    }
+
+    public bool ReadInput(string alias)
+    {
+        if (!_points.TryGetValue(alias, out var point) || point.IsOutput)
+        {
+            return false;
+        }
+
+        if (!TryGetPointDriver(point, out var driver))
+        {
+            return false;
+        }
+
+        if (!driver.TryRead(point.Address, out var raw) || raw is null)
         {
             return false;
         }
@@ -130,15 +156,89 @@ public sealed class GpioDevice : MDeviceBase
         return Convert.ToBoolean(raw);
     }
 
-    public bool WriteOutput(string address, bool value)
+    public bool WriteOutput(string alias, bool value)
     {
-        EnsureConnected();
-        var ok = Driver.Write(address, value);
-        Vars.Set(BuildVarKey("lastOutputAddress"), address);
+        if (!_points.TryGetValue(alias, out var point) || !point.IsOutput)
+        {
+            return false;
+        }
+
+        if (!TryGetPointDriver(point, out var driver))
+        {
+            return false;
+        }
+
+        var ok = driver.Write(point.Address, value);
+        Vars.Set(BuildVarKey("lastOutputAlias"), alias);
+        Vars.Set(BuildVarKey("lastOutputAddress"), point.Address);
+        Vars.Set(BuildVarKey("lastOutputDriverId"), point.DriverId);
         Vars.Set(BuildVarKey("lastOutputValue"), value);
         WriteState(State.ToString().ToLowerInvariant());
         return ok;
     }
+
+    public override DeviceSnapshot GetSnapshot()
+    {
+        var allConnected = _points.Values
+            .Select(p => p.DriverId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .All(driverId => _drivers.TryGetValue(driverId, out var d) && d.IsConnected);
+        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), "multi-driver-gpio", allConnected);
+    }
+
+    private static IDriver SelectPrimaryDriver(IReadOnlyDictionary<string, IDriver> drivers)
+    {
+        if (drivers.Count == 0)
+        {
+            throw new InvalidOperationException("No drivers are available for GpioDevice.");
+        }
+
+        return drivers.Values.First();
+    }
+
+    private void RegisterPoint(string alias, string driverId, string address, bool isOutput)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
+        {
+            throw new ArgumentException("GPIO alias cannot be empty.", nameof(alias));
+        }
+        if (string.IsNullOrWhiteSpace(driverId))
+        {
+            throw new ArgumentException("GPIO point driverId cannot be empty.", nameof(driverId));
+        }
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            throw new ArgumentException("GPIO point address cannot be empty.", nameof(address));
+        }
+        if (!_drivers.ContainsKey(driverId))
+        {
+            throw new InvalidOperationException($"GPIO point '{alias}' uses unknown driver '{driverId}'.");
+        }
+
+        _points[alias] = new GpioPoint(alias, driverId, address, isOutput);
+        Vars.Set(BuildVarKey("pointCount"), _points.Count);
+    }
+
+    private bool TryGetPointDriver(GpioPoint point, out IDriver driver)
+    {
+        if (!_drivers.TryGetValue(point.DriverId, out driver!))
+        {
+            State = MDeviceState.Fault;
+            WriteState("fault");
+            return false;
+        }
+
+        if (driver.IsConnected)
+        {
+            return true;
+        }
+
+        State = MDeviceState.Fault;
+        WriteState("fault");
+        return false;
+    }
+
+    private sealed record GpioPoint(string Alias, string DriverId, string Address, bool IsOutput);
 }
 
 /// <summary>Basic motion axis device abstraction.</summary>

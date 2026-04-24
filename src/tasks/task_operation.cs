@@ -113,14 +113,14 @@ public sealed class TaskOperationTask : MTaskBase
             return;
         }
 
-        // Optional hardware bridge. Addresses can be overridden by vars at runtime.
-        var redAddress = _vars.Get<string>("task.operation.address.red") ?? "tower.red";
-        var yellowAddress = _vars.Get<string>("task.operation.address.yellow") ?? "tower.yellow";
-        var greenAddress = _vars.Get<string>("task.operation.address.green") ?? "tower.green";
+        // Optional hardware bridge. GPIO aliases can be overridden by vars at runtime.
+        var redAlias = _vars.Get<string>("task.operation.alias.red") ?? "tower.red";
+        var yellowAlias = _vars.Get<string>("task.operation.alias.yellow") ?? "tower.yellow";
+        var greenAlias = _vars.Get<string>("task.operation.alias.green") ?? "tower.green";
 
-        _gpioDevice.WriteOutput(redAddress, red);
-        _gpioDevice.WriteOutput(yellowAddress, yellow);
-        _gpioDevice.WriteOutput(greenAddress, green);
+        _gpioDevice.WriteOutput(redAlias, red);
+        _gpioDevice.WriteOutput(yellowAlias, yellow);
+        _gpioDevice.WriteOutput(greenAlias, green);
     }
 
     private static string NormalizeLamp(string lamp)

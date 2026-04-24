@@ -1,0 +1,94 @@
+﻿{
+  "projectName": "MDKOSS-Demo",
+  "cycleMs": 20,
+  "drivers": [
+    {
+      "id": "drv-main",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000"
+      }
+    },
+    {
+      "id": "drv-gpio-aux",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5001"
+      }
+    },
+    {
+      "id": "drv-gpio-io2",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5002"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio-main",
+      "name": "GPIO Main",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "drv-main:X0",
+        "in.stopButton": "drv-gpio-aux:X1",
+        "in.resetButton": "drv-gpio-io2:X2",
+        "in.safetyDoor": "drv-gpio-io2:X3",
+        "out.tower.red": "drv-main:Y0",
+        "out.tower.yellow": "drv-gpio-aux:Y1",
+        "out.tower.green": "drv-main:Y2",
+        "out.buzzer": "drv-gpio-io2:Y3"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 1000,
+      "parameters": {}
+    },
+    {
+      "name": "poll-main",
+      "type": "pollDriver",
+      "driverId": "drv-main",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "poll-gpio-aux",
+      "type": "pollDriver",
+      "driverId": "drv-gpio-aux",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "poll-gpio-io2",
+      "type": "pollDriver",
+      "driverId": "drv-gpio-io2",
+      "intervalMs": 500,
+      "parameters": {}
+    }
+  ],
+  "vars": {
+    "machine.mode": "AUTO",
+    "machine.ready": true,
+    "task.operation.alias.red": "tower.red",
+    "task.operation.alias.yellow": "tower.yellow",
+    "task.operation.alias.green": "tower.green",
+    "task.operation.command": "lamp:green"
+  }
+}

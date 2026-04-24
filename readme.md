@@ -182,7 +182,7 @@ MDKOSS/
 在仓库根目录执行：
 
 ```bash
-dotnet run --project MDKOSS/MDKOSS.csproj
+dotnet run --project src/MDKOSS.csproj
 ```
 
 看到如下输出表示启动成功：

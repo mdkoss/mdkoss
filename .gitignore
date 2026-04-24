@@ -3,3 +3,5 @@ obj/
 _build_verify/
 .vs/
 *.user
+/.cursor
+/marketing

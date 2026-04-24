@@ -191,24 +191,74 @@ public sealed class MdkRuntime : IDisposable
     {
         foreach (var config in Setting.Devices.Where(d => d.Enabled))
         {
-            if (!_drivers.TryGetValue(config.DriverId, out var driver))
+            var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
+            var deviceType = config.Type.ToLowerInvariant();
+            IDriver? driver = null;
+
+            if (deviceType != "gpio" && !_drivers.TryGetValue(config.DriverId, out driver))
             {
                 continue;
             }
 
-            var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
-            MDeviceBase device = config.Type.ToLowerInvariant() switch
+            MDeviceBase device = deviceType switch
             {
-                "gpio" => new GpioDevice(config.Id, deviceName, driver, Vars),
-                "axis" => new AxisDevice(config.Id, deviceName, driver, Vars),
-                "platform" => new PlatformDevice(config.Id, deviceName, driver, Vars),
-                "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
+                "gpio" => BuildGpioDevice(config, deviceName),
+                "axis" => new AxisDevice(config.Id, deviceName, driver!, Vars),
+                "platform" => new PlatformDevice(config.Id, deviceName, driver!, Vars),
+                "cameradev" => new CameraDevDevice(config.Id, deviceName, driver!, Vars),
                 _ => throw new NotSupportedException($"Unsupported device type: {config.Type}")
             };
 
             device.Initialize();
             _devices[config.Id] = device;
         }
+    }
+
+    private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
+    {
+        var gpioDevice = new GpioDevice(config.Id, deviceName, _drivers, Vars);
+        foreach (var kv in config.Parameters)
+        {
+            if (kv.Key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
+            {
+                var alias = kv.Key[3..];
+                if (TryParsePointRoute(kv.Value, out var driverId, out var address))
+                {
+                    gpioDevice.RegisterInput(alias, driverId, address);
+                }
+            }
+            else if (kv.Key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
+            {
+                var alias = kv.Key[4..];
+                if (TryParsePointRoute(kv.Value, out var driverId, out var address))
+                {
+                    gpioDevice.RegisterOutput(alias, driverId, address);
+                }
+            }
+        }
+
+        return gpioDevice;
+    }
+
+    private static bool TryParsePointRoute(string? raw, out string driverId, out string address)
+    {
+        driverId = string.Empty;
+        address = string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return false;
+        }
+
+        var route = raw.Trim();
+        var splitIndex = route.IndexOf(':');
+        if (splitIndex <= 0 || splitIndex >= route.Length - 1)
+        {
+            return false;
+        }
+
+        driverId = route[..splitIndex].Trim();
+        address = route[(splitIndex + 1)..].Trim();
+        return !string.IsNullOrWhiteSpace(driverId) && !string.IsNullOrWhiteSpace(address);
     }
 
     public void Dispose()
