@@ -22,6 +22,9 @@ public sealed class MdkSetting
     /// <summary>Seed variables loaded at startup.</summary>
     public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>Default settings file next to the app: <c>configs/sample.setting.json</c>.</summary>
+    public static string DefaultSettingsPath => Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
+
     /// <summary>Loads setting from a JSON file path.</summary>
     public static MdkSetting Load(string path)
     {

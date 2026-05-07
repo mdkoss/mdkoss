@@ -24,11 +24,18 @@
       min-height: 100vh;
     }
     .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
-    .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+    .header {
+      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;
+      flex-wrap: wrap; gap: 8px 16px;
+    }
     .title { font-size: 26px; font-weight: 700; letter-spacing: .5px; }
     .sub { color: var(--muted); font-size: 13px; }
-    .grid { display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr); }
+    .grid {
+      display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr);
+      grid-auto-rows: minmax(0, auto);
+    }
     .card {
+      min-width: 0;
       background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
       border: 1px solid var(--line);
       border-radius: 12px;
@@ -39,7 +46,7 @@
     .span-8 { grid-column: span 8; }
     .span-12 { grid-column: span 12; }
     .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-    .value { font-size: 24px; font-weight: 700; }
+    .value { font-size: 24px; font-weight: 700; line-height: 1.25; word-break: break-word; }
     .pill {
       display: inline-block; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600;
       border: 1px solid var(--line); color: var(--muted);
@@ -53,6 +60,26 @@
       margin: 0; background: #0a1120; border: 1px solid var(--line); border-radius: 10px; padding: 12px;
       max-height: 340px; overflow: auto; color: #c8d7ff;
     }
+    .vars-wrap {
+      max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px;
+      background: #0a1120;
+    }
+    .vars-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .vars-table th {
+      position: sticky; top: 0; z-index: 1;
+      background: #121c30; color: var(--muted); font-weight: 600; text-align: left;
+      padding: 10px 12px; border-bottom: 1px solid var(--line);
+    }
+    .vars-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .vars-table td.var-key {
+      width: 38%; max-width: 0; color: #a8c4ff; font-family: ui-monospace, Consolas, monospace;
+      word-break: break-all; white-space: normal;
+    }
+    .vars-table td.var-value {
+      color: #c8d7ff; word-break: break-word; white-space: pre-wrap;
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+    }
+    .vars-table tbody tr:hover td { background: rgba(78, 140, 255, 0.06); }
     .dot {
       width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle;
       background: var(--warn);
@@ -127,18 +154,32 @@
 
       <div class="card span-12">
         <div class="label">运行变量</div>
-        <pre id="varsBlock">{}</pre>
+        <div class="vars-wrap">
+          <table class="vars-table">
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="varsRows"></tbody>
+          </table>
+        </div>
       </div>
     </div>
     <div class="footer">接口: <code>/api/status</code></div>
   </div>
 
   <script>
+    /** Reads camelCase or PascalCase snapshot fields (matches System.Text.Json naming). */
+    function snapshotField(data, camel, pascal) {
+      const a = data[camel];
+      if (a !== undefined && a !== null) {
+        return a;
+      }
+      return data[pascal];
+    }
+
     const projectName = document.getElementById("projectName");
     const runtimeStatus = document.getElementById("runtimeStatus");
     const driverOnlineCount = document.getElementById("driverOnlineCount");
     const driverRows = document.getElementById("driverRows");
-    const varsBlock = document.getElementById("varsBlock");
+    const varsRows = document.getElementById("varsRows");
     const lastUpdate = document.getElementById("lastUpdate");
     const taskOperationState = document.getElementById("taskOperationState");
 
@@ -146,6 +187,41 @@
       runtimeStatus.innerHTML = isRunning
         ? '<span class="pill ok">RUNNING</span>'
         : '<span class="pill warn">STOPPED</span>';
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatVarValue(v) {
+      if (v === null || v === undefined) {
+        return "";
+      }
+      if (typeof v === "object") {
+        try {
+          return JSON.stringify(v);
+        } catch {
+          return String(v);
+        }
+      }
+      return String(v);
+    }
+
+    function renderVars(vars) {
+      const obj = vars && typeof vars === "object" ? vars : {};
+      const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      if (!keys.length) {
+        varsRows.innerHTML = '<tr><td colspan="2" style="color:#90a4d4">（无变量）</td></tr>';
+        return;
+      }
+      varsRows.innerHTML = keys.map((k) => {
+        const display = formatVarValue(obj[k]);
+        return `<tr><td class="var-key">${escapeHtml(k)}</td><td class="var-value">${escapeHtml(display)}</td></tr>`;
+      }).join("");
     }
 
     function renderDrivers(drivers) {
@@ -171,17 +247,19 @@
         const res = await fetch("/api/status", { cache: "no-store" });
         if (!res.ok) throw new Error("http " + res.status);
         const data = await res.json();
-        projectName.textContent = data.projectName || "-";
-        setStatus(!!data.isRunning);
-        renderDrivers(data.drivers);
-        varsBlock.textContent = JSON.stringify(data.vars || {}, null, 2);
-        const state = data.vars?.["task.operation.state"] ?? "unknown";
-        const lamp = data.vars?.["task.operation.lamp"] ?? "red";
-        const message = data.vars?.["task.operation.message"] ?? "-";
+        projectName.textContent = snapshotField(data, "projectName", "ProjectName") || "-";
+        setStatus(!!snapshotField(data, "isRunning", "IsRunning"));
+        renderDrivers(snapshotField(data, "drivers", "Drivers"));
+        const vars = snapshotField(data, "vars", "Vars") || {};
+        renderVars(vars);
+        const state = vars["task.operation.state"] ?? "unknown";
+        const lamp = vars["task.operation.lamp"] ?? "red";
+        const message = vars["task.operation.message"] ?? "-";
         taskOperationState.textContent = `状态: ${state} | 灯色: ${lamp} | 说明: ${message}`;
         lastUpdate.textContent = new Date().toLocaleTimeString();
       } catch (err) {
         runtimeStatus.innerHTML = '<span class="pill warn">UNREACHABLE</span>';
+        varsRows.innerHTML = '<tr><td colspan="2" style="color:#90a4d4">无法加载</td></tr>';
       }
     }
 

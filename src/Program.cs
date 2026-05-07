@@ -20,7 +20,7 @@ internal static class Program
 
     private static async Task RunConsoleRuntimeAsync()
     {
-        var settingPath = Path.Combine(AppContext.BaseDirectory, "sample.setting.json");
+        var settingPath = MdkSetting.DefaultSettingsPath;
         if (!File.Exists(settingPath))
         {
             Console.WriteLine($"Missing setting file: {settingPath}");

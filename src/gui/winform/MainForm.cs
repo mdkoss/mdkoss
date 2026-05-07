@@ -205,10 +205,15 @@ public sealed class MainForm : Form
 
     private static string ResolveDefaultSettingPath()
     {
+        if (File.Exists(MdkSetting.DefaultSettingsPath))
+        {
+            return MdkSetting.DefaultSettingsPath;
+        }
+
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var candidate = Path.Combine(current.FullName, "MDKOSS", "sample.setting.json");
+            var candidate = Path.Combine(current.FullName, "MDKOSS", "configs", "sample.setting.json");
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -217,7 +222,7 @@ public sealed class MainForm : Form
             current = current.Parent;
         }
 
-        return Path.Combine(Environment.CurrentDirectory, "MDKOSS", "sample.setting.json");
+        return Path.Combine(Environment.CurrentDirectory, "MDKOSS", "configs", "sample.setting.json");
     }
 
     private void OpenConfigForm(Func<string, Form> formFactory)

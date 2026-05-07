@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0-windows10.0.22621.0</TargetFramework>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
     <OutputType>Exe</OutputType>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,10 +11,10 @@
     <PackageReference Include="NLog" Version="6.1.2" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="sample.setting.json">
+    <None Include="configs\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="views\monitoringpage.html">
+    <None Include="views\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -23,7 +23,6 @@
     <Compile Remove="gui\obj\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="configs\" />
     <Folder Include="tasks\" />
   </ItemGroup>
 </Project>

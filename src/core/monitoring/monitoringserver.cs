@@ -6,6 +6,12 @@ namespace MDKOSS.Core.Monitoring;
 
 public sealed class MonitoringServer : IDisposable
 {
+    private static readonly JsonSerializerOptions SnapshotJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
     private readonly HttpListener _listener = new();
     private readonly MdkRuntime _runtime;
     private readonly string _prefix;
@@ -15,8 +21,66 @@ public sealed class MonitoringServer : IDisposable
     public MonitoringServer(MdkRuntime runtime, string prefix = "http://localhost:5080/")
     {
         _runtime = runtime;
-        _prefix = prefix;
-        _listener.Prefixes.Add(prefix);
+        _prefix = NormalizePrefix(prefix);
+        AddListenerPrefixes(_listener, _prefix);
+    }
+
+    private static string NormalizePrefix(string prefix)
+    {
+        prefix = prefix.Trim();
+        return prefix.EndsWith('/') ? prefix : prefix + "/";
+    }
+
+    /// <summary>
+    /// HttpListener matches the request host strictly. Register loopback aliases so
+    /// <c>http://127.0.0.1:5080/</c> works when the primary prefix uses <c>localhost</c> (avoids HTTP 400 Invalid Hostname).
+    /// </summary>
+    private static void AddListenerPrefixes(HttpListener listener, string primaryPrefix)
+    {
+        listener.Prefixes.Add(primaryPrefix);
+        if (!Uri.TryCreate(primaryPrefix, UriKind.Absolute, out var uri))
+        {
+            return;
+        }
+
+        if (uri.Host is "*" or "+")
+        {
+            return;
+        }
+
+        var portSegment = uri.IsDefaultPort ? "" : $":{uri.Port}";
+        var path = uri.AbsolutePath;
+        if (!path.EndsWith('/'))
+        {
+            path += "/";
+        }
+
+        var scheme = uri.Scheme;
+        var added = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { primaryPrefix };
+        void AddIfDistinct(string host)
+        {
+            var p = $"{scheme}://{host}{portSegment}{path}";
+            if (added.Add(p))
+            {
+                listener.Prefixes.Add(p);
+            }
+        }
+
+        if (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            AddIfDistinct("127.0.0.1");
+            AddIfDistinct("[::1]");
+        }
+        else if (uri.Host == "127.0.0.1")
+        {
+            AddIfDistinct("localhost");
+            AddIfDistinct("[::1]");
+        }
+        else if (uri.Host is "[::1]" or "::1")
+        {
+            AddIfDistinct("localhost");
+            AddIfDistinct("127.0.0.1");
+        }
     }
 
     public string Prefix => _prefix;
@@ -84,10 +148,7 @@ public sealed class MonitoringServer : IDisposable
 
         if (path.Equals("/api/status", StringComparison.OrdinalIgnoreCase))
         {
-            var json = JsonSerializer.Serialize(_runtime.GetSnapshot(), new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(_runtime.GetSnapshot(), SnapshotJsonOptions);
             await WriteResponseAsync(context.Response, "application/json; charset=utf-8", json, cancellationToken)
                 .ConfigureAwait(false);
             return;

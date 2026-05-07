@@ -22,7 +22,7 @@ internal static class MonitoringPage
 </head>
 <body style="font-family: Segoe UI, sans-serif; padding: 24px;">
   <h2>Monitoring page template missing</h2>
-  <p>Expected file: <code>src/views/monitoringpage.html</code></p>
+  <p>Expected file next to the app: <code>views/monitoringpage.html</code></p>
 </body>
 </html>
 """;

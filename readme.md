@@ -28,7 +28,7 @@
 以最小依赖实现“可编译、可运行、可观测、可扩展”的运行时内核，保留 `mdkruntime` 的核心思想，去掉第一阶段非必需复杂度（桌面容器、复杂服务编排、Redis 同步等）。
 
 ### 1.1 已实现目标
-- 可从 `sample.setting.json` 创建运行时实例
+- 可从 `configs/sample.setting.json`（默认路径 `MdkSetting.DefaultSettingsPath`）创建运行时实例
 - 可按配置注册 Driver / Device / Task
 - 可启动任务循环并更新变量状态
 - 可通过监控接口获取运行时快照
@@ -44,12 +44,18 @@
 ## 2. 项目结构（当前实现）
 
 ```text
-MDKOSS/
-├── MDKOSS.csproj
-├── Program.cs
-├── sample.setting.json
+mdkoss/
 ├── readme.md
 └── src/
+    ├── MDKOSS.csproj
+    ├── Program.cs
+    ├── configs/
+    │   └── sample.setting.json
+    ├── views/
+    │   └── monitoringpage.html
+    ├── tasks/
+    ├── gui/
+    │   └── winform/
     └── core/
         ├── mdk.cs
         ├── msetting.cs
@@ -58,24 +64,27 @@ MDKOSS/
         ├── mvar.cs
         ├── drivers/
         │   ├── idriver.cs
-        │   └── drvgts.cs
+        │   ├── drvgts.cs
+        │   └── drvsim.cs
         └── monitoring/
             ├── monitoringserver.cs
             └── monitoringpage.cs
 ```
+
+构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
 
 ---
 
 ## 3. 模块职责
 
 - `Program.cs`  
-  控制台入口。负责加载配置、启动 `MdkRuntime`、启动监控服务，并处理退出流程。
+  应用入口（WinForms 或 `--console`）。控制台模式默认从 `MdkSetting.DefaultSettingsPath`（即输出目录下的 `configs/sample.setting.json`）加载配置，启动 `MdkRuntime` 与监控服务，并处理退出流程。
 
 - `src/core/mdk.cs`  
   Runtime Host。统一管理生命周期：`Initialize -> Start -> StopAsync -> Dispose`。内部完成变量、驱动、设备、任务的注册与编排。
 
 - `src/core/msetting.cs`  
-  配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，并支持从 JSON 反序列化。
+  配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
 
 - `src/core/mdev.cs`  
   设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 子类。
@@ -116,7 +125,7 @@ MDKOSS/
 
 ### 4.2 启动顺序
 
-1. 读取配置（`MdkSetting.Load`）
+1. 读取配置（`MdkSetting.Load`，默认文件为 `configs/sample.setting.json`）
 2. `MdkRuntime.Initialize()`：
    - Seed Vars
    - 初始化 Drivers
@@ -139,7 +148,7 @@ MDKOSS/
 
 ## 5. 配置模型（当前版本）
 
-`sample.setting.json` 包含如下核心字段：
+`configs/sample.setting.json`（随构建复制到输出目录）包含如下核心字段：
 
 - `projectName`：项目名称
 - `cycleMs`：主循环周期（预留）
@@ -184,6 +193,14 @@ MDKOSS/
 ```bash
 dotnet run --project src/MDKOSS.csproj
 ```
+
+控制台模式（无 GUI，使用默认配置文件）：
+
+```bash
+dotnet run --project src/MDKOSS.csproj -- --console
+```
+
+默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。
 
 看到如下输出表示启动成功：
 
