@@ -7,6 +7,7 @@ public enum MdkErrorCode
     UnsupportedDeviceType = 4102,
     UnsupportedTaskType = 4103,
     DuplicateTaskName = 4104,
+    GpioDriverScopeInvalid = 4105,
 }
 
 /// <summary>Exception carrying an <see cref="MdkErrorCode"/> for programmatic handling and logs.</summary>

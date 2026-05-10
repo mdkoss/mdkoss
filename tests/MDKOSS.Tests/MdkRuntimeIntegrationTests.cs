@@ -49,6 +49,11 @@ public sealed class MdkRuntimeIntegrationTests
         Assert.True(snap.Drivers.ContainsKey("d1"));
         Assert.True(snap.Devices.ContainsKey("g1"));
         Assert.True(snap.Drivers["d1"].IsConnected);
+        var g1 = snap.Devices["g1"];
+        Assert.NotNull(g1.GpioIoPoints);
+        Assert.Single(g1.GpioIoPoints!);
+        Assert.Equal("a", g1.GpioIoPoints![0].Alias);
+        Assert.Equal("in", g1.GpioIoPoints[0].Direction);
 
         var json = JsonSerializer.Serialize(snap, new JsonSerializerOptions
         {
@@ -57,6 +62,9 @@ public sealed class MdkRuntimeIntegrationTests
         using var doc = JsonDocument.Parse(json);
         Assert.True(doc.RootElement.TryGetProperty("devices", out var devEl));
         Assert.Equal(JsonValueKind.Object, devEl.ValueKind);
+        Assert.True(devEl.TryGetProperty("g1", out var g1El));
+        Assert.True(g1El.TryGetProperty("gpioIoPoints", out var ioEl));
+        Assert.Equal(JsonValueKind.Array, ioEl.ValueKind);
     }
 
     [Fact]
@@ -75,5 +83,69 @@ public sealed class MdkRuntimeIntegrationTests
         using var rt = new MdkRuntime(setting);
         var ex = Assert.Throws<MdkException>(() => rt.Initialize());
         Assert.Equal(MdkErrorCode.DuplicateTaskName, ex.Code);
+    }
+
+    [Fact]
+    public void Gpio_driver_ids_scope_rejects_binding_outside_scope()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers =
+            [
+                new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
+                new MdkSetting.DriverConfig { Id = "d2", Type = "sim", Enabled = true },
+            ],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "g1",
+                    Type = "gpio",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["driverIds"] = "d1",
+                        ["in.a"] = "d2:X0",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        var ex = Assert.Throws<MdkException>(() => rt.Initialize());
+        Assert.Equal(MdkErrorCode.GpioDriverScopeInvalid, ex.Code);
+    }
+
+    [Fact]
+    public async Task Gpio_multi_driver_start_succeeds_when_all_referenced_drivers_online()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers =
+            [
+                new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
+                new MdkSetting.DriverConfig { Id = "d2", Type = "sim", Enabled = true },
+            ],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "g1",
+                    Type = "gpio",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["in.a"] = "d1:X0",
+                        ["in.b"] = "d2:X1",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        rt.Start();
+        Assert.True(rt.GetSnapshot().Devices["g1"].DriverConnected);
+        await rt.StopAsync();
     }
 }

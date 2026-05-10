@@ -1,3 +1,4 @@
+using System.Globalization;
 using MDKOSS.Core.Drivers;
 
 namespace MDKOSS.Core;
@@ -81,7 +82,7 @@ public abstract class MDeviceBase : IDisposable
     /// <summary>Returns monitor-friendly device snapshot.</summary>
     public virtual DeviceSnapshot GetSnapshot()
     {
-        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), Driver.Name, Driver.IsConnected);
+        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), Driver.Name, Driver.IsConnected, null);
     }
 
     /// <summary>Guards operations that require online driver.</summary>
@@ -111,7 +112,10 @@ public abstract class MDeviceBase : IDisposable
     }
 }
 
-/// <summary>Basic GPIO device abstraction.</summary>
+/// <summary>
+/// GPIO device: maps logical aliases to physical IO on one or more <see cref="IDriver"/> instances
+/// (each driver may expose its own addresses). Optional <c>driverIds</c> in config limits the driver set.
+/// </summary>
 public sealed class GpioDevice : MDeviceBase
 {
     private readonly IReadOnlyDictionary<string, IDriver> _drivers;
@@ -123,8 +127,30 @@ public sealed class GpioDevice : MDeviceBase
         _drivers = drivers;
     }
 
+    /// <summary>Drivers visible to this GPIO instance (full runtime map or a filtered scope).</summary>
+    public IReadOnlyDictionary<string, IDriver> Drivers => _drivers;
 
     public int PointCount => _points.Count;
+
+    /// <summary>
+    /// Requires every driver referenced by mapped IO points to be connected (not only a single primary driver).
+    /// </summary>
+    public override void Start()
+    {
+        foreach (var driverId in _points.Values.Select(p => p.DriverId).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            if (!_drivers.TryGetValue(driverId, out var driver) || !driver.IsConnected)
+            {
+                State = MDeviceState.Fault;
+                WriteState("fault");
+                throw new InvalidOperationException(
+                    $"Driver '{driverId}' is not connected for GPIO device '{Id}'.");
+            }
+        }
+
+        State = MDeviceState.Running;
+        WriteState("running");
+    }
 
     public void RegisterInput(string alias, string driverId, string address)
     {
@@ -179,11 +205,54 @@ public sealed class GpioDevice : MDeviceBase
 
     public override DeviceSnapshot GetSnapshot()
     {
-        var allConnected = _points.Values
-            .Select(p => p.DriverId)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .All(driverId => _drivers.TryGetValue(driverId, out var d) && d.IsConnected);
-        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), "multi-driver-gpio", allConnected);
+        var rows = new List<GpioIoPointSnapshot>();
+        foreach (var point in _points.Values.OrderBy(p => p.Alias, StringComparer.OrdinalIgnoreCase))
+        {
+            string? value = null;
+            var driverOnline = false;
+            if (_drivers.TryGetValue(point.DriverId, out var dr))
+            {
+                driverOnline = dr.IsConnected;
+                if (driverOnline && dr.TryRead(point.Address, out var raw))
+                {
+                    value = FormatIoValue(raw);
+                }
+            }
+
+            rows.Add(new GpioIoPointSnapshot(
+                point.Alias,
+                point.IsOutput ? "out" : "in",
+                point.DriverId,
+                point.Address,
+                driverOnline,
+                value));
+        }
+
+        var allConnected = _points.Count == 0
+            || _points.Values
+                .Select(p => p.DriverId)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .All(driverId => _drivers.TryGetValue(driverId, out var d) && d.IsConnected);
+
+        return new DeviceSnapshot(
+            Id,
+            Name,
+            Type.ToString(),
+            State.ToString(),
+            "multi-driver-gpio",
+            allConnected,
+            rows);
+    }
+
+    private static string? FormatIoValue(object? raw)
+    {
+        return raw switch
+        {
+            null => null,
+            bool b => b ? "true" : "false",
+            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+            _ => raw.ToString(),
+        };
     }
 
     private static IDriver SelectPrimaryDriver(IReadOnlyDictionary<string, IDriver> drivers)
@@ -311,10 +380,20 @@ public sealed class CameraDevDevice : MDeviceBase
     }
 }
 
+/// <summary>One logical GPIO point for monitoring (may span multiple drivers).</summary>
+public sealed record GpioIoPointSnapshot(
+    string Alias,
+    string Direction,
+    string DriverId,
+    string Address,
+    bool DriverOnline,
+    string? Value);
+
 public sealed record DeviceSnapshot(
     string Id,
     string Name,
     string Type,
     string State,
     string DriverType,
-    bool DriverConnected);
+    bool DriverConnected,
+    IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null);

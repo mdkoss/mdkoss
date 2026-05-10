@@ -163,6 +163,7 @@ mdkoss/
   - `id` / `type` / `enabled` / `parameters`
 - `devices[]`：
   - `id` / `name` / `type` / `driverId` / `enabled` / `parameters`
+  - `gpio` 设备：`parameters` 中 `in.*` / `out.*` 将别名映射到 `driverId:address`；可选 `driverIds`（逗号分隔）限定本设备可见的驱动子集；`/api/status` 中每个 GPIO 设备带 `gpioIoPoints` 列表（别名、方向、驱动、地址、在线、当前读值）
 - `tasks[]`：
   - `name` / `driverId` / `intervalMs` / `parameters`
 - `vars`：初始变量字典
@@ -186,7 +187,7 @@ mdkoss/
 - `ProjectName`
 - `IsRunning`
 - `Drivers`
-- `Devices`
+- `Devices`（`gpio` 类型含 `gpioIoPoints`：各映射点的实时读值与驱动在线状态）
 - `Vars`
 
 该快照来自 `MdkRuntime.GetSnapshot()`，可直接用于后续扩展 API / WebSocket / 历史存储。

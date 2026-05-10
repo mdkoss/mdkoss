@@ -6,6 +6,22 @@ public readonly record struct GpioPointBinding(string Alias, string DriverId, st
 /// <summary>Parses GPIO routing entries from <see cref="MdkSetting.DeviceConfig.Parameters"/>.</summary>
 public static class GpioDeviceParameterSet
 {
+    /// <summary>
+    /// Optional <c>driverIds</c> value: comma-separated runtime driver ids. When set, the GPIO device only receives
+    /// those drivers (instead of the full runtime map). Bindings must reference drivers inside this set.
+    /// </summary>
+    /// <returns><see langword="null"/> when unset or blank — meaning use all runtime drivers.</returns>
+    public static HashSet<string>? ParseDriverScopeIds(IReadOnlyDictionary<string, string> parameters)
+    {
+        if (!parameters.TryGetValue("driverIds", out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var parts = raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? null : new HashSet<string>(parts, StringComparer.OrdinalIgnoreCase);
+    }
+
     /// <summary>Parses <c>in.alias</c> and <c>out.alias</c> keys into point bindings; skips malformed routes.</summary>
     public static IReadOnlyList<GpioPointBinding> ParseBindings(IReadOnlyDictionary<string, string> parameters)
     {

@@ -180,8 +180,49 @@ public sealed class MdkRuntime : IDisposable
 
     private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
     {
-        var gpioDevice = new GpioDevice(config.Id, deviceName, _drivers, Vars);
-        foreach (var binding in GpioDeviceParameterSet.ParseBindings(config.Parameters))
+        var scope = GpioDeviceParameterSet.ParseDriverScopeIds(config.Parameters);
+        IReadOnlyDictionary<string, IDriver> driverMap;
+        if (scope is null)
+        {
+            driverMap = _drivers;
+        }
+        else
+        {
+            var filtered = new Dictionary<string, IDriver>(StringComparer.OrdinalIgnoreCase);
+            foreach (var id in scope)
+            {
+                if (_drivers.TryGetValue(id, out var d))
+                {
+                    filtered[id] = d;
+                }
+            }
+
+            if (filtered.Count == 0)
+            {
+                throw new MdkException(
+                    MdkErrorCode.GpioDriverScopeInvalid,
+                    "GPIO driverIds did not match any enabled drivers.");
+            }
+
+            driverMap = filtered;
+        }
+
+        var bindings = GpioDeviceParameterSet.ParseBindings(config.Parameters);
+        if (scope is not null)
+        {
+            foreach (var b in bindings)
+            {
+                if (!driverMap.ContainsKey(b.DriverId))
+                {
+                    throw new MdkException(
+                        MdkErrorCode.GpioDriverScopeInvalid,
+                        $"GPIO point '{b.Alias}' uses driver '{b.DriverId}' which is outside driverIds scope.");
+                }
+            }
+        }
+
+        var gpioDevice = new GpioDevice(config.Id, deviceName, driverMap, Vars);
+        foreach (var binding in bindings)
         {
             if (binding.IsOutput)
             {

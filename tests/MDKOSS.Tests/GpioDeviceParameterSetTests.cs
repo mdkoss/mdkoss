@@ -27,4 +27,24 @@ public sealed class GpioDeviceParameterSetTests
         Assert.Contains(bindings, b => b.Alias == "start" && !b.IsOutput && b.DriverId == "d1" && b.Address == "I0");
         Assert.Contains(bindings, b => b.Alias == "lamp" && b.IsOutput);
     }
+
+    [Fact]
+    public void ParseDriverScopeIds_returns_null_when_missing()
+    {
+        Assert.Null(GpioDeviceParameterSet.ParseDriverScopeIds(new Dictionary<string, string>()));
+    }
+
+    [Fact]
+    public void ParseDriverScopeIds_parses_comma_separated_ids()
+    {
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["driverIds"] = " drv-a , drv-b ",
+        };
+
+        var scope = GpioDeviceParameterSet.ParseDriverScopeIds(parameters);
+        Assert.NotNull(scope);
+        Assert.Contains("drv-a", scope);
+        Assert.Contains("drv-b", scope);
+    }
 }
