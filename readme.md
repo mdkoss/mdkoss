@@ -45,7 +45,10 @@
 
 ```text
 mdkoss/
+├── MDKOSS.sln
 ├── readme.md
+├── tests/
+│   └── MDKOSS.Tests/
 └── src/
     ├── MDKOSS.csproj
     ├── Program.cs
@@ -64,8 +67,12 @@ mdkoss/
         ├── mvar.cs
         ├── drivers/
         │   ├── idriver.cs
+        │   ├── driver_factory.cs
         │   ├── drvgts.cs
         │   └── drvsim.cs
+        ├── gpio_device_parameters.cs
+        ├── mdk_errors.cs
+        ├── runtime_task_factory.cs
         └── monitoring/
             ├── monitoringserver.cs
             └── monitoringpage.cs
