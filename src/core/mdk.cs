@@ -181,48 +181,19 @@ public sealed class MdkRuntime : IDisposable
     private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
     {
         var gpioDevice = new GpioDevice(config.Id, deviceName, _drivers, Vars);
-        foreach (var kv in config.Parameters)
+        foreach (var binding in GpioDeviceParameterSet.ParseBindings(config.Parameters))
         {
-            if (kv.Key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
+            if (binding.IsOutput)
             {
-                var alias = kv.Key[3..];
-                if (TryParsePointRoute(kv.Value, out var driverId, out var address))
-                {
-                    gpioDevice.RegisterInput(alias, driverId, address);
-                }
+                gpioDevice.RegisterOutput(binding.Alias, binding.DriverId, binding.Address);
             }
-            else if (kv.Key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
+            else
             {
-                var alias = kv.Key[4..];
-                if (TryParsePointRoute(kv.Value, out var driverId, out var address))
-                {
-                    gpioDevice.RegisterOutput(alias, driverId, address);
-                }
+                gpioDevice.RegisterInput(binding.Alias, binding.DriverId, binding.Address);
             }
         }
 
         return gpioDevice;
-    }
-
-    private static bool TryParsePointRoute(string? raw, out string driverId, out string address)
-    {
-        driverId = string.Empty;
-        address = string.Empty;
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            return false;
-        }
-
-        var route = raw.Trim();
-        var splitIndex = route.IndexOf(':');
-        if (splitIndex <= 0 || splitIndex >= route.Length - 1)
-        {
-            return false;
-        }
-
-        driverId = route[..splitIndex].Trim();
-        address = route[(splitIndex + 1)..].Trim();
-        return !string.IsNullOrWhiteSpace(driverId) && !string.IsNullOrWhiteSpace(address);
     }
 
     public void Dispose()
