@@ -100,6 +100,13 @@
     .btn.green { border-color: rgba(53,208,143,.4); }
     .btn.yellow { border-color: rgba(255,204,102,.4); }
     .btn.red { border-color: rgba(255,93,93,.4); }
+    .io-wrap {
+      max-height: 380px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0a1120;
+    }
     @media (max-width: 900px) { .span-4, .span-8 { grid-column: span 12; } }
   </style>
 </head>
@@ -147,6 +154,26 @@
           </thead>
           <tbody id="deviceRows"></tbody>
         </table>
+      </div>
+
+      <div class="card span-12">
+        <div class="label">GPIO IO 状态（来自各设备的 gpioIoPoints）</div>
+        <div class="io-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>设备 ID</th>
+                <th>别名</th>
+                <th>方向</th>
+                <th>驱动 ID</th>
+                <th>地址</th>
+                <th>驱动在线</th>
+                <th>读值</th>
+              </tr>
+            </thead>
+            <tbody id="gpioIoRows"></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="card span-4">
@@ -197,6 +224,7 @@
     const driverOnlineCount = document.getElementById("driverOnlineCount");
     const driverRows = document.getElementById("driverRows");
     const deviceRows = document.getElementById("deviceRows");
+    const gpioIoRows = document.getElementById("gpioIoRows");
     const varsRows = document.getElementById("varsRows");
     const lastUpdate = document.getElementById("lastUpdate");
     const taskOperationState = document.getElementById("taskOperationState");
@@ -260,6 +288,44 @@
       }
     }
 
+    function renderGpioIo(devices) {
+      const flat = [];
+      const obj = devices && typeof devices === "object" ? devices : {};
+      for (const [devId, d] of Object.entries(obj)) {
+        const pts = d.gpioIoPoints ?? d.GpioIoPoints;
+        if (!Array.isArray(pts) || !pts.length) {
+          continue;
+        }
+        for (const p of pts) {
+          const alias = p.alias ?? p.Alias ?? "-";
+          const dir = p.direction ?? p.Direction ?? "-";
+          const drv = p.driverId ?? p.DriverId ?? "-";
+          const addr = p.address ?? p.Address ?? "-";
+          const online = !!(p.driverOnline ?? p.DriverOnline);
+          const val = p.value ?? p.Value;
+          const valStr = val === null || val === undefined ? "—" : String(val);
+          flat.push({ devId, alias, dir, drv, addr, online, valStr });
+        }
+      }
+      if (!flat.length) {
+        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">（无 GPIO 映射或暂无数据）</td></tr>';
+        return;
+      }
+      gpioIoRows.innerHTML = flat
+        .map(
+          (r) => `<tr>
+          <td>${escapeHtml(r.devId)}</td>
+          <td>${escapeHtml(r.alias)}</td>
+          <td>${escapeHtml(r.dir)}</td>
+          <td>${escapeHtml(r.drv)}</td>
+          <td>${escapeHtml(r.addr)}</td>
+          <td><span class="dot ${r.online ? "ok" : ""}"></span>${r.online ? "Yes" : "No"}</td>
+          <td style="font-family:ui-monospace,Consolas,monospace;font-size:12px">${escapeHtml(r.valStr)}</td>
+        </tr>`
+        )
+        .join("");
+    }
+
     function renderDevices(devices) {
       const entries = Object.entries(devices || {});
       deviceRows.innerHTML = entries.map(([id, d]) => {
@@ -290,7 +356,9 @@
         projectName.textContent = snapshotField(data, "projectName", "ProjectName") || "-";
         setStatus(!!snapshotField(data, "isRunning", "IsRunning"));
         renderDrivers(snapshotField(data, "drivers", "Drivers"));
-        renderDevices(snapshotField(data, "devices", "Devices"));
+        const devicesObj = snapshotField(data, "devices", "Devices");
+        renderDevices(devicesObj);
+        renderGpioIo(devicesObj);
         const vars = snapshotField(data, "vars", "Vars") || {};
         renderVars(vars);
         const state = vars["task.operation.state"] ?? "unknown";
@@ -301,6 +369,7 @@
       } catch (err) {
         runtimeStatus.innerHTML = '<span class="pill warn">UNREACHABLE</span>';
         varsRows.innerHTML = '<tr><td colspan="2" style="color:#90a4d4">无法加载</td></tr>';
+        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">无法加载</td></tr>';
       }
     }
 
