@@ -1,6 +1,5 @@
 using MDKOSS.Core.Drivers;
 using MDKOSS.Core.Monitoring;
-using MDKOSS.Tasks;
 
 namespace MDKOSS.Core;
 
@@ -140,44 +139,15 @@ public sealed class MdkRuntime : IDisposable
         var taskType = string.IsNullOrWhiteSpace(config.Type)
             ? "pollDriver"
             : config.Type.Trim();
-        var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskType : config.Name;
 
-        switch (taskType.ToLowerInvariant())
-        {
-            case "poll":
-            case "polldriver":
-                if (!_drivers.TryGetValue(config.DriverId, out var driver))
-                {
-                    return null;
-                }
+        var ctx = new TaskBootstrapContext(
+            _drivers,
+            _devices,
+            Vars,
+            GetSnapshot,
+            () => _tasks.Values.ToList());
 
-                return new PollDriverTask(taskName, config.IntervalMs, driver, Vars);
-
-            case "operation":
-            case "taskoperation":
-                var gpio = ResolveTaskGpio(config.Parameters);
-                return new TaskOperationTask(Vars, gpio, config.IntervalMs);
-
-            case "cycle":
-            case "taskcycle":
-                return new TaskCycleTask(Vars, GetSnapshot, () => _tasks.Values.ToList(), config.IntervalMs);
-
-            default:
-                throw new NotSupportedException($"Unsupported task type: {config.Type}");
-        }
-    }
-
-    private GpioDevice? ResolveTaskGpio(IReadOnlyDictionary<string, string> parameters)
-    {
-        if (parameters.TryGetValue("gpioDeviceId", out var deviceId) && !string.IsNullOrWhiteSpace(deviceId))
-        {
-            if (_devices.TryGetValue(deviceId, out var mapped) && mapped is GpioDevice gpioDevice)
-            {
-                return gpioDevice;
-            }
-        }
-
-        return _devices.Values.OfType<GpioDevice>().FirstOrDefault();
+        return RuntimeTaskFactory.Create(taskType, ctx, config);
     }
 
     // Instantiate and initialize all enabled devices.
