@@ -200,6 +200,12 @@ dotnet run --project src/MDKOSS.csproj
 dotnet run --project src/MDKOSS.csproj -- --console
 ```
 
+运行单元测试（需 Windows 目标框架，与主工程一致）：
+
+```bash
+dotnet test MDKOSS.sln -c Release
+```
+
 默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。
 
 看到如下输出表示启动成功：
@@ -211,11 +217,13 @@ dotnet run --project src/MDKOSS.csproj -- --console
 
 ## 8. 下一步建议
 
-- 在监控页面增加 `Devices` 表格与设备状态详情
-- 增加 `IDriver` 实现注册工厂（替代 `switch`）
-- 为 `DeviceConfig` 增加更明确的参数模型
-- 增加单元测试（Setting 解析、Scheduler 生命周期、Snapshot 一致性）
-- 增加日志组件与错误码规范
+近期已补齐：监控页 `Devices` 表格、`DriverFactory` / `RuntimeTaskFactory`、GPIO 路由参数解析（`GpioPointBinding`）、`MdkErrorCode` / `MdkException`、`tests/MDKOSS.Tests`（xUnit）、`MDKOSS.sln` 与 GitHub Actions 构建与测试。运行时已集成 **NLog** 文件日志（`AppLog`）。
+
+可选后续方向：
+
+- 为 axis / platform / cameradev 等补充与 JSON 对齐的强类型参数块（当前 GPIO 路由已结构化解析）
+- 监控 HTTP 鉴权、HTTPS、或 WebSocket 推送快照
+- 更完整的错误码分层与本地化文案
 
 ---
 
