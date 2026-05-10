@@ -103,13 +103,7 @@ public sealed class MdkRuntime : IDisposable
     {
         foreach (var config in Setting.Drivers.Where(d => d.Enabled))
         {
-            IDriver driver = config.Type.ToLowerInvariant() switch
-            {
-                "gts" => new DrvGts(),
-                "sim" => new DrvSim(),
-                _ => throw new NotSupportedException($"Unsupported driver type: {config.Type}")
-            };
-
+            var driver = DriverFactory.Create(config.Type);
             driver.Initialize(config);
             _drivers[config.Id] = driver;
         }
