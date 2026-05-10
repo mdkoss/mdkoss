@@ -132,6 +132,23 @@
         </table>
       </div>
 
+      <div class="card span-12">
+        <div class="label">设备状态</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Device ID</th>
+              <th>名称</th>
+              <th>类型</th>
+              <th>状态</th>
+              <th>驱动/链路</th>
+              <th>在线</th>
+            </tr>
+          </thead>
+          <tbody id="deviceRows"></tbody>
+        </table>
+      </div>
+
       <div class="card span-4">
         <div class="label">最后更新时间</div>
         <div class="value" id="lastUpdate" style="font-size: 18px">-</div>
@@ -179,6 +196,7 @@
     const runtimeStatus = document.getElementById("runtimeStatus");
     const driverOnlineCount = document.getElementById("driverOnlineCount");
     const driverRows = document.getElementById("driverRows");
+    const deviceRows = document.getElementById("deviceRows");
     const varsRows = document.getElementById("varsRows");
     const lastUpdate = document.getElementById("lastUpdate");
     const taskOperationState = document.getElementById("taskOperationState");
@@ -231,14 +249,36 @@
         const up = !!d.isConnected;
         if (up) online++;
         return `<tr>
-          <td>${id}</td>
-          <td>${d.type || "-"}</td>
+          <td>${escapeHtml(id)}</td>
+          <td>${escapeHtml(d.type || "-")}</td>
           <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "Connected" : "Disconnected"}</td>
         </tr>`;
       }).join("");
       driverOnlineCount.textContent = String(online);
       if (!entries.length) {
         driverRows.innerHTML = '<tr><td colspan="3" style="color:#90a4d4">No drivers</td></tr>';
+      }
+    }
+
+    function renderDevices(devices) {
+      const entries = Object.entries(devices || {});
+      deviceRows.innerHTML = entries.map(([id, d]) => {
+        const up = !!d.driverConnected;
+        const name = d.name ?? d.Name ?? "-";
+        const type = d.type ?? d.Type ?? "-";
+        const state = d.state ?? d.State ?? "-";
+        const driverType = d.driverType ?? d.DriverType ?? "-";
+        return `<tr>
+          <td>${escapeHtml(id)}</td>
+          <td>${escapeHtml(String(name))}</td>
+          <td>${escapeHtml(String(type))}</td>
+          <td>${escapeHtml(String(state))}</td>
+          <td>${escapeHtml(String(driverType))}</td>
+          <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "Yes" : "No"}</td>
+        </tr>`;
+      }).join("");
+      if (!entries.length) {
+        deviceRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">（无设备）</td></tr>';
       }
     }
 
@@ -250,6 +290,7 @@
         projectName.textContent = snapshotField(data, "projectName", "ProjectName") || "-";
         setStatus(!!snapshotField(data, "isRunning", "IsRunning"));
         renderDrivers(snapshotField(data, "drivers", "Drivers"));
+        renderDevices(snapshotField(data, "devices", "Devices"));
         const vars = snapshotField(data, "vars", "Vars") || {};
         renderVars(vars);
         const state = vars["task.operation.state"] ?? "unknown";
