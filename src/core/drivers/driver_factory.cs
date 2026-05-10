@@ -1,3 +1,5 @@
+using MDKOSS.Core;
+
 namespace MDKOSS.Core.Drivers;
 
 /// <summary>
@@ -30,17 +32,17 @@ public static class DriverFactory
     }
 
     /// <summary>Creates a new driver instance for the given type.</summary>
-    /// <exception cref="NotSupportedException">Unknown type.</exception>
+    /// <exception cref="MdkException">Unknown type (<see cref="MdkErrorCode.UnsupportedDriverType"/>).</exception>
     public static IDriver Create(string type)
     {
         if (string.IsNullOrWhiteSpace(type))
         {
-            throw new NotSupportedException("Driver type is empty.");
+            throw new MdkException(MdkErrorCode.UnsupportedDriverType, "Driver type is empty.");
         }
 
         if (!Factories.TryGetValue(type.Trim(), out var factory))
         {
-            throw new NotSupportedException($"Unsupported driver type: {type}");
+            throw new MdkException(MdkErrorCode.UnsupportedDriverType, $"Unsupported driver type: {type}");
         }
 
         return factory();

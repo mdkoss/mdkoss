@@ -127,7 +127,7 @@ public sealed class MdkRuntime : IDisposable
     {
         if (_tasks.ContainsKey(task.Name))
         {
-            throw new InvalidOperationException($"Duplicate task name: {task.Name}");
+            throw new MdkException(MdkErrorCode.DuplicateTaskName, $"Duplicate task name: {task.Name}");
         }
 
         _tasks[task.Name] = task;
@@ -170,7 +170,7 @@ public sealed class MdkRuntime : IDisposable
                 "axis" => new AxisDevice(config.Id, deviceName, driver!, Vars),
                 "platform" => new PlatformDevice(config.Id, deviceName, driver!, Vars),
                 "cameradev" => new CameraDevDevice(config.Id, deviceName, driver!, Vars),
-                _ => throw new NotSupportedException($"Unsupported device type: {config.Type}")
+                _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
             };
 
             device.Initialize();

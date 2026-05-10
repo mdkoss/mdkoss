@@ -67,12 +67,12 @@ public static class RuntimeTaskFactory
     }
 
     /// <summary>Creates a task instance, or null when optional prerequisites are missing (e.g. driver id).</summary>
-    /// <exception cref="NotSupportedException">Unknown task type.</exception>
+    /// <exception cref="MdkException">Unknown task type (<see cref="MdkErrorCode.UnsupportedTaskType"/>).</exception>
     public static MTaskBase? Create(string taskTypeKey, TaskBootstrapContext ctx, MdkSetting.TaskConfig config)
     {
         if (!Registry.TryGetValue(taskTypeKey, out var factory))
         {
-            throw new NotSupportedException($"Unsupported task type: {config.Type}");
+            throw new MdkException(MdkErrorCode.UnsupportedTaskType, $"Unsupported task type: {config.Type}");
         }
 
         return factory(ctx, config, taskTypeKey);
