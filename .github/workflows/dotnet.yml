@@ -11,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -25,9 +27,22 @@ jobs:
       - name: Publish
         if: startsWith(github.ref, 'refs/tags/v')
         run: dotnet publish src/MDKOSS.csproj -c Release -o publish
-      - name: Upload release artifact
+      - name: Zip publish output
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: tar -a -c -f "MDKOSS-${{ github.ref_name }}-win-x64.zip" publish
+      - name: Upload workflow artifact
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
           name: MDKOSS-${{ github.ref_name }}
           path: publish/**
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: MDKOSS-${{ github.ref_name }}-win-x64.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
