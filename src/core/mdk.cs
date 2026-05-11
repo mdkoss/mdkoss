@@ -1,3 +1,4 @@
+using System.Net;
 using MDKOSS.Core.Drivers;
 using MDKOSS.Core.Monitoring;
 
@@ -8,7 +9,7 @@ namespace MDKOSS.Core;
 /// </summary>
 public sealed class MdkRuntime : IDisposable
 {
-    private const string DefaultMonitoringPrefix = "http://localhost:5080/";
+    private const string DefaultMonitoringPrefix = "http://127.0.0.1:5080/";
     private readonly Dictionary<string, IDriver> _drivers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MDeviceBase> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MTaskBase> _tasks = new(StringComparer.OrdinalIgnoreCase);
@@ -55,8 +56,24 @@ public sealed class MdkRuntime : IDisposable
     /// </summary>
     public void Start()
     {
-        _monitoringServer ??= new MonitoringServer(this, DefaultMonitoringPrefix);
-        _monitoringServer.Start();
+        var monitorPrefix = string.IsNullOrWhiteSpace(Setting.MonitoringPrefix)
+            ? DefaultMonitoringPrefix
+            : Setting.MonitoringPrefix.Trim();
+
+        _monitoringServer ??= new MonitoringServer(this, monitorPrefix);
+        try
+        {
+            _monitoringServer.Start();
+        }
+        catch (HttpListenerException ex)
+        {
+            AppLog.Error(
+                ex,
+                $"Monitoring HTTP listener failed to start on '{monitorPrefix}'. " +
+                "Another process may be using the port, or the URL is reserved. " +
+                "Set \"monitoringPrefix\" in your settings JSON to a free URL (e.g. http://127.0.0.1:5081/).");
+            throw;
+        }
 
         foreach (var device in _devices.Values)
         {

@@ -141,7 +141,7 @@ mdkoss/
 3. `MdkRuntime.Start()`：
    - 启动 Devices
    - 启动 Scheduler
-4. 启动监控服务（默认 `http://localhost:5080/`）
+4. 启动监控服务（默认 `http://127.0.0.1:5080/`，浏览器也可用 `http://localhost:5080/`）
 
 ### 4.3 停止顺序
 
@@ -158,6 +158,7 @@ mdkoss/
 `configs/sample.setting.json`（随构建复制到输出目录）包含如下核心字段：
 
 - `projectName`：项目名称
+- `monitoringPrefix`（可选）：监控 HTTP 监听地址，必须以 `/` 结尾，例如 `http://127.0.0.1:5081/`。默认 `http://127.0.0.1:5080/`（并自动登记 `localhost` 别名，不登记 `[::1]` 以避免 Windows http.sys 冲突）。端口被占用时请改此项。
 - `cycleMs`：主循环周期（预留）
 - `drivers[]`：
   - `id` / `type` / `enabled` / `parameters`
@@ -180,8 +181,8 @@ mdkoss/
 
 运行后可访问：
 
-- 页面：`http://localhost:5080/`
-- 接口：`http://localhost:5080/api/status`
+- 页面：`http://127.0.0.1:5080/`（或 `http://localhost:5080/`）
+- 接口：`http://127.0.0.1:5080/api/status`
 
 `/api/status` 返回：
 - `ProjectName`
@@ -219,7 +220,7 @@ dotnet test MDKOSS.sln -c Release
 看到如下输出表示启动成功：
 
 - `MDKOSS runtime started.`
-- `Monitor UI: http://localhost:5080/`
+- `Monitor UI: http://127.0.0.1:5080/`（或 `http://localhost:5080/`）
 
 ---
 

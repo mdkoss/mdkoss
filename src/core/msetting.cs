@@ -13,6 +13,12 @@ public sealed class MdkSetting
     /// <summary>Main loop cycle hint in milliseconds.</summary>
     public int CycleMs { get; set; } = 20;
 
+    /// <summary>
+    /// Optional HTTP prefix for the monitoring UI (e.g. <c>http://127.0.0.1:5081/</c>).
+    /// When unset, the runtime uses its built-in default.
+    /// </summary>
+    public string? MonitoringPrefix { get; set; }
+
     public List<DriverConfig> Drivers { get; set; } = [];
 
     public List<TaskConfig> Tasks { get; set; } = [];

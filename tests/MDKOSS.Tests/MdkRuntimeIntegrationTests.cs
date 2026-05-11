@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Text.Json;
 using MDKOSS.Core;
 
@@ -5,12 +7,27 @@ namespace MDKOSS.Tests;
 
 public sealed class MdkRuntimeIntegrationTests
 {
+    private static int GetFreeLoopbackPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        try
+        {
+            return ((IPEndPoint)listener.LocalEndpoint).Port;
+        }
+        finally
+        {
+            listener.Stop();
+        }
+    }
+
     [Fact]
     public void Initialize_start_snapshot_stop_lifecycle()
     {
         var setting = new MdkSetting
         {
             ProjectName = "unit-test",
+            MonitoringPrefix = $"http://127.0.0.1:{GetFreeLoopbackPort()}/",
             Drivers =
             [
                 new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
@@ -121,6 +138,7 @@ public sealed class MdkRuntimeIntegrationTests
     {
         var setting = new MdkSetting
         {
+            MonitoringPrefix = $"http://127.0.0.1:{GetFreeLoopbackPort()}/",
             Drivers =
             [
                 new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },

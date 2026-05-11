@@ -66,15 +66,15 @@ public sealed class MonitoringServer : IDisposable
             }
         }
 
+        // Do not register http://[::1]:... alongside localhost/127.0.0.1: on Windows, http.sys often
+        // reports "conflicts with an existing registration" when IPv4 and IPv6 loopback share the same port.
         if (string.Equals(uri.Host, "localhost", StringComparison.OrdinalIgnoreCase))
         {
             AddIfDistinct("127.0.0.1");
-            AddIfDistinct("[::1]");
         }
         else if (uri.Host == "127.0.0.1")
         {
             AddIfDistinct("localhost");
-            AddIfDistinct("[::1]");
         }
         else if (uri.Host is "[::1]" or "::1")
         {
