@@ -3,6 +3,8 @@ name: .NET
 on:
   push:
     branches: [master, main]
+    tags:
+      - "v*"
   pull_request:
     branches: [master, main]
 
@@ -20,3 +22,12 @@ jobs:
         run: dotnet build MDKOSS.sln -c Release --no-restore
       - name: Test
         run: dotnet test MDKOSS.sln -c Release --no-build --verbosity normal
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: dotnet publish src/MDKOSS.csproj -c Release -o publish
+      - name: Upload release artifact
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: MDKOSS-${{ github.ref_name }}
+          path: publish/**

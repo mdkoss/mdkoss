@@ -3,8 +3,8 @@
 `MDKOSS` 是从 `MDKSYS/mdkruntime` 提炼出的开源简化运行时。当前版本已形成可运行闭环：
 
 - 配置加载（JSON -> Runtime）
-- 驱动抽象与实例化（`IDriver` + `DrvGts`）
-- 设备组件体系（`gpio / axis / platform / cameradev`）
+- 驱动抽象与实例化（`IDriver` + `DrvGts` / `DrvSim`）
+- 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `cameradev`）
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）
 - 基础监控界面（`HttpListener + HTML Dashboard`）
@@ -71,6 +71,8 @@ mdkoss/
         │   ├── drvgts.cs
         │   └── drvsim.cs
         ├── gpio_device_parameters.cs
+        ├── platform_device_parameters.cs
+        ├── vio_device_parameters.cs
         ├── mdk_errors.cs
         ├── runtime_task_factory.cs
         └── monitoring/
@@ -94,7 +96,16 @@ mdkoss/
   配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
 
 - `src/core/mdev.cs`  
-  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 子类。
+  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 子类。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。
+
+- `src/core/gpio_device_parameters.cs`  
+  解析 GPIO 的 `in.*` / `out.*` 与可选 `driverIds` 作用域。
+
+- `src/core/platform_device_parameters.cs`  
+  解析平台设备 `kind`、类型简写（`xy` / `xyz` / …）及按轴 `axis.X` 等驱动绑定。
+
+- `src/core/vio_device_parameters.cs`  
+  解析虚拟 GPIO（`vio`）的 `in.*` / `out.*`：取值须为空或 `virtual`，禁止物理 `driverId:address` 路由。
 
 - `src/core/mtask.cs`  
   任务体系。包含 `MTaskBase` 和 `MTaskScheduler`，并提供基础任务 `PollDriverTask` 用于驱动心跳监控。
@@ -107,6 +118,9 @@ mdkoss/
 
 - `src/core/drivers/drvgts.cs`  
   GTS 示例驱动（内存映射模拟），用于本地联调和端到端流程验证。
+
+- `src/core/drivers/drvsim.cs`  
+  软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
 
 - `src/core/monitoring/monitoringserver.cs`  
   轻量监控服务，提供：
@@ -124,7 +138,7 @@ mdkoss/
 
 1. **Configuration Layer**：`MdkSetting`
 2. **Runtime Orchestration Layer**：`MdkRuntime`
-3. **Driver Layer**：`IDriver` / `DrvGts`
+3. **Driver Layer**：`IDriver` / `DrvGts` / `DrvSim`
 4. **Device Layer**：`MDeviceBase` + 设备子类
 5. **Task Layer**：`MTaskScheduler` + `MTaskBase`
 6. **State Layer**：`MVarStore`
@@ -162,18 +176,24 @@ mdkoss/
 - `cycleMs`：主循环周期（预留）
 - `drivers[]`：
   - `id` / `type` / `enabled` / `parameters`
-- `devices[]`：
+- `devices[]`：  
   - `id` / `name` / `type` / `driverId` / `enabled` / `parameters`
-  - `gpio` 设备：`parameters` 中 `in.*` / `out.*` 将别名映射到 `driverId:address`；可选 `driverIds`（逗号分隔）限定本设备可见的驱动子集；`/api/status` 中每个 GPIO 设备带 `gpioIoPoints` 列表（别名、方向、驱动、地址、在线、当前读值）
+  - `gpio`：`parameters` 中 `in.*` / `out.*` 将别名映射到 `driverId:address`；可选 `driverIds`（逗号分隔）限定本设备可见的驱动子集；快照中 `gpioIoPoints`（别名、方向、驱动、地址、在线、当前读值）。
+  - `vio`（虚拟 GPIO）：单驱动（通常为 `sim`）。`in.*` / `out.*` 的取值须为空或 `virtual`；运行时地址为 `vio.{deviceId}.in|out.{alias}`，读写走该驱动的内存语义。快照仍使用 `gpioIoPoints` 形状便于监控表格复用。
+  - `platform`：多轴平台。可将 `type` 设为 `platform` 并在 `parameters.kind` 中写 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw`，或将 `type` 直接设为上述简写之一。未写 `kind` 且 `type` 为 `platform` 时默认 `xyz`。每轴一个 `AxisDevice`；可用顶层 `driverId` 作为所有轴的默认驱动，或用 `axis.X`、`axis.Y` 等按轴指定驱动 id。快照中 `driverType` 形如 `platform-xyz`，并带 `platformAxes`（轴字母、驱动 id、在线）。
+  - `axis` / `cameradev`：单驱动设备，依赖 `driverId`。
 - `tasks[]`：
   - `name` / `driverId` / `intervalMs` / `parameters`
 - `vars`：初始变量字典
 
-支持设备类型：
-- `gpio`
-- `axis`
-- `platform`
-- `cameradev`
+支持设备类型（`type` 字段，大小写不敏感）：  
+- `gpio`：多驱动物理 IO 路由  
+- `vio`：单驱动虚拟 IO（见上）  
+- `axis`  
+- `platform`：另支持 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw` 作为与 `kind` 等价的 `type` 简写  
+- `cameradev`  
+
+`configs/sample.setting.json` 中已包含上述类型的示例条目，便于本地对照与联调。
 
 ---
 
@@ -188,7 +208,7 @@ mdkoss/
 - `ProjectName`
 - `IsRunning`
 - `Drivers`
-- `Devices`（`gpio` 类型含 `gpioIoPoints`：各映射点的实时读值与驱动在线状态）
+- `Devices`（`gpio` / `vio` 含 `gpioIoPoints`；`platform` 另含 `platformAxes`）
 - `Vars`
 
 该快照来自 `MdkRuntime.GetSnapshot()`，可直接用于后续扩展 API / WebSocket / 历史存储。
@@ -226,11 +246,11 @@ dotnet test MDKOSS.sln -c Release
 
 ## 8. 下一步建议
 
-近期已补齐：监控页 `Devices` 表格、`DriverFactory` / `RuntimeTaskFactory`、GPIO 路由参数解析（`GpioPointBinding`）、`MdkErrorCode` / `MdkException`、`tests/MDKOSS.Tests`（xUnit）、`MDKOSS.sln` 与 GitHub Actions 构建与测试。运行时已集成 **NLog** 文件日志（`AppLog`）。
+近期已补齐：监控页 `Devices` 表格、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析模块、`MdkErrorCode` / `MdkException`（含 `PlatformConfigurationInvalid`、`VioBindingInvalid` 等）、多轴 `PlatformDevice`、`VioDevice`、`tests/MDKOSS.Tests`（xUnit）、`MDKOSS.sln` 与 GitHub Actions 构建与测试。运行时已集成 **NLog** 文件日志（`AppLog`）。
 
 可选后续方向：
 
-- 为 axis / platform / cameradev 等补充与 JSON 对齐的强类型参数块（当前 GPIO 路由已结构化解析）
+- 为 axis / cameradev 等补充与 JSON 对齐的强类型参数块（GPIO / platform / vio 已分文件解析）
 - 监控 HTTP 鉴权、HTTPS、或 WebSocket 推送快照
 - 更完整的错误码分层与本地化文案
 
