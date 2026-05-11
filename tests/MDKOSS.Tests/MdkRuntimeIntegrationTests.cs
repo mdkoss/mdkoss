@@ -166,4 +166,125 @@ public sealed class MdkRuntimeIntegrationTests
         Assert.True(rt.GetSnapshot().Devices["g1"].DriverConnected);
         await rt.StopAsync();
     }
+
+    [Fact]
+    public void Platform_xy_with_shared_driver_exposes_axis_rows_in_snapshot()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "p1",
+                    Name = "Table",
+                    Type = "xy",
+                    DriverId = "d1",
+                    Enabled = true,
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        var snap = rt.GetSnapshot();
+        Assert.True(snap.Devices.TryGetValue("p1", out var p1));
+        Assert.Equal("platform-xy", p1.DriverType);
+        Assert.NotNull(p1.PlatformAxes);
+        Assert.Equal(2, p1.PlatformAxes!.Count);
+        Assert.Equal("X", p1.PlatformAxes[0].AxisLetter);
+        Assert.Equal("Y", p1.PlatformAxes[1].AxisLetter);
+        Assert.All(p1.PlatformAxes, row => Assert.Equal("d1", row.DriverId));
+    }
+
+    [Fact]
+    public void Vio_device_binds_virtual_addresses_on_sim_driver()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "vio1",
+                    Name = "Virtual IO",
+                    Type = "vio",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["in.a"] = "virtual",
+                        ["out.b"] = "",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        var snap = rt.GetSnapshot();
+        Assert.True(snap.Devices.TryGetValue("vio1", out var vio));
+        Assert.Equal("Vio", vio.Type);
+        Assert.Equal("vio", vio.DriverType);
+        Assert.NotNull(vio.GpioIoPoints);
+        Assert.Equal(2, vio.GpioIoPoints!.Count);
+        Assert.Contains(vio.GpioIoPoints, p => p.Alias == "a" && p.Direction == "in");
+        Assert.Contains(vio.GpioIoPoints, p => p.Alias == "b" && p.Direction == "out");
+    }
+
+    [Fact]
+    public void Vio_rejects_physical_gpio_route_in_parameters()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "vio1",
+                    Type = "vio",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["in.a"] = "d1:X0",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        var ex = Assert.Throws<MdkException>(() => rt.Initialize());
+        Assert.Equal(MdkErrorCode.VioBindingInvalid, ex.Code);
+    }
+
+    [Fact]
+    public void Platform_invalid_kind_parameter_throws_mdk_exception()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "p1",
+                    Type = "platform",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["kind"] = "not-a-kind",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        var ex = Assert.Throws<MdkException>(() => rt.Initialize());
+        Assert.Equal(MdkErrorCode.PlatformConfigurationInvalid, ex.Code);
+    }
 }

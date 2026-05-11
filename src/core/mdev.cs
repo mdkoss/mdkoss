@@ -6,6 +6,8 @@ namespace MDKOSS.Core;
 public enum MDeviceType
 {
     Gpio,
+    /// <summary>Virtual GPIO: logical IO backed by driver memory (typically sim driver).</summary>
+    Vio,
     Axis,
     Platform,
 
@@ -24,6 +26,40 @@ public enum MDeviceState
     Running,
     Stopped,
     Fault
+}
+
+/// <summary>Multi-axis platform layout: each logical axis is a separate <see cref="AxisDevice"/> bound to a <see cref="Drivers.IDriver"/>.</summary>
+public enum MPlatformKind
+{
+    Xy,
+    Xyz,
+    XyzU,
+    XyzUv,
+    XyzUvw,
+}
+
+/// <summary>Axis letters for each <see cref="MPlatformKind"/> (order is motion order).</summary>
+public static class MPlatformKindExtensions
+{
+    public static IReadOnlyList<string> AxisLetters(this MPlatformKind kind) => kind switch
+    {
+        MPlatformKind.Xy => new[] { "X", "Y" },
+        MPlatformKind.Xyz => new[] { "X", "Y", "Z" },
+        MPlatformKind.XyzU => new[] { "X", "Y", "Z", "U" },
+        MPlatformKind.XyzUv => new[] { "X", "Y", "Z", "U", "V" },
+        MPlatformKind.XyzUvw => new[] { "X", "Y", "Z", "U", "V", "W" },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+    };
+
+    public static string ToConfigToken(this MPlatformKind kind) => kind switch
+    {
+        MPlatformKind.Xy => "xy",
+        MPlatformKind.Xyz => "xyz",
+        MPlatformKind.XyzU => "xyzu",
+        MPlatformKind.XyzUv => "xyzuv",
+        MPlatformKind.XyzUvw => "xyzuvw",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null),
+    };
 }
 
 /// <summary>
@@ -48,6 +84,9 @@ public abstract class MDeviceBase : IDisposable
     public string Name { get; }
 
     public MDeviceType Type { get; }
+
+    /// <summary>Driver instance bound to this device (multi-axis platforms use the first axis driver as the nominal primary).</summary>
+    public IDriver LinkedDriver => Driver;
 
     public MDeviceState State { get; protected set; } = MDeviceState.Created;
 
@@ -310,6 +349,149 @@ public sealed class GpioDevice : MDeviceBase
     private sealed record GpioPoint(string Alias, string DriverId, string Address, bool IsOutput);
 }
 
+/// <summary>
+/// Virtual GPIO: maps logical aliases to stable driver memory keys on a single <see cref="IDriver"/>
+/// (intended for sim and other software-backed IO). Not for multi-controller routing.
+/// </summary>
+public sealed class VioDevice : MDeviceBase
+{
+    private readonly string _driverId;
+    private readonly Dictionary<string, VioPoint> _points = new(StringComparer.OrdinalIgnoreCase);
+
+    public VioDevice(string id, string name, string driverId, IDriver driver, MVarStore vars)
+        : base(id, name, MDeviceType.Vio, driver, vars)
+    {
+        if (string.IsNullOrWhiteSpace(driverId))
+        {
+            throw new ArgumentException("VIO driverId cannot be empty.", nameof(driverId));
+        }
+
+        _driverId = driverId.Trim();
+    }
+
+    /// <summary>Configured runtime driver id (for monitoring).</summary>
+    public string DriverId => _driverId;
+
+    public int PointCount => _points.Count;
+
+    public void RegisterVirtualInput(string alias)
+    {
+        RegisterPoint(alias, isOutput: false);
+    }
+
+    public void RegisterVirtualOutput(string alias)
+    {
+        RegisterPoint(alias, isOutput: true);
+    }
+
+    public bool ReadInput(string alias)
+    {
+        if (!_points.TryGetValue(alias, out var point) || point.IsOutput)
+        {
+            return false;
+        }
+
+        if (!Driver.IsConnected)
+        {
+            State = MDeviceState.Fault;
+            WriteState("fault");
+            return false;
+        }
+
+        if (!Driver.TryRead(point.Address, out var raw) || raw is null)
+        {
+            return false;
+        }
+
+        return Convert.ToBoolean(raw);
+    }
+
+    public bool WriteOutput(string alias, bool value)
+    {
+        if (!_points.TryGetValue(alias, out var point) || !point.IsOutput)
+        {
+            return false;
+        }
+
+        if (!Driver.IsConnected)
+        {
+            State = MDeviceState.Fault;
+            WriteState("fault");
+            return false;
+        }
+
+        var ok = Driver.Write(point.Address, value);
+        Vars.Set(BuildVarKey("lastOutputAlias"), alias);
+        Vars.Set(BuildVarKey("lastOutputAddress"), point.Address);
+        Vars.Set(BuildVarKey("lastOutputDriverId"), _driverId);
+        Vars.Set(BuildVarKey("lastOutputValue"), value);
+        WriteState(State.ToString().ToLowerInvariant());
+        return ok;
+    }
+
+    public override DeviceSnapshot GetSnapshot()
+    {
+        var rows = new List<GpioIoPointSnapshot>();
+        foreach (var point in _points.Values.OrderBy(p => p.Alias, StringComparer.OrdinalIgnoreCase))
+        {
+            string? value = null;
+            var driverOnline = Driver.IsConnected;
+            if (driverOnline && Driver.TryRead(point.Address, out var raw))
+            {
+                value = FormatIoValue(raw);
+            }
+
+            rows.Add(new GpioIoPointSnapshot(
+                point.Alias,
+                point.IsOutput ? "out" : "in",
+                _driverId,
+                point.Address,
+                driverOnline,
+                value));
+        }
+
+        return new DeviceSnapshot(
+            Id,
+            Name,
+            Type.ToString(),
+            State.ToString(),
+            "vio",
+            Driver.IsConnected,
+            rows);
+    }
+
+    private static string? FormatIoValue(object? raw)
+    {
+        return raw switch
+        {
+            null => null,
+            bool b => b ? "true" : "false",
+            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+            _ => raw.ToString(),
+        };
+    }
+
+    private void RegisterPoint(string alias, bool isOutput)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
+        {
+            throw new ArgumentException("VIO alias cannot be empty.", nameof(alias));
+        }
+
+        var address = BuildVirtualAddress(alias, isOutput);
+        _points[alias] = new VioPoint(alias, address, isOutput);
+        Vars.Set(BuildVarKey("pointCount"), _points.Count);
+    }
+
+    private string BuildVirtualAddress(string alias, bool isOutput)
+    {
+        var dir = isOutput ? "out" : "in";
+        return $"vio.{Id}.{dir}.{alias}";
+    }
+
+    private sealed record VioPoint(string Alias, string Address, bool IsOutput);
+}
+
 /// <summary>Basic motion axis device abstraction.</summary>
 public sealed class AxisDevice : MDeviceBase
 {
@@ -330,17 +512,9 @@ public sealed class AxisDevice : MDeviceBase
         WriteState(State.ToString().ToLowerInvariant());
         return ok;
     }
-}
 
-/// <summary>Basic platform-level device abstraction.</summary>
-public sealed class PlatformDevice : MDeviceBase
-{
-    public PlatformDevice(string id, string name, IDriver driver, MVarStore vars)
-        : base(id, name, MDeviceType.Platform, driver, vars)
-    {
-    }
-
-    public bool SetMotion(bool enabled)
+    /// <summary>Writes motion enable to this axis driver (used by <see cref="PlatformDevice"/> for coordinated motion).</summary>
+    public bool SetMotionEnabled(bool enabled)
     {
         EnsureConnected();
         var ok = Driver.Write(BuildVarKey("motionEnabled"), enabled);
@@ -351,6 +525,98 @@ public sealed class PlatformDevice : MDeviceBase
 
         WriteState(State.ToString().ToLowerInvariant());
         return ok;
+    }
+}
+
+/// <summary>One axis slot on a <see cref="PlatformDevice"/> (letter key, config driver id, runtime axis device).</summary>
+public sealed record PlatformAxisRef(string AxisLetter, string DriverId, AxisDevice Axis);
+
+/// <summary>
+/// Cartesian platform: <see cref="MPlatformKind"/> selects axis count (XY … XYZUVW). Each axis has its own <see cref="AxisDevice"/> and driver.
+/// </summary>
+public sealed class PlatformDevice : MDeviceBase
+{
+    private readonly MPlatformKind _kind;
+    private readonly IReadOnlyList<PlatformAxisRef> _axes;
+
+    public PlatformDevice(
+        string id,
+        string name,
+        MPlatformKind kind,
+        IReadOnlyList<PlatformAxisRef> axes,
+        MVarStore vars)
+        : base(id, name, MDeviceType.Platform, axes[0].Axis.LinkedDriver, vars)
+    {
+        if (axes.Count == 0)
+        {
+            throw new ArgumentException("Platform requires at least one axis.", nameof(axes));
+        }
+
+        _kind = kind;
+        _axes = axes;
+        Vars.Set(BuildVarKey("platformKind"), kind.ToConfigToken());
+        Vars.Set(BuildVarKey("axisCount"), axes.Count);
+    }
+
+    public MPlatformKind Kind => _kind;
+
+    /// <summary>Axes in motion order (e.g. X, Y, Z, …).</summary>
+    public IReadOnlyList<PlatformAxisRef> Axes => _axes;
+
+    public override void Start()
+    {
+        foreach (var entry in _axes)
+        {
+            if (!entry.Axis.LinkedDriver.IsConnected)
+            {
+                State = MDeviceState.Fault;
+                WriteState("fault");
+                throw new InvalidOperationException(
+                    $"Driver '{entry.DriverId}' is not connected for platform '{Id}' axis '{entry.AxisLetter}'.");
+            }
+        }
+
+        State = MDeviceState.Running;
+        WriteState("running");
+    }
+
+    public bool SetMotion(bool enabled)
+    {
+        var ok = true;
+        foreach (var entry in _axes)
+        {
+            ok = entry.Axis.SetMotionEnabled(enabled) && ok;
+        }
+
+        if (ok)
+        {
+            Vars.Set(BuildVarKey("motionEnabled"), enabled);
+        }
+
+        WriteState(State.ToString().ToLowerInvariant());
+        return ok;
+    }
+
+    public override DeviceSnapshot GetSnapshot()
+    {
+        var rows = new List<PlatformAxisSnapshot>();
+        var allConnected = true;
+        foreach (var entry in _axes)
+        {
+            var online = entry.Axis.LinkedDriver.IsConnected;
+            allConnected &= online;
+            rows.Add(new PlatformAxisSnapshot(entry.AxisLetter, entry.DriverId, online));
+        }
+
+        return new DeviceSnapshot(
+            Id,
+            Name,
+            Type.ToString(),
+            State.ToString(),
+            $"platform-{_kind.ToConfigToken()}",
+            allConnected,
+            null,
+            rows);
     }
 }
 
@@ -389,6 +655,9 @@ public sealed record GpioIoPointSnapshot(
     bool DriverOnline,
     string? Value);
 
+/// <summary>One platform axis for monitoring (each axis may use a different driver).</summary>
+public sealed record PlatformAxisSnapshot(string AxisLetter, string DriverId, bool DriverOnline);
+
 public sealed record DeviceSnapshot(
     string Id,
     string Name,
@@ -396,4 +665,5 @@ public sealed record DeviceSnapshot(
     string State,
     string DriverType,
     bool DriverConnected,
-    IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null);
+    IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null,
+    IReadOnlyList<PlatformAxisSnapshot>? PlatformAxes = null);

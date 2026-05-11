@@ -47,6 +47,135 @@
         "out.tower.green": "drv-main:Y2",
         "out.buzzer": "drv-gpio-io2:Y3"
       }
+    },
+    {
+      "id": "vio-sim",
+      "name": "Virtual GPIO (SIM)",
+      "type": "vio",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "in.vtest.di": "virtual",
+        "out.vtest.do": ""
+      }
+    },
+    {
+      "id": "dev-axis",
+      "name": "Sample Axis",
+      "type": "axis",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-cameradev",
+      "name": "Sample Camera",
+      "type": "cameradev",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-platform-kind-xy",
+      "name": "Platform kind=xy",
+      "type": "platform",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "kind": "xy"
+      }
+    },
+    {
+      "id": "dev-platform-kind-xyz",
+      "name": "Platform kind=xyz",
+      "type": "platform",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "kind": "xyz"
+      }
+    },
+    {
+      "id": "dev-platform-kind-xyzu",
+      "name": "Platform kind=xyzu",
+      "type": "platform",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "kind": "xyzu"
+      }
+    },
+    {
+      "id": "dev-platform-kind-xyzuv",
+      "name": "Platform kind=xyzuv",
+      "type": "platform",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "kind": "xyzuv"
+      }
+    },
+    {
+      "id": "dev-platform-kind-xyzuvw",
+      "name": "Platform kind=xyzuvw",
+      "type": "platform",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {
+        "kind": "xyzuvw"
+      }
+    },
+    {
+      "id": "dev-type-xy",
+      "name": "Shorthand type xy",
+      "type": "xy",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-type-xyz",
+      "name": "Shorthand type xyz",
+      "type": "xyz",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-type-xyzu",
+      "name": "Shorthand type xyzu",
+      "type": "xyzu",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-type-xyzuv",
+      "name": "Shorthand type xyzuv",
+      "type": "xyzuv",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-type-xyzuvw",
+      "name": "Shorthand type xyzuvw",
+      "type": "xyzuvw",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "dev-platform-per-axis",
+      "name": "XYZ per-axis drivers",
+      "type": "xyz",
+      "driverId": "",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "drv-main",
+        "axis.Y": "drv-gpio-aux",
+        "axis.Z": "drv-gpio-io2"
+      }
     }
   ],
   "tasks": [

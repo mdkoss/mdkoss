@@ -174,25 +174,75 @@ public sealed class MdkRuntime : IDisposable
         {
             var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
             var deviceType = config.Type.ToLowerInvariant();
-            IDriver? driver = null;
 
-            if (deviceType != "gpio" && !_drivers.TryGetValue(config.DriverId, out driver))
+            MDeviceBase device;
+            if (string.Equals(deviceType, "gpio", StringComparison.OrdinalIgnoreCase))
+            {
+                device = BuildGpioDevice(config, deviceName);
+            }
+            else if (string.Equals(deviceType, "vio", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_drivers.TryGetValue(config.DriverId, out var vioDriver))
+                {
+                    continue;
+                }
+
+                device = BuildVioDevice(config, deviceName, vioDriver);
+            }
+            else if (PlatformDeviceParameterSet.IsPlatformFamilyType(deviceType))
+            {
+                var platform = BuildPlatformDevice(config, deviceName, deviceType);
+                if (platform is null)
+                {
+                    continue;
+                }
+
+                device = platform;
+            }
+            else if (!_drivers.TryGetValue(config.DriverId, out var driver))
             {
                 continue;
             }
-
-            MDeviceBase device = deviceType switch
+            else
             {
-                "gpio" => BuildGpioDevice(config, deviceName),
-                "axis" => new AxisDevice(config.Id, deviceName, driver!, Vars),
-                "platform" => new PlatformDevice(config.Id, deviceName, driver!, Vars),
-                "cameradev" => new CameraDevDevice(config.Id, deviceName, driver!, Vars),
-                _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
-            };
+                device = deviceType switch
+                {
+                    "axis" => new AxisDevice(config.Id, deviceName, driver, Vars),
+                    "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
+                    _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
+                };
+            }
 
             device.Initialize();
             _devices[config.Id] = device;
         }
+    }
+
+    private PlatformDevice? BuildPlatformDevice(MdkSetting.DeviceConfig config, string deviceName, string deviceTypeLower)
+    {
+        MPlatformKind? fromAlias = PlatformDeviceParameterSet.TryKindFromDeviceType(deviceTypeLower, out var k)
+            ? k
+            : (MPlatformKind?)null;
+
+        var kind = PlatformDeviceParameterSet.ParseKindOrDefault(config.Parameters, fromAlias);
+        var letters = kind.AxisLetters();
+        var defaultDriverId = config.DriverId ?? string.Empty;
+        var axisRefs = new List<PlatformAxisRef>();
+        foreach (var letter in letters)
+        {
+            var driverId = PlatformDeviceParameterSet.ResolveAxisDriverId(config.Parameters, letter, defaultDriverId);
+            if (!_drivers.TryGetValue(driverId, out var axisDriver))
+            {
+                return null;
+            }
+
+            var axisId = $"{config.Id}.{letter}";
+            var axisName = $"{deviceName} {letter}";
+            var axisDevice = new AxisDevice(axisId, axisName, axisDriver, Vars);
+            axisRefs.Add(new PlatformAxisRef(letter, driverId, axisDevice));
+        }
+
+        return new PlatformDevice(config.Id, deviceName, kind, axisRefs, Vars);
     }
 
     private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
@@ -252,6 +302,25 @@ public sealed class MdkRuntime : IDisposable
         }
 
         return gpioDevice;
+    }
+
+    private VioDevice BuildVioDevice(MdkSetting.DeviceConfig config, string deviceName, IDriver driver)
+    {
+        var bindings = VioDeviceParameterSet.ParseVirtualBindings(config.Parameters);
+        var vio = new VioDevice(config.Id, deviceName, config.DriverId, driver, Vars);
+        foreach (var binding in bindings)
+        {
+            if (binding.IsOutput)
+            {
+                vio.RegisterVirtualOutput(binding.Alias);
+            }
+            else
+            {
+                vio.RegisterVirtualInput(binding.Alias);
+            }
+        }
+
+        return vio;
     }
 
     public void Dispose()

@@ -8,6 +8,8 @@ public enum MdkErrorCode
     UnsupportedTaskType = 4103,
     DuplicateTaskName = 4104,
     GpioDriverScopeInvalid = 4105,
+    PlatformConfigurationInvalid = 4106,
+    VioBindingInvalid = 4107,
 }
 
 /// <summary>Exception carrying an <see cref="MdkErrorCode"/> for programmatic handling and logs.</summary>
