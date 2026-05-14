@@ -348,6 +348,42 @@ public sealed class MdkRuntime : IDisposable
 
 
     /// <summary>
+    /// Writes a digital output on a <see cref="GpioDevice"/> or <see cref="VioDevice"/> by logical alias.
+    /// </summary>
+    public bool TryWriteDigitalOutput(string deviceId, string alias, bool value, out string? error)
+    {
+        error = null;
+        if (!_devices.TryGetValue(deviceId, out var dev))
+        {
+            error = "device_not_found";
+            return false;
+        }
+
+        switch (dev)
+        {
+            case GpioDevice gpio:
+                if (!gpio.WriteOutput(alias, value))
+                {
+                    error = "write_failed";
+                    return false;
+                }
+
+                return true;
+            case VioDevice vio:
+                if (!vio.WriteOutput(alias, value))
+                {
+                    error = "write_failed";
+                    return false;
+                }
+
+                return true;
+            default:
+                error = "device_not_gpio_or_vio";
+                return false;
+        }
+    }
+
+    /// <summary>
     /// Exposes a snapshot for monitoring APIs/UI.
     /// </summary>
     public RuntimeSnapshot GetSnapshot()

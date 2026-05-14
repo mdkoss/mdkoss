@@ -1,7 +1,6 @@
 ﻿using System.Net;
 using System.Text;
 using System.Text.Json;
-
 namespace MDKOSS.Core.Monitoring;
 
 public sealed class MonitoringServer : IDisposable
@@ -11,6 +10,21 @@ public sealed class MonitoringServer : IDisposable
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true
     };
+
+    private static readonly JsonSerializerOptions IoWriteJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
+    };
+
+    private sealed class IoWriteRequest
+    {
+        public string? DeviceId { get; set; }
+
+        public string? Alias { get; set; }
+
+        public bool? Value { get; set; }
+    }
 
     private readonly HttpListener _listener = new();
     private readonly MdkRuntime _runtime;
@@ -154,7 +168,19 @@ public sealed class MonitoringServer : IDisposable
             return;
         }
 
-        
+        if (path.Equals("/api/io/write", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase))
+        {
+            await HandleIoWriteAsync(context, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (path.Equals("/monitorIO.html", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteResponseAsync(context.Response, "text/html; charset=utf-8", MonitorIoPage.Html, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
 
         if (path.Equals("/", StringComparison.OrdinalIgnoreCase))
         {
@@ -165,6 +191,62 @@ public sealed class MonitoringServer : IDisposable
 
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
         await WriteResponseAsync(context.Response, "text/plain; charset=utf-8", "Not Found", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task HandleIoWriteAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        string body;
+        using (var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
+        {
+            body = await reader.ReadToEndAsync().ConfigureAwait(false);
+        }
+
+        IoWriteRequest? req;
+        try
+        {
+            req = JsonSerializer.Deserialize<IoWriteRequest>(body, IoWriteJsonOptions);
+        }
+        catch (JsonException)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await WriteResponseAsync(
+                    context.Response,
+                    "application/json; charset=utf-8",
+                    """{"success":false,"error":"invalid_json"}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (req is null
+            || string.IsNullOrWhiteSpace(req.DeviceId)
+            || string.IsNullOrWhiteSpace(req.Alias)
+            || req.Value is null)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await WriteResponseAsync(
+                    context.Response,
+                    "application/json; charset=utf-8",
+                    """{"success":false,"error":"missing_fields"}""",
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (!_runtime.TryWriteDigitalOutput(req.DeviceId.Trim(), req.Alias.Trim(), req.Value.Value, out var err))
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            var payload = JsonSerializer.Serialize(
+                new { success = false, error = err ?? "write_failed" },
+                SnapshotJsonOptions);
+            await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        var ok = JsonSerializer.Serialize(new { success = true }, SnapshotJsonOptions);
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", ok, cancellationToken)
             .ConfigureAwait(false);
     }
 

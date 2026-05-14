@@ -7,7 +7,7 @@
 - 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `cameradev`）
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）
-- 基础监控界面（`HttpListener + HTML Dashboard`）
+- 基础监控界面（`HttpListener + HTML Dashboard`），含 **IO 专用页**（DI/DO 分栏、筛选、DO 写入）
 
 ---
 
@@ -55,7 +55,8 @@ mdkoss/
     ├── configs/
     │   └── sample.setting.json
     ├── views/
-    │   └── monitoringpage.html
+    │   ├── monitoringpage.html
+    │   └── monitorIO.html
     ├── tasks/
     ├── gui/
     │   └── winform/
@@ -77,7 +78,8 @@ mdkoss/
         ├── runtime_task_factory.cs
         └── monitoring/
             ├── monitoringserver.cs
-            └── monitoringpage.cs
+            ├── monitoringpage.cs
+            └── monitoriopage.cs
 ```
 
 构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
@@ -123,12 +125,20 @@ mdkoss/
   软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
 
 - `src/core/monitoring/monitoringserver.cs`  
-  轻量监控服务，提供：
-  - `GET /`：监控页面
-  - `GET /api/status`：运行时快照 JSON
+  轻量监控服务，提供：  
+  - `GET /`：综合监控页面  
+  - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）  
+  - `GET /api/status`：运行时快照 JSON  
+  - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备），请求体 JSON：`{ "deviceId": "<设备 id>", "alias": "<逻辑别名>", "value": true|false }`；成功返回 `{ "success": true }`，失败返回 `{ "success": false, "error": "<原因>" }`（HTTP 400）。
 
 - `src/core/monitoring/monitoringpage.cs`  
-  前端监控页面，展示项目状态、驱动状态、变量快照（轮询更新）。
+  从输出目录旁 `views/monitoringpage.html` 加载综合监控页 HTML。
+
+- `src/core/monitoring/monitoriopage.cs`  
+  从 `views/monitorIO.html` 加载 IO 监控页 HTML（与上相同复制规则）。
+
+- `src/core/mdk.cs`（`TryWriteDigitalOutput`）  
+  供监控 HTTP 调用：在已注册设备中查找 `GpioDevice` 或 `VioDevice`，按别名执行 `WriteOutput`。
 
 ---
 
@@ -142,7 +152,7 @@ mdkoss/
 4. **Device Layer**：`MDeviceBase` + 设备子类
 5. **Task Layer**：`MTaskScheduler` + `MTaskBase`
 6. **State Layer**：`MVarStore`
-7. **Monitoring Layer**：`MonitoringServer` + `MonitoringPage`
+7. **Monitoring Layer**：`MonitoringServer` + `MonitoringPage` + `MonitorIoPage`
 
 ### 4.2 启动顺序
 
@@ -199,10 +209,11 @@ mdkoss/
 
 ## 6. 监控能力
 
-运行后可访问：
+运行后可访问（端口以 `monitoringPrefix` 为准，默认可用 `127.0.0.1` 或 `localhost`）：
 
-- 页面：`http://127.0.0.1:5080/`（或 `http://localhost:5080/`）
-- 接口：`http://127.0.0.1:5080/api/status`
+- 综合监控页：`http://127.0.0.1:5080/`
+- IO 监控页：`http://127.0.0.1:5080/monitorIO.html`（左侧 DI、右侧 DO；各列表支持关键词筛选；DO 在驱动在线时可拨动写入，底层为 `POST /api/io/write`）
+- 快照接口：`http://127.0.0.1:5080/api/status`
 
 `/api/status` 返回：
 - `ProjectName`
