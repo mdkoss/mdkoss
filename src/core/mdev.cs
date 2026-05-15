@@ -666,4 +666,5 @@ public sealed record DeviceSnapshot(
     string DriverType,
     bool DriverConnected,
     IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null,
-    IReadOnlyList<PlatformAxisSnapshot>? PlatformAxes = null);
+    IReadOnlyList<PlatformAxisSnapshot>? PlatformAxes = null,
+    SerialPortSnapshot? SerialPortInfo = null);

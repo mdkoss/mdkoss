@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using MDKOSS.Core.Drivers;
 using MDKOSS.Core.Monitoring;
 
@@ -203,6 +204,10 @@ public sealed class MdkRuntime : IDisposable
             {
                 continue;
             }
+            else if (string.Equals(deviceType, "serialdev", StringComparison.OrdinalIgnoreCase))
+            {
+                device = BuildSerialDevice(config, deviceName);
+            }
             else
             {
                 device = deviceType switch
@@ -323,6 +328,12 @@ public sealed class MdkRuntime : IDisposable
         return vio;
     }
 
+    private SerialDevice BuildSerialDevice(MdkSetting.DeviceConfig config, string deviceName)
+    {
+        var serialConfig = SerialDeviceParameterSet.ParseConfig(config.Parameters);
+        return new SerialDevice(config.Id, deviceName, serialConfig, Vars);
+    }
+
     public void Dispose()
     {
         AppLog.Info("MdkRuntime disposing.");
@@ -383,6 +394,269 @@ public sealed class MdkRuntime : IDisposable
         }
     }
 
+    /// <summary>Gets serial device status for monitoring.</summary>
+    public object? GetSerialStatus(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return null;
+        }
+
+        return new
+        {
+            isOpen = serial.IsOpen,
+            portName = serial.Config.PortName,
+            baudRate = serial.Config.BaudRate,
+            dataBits = serial.Config.DataBits,
+            parity = serial.Config.Parity.ToString(),
+            stopBits = serial.Config.StopBits.ToString(),
+            bytesToRead = serial.BytesToRead
+        };
+    }
+
+    /// <summary>Opens a serial port.</summary>
+    public SerialErrorCode OpenSerialPort(string deviceId, SerialPortConfig config)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        // Temporarily update config and open
+        var originalConfig = serial.Config;
+        serial.SetParameters(config);
+        var result = serial.Open();
+
+        // Revert to stored config if open failed
+        if (result != SerialErrorCode.Ok)
+        {
+            serial.SetParameters(originalConfig);
+        }
+
+        return result;
+    }
+
+    /// <summary>Closes a serial port.</summary>
+    public SerialErrorCode CloseSerialPort(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        return serial.Close();
+    }
+
+    /// <summary>Updates serial port configuration.</summary>
+    public SerialErrorCode SetSerialConfig(string deviceId, SerialPortConfig config)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        return serial.SetParameters(config);
+    }
+
+    /// <summary>Writes text data to serial port.</summary>
+    public SerialErrorCode WriteSerialText(string deviceId, string data)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        return serial.Write(data);
+    }
+
+    /// <summary>Writes binary data to serial port.</summary>
+    public SerialErrorCode WriteSerialBinary(string deviceId, byte[] data)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        return serial.WriteBinary(data);
+    }
+
+    /// <summary>Reads all available data from serial port.</summary>
+    public (SerialErrorCode error, string? data) ReadSerialAll(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return (SerialErrorCode.PortNotFound, null);
+        }
+
+        return serial.ReadAll();
+    }
+
+    /// <summary>Discards serial port buffers.</summary>
+    public SerialErrorCode DiscardSerialBuffers(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not SerialDevice serial)
+        {
+            return SerialErrorCode.PortNotFound;
+        }
+
+        return serial.DiscardBuffers();
+    }
+
+    /// <summary>Executes a device action via unified API.</summary>
+    public DeviceActionResult ExecuteDeviceAction(string deviceId, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev))
+        {
+            return DeviceActionResult.Fail("device_not_found");
+        }
+
+        try
+        {
+            return dev switch
+            {
+                SerialDevice serial => ExecuteSerialAction(serial, action, parameters),
+                GpioDevice gpio => ExecuteGpioAction(gpio, action, parameters),
+                VioDevice vio => ExecuteVioAction(vio, action, parameters),
+                AxisDevice axis => ExecuteAxisAction(axis, action, parameters),
+                PlatformDevice platform => ExecutePlatformAction(platform, action, parameters),
+                _ => DeviceActionResult.Fail("unsupported_device_type")
+            };
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error(ex, $"Device action failed: {deviceId}.{action}");
+            return DeviceActionResult.Fail("exception: " + ex.Message);
+        }
+    }
+
+    private static DeviceActionResult ExecuteSerialAction(SerialDevice serial, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        return action.ToLowerInvariant() switch
+        {
+            "open" => serial.Open() == SerialErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("open_failed"),
+            "close" => serial.Close() == SerialErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("close_failed"),
+            "write" when parameters != null && parameters.TryGetValue("data", out var data) =>
+                serial.Write(data.GetString() ?? "") == SerialErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("write_failed"),
+            "read" => HandleSerialRead(serial),
+            "status" => DeviceActionResult.Ok(new { isOpen = serial.IsOpen, bytesToRead = serial.BytesToRead }),
+            _ => DeviceActionResult.Fail("unknown_action")
+        };
+    }
+
+    private static DeviceActionResult HandleSerialRead(SerialDevice serial)
+    {
+        var (err, data) = serial.ReadAll();
+        if (err == SerialErrorCode.Ok && data != null)
+        {
+            return DeviceActionResult.Ok(new { data });
+        }
+        return DeviceActionResult.Fail("read_failed");
+    }
+
+    private static DeviceActionResult ExecuteGpioAction(GpioDevice gpio, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        if (action.Equals("write", StringComparison.OrdinalIgnoreCase) && parameters != null)
+        {
+            if (!parameters.TryGetValue("alias", out var aliasElem) || !parameters.TryGetValue("value", out var valueElem))
+            {
+                return DeviceActionResult.Fail("missing_parameters");
+            }
+            var alias = aliasElem.GetString();
+            var value = valueElem.GetBoolean();
+            return gpio.WriteOutput(alias ?? "", value)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("write_failed");
+        }
+
+        if (action.Equals("read", StringComparison.OrdinalIgnoreCase) && parameters != null)
+        {
+            if (!parameters.TryGetValue("alias", out var aliasElem))
+            {
+                return DeviceActionResult.Fail("missing_alias");
+            }
+            var alias = aliasElem.GetString();
+            var value = gpio.ReadInput(alias ?? "");
+            return DeviceActionResult.Ok(new { value });
+        }
+
+        return DeviceActionResult.Fail("unknown_action");
+    }
+
+    private static DeviceActionResult ExecuteVioAction(VioDevice vio, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        if (action.Equals("write", StringComparison.OrdinalIgnoreCase) && parameters != null)
+        {
+            if (!parameters.TryGetValue("alias", out var aliasElem) || !parameters.TryGetValue("value", out var valueElem))
+            {
+                return DeviceActionResult.Fail("missing_parameters");
+            }
+            var alias = aliasElem.GetString();
+            var value = valueElem.GetBoolean();
+            return vio.WriteOutput(alias ?? "", value)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("write_failed");
+        }
+
+        if (action.Equals("read", StringComparison.OrdinalIgnoreCase) && parameters != null)
+        {
+            if (!parameters.TryGetValue("alias", out var aliasElem))
+            {
+                return DeviceActionResult.Fail("missing_alias");
+            }
+            var alias = aliasElem.GetString();
+            var value = vio.ReadInput(alias ?? "");
+            return DeviceActionResult.Ok(new { value });
+        }
+
+        return DeviceActionResult.Fail("unknown_action");
+    }
+
+    private static DeviceActionResult ExecuteAxisAction(AxisDevice axis, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        if (action.Equals("move", StringComparison.OrdinalIgnoreCase) && parameters != null && parameters.TryGetValue("position", out var posElem))
+        {
+            var position = posElem.GetDouble();
+            return axis.MoveTo(position)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("move_failed");
+        }
+
+        if (action.Equals("enable", StringComparison.OrdinalIgnoreCase))
+        {
+            return axis.SetMotionEnabled(true)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("enable_failed");
+        }
+
+        if (action.Equals("disable", StringComparison.OrdinalIgnoreCase))
+        {
+            return axis.SetMotionEnabled(false)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("disable_failed");
+        }
+
+        return DeviceActionResult.Fail("unknown_action");
+    }
+
+    private static DeviceActionResult ExecutePlatformAction(PlatformDevice platform, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        if (action.Equals("enable", StringComparison.OrdinalIgnoreCase))
+        {
+            return platform.SetMotion(true)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("enable_failed");
+        }
+
+        if (action.Equals("disable", StringComparison.OrdinalIgnoreCase))
+        {
+            return platform.SetMotion(false)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("disable_failed");
+        }
+
+        return DeviceActionResult.Fail("unknown_action");
+    }
+
     /// <summary>
     /// Exposes a snapshot for monitoring APIs/UI.
     /// </summary>
@@ -411,3 +685,21 @@ public sealed record RuntimeSnapshot(
     IReadOnlyDictionary<string, DriverSnapshot> Drivers,
     IReadOnlyDictionary<string, DeviceSnapshot> Devices,
     IReadOnlyDictionary<string, object?> Vars);
+
+/// <summary>Result of a device action execution.</summary>
+public sealed class DeviceActionResult
+{
+    public bool Success { get; private init; }
+    public string? Error { get; private init; }
+    public object? Data { get; private init; }
+
+    private DeviceActionResult(bool success, string? error, object? data)
+    {
+        Success = success;
+        Error = error;
+        Data = data;
+    }
+
+    public static DeviceActionResult Ok(object? data = null) => new(true, null, data);
+    public static DeviceActionResult Fail(string error) => new(false, error, null);
+}

@@ -4,10 +4,10 @@
 
 - 配置加载（JSON -> Runtime）
 - 驱动抽象与实例化（`IDriver` + `DrvGts` / `DrvSim`）
-- 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `cameradev`）
+- 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `serialdev` / `cameradev`）
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）
-- 基础监控界面（`HttpListener + HTML Dashboard`），含 **IO 专用页**（DI/DO 分栏、筛选、DO 写入）
+- 基础监控界面（`HttpListener + HTML Dashboard`），含 **IO 专用页**（DI/DO 分栏、筛选、DO 写入）、**串口调试页**
 
 ---
 
@@ -56,8 +56,12 @@ mdkoss/
     │   └── sample.setting.json
     ├── views/
     │   ├── monitoringpage.html
-    │   └── monitorIO.html
+    │   ├── monitorIO.html
+    │   └── debugserialdev.html
     ├── tasks/
+    ├── extensions/
+    │   ├── serialdev.cs
+    │   └── tcpdev.md
     ├── gui/
     │   └── winform/
     └── core/
@@ -66,6 +70,7 @@ mdkoss/
         ├── mdev.cs
         ├── mtask.cs
         ├── mvar.cs
+        ├── serial_device_parameters.cs
         ├── drivers/
         │   ├── idriver.cs
         │   ├── driver_factory.cs
@@ -79,7 +84,8 @@ mdkoss/
         └── monitoring/
             ├── monitoringserver.cs
             ├── monitoringpage.cs
-            └── monitoriopage.cs
+            ├── monitoriopage.cs
+            └── debugserialdevpage.cs
 ```
 
 构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
@@ -97,8 +103,11 @@ mdkoss/
 - `src/core/msetting.cs`  
   配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
 
-- `src/core/mdev.cs`  
-  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 子类。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。
+- `src/core/mdev.cs`
+  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `SerialDevice` / `CameraDevDevice` 子类。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。
+
+- `src/extensions/serialdev.cs`
+  串口设备（`SerialDevice`）。提供 RS-232C 串口通信能力：打开/关闭端口、配置参数（波特率/数据位/校验位/停止位）、文本与二进制读写、缓冲区管理。
 
 - `src/core/gpio_device_parameters.cs`  
   解析 GPIO 的 `in.*` / `out.*` 与可选 `driverIds` 作用域。
@@ -124,12 +133,22 @@ mdkoss/
 - `src/core/drivers/drvsim.cs`  
   软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
 
-- `src/core/monitoring/monitoringserver.cs`  
-  轻量监控服务，提供：  
-  - `GET /`：综合监控页面  
-  - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）  
-  - `GET /api/status`：运行时快照 JSON  
-  - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备），请求体 JSON：`{ "deviceId": "<设备 id>", "alias": "<逻辑别名>", "value": true|false }`；成功返回 `{ "success": true }`，失败返回 `{ "success": false, "error": "<原因>" }`（HTTP 400）。
+- `src/core/monitoring/monitoringserver.cs`
+  轻量监控服务，提供：
+  - `GET /`：综合监控页面
+  - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）
+  - `GET /debugSerialDev.html`：串口调试页（端口配置、文本/十六进制收发、实时状态）
+  - `GET /api/status`：运行时快照 JSON
+  - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备）
+  - `GET /api/devices`：列出所有设备
+  - `GET /api/devices/{id}`：获取单个设备详情
+  - `POST /api/devices/{id}/action`：执行设备操作
+  - `GET /api/serial/status?deviceId=xxx`：串口状态
+  - `POST /api/serial/open`：打开串口
+  - `POST /api/serial/close`：关闭串口
+  - `POST /api/serial/write`：发送文本
+  - `POST /api/serial/writeBin`：发送二进制
+  - `POST /api/serial/read`：读取数据
 
 - `src/core/monitoring/monitoringpage.cs`  
   从输出目录旁 `views/monitoringpage.html` 加载综合监控页 HTML。
@@ -191,16 +210,18 @@ mdkoss/
   - `gpio`：`parameters` 中 `in.*` / `out.*` 将别名映射到 `driverId:address`；可选 `driverIds`（逗号分隔）限定本设备可见的驱动子集；快照中 `gpioIoPoints`（别名、方向、驱动、地址、在线、当前读值）。
   - `vio`（虚拟 GPIO）：单驱动（通常为 `sim`）。`in.*` / `out.*` 的取值须为空或 `virtual`；运行时地址为 `vio.{deviceId}.in|out.{alias}`，读写走该驱动的内存语义。快照仍使用 `gpioIoPoints` 形状便于监控表格复用。
   - `platform`：多轴平台。可将 `type` 设为 `platform` 并在 `parameters.kind` 中写 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw`，或将 `type` 直接设为上述简写之一。未写 `kind` 且 `type` 为 `platform` 时默认 `xyz`。每轴一个 `AxisDevice`；可用顶层 `driverId` 作为所有轴的默认驱动，或用 `axis.X`、`axis.Y` 等按轴指定驱动 id。快照中 `driverType` 形如 `platform-xyz`，并带 `platformAxes`（轴字母、驱动 id、在线）。
+  - `serialdev`：串口设备。`parameters` 支持配置 `portName`、`baudRate`、`dataBits`、`parity`、`stopBits`、`readTimeout`、`writeTimeout`、`dtrEnable`、`rtsEnable`。快照中 `serialPortInfo` 包含端口状态与配置信息。
   - `axis` / `cameradev`：单驱动设备，依赖 `driverId`。
 - `tasks[]`：
   - `name` / `driverId` / `intervalMs` / `parameters`
 - `vars`：初始变量字典
 
-支持设备类型（`type` 字段，大小写不敏感）：  
-- `gpio`：多驱动物理 IO 路由  
-- `vio`：单驱动虚拟 IO（见上）  
-- `axis`  
-- `platform`：另支持 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw` 作为与 `kind` 等价的 `type` 简写  
+支持设备类型（`type` 字段，大小写不敏感）：
+- `gpio`：多驱动物理 IO 路由
+- `vio`：单驱动虚拟 IO（见上）
+- `axis`
+- `platform`：另支持 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw` 作为与 `kind` 等价的 `type` 简写
+- `serialdev`：串口通信设备（RS-232C）
 - `cameradev`  
 
 `configs/sample.setting.json` 中已包含上述类型的示例条目，便于本地对照与联调。
@@ -213,13 +234,31 @@ mdkoss/
 
 - 综合监控页：`http://127.0.0.1:5080/`
 - IO 监控页：`http://127.0.0.1:5080/monitorIO.html`（左侧 DI、右侧 DO；各列表支持关键词筛选；DO 在驱动在线时可拨动写入，底层为 `POST /api/io/write`）
+- 串口调试页：`http://127.0.0.1:5080/debugSerialDev.html`（端口配置、文本/十六进制收发、实时状态监控）
 - 快照接口：`http://127.0.0.1:5080/api/status`
+
+### 6.1 API 端点
+
+| 路由 | 方法 | 功能 |
+|------|------|------|
+| `/api/status` | GET | 运行时快照 |
+| `/api/devices` | GET | 列出所有设备 |
+| `/api/devices/{id}` | GET | 获取单个设备详情 |
+| `/api/devices/{id}/action` | POST | 执行设备操作 |
+| `/api/io/write` | POST | 写入数字输出（gpio/vio） |
+| `/api/serial/status` | GET | 串口状态 |
+| `/api/serial/open` | POST | 打开串口 |
+| `/api/serial/close` | POST | 关闭串口 |
+| `/api/serial/write` | POST | 发送文本 |
+| `/api/serial/writeBin` | POST | 发送二进制 |
+| `/api/serial/read` | POST | 读取数据 |
+| `/api/serial/discard` | POST | 清空缓冲区 |
 
 `/api/status` 返回：
 - `ProjectName`
 - `IsRunning`
 - `Drivers`
-- `Devices`（`gpio` / `vio` 含 `gpioIoPoints`；`platform` 另含 `platformAxes`）
+- `Devices`（`gpio` / `vio` 含 `gpioIoPoints`；`platform` 另含 `platformAxes`；`serialdev` 含 `serialPortInfo`）
 - `Vars`
 
 该快照来自 `MdkRuntime.GetSnapshot()`，可直接用于后续扩展 API / WebSocket / 历史存储。
