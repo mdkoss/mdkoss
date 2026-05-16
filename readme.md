@@ -57,6 +57,9 @@ mdkoss/
     ├── views/
     │   ├── monitoringpage.html
     │   ├── monitorIO.html
+    │   ├── monitorPlatform.html
+    │   ├── monitorPlatform.js
+    │   ├── motiorplatform.md
     │   └── debugserialdev.html
     ├── tasks/
     ├── extensions/
@@ -138,6 +141,7 @@ mdkoss/
   - `GET /`：综合监控页面
   - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）
   - `GET /debugSerialDev.html`：串口调试页（端口配置、文本/十六进制收发、实时状态）
+  - `GET /monitorPlatform.html`：平台步进示教页（`PlatformDevice` 点动、位置监视、示教点 localStorage）
   - `GET /api/status`：运行时快照 JSON
   - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备）
   - `GET /api/devices`：列出所有设备
@@ -155,6 +159,9 @@ mdkoss/
 
 - `src/core/monitoring/monitoriopage.cs`  
   从 `views/monitorIO.html` 加载 IO 监控页 HTML（与上相同复制规则）。
+
+- `src/core/monitoring/monitorplatformpage.cs`  
+  从 `views/monitorPlatform.html` 加载平台步进示教页（设计说明见 `views/motiorplatform.md`）。
 
 - `src/core/mdk.cs`（`TryWriteDigitalOutput`）  
   供监控 HTTP 调用：在已注册设备中查找 `GpioDevice` 或 `VioDevice`，按别名执行 `WriteOutput`。
@@ -235,6 +242,7 @@ mdkoss/
 - 综合监控页：`http://127.0.0.1:5080/`
 - IO 监控页：`http://127.0.0.1:5080/monitorIO.html`（左侧 DI、右侧 DO；各列表支持关键词筛选；DO 在驱动在线时可拨动写入，底层为 `POST /api/io/write`）
 - 串口调试页：`http://127.0.0.1:5080/debugSerialDev.html`（端口配置、文本/十六进制收发、实时状态监控）
+- 平台步进示教：`http://127.0.0.1:5080/monitorPlatform.html?deviceId={platformId}`（步进点动、使能、示教点；平台设备也可从综合监控页设备表跳转）
 - 快照接口：`http://127.0.0.1:5080/api/status`
 
 ### 6.1 API 端点

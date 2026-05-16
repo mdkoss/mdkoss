@@ -156,7 +156,14 @@ public sealed class MonitoringServer : IDisposable
         }
 
         _cts.Cancel();
-        _listener.Stop();
+        try
+        {
+            _listener.Stop();
+        }
+        catch (HttpListenerException)
+        {
+            // Listener may not have been successfully started; ignore cleanup error.
+        }
         if (_loopTask is not null)
         {
             await _loopTask.ConfigureAwait(false);
@@ -228,6 +235,13 @@ public sealed class MonitoringServer : IDisposable
         if (path.Equals("/debugSerialDev.html", StringComparison.OrdinalIgnoreCase))
         {
             await WriteResponseAsync(context.Response, "text/html; charset=utf-8", DebugSerialDevPage.Html, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (path.Equals("/monitorPlatform.html", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteResponseAsync(context.Response, "text/html; charset=utf-8", MonitorPlatformPage.Html, cancellationToken)
                 .ConfigureAwait(false);
             return;
         }

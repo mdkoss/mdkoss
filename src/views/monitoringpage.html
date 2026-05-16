@@ -86,7 +86,17 @@
     }
     .dot.ok { background: var(--ok); box-shadow: 0 0 10px rgba(53,208,143,.8); }
     .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
+    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .nav a {
+      color: var(--accent); text-decoration: none; font-size: 13px;
+      padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+    }
+    .nav a:hover { background: rgba(78, 140, 255, 0.1); }
     .op-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .link-btn {
+      color: var(--accent); text-decoration: none; font-size: 12px; font-weight: 600;
+    }
+    .link-btn:hover { text-decoration: underline; }
     .btn {
       border: 1px solid var(--line);
       background: #162644;
@@ -113,10 +123,16 @@
 <body>
   <div class="wrap">
     <div class="header">
-      <div class="title">MDKOSS Runtime Monitor</div>
+      <div>
+        <div class="title">MDKOSS Runtime Monitor</div>
+        <nav class="nav">
+          <a href="/monitorPlatform.html">平台步进示教</a>
+          <a href="/monitorIO.html">IO 监控</a>
+          <a href="/debugSerialDev.html">串口调试</a>
+        </nav>
+      </div>
       <div class="sub">自动刷新间隔：1s</div>
     </div>
-
     <div class="grid">
       <div class="card span-4">
         <div class="label">项目</div>
@@ -150,6 +166,7 @@
               <th>状态</th>
               <th>驱动/链路</th>
               <th>在线</th>
+              <th>调试</th>
             </tr>
           </thead>
           <tbody id="deviceRows"></tbody>
@@ -206,7 +223,7 @@
         </div>
       </div>
     </div>
-    <div class="footer">接口: <code>/api/status</code></div>
+    <div class="footer">接口: <code>/api/status</code> · 平台调试: <a class="link-btn" href="/monitorPlatform.html">monitorPlatform.html</a></div>
   </div>
 
   <script>
@@ -326,6 +343,12 @@
         .join("");
     }
 
+    const PLATFORM_TYPES = new Set(["platform", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
+
+    function isPlatformDeviceType(type) {
+      return PLATFORM_TYPES.has(String(type || "").toLowerCase());
+    }
+
     function renderDevices(devices) {
       const entries = Object.entries(devices || {});
       deviceRows.innerHTML = entries.map(([id, d]) => {
@@ -334,6 +357,9 @@
         const type = d.type ?? d.Type ?? "-";
         const state = d.state ?? d.State ?? "-";
         const driverType = d.driverType ?? d.DriverType ?? "-";
+        const debugCell = isPlatformDeviceType(type)
+          ? `<a class="link-btn" href="/monitorPlatform.html?deviceId=${encodeURIComponent(id)}">步进示教</a>`
+          : "—";
         return `<tr>
           <td>${escapeHtml(id)}</td>
           <td>${escapeHtml(String(name))}</td>
@@ -341,10 +367,11 @@
           <td>${escapeHtml(String(state))}</td>
           <td>${escapeHtml(String(driverType))}</td>
           <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "Yes" : "No"}</td>
+          <td>${debugCell}</td>
         </tr>`;
       }).join("");
       if (!entries.length) {
-        deviceRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">（无设备）</td></tr>';
+        deviceRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">（无设备）</td></tr>';
       }
     }
 
