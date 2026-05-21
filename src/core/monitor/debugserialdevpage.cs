@@ -1,4 +1,4 @@
-namespace MDKOSS.Core.Monitoring;
+namespace MDKOSS.Core.Monitor;
 
 /// <summary>Serial device debug page loader.</summary>
 internal static class DebugSerialDevPage

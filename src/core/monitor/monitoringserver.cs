@@ -1,7 +1,8 @@
 ﻿using System.Net;
 using System.Text;
 using System.Text.Json;
-namespace MDKOSS.Core.Monitoring;
+
+namespace MDKOSS.Core.Monitor;
 
 public sealed class MonitoringServer : IDisposable
 {
@@ -252,7 +253,22 @@ public sealed class MonitoringServer : IDisposable
             return;
         }
 
-        if (path.Equals("/", StringComparison.OrdinalIgnoreCase))
+        if (path.StartsWith("/api/task/", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase))
+        {
+            await HandleTaskOperationAsync(context, path, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (path.Equals("/", StringComparison.OrdinalIgnoreCase)
+            || path.Equals("/index.html", StringComparison.OrdinalIgnoreCase))
+        {
+            await WriteResponseAsync(context.Response, "text/html; charset=utf-8", IndexPage.Html, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        if (path.Equals("/monitoringpage.html", StringComparison.OrdinalIgnoreCase))
         {
             await WriteResponseAsync(context.Response, "text/html; charset=utf-8", MonitoringPage.Html, cancellationToken)
                 .ConfigureAwait(false);
@@ -758,6 +774,70 @@ public sealed class MonitoringServer : IDisposable
         response.ContentLength64 = bytes.Length;
         await response.OutputStream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
         response.OutputStream.Close();
+    }
+
+    private async Task HandleTaskOperationAsync(
+        HttpListenerContext context,
+        string path,
+        CancellationToken cancellationToken)
+    {
+        var actionPath = path["/api/task/".Length..].Trim('/');
+        var query = context.Request.Url?.Query ?? string.Empty;
+        string command;
+        string actionLabel;
+
+        switch (actionPath.ToLowerInvariant())
+        {
+            case "start":
+                command = "start";
+                actionLabel = "start";
+                break;
+            case "stop":
+                command = "stop";
+                actionLabel = "stop";
+                break;
+            case "reset":
+                command = "reset";
+                actionLabel = "reset";
+                break;
+            case "lamp":
+                var color = GetQueryValue(query, "color") ?? "red";
+
+                command = $"lamp:{color}";
+                actionLabel = $"lamp:{color}";
+                break;
+            default:
+                await WriteTaskOperationResultAsync(context.Response, false, "unknown_action", cancellationToken)
+                    .ConfigureAwait(false);
+                return;
+        }
+
+        _runtime.Vars.Set("task.operation.command", command);
+        await WriteTaskOperationResultAsync(context.Response, true, actionLabel, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static string? GetQueryValue(string query, string name)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        var q = query.StartsWith('?') ? query[1..] : query;
+        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            var key = eq >= 0 ? part[..eq] : part;
+            if (!string.Equals(Uri.UnescapeDataString(key), name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return eq >= 0 ? Uri.UnescapeDataString(part[(eq + 1)..]) : string.Empty;
+        }
+
+        return null;
     }
 
     private static Task WriteTaskOperationResultAsync(

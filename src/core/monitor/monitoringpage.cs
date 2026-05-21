@@ -1,4 +1,4 @@
-namespace MDKOSS.Core.Monitoring;
+namespace MDKOSS.Core.Monitor;
 
 internal static class MonitoringPage
 {

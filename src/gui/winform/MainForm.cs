@@ -7,8 +7,6 @@ public sealed class MainForm : Form
 {
     private readonly TextBox _settingPathBox = new() { Dock = DockStyle.Top };
     private readonly Button _browseButton = new() { Text = "Browse Setting", Width = 120 };
-    private readonly Button _startButton = new() { Text = "Start Runtime", Width = 120 };
-    private readonly Button _stopButton = new() { Text = "Stop Runtime", Width = 120, Enabled = false };
     private readonly Button _gpioCfgButton = new() { Text = "GPIO Config", Width = 100 };
     private readonly Button _axisCfgButton = new() { Text = "Axis Config", Width = 100 };
     private readonly Button _platformCfgButton = new() { Text = "Platform Config", Width = 110 };
@@ -21,10 +19,11 @@ public sealed class MainForm : Form
     private readonly TextBox _varsBox = new() { Dock = DockStyle.Fill, Multiline = true, ScrollBars = ScrollBars.Both, ReadOnly = true };
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1000 };
 
-    private MdkRuntime? _runtime;
+    private readonly MdkRuntime _runtime;
 
-    public MainForm()
+    public MainForm(MdkRuntime runtime, string settingPath)
     {
+        _runtime = runtime;
         Text = "MDKOSS WinForms Monitor";
         Width = 1100;
         Height = 760;
@@ -38,8 +37,6 @@ public sealed class MainForm : Form
             AutoSize = false
         };
         topPanel.Controls.Add(_browseButton);
-        topPanel.Controls.Add(_startButton);
-        topPanel.Controls.Add(_stopButton);
         topPanel.Controls.Add(_gpioCfgButton);
         topPanel.Controls.Add(_axisCfgButton);
         topPanel.Controls.Add(_platformCfgButton);
@@ -48,7 +45,7 @@ public sealed class MainForm : Form
         topPanel.Controls.Add(_statusLabel);
         topPanel.Controls.Add(_projectLabel);
 
-        _settingPathBox.Text = ResolveDefaultSettingPath();
+        _settingPathBox.Text = settingPath;
 
         var splitMain = new SplitContainer
         {
@@ -73,15 +70,15 @@ public sealed class MainForm : Form
         Controls.Add(topPanel);
 
         _browseButton.Click += (_, _) => BrowseSetting();
-        _startButton.Click += async (_, _) => await StartRuntimeAsync();
-        _stopButton.Click += async (_, _) => await StopRuntimeAsync();
         _gpioCfgButton.Click += (_, _) => OpenConfigForm(path => new GpioConfigForm(path));
         _axisCfgButton.Click += (_, _) => OpenConfigForm(path => new AxisConfigForm(path));
         _platformCfgButton.Click += (_, _) => OpenConfigForm(path => new PlatformConfigForm(path));
         _devsCfgButton.Click += (_, _) => OpenConfigForm(path => new DevsConfigForm(path));
         _tasksCfgButton.Click += (_, _) => OpenConfigForm(path => new TasksConfigForm(path));
         _timer.Tick += (_, _) => RefreshSnapshot();
-        FormClosing += async (_, _) => await StopRuntimeAsync();
+        _timer.Start();
+        _statusLabel.Text = "Status: Running";
+        RefreshSnapshot();
     }
 
     private static Control CreateGroup(string title, Control body)
@@ -105,78 +102,8 @@ public sealed class MainForm : Form
         }
     }
 
-    private async Task StartRuntimeAsync()
-    {
-        if (_runtime is not null)
-        {
-            return;
-        }
-
-        var settingPath = _settingPathBox.Text.Trim();
-        if (!File.Exists(settingPath))
-        {
-            MessageBox.Show(this, $"Setting file not found:\n{settingPath}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
-        }
-
-        try
-        {
-            _runtime = MdkRuntime.CreateFromFile(settingPath);
-            _runtime.Initialize();
-            _runtime.Start();
-
-            _timer.Start();
-            _startButton.Enabled = false;
-            _stopButton.Enabled = true;
-            _statusLabel.Text = "Status: Running";
-            RefreshSnapshot();
-        }
-        catch (Exception ex)
-        {
-            await StopRuntimeAsync();
-            MessageBox.Show(this, ex.Message, "Startup Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-    }
-
-    private Task StopRuntimeAsync()
-    {
-        _timer.Stop();
-
-        if (_runtime is null)
-        {
-            _statusLabel.Text = "Status: Stopped";
-            _startButton.Enabled = true;
-            _stopButton.Enabled = false;
-            return Task.CompletedTask;
-        }
-
-        try
-        {
-            _runtime.StopAsync().GetAwaiter().GetResult();
-            _runtime.Dispose();
-        }
-        finally
-        {
-            _runtime = null;
-            _statusLabel.Text = "Status: Stopped";
-            _startButton.Enabled = true;
-            _stopButton.Enabled = false;
-            _projectLabel.Text = "Project: -";
-            _driverGrid.DataSource = null;
-            _deviceGrid.DataSource = null;
-            _varsBox.Text = "{}";
-        }
-
-        return Task.CompletedTask;
-    }
-
     private void RefreshSnapshot()
     {
-        if (_runtime is null)
-        {
-            return;
-        }
-
         var snapshot = _runtime.GetSnapshot();
         _projectLabel.Text = $"Project: {snapshot.ProjectName}";
         _statusLabel.Text = $"Status: {(snapshot.IsRunning ? "Running" : "Stopped")}";
@@ -201,28 +128,6 @@ public sealed class MainForm : Form
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
         _varsBox.Text = JsonSerializer.Serialize(sortedVars, new JsonSerializerOptions { WriteIndented = true });
-    }
-
-    private static string ResolveDefaultSettingPath()
-    {
-        if (File.Exists(MdkSetting.DefaultSettingsPath))
-        {
-            return MdkSetting.DefaultSettingsPath;
-        }
-
-        var current = new DirectoryInfo(AppContext.BaseDirectory);
-        while (current is not null)
-        {
-            var candidate = Path.Combine(current.FullName, "MDKOSS", "configs", "sample.setting.json");
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
-
-            current = current.Parent;
-        }
-
-        return Path.Combine(Environment.CurrentDirectory, "MDKOSS", "configs", "sample.setting.json");
     }
 
     private void OpenConfigForm(Func<string, Form> formFactory)

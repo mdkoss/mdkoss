@@ -31,6 +31,10 @@ public static class AppLog
                 : logDirectory.Trim();
             Directory.CreateDirectory(dir);
 
+#if DEBUG
+            ClearTodayLogFile(dir);
+#endif
+
             var config = new LoggingConfiguration();
             var fileTarget = new FileTarget("dailyFile")
             {
@@ -44,6 +48,27 @@ public static class AppLog
             _configured = true;
         }
     }
+
+#if DEBUG
+    private static void ClearTodayLogFile(string logDirectory)
+    {
+        var logFile = Path.Combine(logDirectory, $"{DateTime.Now:yyyyMMdd}.log");
+        if (!File.Exists(logFile))
+        {
+            return;
+        }
+
+        try
+        {
+            File.Delete(logFile);
+        }
+        catch (IOException)
+        {
+            // Another process may hold the file; truncate so this run starts fresh.
+            File.WriteAllText(logFile, string.Empty);
+        }
+    }
+#endif
 
     public static void Shutdown()
     {

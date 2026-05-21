@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using MDKOSS.Core.Drivers;
-using MDKOSS.Core.Monitoring;
+using MDKOSS.Core.Monitor;
 
 namespace MDKOSS.Core;
 
