@@ -675,6 +675,15 @@ public sealed class MdkRuntime : IDisposable
                 StringComparer.OrdinalIgnoreCase),
             Vars.Snapshot());
     }
+
+    /// <summary>Exposes task state for WinForms and monitoring tools.</summary>
+    public IReadOnlyList<TaskSnapshot> GetTaskSnapshots()
+    {
+        return _tasks.Values
+            .OrderBy(t => t.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(t => new TaskSnapshot(t.Name, t.GetType().Name, t.IntervalMs, t.State.ToString()))
+            .ToList();
+    }
 }
 
 public sealed record DriverSnapshot(string Type, bool IsConnected);
@@ -685,6 +694,8 @@ public sealed record RuntimeSnapshot(
     IReadOnlyDictionary<string, DriverSnapshot> Drivers,
     IReadOnlyDictionary<string, DeviceSnapshot> Devices,
     IReadOnlyDictionary<string, object?> Vars);
+
+public sealed record TaskSnapshot(string Name, string Type, int IntervalMs, string State);
 
 /// <summary>Result of a device action execution.</summary>
 public sealed class DeviceActionResult

@@ -13,12 +13,18 @@ public sealed class MainForm : Form
     private readonly Button _platformCfgButton = new() { Text = "Platform Config", Width = 110 };
     private readonly Button _devsCfgButton = new() { Text = "Devs Config", Width = 100 };
     private readonly Button _tasksCfgButton = new() { Text = "Tasks Config", Width = 100 };
+    private readonly Button _deviceManagerButton = new() { Text = "Device Manager", Width = 120 };
+    private readonly Button _taskManagerButton = new() { Text = "Task Manager", Width = 110 };
+    private readonly Button _ioMonitorButton = new() { Text = "I/O Monitor", Width = 100 };
+    private readonly Button _diagnosticsButton = new() { Text = "Diagnostics", Width = 100 };
     private readonly Label _statusLabel = new() { AutoSize = true, Text = "Status: Stopped" };
     private readonly Label _projectLabel = new() { AutoSize = true, Text = "Project: -" };
     private readonly DataGridView _driverGrid = new() { Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = true };
     private readonly DataGridView _deviceGrid = new() { Dock = DockStyle.Fill, ReadOnly = true, AutoGenerateColumns = true };
     private readonly TextBox _varsBox = new() { Dock = DockStyle.Fill, Multiline = true, ScrollBars = ScrollBars.Both, ReadOnly = true };
+    private readonly TextBox _historyBox = new() { Dock = DockStyle.Fill, Multiline = true, ScrollBars = ScrollBars.Both, ReadOnly = true };
     private readonly System.Windows.Forms.Timer _timer = new() { Interval = 1000 };
+    private string _lastRuntimeSummary = string.Empty;
 
     private readonly MdkRuntime _runtime;
 
@@ -44,6 +50,10 @@ public sealed class MainForm : Form
         topPanel.Controls.Add(_platformCfgButton);
         topPanel.Controls.Add(_devsCfgButton);
         topPanel.Controls.Add(_tasksCfgButton);
+        topPanel.Controls.Add(_deviceManagerButton);
+        topPanel.Controls.Add(_taskManagerButton);
+        topPanel.Controls.Add(_ioMonitorButton);
+        topPanel.Controls.Add(_diagnosticsButton);
         topPanel.Controls.Add(_statusLabel);
         topPanel.Controls.Add(_projectLabel);
 
@@ -65,7 +75,15 @@ public sealed class MainForm : Form
         splitTop.Panel1.Controls.Add(CreateGroup("Drivers", _driverGrid));
         splitTop.Panel2.Controls.Add(CreateGroup("Devices", _deviceGrid));
         splitMain.Panel1.Controls.Add(splitTop);
-        splitMain.Panel2.Controls.Add(CreateGroup("Vars Snapshot", _varsBox));
+        var splitBottom = new SplitContainer
+        {
+            Dock = DockStyle.Fill,
+            Orientation = Orientation.Vertical,
+            SplitterDistance = 540
+        };
+        splitBottom.Panel1.Controls.Add(CreateGroup("Vars Snapshot", _varsBox));
+        splitBottom.Panel2.Controls.Add(CreateGroup("Runtime History", _historyBox));
+        splitMain.Panel2.Controls.Add(splitBottom);
 
         Controls.Add(splitMain);
         Controls.Add(_settingPathBox);
@@ -78,6 +96,10 @@ public sealed class MainForm : Form
         _platformCfgButton.Click += (_, _) => OpenConfigForm(path => new PlatformConfigForm(path));
         _devsCfgButton.Click += (_, _) => OpenConfigForm(path => new DevsConfigForm(path));
         _tasksCfgButton.Click += (_, _) => OpenConfigForm(path => new TasksConfigForm(path));
+        _deviceManagerButton.Click += (_, _) => OpenRuntimeForm(new DeviceManagerForm(_runtime));
+        _taskManagerButton.Click += (_, _) => OpenRuntimeForm(new TaskManagerForm(_runtime));
+        _ioMonitorButton.Click += (_, _) => OpenRuntimeForm(new IoMonitorForm(_runtime));
+        _diagnosticsButton.Click += (_, _) => ExportDiagnostics();
         _timer.Tick += (_, _) => RefreshSnapshot();
         _timer.Start();
         _statusLabel.Text = "Status: Running";
@@ -131,6 +153,7 @@ public sealed class MainForm : Form
             .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase);
         _varsBox.Text = JsonSerializer.Serialize(sortedVars, new JsonSerializerOptions { WriteIndented = true });
+        AppendRuntimeHistory(snapshot);
     }
 
     private void OpenConfigForm(Func<string, Form> formFactory)
@@ -144,5 +167,56 @@ public sealed class MainForm : Form
 
         using var form = formFactory(settingPath);
         form.ShowDialog(this);
+    }
+
+    private void OpenRuntimeForm(Form form)
+    {
+        using (form)
+        {
+            form.ShowDialog(this);
+        }
+    }
+
+    private void AppendRuntimeHistory(RuntimeSnapshot snapshot)
+    {
+        var summary =
+            $"{(snapshot.IsRunning ? "Running" : "Stopped")}; " +
+            $"drivers={snapshot.Drivers.Count}; devices={snapshot.Devices.Count}; vars={snapshot.Vars.Count}";
+        if (string.Equals(summary, _lastRuntimeSummary, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastRuntimeSummary = summary;
+        _historyBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {summary}{Environment.NewLine}");
+    }
+
+    private void ExportDiagnostics()
+    {
+        using var dialog = new SaveFileDialog
+        {
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = "json",
+            AddExtension = true,
+            FileName = $"mdkoss-diagnostics-{DateTime.Now:yyyyMMdd-HHmmss}.json"
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        var diagnostics = new
+        {
+            ExportedAt = DateTimeOffset.Now,
+            SettingPath = _settingPathBox.Text.Trim(),
+            Setting = File.Exists(_settingPathBox.Text.Trim()) ? ConfigFormHelpers.LoadSetting(_settingPathBox.Text.Trim()) : null,
+            Snapshot = _runtime.GetSnapshot(),
+            Tasks = _runtime.GetTaskSnapshots(),
+            History = _historyBox.Text
+        };
+
+        File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(diagnostics, new JsonSerializerOptions { WriteIndented = true }));
+        MessageBox.Show(this, $"Diagnostics exported:\n{dialog.FileName}", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 }
