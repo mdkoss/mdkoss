@@ -53,6 +53,11 @@ internal static class ConfigFormHelpers
 
     public static List<T> ImportRows<T>(IWin32Window owner)
     {
+        return ImportObject<List<T>>(owner) ?? [];
+    }
+
+    public static T? ImportObject<T>(IWin32Window owner)
+    {
         using var dialog = new OpenFileDialog
         {
             Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
@@ -60,14 +65,19 @@ internal static class ConfigFormHelpers
 
         if (dialog.ShowDialog(owner) != DialogResult.OK)
         {
-            return [];
+            return default;
         }
 
         var json = File.ReadAllText(dialog.FileName);
-        return JsonSerializer.Deserialize<List<T>>(json) ?? [];
+        return JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
     }
 
     public static void ExportRows<T>(IWin32Window owner, IReadOnlyCollection<T> rows)
+    {
+        ExportObject(owner, rows);
+    }
+
+    public static void ExportObject<T>(IWin32Window owner, T value)
     {
         using var dialog = new SaveFileDialog
         {
@@ -81,7 +91,7 @@ internal static class ConfigFormHelpers
             return;
         }
 
-        var json = JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true });
+        var json = JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(dialog.FileName, json);
     }
 }

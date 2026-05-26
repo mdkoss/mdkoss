@@ -7,6 +7,7 @@ public sealed class MainForm : Form
 {
     private readonly TextBox _settingPathBox = new() { Dock = DockStyle.Top };
     private readonly Button _browseButton = new() { Text = "Browse Setting", Width = 120 };
+    private readonly Button _componentCfgButton = new() { Text = "Component Config", Width = 130 };
     private readonly Button _gpioCfgButton = new() { Text = "GPIO Config", Width = 100 };
     private readonly Button _axisCfgButton = new() { Text = "Axis Config", Width = 100 };
     private readonly Button _platformCfgButton = new() { Text = "Platform Config", Width = 110 };
@@ -37,6 +38,7 @@ public sealed class MainForm : Form
             AutoSize = false
         };
         topPanel.Controls.Add(_browseButton);
+        topPanel.Controls.Add(_componentCfgButton);
         topPanel.Controls.Add(_gpioCfgButton);
         topPanel.Controls.Add(_axisCfgButton);
         topPanel.Controls.Add(_platformCfgButton);
@@ -70,6 +72,7 @@ public sealed class MainForm : Form
         Controls.Add(topPanel);
 
         _browseButton.Click += (_, _) => BrowseSetting();
+        _componentCfgButton.Click += (_, _) => OpenConfigForm(path => new ComponentConfigForm(path));
         _gpioCfgButton.Click += (_, _) => OpenConfigForm(path => new GpioConfigForm(path));
         _axisCfgButton.Click += (_, _) => OpenConfigForm(path => new AxisConfigForm(path));
         _platformCfgButton.Click += (_, _) => OpenConfigForm(path => new PlatformConfigForm(path));
