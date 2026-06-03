@@ -527,7 +527,8 @@ public sealed class SerialDevice : MDeviceBase
             isOpen,
             null,
             null,
-            new SerialPortSnapshot(portName, baudRate, isOpen, bytesToRead));
+            new SerialPortSnapshot(portName, baudRate, isOpen, bytesToRead),
+            null);
     }
 
     private bool EnsurePortOpen()
@@ -630,16 +631,48 @@ internal sealed class SerialDriver : Drivers.IDriver
         return false;
     }
 
+    public bool IsAxisEnabled(short axis) => false;
+
+    public bool TryGetAxisStatus(short axis, out int status)
+    {
+        status = 0;
+        return false;
+    }
+
     public bool TryGetAxisPrfPosition(short axis, out double position)
     {
         position = 0;
         return false;
     }
 
+    public bool TryGetAxisEncPosition(short axis, out double position)
+    {
+        position = 0;
+        return false;
+    }
+
+    public bool TryGetAxisVelocity(short axis, out double velocity)
+    {
+        velocity = 0;
+        return false;
+    }
+
+    public bool SetAxisPosition(short axis, double position) => false;
+
+    public bool SetAxisVelocity(short axis, double velocity) => false;
+
+    public bool SetAxisAcceleration(short axis, double acceleration) => false;
+
+    public bool SetAxisDeceleration(short axis, double deceleration) => false;
+
     public bool MoveAxisTrap(short axis, int targetPosition, double velocity, double acceleration, double deceleration)
     {
         return false;
     }
+
+    public bool MoveAxisJog(short axis, double velocity, double acceleration, double deceleration) => false;
+
+    public bool MoveAxisHome(short axis, short homeMode, double velocity, double acceleration, double deceleration) => false;
 
     public void Dispose()
     {

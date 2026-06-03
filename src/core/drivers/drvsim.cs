@@ -5,14 +5,14 @@ namespace MDKOSS.Core.Drivers;
 
 /// <summary>
 /// Software simulation driver for controller development and testing.
+/// Simulates all motion-control operations in memory without hardware.
 /// </summary>
 public sealed class DrvSim : IDriver
 {
     private readonly ConcurrentDictionary<string, object?> _memory = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<short, int> _di = new();
     private readonly ConcurrentDictionary<short, int> _do = new();
-    private readonly ConcurrentDictionary<short, bool> _axisEnabled = new();
-    private readonly ConcurrentDictionary<short, double> _axisPosition = new();
+    private readonly ConcurrentDictionary<short, SimAxisState> _axes = new();
 
     public string Name => "SIM";
 
@@ -59,6 +59,10 @@ public sealed class DrvSim : IDriver
         _memory[address] = value;
         return true;
     }
+
+    // ──────────────────────────────────────────────
+    //  IO Control
+    // ──────────────────────────────────────────────
 
     public bool TryReadDi(short diType, out int value)
     {
@@ -113,6 +117,10 @@ public sealed class DrvSim : IDriver
         return true;
     }
 
+    // ──────────────────────────────────────────────
+    //  Axis Servo Control
+    // ──────────────────────────────────────────────
+
     public bool EnableAxis(short axis)
     {
         if (!IsConnected)
@@ -120,7 +128,8 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        _axisEnabled[axis] = true;
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        state.Enabled = true;
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -132,20 +141,38 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        _axisEnabled[axis] = false;
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        state.Enabled = false;
+        state.Moving = false;
         _memory["driver.lastCode"] = 0;
         return true;
     }
 
-    public bool Stop(int axisMask, int option = 0)
+    public bool IsAxisEnabled(short axis)
     {
+        return _axes.GetOrAdd(axis, _ => new SimAxisState()).Enabled;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Axis Status
+    // ──────────────────────────────────────────────
+
+    public bool TryGetAxisStatus(short axis, out int status)
+    {
+        status = 0;
         if (!IsConnected)
         {
             return false;
         }
 
-        _memory["motion.lastStopMask"] = axisMask;
-        _memory["motion.lastStopOption"] = option;
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        // Bit 0: servo enabled, Bit 1: moving, Bit 2: in-position, Bit 3: alarm
+        if (state.Enabled) status |= 0x01;
+        if (state.Moving) status |= 0x02;
+        if (!state.Moving) status |= 0x04;
+        if (state.Alarm) status |= 0x08;
+        if (state.Homed) status |= 0x10;
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -158,10 +185,98 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        position = _axisPosition.GetOrAdd(axis, 0);
+        position = _axes.GetOrAdd(axis, _ => new SimAxisState()).PrfPosition;
         _memory["driver.lastCode"] = 0;
         return true;
     }
+
+    public bool TryGetAxisEncPosition(short axis, out double position)
+    {
+        position = 0;
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        position = _axes.GetOrAdd(axis, _ => new SimAxisState()).EncPosition;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    public bool TryGetAxisVelocity(short axis, out double velocity)
+    {
+        velocity = 0;
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        velocity = _axes.GetOrAdd(axis, _ => new SimAxisState()).Velocity;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Position Setting
+    // ──────────────────────────────────────────────
+
+    public bool SetAxisPosition(short axis, double position)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        state.PrfPosition = position;
+        state.EncPosition = position;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Motion Parameters
+    // ──────────────────────────────────────────────
+
+    public bool SetAxisVelocity(short axis, double velocity)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        _axes.GetOrAdd(axis, _ => new SimAxisState()).Velocity = velocity;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    public bool SetAxisAcceleration(short axis, double acceleration)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        _axes.GetOrAdd(axis, _ => new SimAxisState()).Acceleration = acceleration;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    public bool SetAxisDeceleration(short axis, double deceleration)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        _axes.GetOrAdd(axis, _ => new SimAxisState()).Deceleration = deceleration;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    // ──────────────────────────────────────────────
+    //  Motion Control
+    // ──────────────────────────────────────────────
 
     public bool MoveAxisTrap(short axis, int targetPosition, double velocity, double acceleration, double deceleration)
     {
@@ -170,21 +285,104 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        if (!_axisEnabled.GetOrAdd(axis, false))
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        if (!state.Enabled)
         {
             _memory["driver.lastCode"] = -1;
             _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
             return false;
         }
 
-        _axisPosition[axis] = targetPosition;
+        state.PrfPosition = targetPosition;
+        state.EncPosition = targetPosition;
+        state.Velocity = velocity;
+        state.Acceleration = acceleration;
+        state.Deceleration = deceleration;
+        state.Moving = false; // Instant in simulation
         _memory[$"axis.{axis}.targetPosition"] = targetPosition;
-        _memory[$"axis.{axis}.velocity"] = velocity;
-        _memory[$"axis.{axis}.acceleration"] = acceleration;
-        _memory[$"axis.{axis}.deceleration"] = deceleration;
         _memory["driver.lastCode"] = 0;
         return true;
     }
+
+    public bool MoveAxisJog(short axis, double velocity, double acceleration, double deceleration)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        if (!state.Enabled)
+        {
+            _memory["driver.lastCode"] = -1;
+            _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
+            return false;
+        }
+
+        state.Moving = true;
+        state.Velocity = velocity;
+        state.Acceleration = acceleration;
+        state.Deceleration = deceleration;
+        _memory[$"axis.{axis}.jogVelocity"] = velocity;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    public bool MoveAxisHome(short axis, short homeMode, double velocity, double acceleration, double deceleration)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
+        if (!state.Enabled)
+        {
+            _memory["driver.lastCode"] = -1;
+            _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
+            return false;
+        }
+
+        // Simulate instant home: zero position and mark homed
+        state.PrfPosition = 0;
+        state.EncPosition = 0;
+        state.Homed = true;
+        state.Moving = false;
+        state.Velocity = velocity;
+        state.Acceleration = acceleration;
+        state.Deceleration = deceleration;
+        _memory[$"axis.{axis}.homeMode"] = homeMode;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    public bool Stop(int axisMask, int option = 0)
+    {
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        // Clear moving flag for all axes in the mask
+        foreach (var kvp in _axes)
+        {
+            var bit = 1 << (kvp.Key - 1);
+            if ((axisMask & bit) != 0)
+            {
+                kvp.Value.Moving = false;
+                kvp.Value.Velocity = 0;
+            }
+        }
+
+        _memory["motion.lastStopMask"] = axisMask;
+        _memory["motion.lastStopOption"] = option;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    // ──────────────────────────────────────────────
+    //  IDisposable
+    // ──────────────────────────────────────────────
 
     public void Dispose()
     {
@@ -192,9 +390,12 @@ public sealed class DrvSim : IDriver
         _memory.Clear();
         _di.Clear();
         _do.Clear();
-        _axisEnabled.Clear();
-        _axisPosition.Clear();
+        _axes.Clear();
     }
+
+    // ──────────────────────────────────────────────
+    //  Address-based read/write helpers
+    // ──────────────────────────────────────────────
 
     private bool TryReadNativeAddress(string address, out object? value)
     {
@@ -224,6 +425,47 @@ public sealed class DrvSim : IDriver
 
         if (TryParseTypeAndIndex(address, "axis.", out var axis))
         {
+            var suffix = ExtractSuffixAfterIndex(address, "axis.");
+            if (suffix is not null)
+            {
+                if (suffix.Equals("enc", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryGetAxisEncPosition(axis, out var encPos))
+                    {
+                        value = encPos;
+                        return true;
+                    }
+                    return false;
+                }
+
+                if (suffix.Equals("status", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryGetAxisStatus(axis, out var status))
+                    {
+                        value = status;
+                        return true;
+                    }
+                    return false;
+                }
+
+                if (suffix.Equals("vel", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (TryGetAxisVelocity(axis, out var vel))
+                    {
+                        value = vel;
+                        return true;
+                    }
+                    return false;
+                }
+
+                if (suffix.Equals("enabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    value = IsAxisEnabled(axis);
+                    return true;
+                }
+            }
+
+            // Default: return profile position
             if (TryGetAxisPrfPosition(axis, out var axisPos))
             {
                 value = axisPos;
@@ -267,6 +509,28 @@ public sealed class DrvSim : IDriver
         return false;
     }
 
+    // ──────────────────────────────────────────────
+    //  Private helpers
+    // ──────────────────────────────────────────────
+
+    private static string? ExtractSuffixAfterIndex(string address, string prefix)
+    {
+        var rest = address[prefix.Length..];
+        var dotIdx = rest.IndexOf('.');
+        if (dotIdx < 0)
+        {
+            return null;
+        }
+
+        var indexPart = rest[..dotIdx];
+        if (!short.TryParse(indexPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+        {
+            return null;
+        }
+
+        return rest[(dotIdx + 1)..];
+    }
+
     private static bool TryParseTypeAndIndex(string address, string prefix, out short value)
     {
         value = 0;
@@ -276,7 +540,9 @@ public sealed class DrvSim : IDriver
         }
 
         var suffix = address[prefix.Length..];
-        return short.TryParse(suffix, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+        var dotIdx = suffix.IndexOf('.');
+        var numPart = dotIdx >= 0 ? suffix[..dotIdx] : suffix;
+        return short.TryParse(numPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
     }
 
     private static bool TryParseDoBitAddress(string address, out short doType, out short doIndex)
@@ -326,5 +592,21 @@ public sealed class DrvSim : IDriver
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// Simulated per-axis state stored in the concurrent dictionary.
+    /// </summary>
+    private sealed class SimAxisState
+    {
+        public bool Enabled;
+        public bool Moving;
+        public bool Homed;
+        public bool Alarm;
+        public double PrfPosition;
+        public double EncPosition;
+        public double Velocity;
+        public double Acceleration;
+        public double Deceleration;
     }
 }
