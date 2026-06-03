@@ -22,6 +22,7 @@ public sealed class MonitoringServer : IDisposable
         _modules.Add(new IoApiModule(runtime));
         _modules.Add(new DevicesApiModule(runtime));
         _modules.Add(new SerialApiModule(runtime));
+        _modules.Add(new TcpApiModule(runtime));
         _modules.Add(new TaskApiModule(runtime));
 
         // Static HTML pages

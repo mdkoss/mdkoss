@@ -16,6 +16,8 @@ public enum MDeviceType
 
     SerialDev,
 
+    TcpDev,
+
     Generic,
 }
 
@@ -121,7 +123,7 @@ public abstract class MDeviceBase : IDisposable
     /// <summary>Returns monitor-friendly device snapshot.</summary>
     public virtual DeviceSnapshot GetSnapshot()
     {
-        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), Driver.Name, Driver.IsConnected, null);
+        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), Driver.Name, Driver.IsConnected, null, null, null, null);
     }
 
     /// <summary>Guards operations that require online driver.</summary>
@@ -280,7 +282,10 @@ public sealed class GpioDevice : MDeviceBase
             State.ToString(),
             "multi-driver-gpio",
             allConnected,
-            rows);
+            rows,
+            null,
+            null,
+            null);
     }
 
     private static string? FormatIoValue(object? raw)
@@ -457,7 +462,10 @@ public sealed class VioDevice : MDeviceBase
             State.ToString(),
             "vio",
             Driver.IsConnected,
-            rows);
+            rows,
+            null,
+            null,
+            null);
     }
 
     private static string? FormatIoValue(object? raw)
@@ -616,7 +624,9 @@ public sealed class PlatformDevice : MDeviceBase
             $"platform-{_kind.ToConfigToken()}",
             allConnected,
             null,
-            rows);
+            rows,
+            null,
+            null);
     }
 }
 
@@ -667,4 +677,5 @@ public sealed record DeviceSnapshot(
     bool DriverConnected,
     IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null,
     IReadOnlyList<PlatformAxisSnapshot>? PlatformAxes = null,
-    SerialPortSnapshot? SerialPortInfo = null);
+    SerialPortSnapshot? SerialPortInfo = null,
+    TcpConnectionSnapshot? TcpConnectionInfo = null);

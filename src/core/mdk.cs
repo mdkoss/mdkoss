@@ -208,6 +208,10 @@ public sealed class MdkRuntime : IDisposable
             {
                 device = BuildSerialDevice(config, deviceName);
             }
+            else if (string.Equals(deviceType, "tcpdev", StringComparison.OrdinalIgnoreCase))
+            {
+                device = BuildTcpDevice(config, deviceName);
+            }
             else
             {
                 device = deviceType switch
@@ -332,6 +336,12 @@ public sealed class MdkRuntime : IDisposable
     {
         var serialConfig = SerialDeviceParameterSet.ParseConfig(config.Parameters);
         return new SerialDevice(config.Id, deviceName, serialConfig, Vars);
+    }
+
+    private TcpDevice BuildTcpDevice(MdkSetting.DeviceConfig config, string deviceName)
+    {
+        var tcpConfig = TcpDeviceParameterSet.ParseConfig(config.Parameters);
+        return new TcpDevice(config.Id, deviceName, tcpConfig, Vars);
     }
 
     public void Dispose()
@@ -502,6 +512,111 @@ public sealed class MdkRuntime : IDisposable
         return serial.DiscardBuffers();
     }
 
+    // ── TCP device API ──────────────────────────────────────────────────
+
+    /// <summary>Gets TCP device status for monitoring.</summary>
+    public object? GetTcpStatus(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return null;
+        }
+
+        return new
+        {
+            isConnected = tcp.IsConnected,
+            host = tcp.Config.Host,
+            port = tcp.Config.Port,
+            bytesToRead = tcp.BytesToRead
+        };
+    }
+
+    /// <summary>Opens a TCP connection.</summary>
+    public TcpErrorCode OpenTcpConnection(string deviceId, TcpPortConfig config)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.ConnectionRefused;
+        }
+
+        var originalConfig = tcp.Config;
+        tcp.SetParameters(config);
+        var result = tcp.Connect();
+
+        if (result != TcpErrorCode.Ok)
+        {
+            tcp.SetParameters(originalConfig);
+        }
+
+        return result;
+    }
+
+    /// <summary>Closes a TCP connection.</summary>
+    public TcpErrorCode CloseTcpConnection(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.NotConnected;
+        }
+
+        return tcp.Disconnect();
+    }
+
+    /// <summary>Updates TCP connection configuration.</summary>
+    public TcpErrorCode SetTcpConfig(string deviceId, TcpPortConfig config)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.NotConnected;
+        }
+
+        return tcp.SetParameters(config);
+    }
+
+    /// <summary>Writes text data to TCP connection.</summary>
+    public TcpErrorCode WriteTcpText(string deviceId, string data)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.NotConnected;
+        }
+
+        return tcp.Write(data);
+    }
+
+    /// <summary>Writes binary data to TCP connection.</summary>
+    public TcpErrorCode WriteTcpBinary(string deviceId, byte[] data)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.NotConnected;
+        }
+
+        return tcp.WriteBinary(data);
+    }
+
+    /// <summary>Reads all available data from TCP connection.</summary>
+    public (TcpErrorCode error, string? data) ReadTcpAll(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return (TcpErrorCode.NotConnected, null);
+        }
+
+        return tcp.ReadAll();
+    }
+
+    /// <summary>Discards TCP connection buffers.</summary>
+    public TcpErrorCode DiscardTcpBuffers(string deviceId)
+    {
+        if (!_devices.TryGetValue(deviceId, out var dev) || dev is not TcpDevice tcp)
+        {
+            return TcpErrorCode.NotConnected;
+        }
+
+        return tcp.DiscardBuffers();
+    }
+
     /// <summary>Executes a device action via unified API.</summary>
     public DeviceActionResult ExecuteDeviceAction(string deviceId, string action, Dictionary<string, JsonElement>? parameters)
     {
@@ -515,6 +630,7 @@ public sealed class MdkRuntime : IDisposable
             return dev switch
             {
                 SerialDevice serial => ExecuteSerialAction(serial, action, parameters),
+                TcpDevice tcp => ExecuteTcpAction(tcp, action, parameters),
                 GpioDevice gpio => ExecuteGpioAction(gpio, action, parameters),
                 VioDevice vio => ExecuteVioAction(vio, action, parameters),
                 AxisDevice axis => ExecuteAxisAction(axis, action, parameters),
@@ -547,6 +663,30 @@ public sealed class MdkRuntime : IDisposable
     {
         var (err, data) = serial.ReadAll();
         if (err == SerialErrorCode.Ok && data != null)
+        {
+            return DeviceActionResult.Ok(new { data });
+        }
+        return DeviceActionResult.Fail("read_failed");
+    }
+
+    private static DeviceActionResult ExecuteTcpAction(TcpDevice tcp, string action, Dictionary<string, JsonElement>? parameters)
+    {
+        return action.ToLowerInvariant() switch
+        {
+            "connect" => tcp.Connect() == TcpErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("connect_failed"),
+            "disconnect" => tcp.Disconnect() == TcpErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("disconnect_failed"),
+            "write" when parameters != null && parameters.TryGetValue("data", out var data) =>
+                tcp.Write(data.GetString() ?? "") == TcpErrorCode.Ok ? DeviceActionResult.Ok() : DeviceActionResult.Fail("write_failed"),
+            "read" => HandleTcpRead(tcp),
+            "status" => DeviceActionResult.Ok(new { isConnected = tcp.IsConnected, bytesToRead = tcp.BytesToRead }),
+            _ => DeviceActionResult.Fail("unknown_action")
+        };
+    }
+
+    private static DeviceActionResult HandleTcpRead(TcpDevice tcp)
+    {
+        var (err, data) = tcp.ReadAll();
+        if (err == TcpErrorCode.Ok && data != null)
         {
             return DeviceActionResult.Ok(new { data });
         }

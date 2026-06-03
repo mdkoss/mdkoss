@@ -567,7 +567,7 @@ public sealed class TcpDevice : MDeviceBase
         _client = null;
     }
 
-    private bool EnsureConnected()
+    private new bool EnsureConnected()
     {
         if (_client?.Connected == true && _stream is not null)
         {
