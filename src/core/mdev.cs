@@ -665,6 +665,23 @@ public sealed record GpioIoPointSnapshot(
     bool DriverOnline,
     string? Value);
 
+/// <summary>Snapshot data for serial port monitoring.</summary>
+public sealed record SerialPortSnapshot(
+    string PortName,
+    int BaudRate,
+    bool IsOpen,
+    int BytesToRead,
+    int DataBits = 8,
+    string Parity = "None",
+    string StopBits = "One");
+
+/// <summary>Snapshot data for TCP connection monitoring.</summary>
+public sealed record TcpConnectionSnapshot(
+    string Host,
+    int Port,
+    bool IsConnected,
+    int BytesToRead);
+
 /// <summary>One platform axis for monitoring (each axis may use a different driver).</summary>
 public sealed record PlatformAxisSnapshot(string AxisLetter, string DriverId, bool DriverOnline);
 

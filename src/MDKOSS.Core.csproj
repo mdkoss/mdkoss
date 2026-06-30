@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MDKOSS</RootNamespace>
+    <AssemblyName>MDKOSS.Core</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="NLog" Version="6.1.2" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="core\**\*.cs"
+              Exclude="core\monitor\api_serial_module.cs;core\monitor\api_tcp_module.cs;core\serial_device_parameters.cs;core\tcp_device_parameters.cs" />
+    <Compile Include="tasks\**\*.cs" />
+  </ItemGroup>
+</Project>

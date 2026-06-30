@@ -1,10 +1,10 @@
 @echo off
 setlocal
 
-set "SOLUTION=MDKOSS.sln"
+set "PROJECT=src\extensions\MDKOSS.Extensions.csproj"
 
-echo [INFO] Building solution %SOLUTION%
-dotnet build "%SOLUTION%"
+echo [INFO] Building extensions only: %PROJECT%
+dotnet build "%PROJECT%"
 set "EXIT_CODE=%ERRORLEVEL%"
 
 if not "%EXIT_CODE%"=="0" (
@@ -14,6 +14,6 @@ if not "%EXIT_CODE%"=="0" (
 )
 
 echo [INFO] Build succeeded.
-echo [INFO] Extensions DLL: src\extensions\bin\Debug\net8.0-windows10.0.22621.0\MDKOSS.Extensions.dll
+echo [INFO] Output: src\extensions\bin\Debug\net8.0-windows10.0.22621.0\MDKOSS.Extensions.dll
 pause
 exit /b 0

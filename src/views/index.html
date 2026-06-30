@@ -240,6 +240,77 @@
       padding: 8px 20px;
       flex-shrink: 0;
     }
+    .bottom-right {
+      display: flex; align-items: stretch; margin-left: auto; flex-shrink: 0;
+    }
+    .bottom-recipe {
+      min-width: 180px; max-width: 260px;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 8px 16px;
+      border-right: 1px solid var(--line);
+    }
+    .recipe-row {
+      display: flex; align-items: center; gap: 10px; min-width: 0;
+    }
+    .recipe-info { min-width: 0; flex: 1; }
+    .recipe-pick-btn {
+      flex-shrink: 0;
+      height: 36px; padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(78, 140, 255, 0.45);
+      background: rgba(78, 140, 255, 0.12);
+      color: var(--accent);
+      font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .recipe-pick-btn:hover { background: rgba(78, 140, 255, 0.22); }
+
+    /* 排单选择弹层 */
+    .recipe-modal {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .recipe-modal.open { display: flex; }
+    .recipe-dialog {
+      width: min(420px, calc(100vw - 32px));
+      max-height: min(480px, calc(100vh - 48px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .recipe-dialog-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px; font-weight: 700;
+    }
+    .recipe-dialog-close {
+      border: none; background: transparent; color: var(--muted);
+      font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    .recipe-dialog-body { overflow: auto; padding: 8px; }
+    .recipe-option {
+      display: block; width: 100%; text-align: left;
+      padding: 10px 12px; margin-bottom: 6px;
+      border: 1px solid var(--line); border-radius: 8px;
+      background: var(--panel2); color: var(--text);
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .recipe-option:hover { background: rgba(78, 140, 255, 0.08); }
+    .recipe-option.active {
+      border-color: rgba(78, 140, 255, 0.55);
+      background: rgba(78, 140, 255, 0.14);
+    }
+    .recipe-option-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .recipe-option-meta { font-size: 11px; color: var(--muted); }
+    .recipe-dialog-empty { color: var(--muted); font-size: 12px; padding: 16px; text-align: center; }
     .ctrl-btn {
       min-width: 72px; height: 44px;
       border-radius: 8px;
@@ -386,12 +457,36 @@
         <div class="status-chip"><span class="dot" id="dotTask"></span><span id="lblTaskOp">任务 —</span></div>
       </div>
     </div>
-    <div class="bottom-ctrl">
-      <button class="ctrl-btn start" type="button" id="btnStart">启动</button>
-      <button class="ctrl-btn stop" type="button" id="btnStop">停止</button>
-      <button class="ctrl-btn reset" type="button" id="btnReset">复位</button>
+    <div class="bottom-right">
+      <div class="bottom-section bottom-recipe">
+        <div class="bottom-label">当前排单</div>
+        <div class="recipe-row">
+          <div class="recipe-info">
+            <div class="bottom-value" id="currentRecipeName">—</div>
+            <div class="bottom-value" id="currentRecipeId" style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px">—</div>
+          </div>
+          <button class="recipe-pick-btn" type="button" id="btnPickRecipe">选择排单</button>
+        </div>
+      </div>
+      <div class="bottom-ctrl">
+        <button class="ctrl-btn start" type="button" id="btnStart">启动</button>
+        <button class="ctrl-btn stop" type="button" id="btnStop">停止</button>
+        <button class="ctrl-btn reset" type="button" id="btnReset">复位</button>
+      </div>
     </div>
   </footer>
+
+  <div class="recipe-modal" id="recipeModal" aria-hidden="true">
+    <div class="recipe-dialog" role="dialog" aria-labelledby="recipeModalTitle">
+      <div class="recipe-dialog-head">
+        <span id="recipeModalTitle">选择排单</span>
+        <button class="recipe-dialog-close" type="button" id="btnRecipeModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="recipe-dialog-body" id="recipeModalBody">
+        <div class="recipe-dialog-empty">加载中…</div>
+      </div>
+    </div>
+  </div>
 
   <script>
     function snapshotField(data, camel, pascal) {
@@ -437,6 +532,12 @@
     const orderListMeta = document.getElementById("orderListMeta");
     const currentOrderId = document.getElementById("currentOrderId");
     const currentOrderDetail = document.getElementById("currentOrderDetail");
+    const currentRecipeName = document.getElementById("currentRecipeName");
+    const currentRecipeId = document.getElementById("currentRecipeId");
+    const recipeModal = document.getElementById("recipeModal");
+    const recipeModalBody = document.getElementById("recipeModalBody");
+    const btnPickRecipe = document.getElementById("btnPickRecipe");
+    const btnRecipeModalClose = document.getElementById("btnRecipeModalClose");
 
     /* ── 顶部下拉 ── */
     document.querySelectorAll(".nav-btn[data-nav]").forEach((btn) => {
@@ -550,6 +651,87 @@
         });
       });
       updateCurrentOrder(orders.find((x) => x.id === selectedOrderId));
+    }
+
+    function updateCurrentRecipe(vars) {
+      const name = varStr(vars, "recipe.activeName", "");
+      const id = varStr(vars, "recipe.activeId", "");
+      if (!name && !id) {
+        currentRecipeName.textContent = "未选择";
+        currentRecipeId.textContent = "—";
+        return;
+      }
+      currentRecipeName.textContent = name || id;
+      currentRecipeId.textContent = id ? `ID: ${id}` : "—";
+    }
+
+    /* ── 排单选择 ── */
+    btnPickRecipe.addEventListener("click", () => openRecipeModal());
+    btnRecipeModalClose.addEventListener("click", closeRecipeModal);
+    recipeModal.addEventListener("click", (e) => {
+      if (e.target === recipeModal) closeRecipeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && recipeModal.classList.contains("open")) closeRecipeModal();
+    });
+
+    function closeRecipeModal() {
+      recipeModal.classList.remove("open");
+      recipeModal.setAttribute("aria-hidden", "true");
+    }
+
+    async function openRecipeModal() {
+      recipeModal.classList.add("open");
+      recipeModal.setAttribute("aria-hidden", "false");
+      recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">加载中…</div>';
+      try {
+        const res = await fetch("/api/recipe", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        renderRecipeOptions(data);
+      } catch {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">无法加载排单列表</div>';
+      }
+    }
+
+    function renderRecipeOptions(data) {
+      const activeId = snapshotField(data, "activeRecipeId", "ActiveRecipeId") || "";
+      const recipes = snapshotField(data, "recipes", "Recipes") || [];
+      if (!recipes.length) {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">暂无排单（请在 setting.json 中配置 recipes）</div>';
+        return;
+      }
+      recipeModalBody.innerHTML = recipes.map((r) => {
+        const id = r.id ?? r.Id ?? "—";
+        const name = r.name ?? r.Name ?? id;
+        const desc = r.description ?? r.Description ?? "";
+        const active = String(id).toLowerCase() === String(activeId).toLowerCase() ? " active" : "";
+        const meta = [id, desc].filter(Boolean).join(" · ");
+        return `<button type="button" class="recipe-option${active}" data-recipe-id="${escapeHtml(id)}">
+          <div class="recipe-option-name">${escapeHtml(name)}</div>
+          <div class="recipe-option-meta">${escapeHtml(meta)}</div>
+        </button>`;
+      }).join("");
+      recipeModalBody.querySelectorAll(".recipe-option[data-recipe-id]").forEach((btn) => {
+        btn.addEventListener("click", () => applyRecipe(btn.getAttribute("data-recipe-id")));
+      });
+    }
+
+    async function applyRecipe(recipeId) {
+      if (!recipeId) return;
+      recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">切换中…</div>';
+      try {
+        const res = await fetch(`/api/recipe/apply?id=${encodeURIComponent(recipeId)}`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+          throw new Error(data.error || "apply_failed");
+        }
+        closeRecipeModal();
+        await tick();
+      } catch {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">切换排单失败</div>';
+        setTimeout(openRecipeModal, 1200);
+      }
     }
 
     function updateCurrentOrder(order) {
@@ -728,6 +910,7 @@
         renderVarsDropdown(vars);
         renderAlarmsDropdown(vars, devices);
         renderBottomStatus(data, vars);
+        updateCurrentRecipe(vars);
       } catch {
         deviceName.textContent = "未连接";
         setDot(document.getElementById("dotRuntime"), "bad");

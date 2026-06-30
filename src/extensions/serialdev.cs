@@ -678,13 +678,3 @@ internal sealed class SerialDriver : Drivers.IDriver
     {
     }
 }
-
-/// <summary>Snapshot data for serial port monitoring.</summary>
-public sealed record SerialPortSnapshot(
-    string PortName,
-    int BaudRate,
-    bool IsOpen,
-    int BytesToRead,
-    int DataBits = 8,
-    string Parity = "None",
-    string StopBits = "One");

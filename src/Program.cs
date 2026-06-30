@@ -1,4 +1,5 @@
 using MDKOSS.Core;
+using MDKOSS.Extensions;
 using MDKOSS.Gui;
 using MDKOSS.Gui.CefUi;
 using System.Windows.Forms;
@@ -15,6 +16,8 @@ internal static class Program
     [STAThread]
     private static async Task Main(string[] args)
     {
+        ExtensionsBootstrap.Register();
+
         var uiMode = ParseUiMode(args);
         if (uiMode == UiMode.Console)
         {

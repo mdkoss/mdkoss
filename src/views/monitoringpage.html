@@ -199,6 +199,13 @@
       </div>
 
       <div class="card span-12">
+        <div class="label">配方 / 排单</div>
+        <div class="value" id="activeRecipeLabel" style="font-size:18px;margin-bottom:8px">—</div>
+        <div class="op-row" id="recipeButtons"></div>
+        <div class="footer" id="recipeMeta">接口: <code>/api/recipe</code></div>
+      </div>
+
+      <div class="card span-12">
         <div class="label">任务操作</div>
         <div class="op-row">
           <button class="btn green" onclick="sendTaskAction('/api/task/start')">启动任务</button>
@@ -245,6 +252,9 @@
     const varsRows = document.getElementById("varsRows");
     const lastUpdate = document.getElementById("lastUpdate");
     const taskOperationState = document.getElementById("taskOperationState");
+    const activeRecipeLabel = document.getElementById("activeRecipeLabel");
+    const recipeButtons = document.getElementById("recipeButtons");
+    const recipeMeta = document.getElementById("recipeMeta");
 
     function setStatus(isRunning) {
       runtimeStatus.innerHTML = isRunning
@@ -375,6 +385,51 @@
       }
     }
 
+    async function loadRecipes() {
+      try {
+        const res = await fetch("/api/recipe", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        const activeId = snapshotField(data, "activeRecipeId", "ActiveRecipeId") || "";
+        const recipes = snapshotField(data, "recipes", "Recipes") || [];
+        const keys = snapshotField(data, "recipeVarKeys", "RecipeVarKeys") || [];
+        const active = recipes.find((r) => String(r.id ?? r.Id ?? "").toLowerCase() === String(activeId).toLowerCase());
+        const activeName = active ? (active.name ?? active.Name ?? activeId) : (activeId || "未选择");
+        activeRecipeLabel.textContent = activeId ? `${activeName} (${activeId})` : "未选择";
+        recipeMeta.textContent = `配方键 ${keys.length} 项 · 共 ${recipes.length} 个配方 · 接口 /api/recipe`;
+        if (!recipes.length) {
+          recipeButtons.innerHTML = '<span style="color:#90a4d4;font-size:13px">（未配置 recipes）</span>';
+          return;
+        }
+        recipeButtons.innerHTML = recipes.map((r) => {
+          const id = r.id ?? r.Id ?? "";
+          const name = r.name ?? r.Name ?? id;
+          const isActive = String(id).toLowerCase() === String(activeId).toLowerCase();
+          return `<button class="btn${isActive ? " green" : ""}" type="button" data-recipe-id="${escapeHtml(id)}">${escapeHtml(name)}</button>`;
+        }).join("");
+        recipeButtons.querySelectorAll("button[data-recipe-id]").forEach((btn) => {
+          btn.addEventListener("click", () => applyRecipe(btn.getAttribute("data-recipe-id")));
+        });
+      } catch {
+        activeRecipeLabel.textContent = "无法加载";
+        recipeButtons.innerHTML = "";
+        recipeMeta.textContent = "无法连接 /api/recipe";
+      }
+    }
+
+    async function applyRecipe(recipeId) {
+      if (!recipeId) return;
+      recipeMeta.textContent = "切换配方中…";
+      try {
+        const res = await fetch(`/api/recipe/apply?id=${encodeURIComponent(recipeId)}`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) throw new Error(data.error || "apply_failed");
+        await Promise.all([tick(), loadRecipes()]);
+      } catch {
+        recipeMeta.textContent = "切换配方失败";
+      }
+    }
+
     async function tick() {
       try {
         const res = await fetch("/api/status", { cache: "no-store" });
@@ -411,7 +466,9 @@
     }
 
     tick();
+    loadRecipes();
     setInterval(tick, 1000);
+    setInterval(loadRecipes, 3000);
   </script>
 </body>
 </html>

@@ -12,6 +12,8 @@ public sealed class ComponentConfigForm : Form
     private readonly BindingSource _tasksBinding = new();
     private readonly BindingSource _varsBinding = new();
     private readonly BindingSource _ioLabelsBinding = new();
+    private readonly BindingSource _recipeVarKeysBinding = new();
+    private readonly BindingSource _recipesBinding = new();
     private readonly TreeView _navigationTree = new() { Dock = DockStyle.Fill, HideSelection = false };
     private readonly TabControl _tabs = new() { Dock = DockStyle.Fill };
     private readonly ToolStripStatusLabel _settingStatusLabel = new();
@@ -19,6 +21,7 @@ public sealed class ComponentConfigForm : Form
     private readonly TextBox _projectNameBox = new() { Width = 260 };
     private readonly NumericUpDown _cycleMsBox = new() { Width = 100, Minimum = 1, Maximum = 600000, Value = 20 };
     private readonly TextBox _monitoringPrefixBox = new() { Width = 360 };
+    private readonly ComboBox _activeRecipeCombo = new() { Width = 260, DropDownStyle = ComboBoxStyle.DropDownList };
 
     public ComponentConfigForm(string settingPath)
     {
@@ -28,6 +31,7 @@ public sealed class ComponentConfigForm : Form
         Height = 720;
         MinimumSize = new Size(900, 560);
         StartPosition = FormStartPosition.CenterParent;
+        KeyPreview = true;
 
         var toolbar = new FlowLayoutPanel
         {
@@ -44,7 +48,7 @@ public sealed class ComponentConfigForm : Form
         var btnExportTab = CreateButton("Export Tab", 110);
         var btnBackup = CreateButton("Backup", 90);
         var btnPreset = CreateButton("Param Preset", 110);
-        var btnApply = CreateButton("Apply", 90);
+        var btnApply = CreateButton("Save", 90);
         var btnClose = CreateButton("Close", 90);
         toolbar.Controls.AddRange([btnReload, btnImportSetting, btnExportSetting, btnImportTab, btnExportTab, btnBackup, btnPreset, btnApply, btnClose]);
 
@@ -83,8 +87,18 @@ public sealed class ComponentConfigForm : Form
         _tasksBinding.ListChanged += (_, _) => UpdateStatus();
         _varsBinding.ListChanged += (_, _) => UpdateStatus();
         _ioLabelsBinding.ListChanged += (_, _) => UpdateStatus();
+        _recipeVarKeysBinding.ListChanged += (_, _) => UpdateStatus();
+        _recipesBinding.ListChanged += (_, _) => UpdateStatus();
         Shown += (_, _) => SetSafeNavigationWidth(split);
         split.SizeChanged += (_, _) => SetSafeNavigationWidth(split);
+        KeyDown += (_, e) =>
+        {
+            if (e.Control && e.KeyCode == Keys.S)
+            {
+                ApplyChanges();
+                e.SuppressKeyPress = true;
+            }
+        };
 
         LoadSetting();
     }
@@ -116,6 +130,8 @@ public sealed class ComponentConfigForm : Form
         _tabs.TabPages.Add(CreateGridPage("I/O Labels", _ioLabelsBinding, CreateIoLabelGrid()));
         _tabs.TabPages.Add(CreateGridPage("Tasks", _tasksBinding, CreateTaskGrid()));
         _tabs.TabPages.Add(CreateGridPage("Vars", _varsBinding, CreateVarsGrid()));
+        _tabs.TabPages.Add(CreateGridPage("Recipe Keys", _recipeVarKeysBinding, CreateRecipeVarKeysGrid()));
+        _tabs.TabPages.Add(CreateGridPage("Recipes", _recipesBinding, CreateRecipesGrid()));
     }
 
     private Control CreateNavigationPanel()
@@ -140,10 +156,14 @@ public sealed class ComponentConfigForm : Form
         components.Nodes.Add(CreateNavigationNode("I/O Labels", "I/O Labels"));
         components.Nodes.Add(CreateNavigationNode("Tasks", "Tasks"));
         components.Nodes.Add(CreateNavigationNode("Variables", "Vars"));
+        var recipes = CreateNavigationNode("Recipes", "Recipe Keys");
+        recipes.Nodes.Add(CreateNavigationNode("Recipe Keys", "Recipe Keys"));
+        recipes.Nodes.Add(CreateNavigationNode("Presets", "Recipes"));
         var exchange = CreateNavigationNode("Import / Export", "Project");
 
         _navigationTree.Nodes.Add(project);
         _navigationTree.Nodes.Add(components);
+        _navigationTree.Nodes.Add(recipes);
         _navigationTree.Nodes.Add(exchange);
         _navigationTree.ExpandAll();
         _navigationTree.SelectedNode = project;
@@ -177,7 +197,7 @@ public sealed class ComponentConfigForm : Form
             Padding = new Padding(14),
             AutoSize = true,
             ColumnCount = 2,
-            RowCount = 3
+            RowCount = 4
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 150));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -185,6 +205,7 @@ public sealed class ComponentConfigForm : Form
         AddProjectRow(layout, 0, "Project Name", _projectNameBox);
         AddProjectRow(layout, 1, "Cycle Ms", _cycleMsBox);
         AddProjectRow(layout, 2, "Monitoring Prefix", _monitoringPrefixBox);
+        AddProjectRow(layout, 3, "Active Recipe", _activeRecipeCombo);
         page.Controls.Add(layout);
         return page;
     }
@@ -211,31 +232,202 @@ public sealed class ComponentConfigForm : Form
         var topPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 38,
+            Height = 42,
             Padding = new Padding(8, 6, 8, 2),
             WrapContents = false
         };
 
         var btnAdd = CreateButton("Add", 72);
+        var btnDuplicate = CreateButton("Duplicate", 88);
         var btnDelete = CreateButton("Delete", 72);
-        topPanel.Controls.AddRange([btnAdd, btnDelete]);
+        var btnUp = CreateButton("Up", 62);
+        var btnDown = CreateButton("Down", 62);
+        var searchBox = new TextBox { Width = 180, PlaceholderText = "Search current table" };
+        var btnClearSearch = CreateButton("Clear", 64);
+        topPanel.Controls.AddRange([btnAdd, btnDuplicate, btnDelete, btnUp, btnDown, searchBox, btnClearSearch]);
 
-        btnAdd.Click += (_, _) => binding.AddNew();
-        btnDelete.Click += (_, _) =>
+        btnAdd.Click += (_, _) => AddGridRow(title, binding, grid);
+        btnDuplicate.Click += (_, _) => DuplicateCurrentRow(binding, grid);
+        btnDelete.Click += (_, _) => DeleteSelectedRows(grid);
+        btnUp.Click += (_, _) => MoveCurrentRow(binding, grid, -1);
+        btnDown.Click += (_, _) => MoveCurrentRow(binding, grid, 1);
+        searchBox.TextChanged += (_, _) => ApplyGridSearch(grid, searchBox.Text);
+        btnClearSearch.Click += (_, _) =>
         {
-            foreach (DataGridViewRow row in grid.SelectedRows)
-            {
-                if (!row.IsNewRow)
-                {
-                    grid.Rows.Remove(row);
-                }
-            }
+            searchBox.Clear();
+            grid.Focus();
         };
 
         grid.DataSource = binding;
+        grid.KeyDown += (_, e) =>
+        {
+            if (e.Control && e.KeyCode == Keys.N)
+            {
+                AddGridRow(title, binding, grid);
+                e.SuppressKeyPress = true;
+            }
+            else if (e.Control && e.KeyCode == Keys.D)
+            {
+                DuplicateCurrentRow(binding, grid);
+                e.SuppressKeyPress = true;
+            }
+            else if (e.Alt && e.KeyCode == Keys.Up)
+            {
+                MoveCurrentRow(binding, grid, -1);
+                e.SuppressKeyPress = true;
+            }
+            else if (e.Alt && e.KeyCode == Keys.Down)
+            {
+                MoveCurrentRow(binding, grid, 1);
+                e.SuppressKeyPress = true;
+            }
+        };
+
         page.Controls.Add(grid);
         page.Controls.Add(topPanel);
         return page;
+    }
+
+    private static void AddGridRow(string title, BindingSource binding, DataGridView grid)
+    {
+        if (TryCreateRowFromDialog(title, grid.FindForm(), out var row))
+        {
+            if (row is null)
+            {
+                return;
+            }
+
+            if (binding.List is System.Collections.IList list)
+            {
+                list.Add(row);
+                binding.ResetBindings(false);
+            }
+        }
+        else
+        {
+            row = binding.AddNew();
+            binding.EndEdit();
+        }
+
+        binding.Position = binding.IndexOf(row);
+        FocusCurrentGridRow(grid);
+    }
+
+    private static bool TryCreateRowFromDialog(string title, IWin32Window? owner, out object? row)
+    {
+        row = title switch
+        {
+            "Drivers" => DriverRowDialog.Create(owner),
+            "Devices" => DeviceRowDialog.Create(owner),
+            "Tasks" => TaskRowDialog.Create(owner),
+            _ => null
+        };
+
+        return title is "Drivers" or "Devices" or "Tasks";
+    }
+
+    private static void DuplicateCurrentRow(BindingSource binding, DataGridView grid)
+    {
+        if (binding.Current is null)
+        {
+            return;
+        }
+
+        var copy = CloneRow(binding.Current);
+        var insertIndex = Math.Min(binding.Position + 1, binding.Count);
+        if (binding.List is System.Collections.IList list)
+        {
+            list.Insert(insertIndex, copy);
+            binding.Position = insertIndex;
+            binding.ResetBindings(false);
+            FocusCurrentGridRow(grid);
+        }
+    }
+
+    private static object CloneRow(object source)
+    {
+        var type = source.GetType();
+        var copy = Activator.CreateInstance(type)
+            ?? throw new InvalidOperationException($"Cannot create row type '{type.Name}'.");
+        foreach (var property in type.GetProperties().Where(p => p.CanRead && p.CanWrite))
+        {
+            property.SetValue(copy, property.GetValue(source));
+        }
+
+        return copy;
+    }
+
+    private static void DeleteSelectedRows(DataGridView grid)
+    {
+        foreach (DataGridViewRow row in grid.SelectedRows.Cast<DataGridViewRow>().OrderByDescending(r => r.Index))
+        {
+            if (!row.IsNewRow)
+            {
+                grid.Rows.Remove(row);
+            }
+        }
+    }
+
+    private static void MoveCurrentRow(BindingSource binding, DataGridView grid, int direction)
+    {
+        if (binding.Current is null || binding.List is not System.Collections.IList list)
+        {
+            return;
+        }
+
+        var oldIndex = binding.Position;
+        var newIndex = oldIndex + direction;
+        if (newIndex < 0 || newIndex >= list.Count)
+        {
+            return;
+        }
+
+        var item = list[oldIndex];
+        list.RemoveAt(oldIndex);
+        list.Insert(newIndex, item);
+        binding.Position = newIndex;
+        binding.ResetBindings(false);
+        FocusCurrentGridRow(grid);
+    }
+
+    private static void ApplyGridSearch(DataGridView grid, string text)
+    {
+        var query = text.Trim();
+        grid.CurrentCell = null;
+        foreach (DataGridViewRow row in grid.Rows)
+        {
+            if (row.IsNewRow)
+            {
+                continue;
+            }
+
+            row.Visible = string.IsNullOrWhiteSpace(query) || RowContainsText(row, query);
+        }
+    }
+
+    private static bool RowContainsText(DataGridViewRow row, string query)
+    {
+        foreach (DataGridViewCell cell in row.Cells)
+        {
+            if (cell.Value is not null
+                && cell.Value.ToString()?.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void FocusCurrentGridRow(DataGridView grid)
+    {
+        if (grid.CurrentRow is null)
+        {
+            return;
+        }
+
+        grid.Focus();
+        grid.CurrentRow.Selected = true;
     }
 
     private static DataGridView CreateDriverGrid()
@@ -291,6 +483,33 @@ public sealed class ComponentConfigForm : Form
         return grid;
     }
 
+    private static DataGridView CreateRecipeVarKeysGrid()
+    {
+        var grid = CreateGrid();
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(RecipeVarKeyRow.Key),
+            HeaderText = "Var Key (recipe-scoped)",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        });
+        return grid;
+    }
+
+    private static DataGridView CreateRecipesGrid()
+    {
+        var grid = CreateGrid();
+        grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(RecipeRow.Id), HeaderText = "Id", Width = 140 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(RecipeRow.Name), HeaderText = "Name", Width = 160 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn { DataPropertyName = nameof(RecipeRow.Description), HeaderText = "Description", Width = 200 });
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            DataPropertyName = nameof(RecipeRow.VarsJson),
+            HeaderText = "Vars JSON ({\"key\": value})",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+        });
+        return grid;
+    }
+
     private static DataGridView CreateGrid() => new()
     {
         Dock = DockStyle.Fill,
@@ -325,7 +544,36 @@ public sealed class ComponentConfigForm : Form
         _ioLabelsBinding.DataSource = BuildIoLabelRows(setting.Devices);
         _tasksBinding.DataSource = setting.Tasks.Select(TaskRow.FromConfig).ToList();
         _varsBinding.DataSource = setting.Vars.Select(VarRow.FromValue).OrderBy(v => v.Key, StringComparer.OrdinalIgnoreCase).ToList();
+        _recipeVarKeysBinding.DataSource = setting.RecipeVarKeys
+            .Select(key => new RecipeVarKeyRow { Key = key })
+            .OrderBy(r => r.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        _recipesBinding.DataSource = setting.Recipes.Select(RecipeRow.FromConfig).ToList();
+        RefreshActiveRecipeCombo(setting);
         UpdateStatus();
+    }
+
+    private void RefreshActiveRecipeCombo(MdkSetting setting)
+    {
+        _activeRecipeCombo.Items.Clear();
+        _activeRecipeCombo.Items.Add(string.Empty);
+        foreach (var recipe in setting.Recipes.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            _activeRecipeCombo.Items.Add(recipe.Id);
+        }
+
+        var active = setting.ActiveRecipeId ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(active)
+            && !setting.Recipes.Any(r => string.Equals(r.Id, active, StringComparison.OrdinalIgnoreCase)))
+        {
+            _activeRecipeCombo.Items.Add(active);
+        }
+
+        _activeRecipeCombo.SelectedItem = active;
+        if (_activeRecipeCombo.SelectedIndex < 0)
+        {
+            _activeRecipeCombo.SelectedIndex = 0;
+        }
     }
 
     private MdkSetting BuildSettingFromRows()
@@ -334,6 +582,7 @@ public sealed class ComponentConfigForm : Form
         ValidateNoBlankKeys(_devicesBinding.List.Cast<DeviceRow>().Select(r => r.Id), "device id");
         ValidateNoBlankKeys(_tasksBinding.List.Cast<TaskRow>().Select(r => r.Name), "task name");
         ValidateNoBlankKeys(_varsBinding.List.Cast<VarRow>().Select(r => r.Key), "var key");
+        ValidateNoBlankKeys(_recipesBinding.List.Cast<RecipeRow>().Select(r => r.Id), "recipe id");
 
         var setting = new MdkSetting
         {
@@ -343,7 +592,14 @@ public sealed class ComponentConfigForm : Form
             Drivers = _driversBinding.List.Cast<DriverRow>().Select(r => r.ToConfig()).ToList(),
             Devices = _devicesBinding.List.Cast<DeviceRow>().Select(r => r.ToConfig()).ToList(),
             Tasks = _tasksBinding.List.Cast<TaskRow>().Select(r => r.ToConfig()).ToList(),
-            Vars = BuildVars()
+            Vars = BuildVars(),
+            RecipeVarKeys = _recipeVarKeysBinding.List.Cast<RecipeVarKeyRow>()
+                .Select(r => r.Key.Trim())
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList(),
+            ActiveRecipeId = string.IsNullOrWhiteSpace(_activeRecipeCombo.Text) ? null : _activeRecipeCombo.Text.Trim(),
+            Recipes = _recipesBinding.List.Cast<RecipeRow>().Select(r => r.ToConfig()).ToList()
         };
 
         ApplyIoLabelRows(setting.Devices);
@@ -448,6 +704,28 @@ public sealed class ComponentConfigForm : Form
         ValidateUnique(setting.Drivers.Select(d => d.Id), "driver id");
         ValidateUnique(setting.Devices.Select(d => d.Id), "device id");
         ValidateUnique(setting.Tasks.Select(t => t.Name), "task name");
+        ValidateUnique(setting.Recipes.Select(r => r.Id), "recipe id");
+
+        if (!string.IsNullOrWhiteSpace(setting.ActiveRecipeId)
+            && !setting.Recipes.Any(r => string.Equals(r.Id, setting.ActiveRecipeId, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"Active recipe '{setting.ActiveRecipeId}' was not found in recipes.");
+        }
+
+        var recipeKeys = setting.RecipeVarKeys.Count > 0
+            ? setting.RecipeVarKeys.ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : setting.Recipes.SelectMany(r => r.Vars.Keys).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var recipe in setting.Recipes)
+        {
+            foreach (var key in recipe.Vars.Keys)
+            {
+                if (recipeKeys.Count > 0 && !recipeKeys.Contains(key))
+                {
+                    throw new InvalidOperationException(
+                        $"Recipe '{recipe.Id}' uses var '{key}' which is not listed in recipeVarKeys.");
+                }
+            }
+        }
 
         var driverIds = setting.Drivers.Select(d => d.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var device in setting.Devices.Where(d => d.Enabled && !string.IsNullOrWhiteSpace(d.DriverId)))
@@ -581,6 +859,25 @@ public sealed class ComponentConfigForm : Form
                     _varsBinding.DataSource = ConfigFormHelpers.ImportRows<VarRow>(this);
                     UpdateStatus();
                     break;
+                case "Recipe Keys":
+                    _recipeVarKeysBinding.DataSource = ConfigFormHelpers.ImportRows<RecipeVarKeyRow>(this);
+                    UpdateStatus();
+                    break;
+                case "Recipes":
+                    _recipesBinding.DataSource = ConfigFormHelpers.ImportRows<RecipeRow>(this);
+                    _activeRecipeCombo.Items.Clear();
+                    _activeRecipeCombo.Items.Add(string.Empty);
+                    foreach (var row in _recipesBinding.List.Cast<RecipeRow>())
+                    {
+                        if (!string.IsNullOrWhiteSpace(row.Id))
+                        {
+                            _activeRecipeCombo.Items.Add(row.Id.Trim());
+                        }
+                    }
+
+                    _activeRecipeCombo.SelectedIndex = 0;
+                    UpdateStatus();
+                    break;
                 default:
                     MessageBox.Show(this, "Project tab is exported with the full setting JSON.", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     break;
@@ -612,6 +909,12 @@ public sealed class ComponentConfigForm : Form
                     break;
                 case "Vars":
                     ConfigFormHelpers.ExportRows(this, _varsBinding.List.Cast<VarRow>().ToList());
+                    break;
+                case "Recipe Keys":
+                    ConfigFormHelpers.ExportRows(this, _recipeVarKeysBinding.List.Cast<RecipeVarKeyRow>().ToList());
+                    break;
+                case "Recipes":
+                    ConfigFormHelpers.ExportRows(this, _recipesBinding.List.Cast<RecipeRow>().ToList());
                     break;
                 default:
                     ExportSetting();
@@ -705,7 +1008,259 @@ public sealed class ComponentConfigForm : Form
     {
         _settingStatusLabel.Text = $"Setting: {_settingPath}";
         _countsStatusLabel.Text =
-            $"Drivers: {_driversBinding.Count}  Devices: {_devicesBinding.Count}  I/O: {_ioLabelsBinding.Count}  Tasks: {_tasksBinding.Count}  Vars: {_varsBinding.Count}";
+            $"Drivers: {_driversBinding.Count}  Devices: {_devicesBinding.Count}  I/O: {_ioLabelsBinding.Count}  Tasks: {_tasksBinding.Count}  Vars: {_varsBinding.Count}  RecipeKeys: {_recipeVarKeysBinding.Count}  Recipes: {_recipesBinding.Count}";
+    }
+
+    private sealed class RowPropertyDialog : Form
+    {
+        private readonly TableLayoutPanel _layout = new()
+        {
+            Dock = DockStyle.Top,
+            AutoSize = true,
+            ColumnCount = 2,
+            Padding = new Padding(14)
+        };
+        private readonly Button _okButton = new() { Text = "OK", Width = 88, Height = 28 };
+        private int _rowIndex;
+
+        public RowPropertyDialog(string title)
+        {
+            Text = title;
+            Width = 520;
+            Height = 420;
+            MinimizeBox = false;
+            MaximizeBox = false;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            StartPosition = FormStartPosition.CenterParent;
+
+            _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
+            _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+
+            var buttons = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Bottom,
+                FlowDirection = FlowDirection.RightToLeft,
+                Height = 44,
+                Padding = new Padding(8)
+            };
+            var cancelButton = new Button { Text = "Cancel", Width = 88, Height = 28, DialogResult = DialogResult.Cancel };
+            buttons.Controls.Add(cancelButton);
+            buttons.Controls.Add(_okButton);
+
+            Controls.Add(_layout);
+            Controls.Add(buttons);
+            AcceptButton = _okButton;
+            CancelButton = cancelButton;
+        }
+
+        public Func<bool>? ValidateBeforeAccept { get; set; }
+
+        public TextBox AddText(string label, string value = "", bool multiline = false)
+        {
+            var box = new TextBox
+            {
+                Text = value,
+                Dock = DockStyle.Fill,
+                Multiline = multiline,
+                ScrollBars = multiline ? ScrollBars.Vertical : ScrollBars.None,
+                Height = multiline ? 84 : 24
+            };
+            AddEditor(label, box);
+            return box;
+        }
+
+        public ComboBox AddCombo(string label, IReadOnlyCollection<string> values, string value)
+        {
+            var combo = new ComboBox
+            {
+                Dock = DockStyle.Fill,
+                DropDownStyle = ComboBoxStyle.DropDown
+            };
+            combo.Items.AddRange(values.Cast<object>().ToArray());
+            combo.Text = value;
+            AddEditor(label, combo);
+            return combo;
+        }
+
+        public CheckBox AddCheck(string label, bool value)
+        {
+            var check = new CheckBox
+            {
+                Checked = value,
+                AutoSize = true
+            };
+            AddEditor(label, check);
+            return check;
+        }
+
+        public NumericUpDown AddNumber(string label, int value, int minimum, int maximum)
+        {
+            var number = new NumericUpDown
+            {
+                Dock = DockStyle.Left,
+                Width = 120,
+                Minimum = minimum,
+                Maximum = maximum,
+                Value = Math.Clamp(value, minimum, maximum)
+            };
+            AddEditor(label, number);
+            return number;
+        }
+
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            _okButton.Click += (_, _) =>
+            {
+                if (ValidateBeforeAccept?.Invoke() == false)
+                {
+                    return;
+                }
+
+                DialogResult = DialogResult.OK;
+                Close();
+            };
+        }
+
+        private void AddEditor(string label, Control editor)
+        {
+            var caption = new Label
+            {
+                Text = label,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
+                AutoSize = true,
+                Margin = new Padding(0, 6, 8, 6)
+            };
+            editor.Margin = new Padding(0, 6, 0, 6);
+            _layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            _layout.Controls.Add(caption, 0, _rowIndex);
+            _layout.Controls.Add(editor, 1, _rowIndex);
+            _rowIndex++;
+        }
+    }
+
+    private static class DriverRowDialog
+    {
+        public static DriverRow? Create(IWin32Window? owner)
+        {
+            using var dialog = new RowPropertyDialog("New Driver");
+            var id = dialog.AddText("Id", "drv-main");
+            var type = dialog.AddCombo("Type", ["sim", "gts", "tcp", "serial"], "sim");
+            var enabled = dialog.AddCheck("Enabled", true);
+            var lastPreset = GetDriverParameterPreset(type.Text);
+            var parameters = dialog.AddText("Parameters", lastPreset, multiline: true);
+            type.TextChanged += (_, _) =>
+            {
+                var nextPreset = GetDriverParameterPreset(type.Text);
+                if (string.IsNullOrWhiteSpace(parameters.Text)
+                    || string.Equals(parameters.Text, lastPreset, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Text = nextPreset;
+                }
+
+                lastPreset = nextPreset;
+            };
+            dialog.ValidateBeforeAccept = () => RequireText(dialog, id, "Driver id");
+
+            return dialog.ShowDialog(owner) == DialogResult.OK
+                ? new DriverRow
+                {
+                    Id = id.Text.Trim(),
+                    Type = string.IsNullOrWhiteSpace(type.Text) ? "sim" : type.Text.Trim(),
+                    Enabled = enabled.Checked,
+                    Parameters = parameters.Text.Trim()
+                }
+                : null;
+        }
+    }
+
+    private static class DeviceRowDialog
+    {
+        public static DeviceRow? Create(IWin32Window? owner)
+        {
+            using var dialog = new RowPropertyDialog("New Device");
+            var id = dialog.AddText("Id", "device-main");
+            var name = dialog.AddText("Name", "Device");
+            var type = dialog.AddCombo("Type", ["dev", "platform", "axis", "gpio", "vio", "serial", "tcp", "xy", "xyz"], "axis");
+            var driverId = dialog.AddText("DriverId", "drv-main");
+            var enabled = dialog.AddCheck("Enabled", true);
+            var lastPreset = GetDeviceParameterPreset(type.Text);
+            var parameters = dialog.AddText("Parameters", lastPreset, multiline: true);
+            type.TextChanged += (_, _) =>
+            {
+                var nextPreset = GetDeviceParameterPreset(type.Text);
+                if (string.IsNullOrWhiteSpace(parameters.Text)
+                    || string.Equals(parameters.Text, lastPreset, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Text = nextPreset;
+                }
+
+                lastPreset = nextPreset;
+            };
+            dialog.ValidateBeforeAccept = () => RequireText(dialog, id, "Device id");
+
+            return dialog.ShowDialog(owner) == DialogResult.OK
+                ? new DeviceRow
+                {
+                    Id = id.Text.Trim(),
+                    Name = name.Text.Trim(),
+                    Type = string.IsNullOrWhiteSpace(type.Text) ? "axis" : type.Text.Trim(),
+                    DriverId = driverId.Text.Trim(),
+                    Enabled = enabled.Checked,
+                    Parameters = parameters.Text.Trim()
+                }
+                : null;
+        }
+    }
+
+    private static class TaskRowDialog
+    {
+        public static TaskRow? Create(IWin32Window? owner)
+        {
+            using var dialog = new RowPropertyDialog("New Task");
+            var name = dialog.AddText("Name", "task-main");
+            var type = dialog.AddCombo("Type", ["pollDriver", "operation", "cycle"], "pollDriver");
+            var driverId = dialog.AddText("DriverId", "drv-main");
+            var intervalMs = dialog.AddNumber("IntervalMs", 100, 1, 600000);
+            var lastPreset = GetTaskParameterPreset(type.Text);
+            var parameters = dialog.AddText("Parameters", lastPreset, multiline: true);
+            type.TextChanged += (_, _) =>
+            {
+                var nextPreset = GetTaskParameterPreset(type.Text);
+                if (string.IsNullOrWhiteSpace(parameters.Text)
+                    || string.Equals(parameters.Text, lastPreset, StringComparison.OrdinalIgnoreCase))
+                {
+                    parameters.Text = nextPreset;
+                }
+
+                lastPreset = nextPreset;
+            };
+            dialog.ValidateBeforeAccept = () => RequireText(dialog, name, "Task name");
+
+            return dialog.ShowDialog(owner) == DialogResult.OK
+                ? new TaskRow
+                {
+                    Name = name.Text.Trim(),
+                    Type = string.IsNullOrWhiteSpace(type.Text) ? "pollDriver" : type.Text.Trim(),
+                    DriverId = driverId.Text.Trim(),
+                    IntervalMs = (int)intervalMs.Value,
+                    Parameters = parameters.Text.Trim()
+                }
+                : null;
+        }
+    }
+
+    private static bool RequireText(IWin32Window owner, TextBox box, string label)
+    {
+        if (!string.IsNullOrWhiteSpace(box.Text))
+        {
+            return true;
+        }
+
+        MessageBox.Show(owner, $"{label} is required.", "Invalid Config", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        box.Focus();
+        return false;
     }
 
     public sealed class DriverRow
@@ -809,5 +1364,54 @@ public sealed class ComponentConfigForm : Form
             Key = value.Key,
             ValueJson = JsonSerializer.Serialize(value.Value, new JsonSerializerOptions { WriteIndented = false })
         };
+    }
+
+    public sealed class RecipeVarKeyRow
+    {
+        public string Key { get; set; } = string.Empty;
+    }
+
+    public sealed class RecipeRow
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string VarsJson { get; set; } = "{}";
+
+        public static RecipeRow FromConfig(MdkSetting.RecipeConfig config) => new()
+        {
+            Id = config.Id,
+            Name = config.Name,
+            Description = config.Description ?? string.Empty,
+            VarsJson = JsonSerializer.Serialize(config.Vars, new JsonSerializerOptions { WriteIndented = true })
+        };
+
+        public MdkSetting.RecipeConfig ToConfig()
+        {
+            Dictionary<string, object?> vars;
+            if (string.IsNullOrWhiteSpace(VarsJson) || string.Equals(VarsJson.Trim(), "{}", StringComparison.Ordinal))
+            {
+                vars = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            }
+            else if (JsonNode.Parse(VarsJson) is not JsonObject obj)
+            {
+                throw new InvalidOperationException($"Recipe '{Id}' vars JSON must be a JSON object.");
+            }
+            else
+            {
+                vars = obj.Deserialize<Dictionary<string, object?>>(new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            return new MdkSetting.RecipeConfig
+            {
+                Id = Id.Trim(),
+                Name = Name.Trim(),
+                Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+                Vars = vars
+            };
+        }
     }
 }

@@ -690,10 +690,3 @@ internal sealed class TcpDriver : Drivers.IDriver
     {
     }
 }
-
-/// <summary>Snapshot data for TCP connection monitoring.</summary>
-public sealed record TcpConnectionSnapshot(
-    string Host,
-    int Port,
-    bool IsConnected,
-    int BytesToRead);

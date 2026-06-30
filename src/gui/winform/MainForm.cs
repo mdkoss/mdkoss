@@ -7,12 +7,7 @@ public sealed class MainForm : Form
 {
     private readonly TextBox _settingPathBox = new() { Dock = DockStyle.Top };
     private readonly Button _browseButton = new() { Text = "Browse Setting", Width = 120 };
-    private readonly Button _componentCfgButton = new() { Text = "Component Config", Width = 130 };
-    private readonly Button _gpioCfgButton = new() { Text = "GPIO Config", Width = 100 };
-    private readonly Button _axisCfgButton = new() { Text = "Axis Config", Width = 100 };
-    private readonly Button _platformCfgButton = new() { Text = "Platform Config", Width = 110 };
-    private readonly Button _devsCfgButton = new() { Text = "Devs Config", Width = 100 };
-    private readonly Button _tasksCfgButton = new() { Text = "Tasks Config", Width = 100 };
+    private readonly Button _configManagerButton = new() { Text = "Config Manager", Width = 130 };
     private readonly Button _deviceManagerButton = new() { Text = "Device Manager", Width = 120 };
     private readonly Button _taskManagerButton = new() { Text = "Task Manager", Width = 110 };
     private readonly Button _ioMonitorButton = new() { Text = "I/O Monitor", Width = 100 };
@@ -44,12 +39,7 @@ public sealed class MainForm : Form
             AutoSize = false
         };
         topPanel.Controls.Add(_browseButton);
-        topPanel.Controls.Add(_componentCfgButton);
-        topPanel.Controls.Add(_gpioCfgButton);
-        topPanel.Controls.Add(_axisCfgButton);
-        topPanel.Controls.Add(_platformCfgButton);
-        topPanel.Controls.Add(_devsCfgButton);
-        topPanel.Controls.Add(_tasksCfgButton);
+        topPanel.Controls.Add(_configManagerButton);
         topPanel.Controls.Add(_deviceManagerButton);
         topPanel.Controls.Add(_taskManagerButton);
         topPanel.Controls.Add(_ioMonitorButton);
@@ -90,12 +80,7 @@ public sealed class MainForm : Form
         Controls.Add(topPanel);
 
         _browseButton.Click += (_, _) => BrowseSetting();
-        _componentCfgButton.Click += (_, _) => OpenConfigForm(path => new ComponentConfigForm(path));
-        _gpioCfgButton.Click += (_, _) => OpenConfigForm(path => new GpioConfigForm(path));
-        _axisCfgButton.Click += (_, _) => OpenConfigForm(path => new AxisConfigForm(path));
-        _platformCfgButton.Click += (_, _) => OpenConfigForm(path => new PlatformConfigForm(path));
-        _devsCfgButton.Click += (_, _) => OpenConfigForm(path => new DevsConfigForm(path));
-        _tasksCfgButton.Click += (_, _) => OpenConfigForm(path => new TasksConfigForm(path));
+        _configManagerButton.Click += (_, _) => OpenConfigForm(path => new ComponentConfigForm(path));
         _deviceManagerButton.Click += (_, _) => OpenRuntimeForm(new DeviceManagerForm(_runtime));
         _taskManagerButton.Click += (_, _) => OpenRuntimeForm(new TaskManagerForm(_runtime));
         _ioMonitorButton.Click += (_, _) => OpenRuntimeForm(new IoMonitorForm(_runtime));

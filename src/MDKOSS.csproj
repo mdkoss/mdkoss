@@ -9,13 +9,21 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <CefSharpAnyCpuSupport>false</CefSharpAnyCpuSupport>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CefSharp.Common.NETCore" Version="147.0.100" />
     <PackageReference Include="CefSharp.WinForms.NETCore" Version="147.0.100" />
     <PackageReference Include="chromiumembeddedframework.runtime.win-x64" Version="147.0.10" />
     <PackageReference Include="NLog" Version="6.1.2" />
-    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="MDKOSS.Core.csproj" />
+    <ProjectReference Include="extensions\MDKOSS.Extensions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="gui\**\*.cs" Exclude="gui\Program.cs;gui\obj\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="configs\**\*">
@@ -24,12 +32,5 @@
     <None Include="views\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="gui\Program.cs" />
-    <Compile Remove="gui\obj\**\*.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="tasks\" />
   </ItemGroup>
 </Project>

@@ -251,8 +251,8 @@ POST /api/devices/{platformId}.{letter}/action
 
 与 `DebugSerialDevPage` 同级新增：
 
-- `src/core/monitoring/monitorplatformpage.cs` → 读取 `views/monitorPlatform.html`
-- `monitoringserver.cs`：`GET /monitorPlatform.html` 返回该 HTML
+- `src/core/monitor/monitorplatformpage.cs` → 读取 `views/monitorPlatform.html`
+- `src/core/monitor/monitoringserver.cs`：`GET /monitorPlatform.html` 返回该 HTML
 
 `MDKOSS.csproj` 已包含 `views/**/*` 复制规则，无需改 csproj。
 
@@ -307,10 +307,10 @@ flowchart TB
 |---|---|
 | `src/views/motiorplatform.md` | 本设计说明 |
 | `src/views/monitorPlatform.html` | 页面实现（待开发） |
-| `src/core/monitoring/monitorplatformpage.cs` | 静态页加载器（待开发） |
+| `src/core/monitorplatformpage.cs` | 静态页加载器（待开发） |
 | `src/core/mdev.cs` | `PlatformDevice` / `MPlatformKind` |
 | `src/core/mdk.cs` | `ExecuteDeviceAction` |
-| `src/core/monitoring/monitoringserver.cs` | HTTP 路由 |
+| `src/core/monitor/monitoringserver.cs` | HTTP 路由 |
 
 ---
 

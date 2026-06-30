@@ -213,6 +213,31 @@
       "parameters": {}
     }
   ],
+  "recipeVarKeys": [
+    "machine.mode",
+    "task.operation.command"
+  ],
+  "activeRecipeId": "default",
+  "recipes": [
+    {
+      "id": "default",
+      "name": "默认配方",
+      "description": "自动运行，绿灯指示",
+      "vars": {
+        "machine.mode": "AUTO",
+        "task.operation.command": "lamp:green"
+      }
+    },
+    {
+      "id": "manual",
+      "name": "手动配方",
+      "description": "手动模式，黄灯指示",
+      "vars": {
+        "machine.mode": "MANUAL",
+        "task.operation.command": "lamp:yellow"
+      }
+    }
+  ],
   "vars": {
     "machine.mode": "AUTO",
     "machine.ready": true,
