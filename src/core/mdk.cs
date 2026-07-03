@@ -594,8 +594,16 @@ public sealed class MdkRuntime : IDisposable
     public RecipeSnapshot GetRecipeSnapshot() => RecipeManager.GetSnapshot();
 
     /// <summary>Applies a recipe by id at runtime.</summary>
-    public bool TryApplyRecipe(string recipeId, out string? error) =>
-        RecipeManager.TryApplyRecipe(recipeId, out error);
+    public bool TryApplyRecipe(string recipeId, out string? error)
+    {
+        if (!RecipeManager.TryApplyRecipe(recipeId, out error))
+        {
+            return false;
+        }
+
+        DataStore.PersistRecipesFromSetting(Setting);
+        return true;
+    }
 
     /// <summary>Persists the current setting (including recipes) to disk and SQLite.</summary>
     public void SaveSetting(string settingPath)

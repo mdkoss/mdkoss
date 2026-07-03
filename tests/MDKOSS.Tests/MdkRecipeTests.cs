@@ -2,6 +2,7 @@ using MDKOSS.Core;
 
 namespace MDKOSS.Tests;
 
+[Collection("RecipeTests")]
 public sealed class MdkRecipeTests
 {
     [Fact]
@@ -85,6 +86,7 @@ public sealed class MdkRecipeTests
         new()
         {
             ProjectName = "recipe-test",
+            DatabasePath = Path.Combine(Path.GetTempPath(), $"mdk-recipe-test-{Guid.NewGuid():N}.db"),
             RecipeVarKeys = ["machine.mode", "task.operation.command"],
             ActiveRecipeId = "default",
             Recipes =

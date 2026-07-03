@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 namespace MDKOSS.Core;
 
@@ -52,6 +53,11 @@ public sealed class MVarStore
             return typed;
         }
 
+        if (raw is JsonElement json)
+        {
+            return ConvertJsonElement<T>(json);
+        }
+
         return (T?)Convert.ChangeType(raw, typeof(T));
     }
 
@@ -70,8 +76,36 @@ public sealed class MVarStore
             return true;
         }
 
+        if (raw is JsonElement json)
+        {
+            value = ConvertJsonElement<T>(json);
+            return true;
+        }
+
         value = (T?)Convert.ChangeType(raw, typeof(T));
         return true;
+    }
+
+    private static T? ConvertJsonElement<T>(JsonElement json)
+    {
+        if (typeof(T) == typeof(string))
+        {
+            return (T?)(object?)(json.ValueKind == JsonValueKind.String
+                ? json.GetString()
+                : json.GetRawText());
+        }
+
+        if (typeof(T) == typeof(bool) && (json.ValueKind is JsonValueKind.True or JsonValueKind.False))
+        {
+            return (T?)(object)json.GetBoolean();
+        }
+
+        if (json.ValueKind == JsonValueKind.Null)
+        {
+            return default;
+        }
+
+        return JsonSerializer.Deserialize<T>(json.GetRawText());
     }
 
     /// <summary>Returns a copy for safe monitoring/export.</summary>

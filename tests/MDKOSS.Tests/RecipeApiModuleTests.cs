@@ -29,6 +29,7 @@ public sealed class RecipeApiModuleTests
         var setting = new MdkSetting
         {
             ProjectName = "recipe-api",
+            DatabasePath = Path.Combine(Path.GetTempPath(), $"mdk-recipe-api-{Guid.NewGuid():N}.db"),
             MonitoringPrefix = $"http://127.0.0.1:{port}/",
             RecipeVarKeys = ["machine.mode", "task.operation.command"],
             ActiveRecipeId = "default",
