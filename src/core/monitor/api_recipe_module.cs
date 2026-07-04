@@ -28,6 +28,12 @@ public sealed class RecipeApiModule : MonitoringApiModule
                 return true;
             }
 
+            if (string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
+            {
+                await HandleUpsertAsync(context, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+
             return false;
         }
 
@@ -42,6 +48,12 @@ public sealed class RecipeApiModule : MonitoringApiModule
             && string.Equals(method, "POST", StringComparison.OrdinalIgnoreCase))
         {
             await HandleCaptureAsync(context, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        if (string.Equals(method, "DELETE", StringComparison.OrdinalIgnoreCase))
+        {
+            await HandleDeleteAsync(context.Response, path, cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -190,6 +202,61 @@ public sealed class RecipeApiModule : MonitoringApiModule
         }
 
         await WriteSuccessAsync(context.Response, "capture", cancellationToken).ConfigureAwait(false);
+        Runtime.DataStore.PersistRecipesFromSetting(Runtime.Setting);
+    }
+
+    private async Task HandleUpsertAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        var recipe = Deserialize<RecipeUpsertRequest>(body);
+        if (recipe is null || string.IsNullOrWhiteSpace(recipe.Id) || string.IsNullOrWhiteSpace(recipe.Name))
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await WriteErrorAsync(context.Response, "recipe_id_and_name_required", cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        var cfg = new MdkSetting.RecipeConfig
+        {
+            Id = recipe.Id.Trim(),
+            Name = recipe.Name.Trim(),
+            Description = recipe.Description,
+            Vars = recipe.Vars ?? new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase),
+        };
+
+        var exists = Runtime.RecipeManager.TryGetRecipe(cfg.Id, out _, out _);
+        string? error;
+        var ok = exists
+            ? Runtime.RecipeManager.TryUpdateRecipe(cfg, out error)
+            : Runtime.RecipeManager.TryAddRecipe(cfg, out error);
+
+        if (!ok)
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await WriteErrorAsync(context.Response, error ?? "upsert_failed", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        Runtime.DataStore.PersistRecipesFromSetting(Runtime.Setting);
+        await WriteSuccessAsync(context.Response, exists ? "update" : "create", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task HandleDeleteAsync(
+        HttpListenerResponse response,
+        string id,
+        CancellationToken cancellationToken)
+    {
+        if (!Runtime.RecipeManager.TryDeleteRecipe(id, out var error))
+        {
+            response.StatusCode = (int)HttpStatusCode.BadRequest;
+            await WriteErrorAsync(response, error ?? "delete_failed", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        Runtime.DataStore.TryDeleteRecipe(id, out _);
+        await WriteSuccessAsync(response, "delete", cancellationToken).ConfigureAwait(false);
     }
 
     private static string? GetQueryValue(string query, string name)
@@ -224,5 +291,13 @@ public sealed class RecipeApiModule : MonitoringApiModule
     {
         public string? Id { get; set; }
         public string? Name { get; set; }
+    }
+
+    private sealed class RecipeUpsertRequest
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public Dictionary<string, object?>? Vars { get; set; }
     }
 }

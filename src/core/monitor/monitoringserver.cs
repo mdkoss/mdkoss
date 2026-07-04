@@ -25,6 +25,7 @@ public sealed class MonitoringServer : IDisposable
         _modules.Add(new RecipeApiModule(runtime));
         _modules.Add(new OrdersApiModule(runtime));
         _modules.Add(new TeachApiModule(runtime));
+        _modules.Add(new DbApiModule(runtime));
         _modules.Add(new TaskApiModule(runtime));
 
         // Static HTML pages
@@ -35,6 +36,7 @@ public sealed class MonitoringServer : IDisposable
             ["/monitoringpage.html"] = MonitoringPage.Html,
             ["/monitorIO.html"] = MonitorIoPage.Html,
             ["/debugSerialDev.html"] = DebugSerialDevPage.Html,
+            ["/debugdb.html"] = DebugDbPage.Html,
             ["/monitorPlatform.html"] = MonitorPlatformPage.Html,
         };
     }

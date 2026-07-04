@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 数据库维护</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #101a2e;
+      --text: #dce7ff;
+      --muted: #90a4d4;
+      --ok: #35d08f;
+      --warn: #ffcc66;
+      --danger: #ff5d5d;
+      --line: #1f2c4a;
+      --accent: #4e8cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top right, #16264a 0%, var(--bg) 40%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1480px; margin: 0 auto; padding: 20px; }
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
+    }
+    .title { font-size: 24px; font-weight: 700; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .nav { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .nav a { color: var(--accent); text-decoration: none; font-size: 13px; }
+    .nav a:hover { text-decoration: underline; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+    .tab {
+      padding: 10px 16px; border: none; background: transparent; color: var(--muted);
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      border-bottom: 2px solid transparent; margin-bottom: -1px;
+    }
+    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
+    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+    th { color: var(--muted); font-size: 11px; font-weight: 600; }
+    tbody tr { cursor: pointer; transition: background .12s; }
+    tbody tr:hover td { background: rgba(78,140,255,.06); }
+    tbody tr.selected td { background: rgba(78,140,255,.12); }
+    .badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; border: 1px solid var(--line);
+    }
+    .badge.pending { color: var(--warn); border-color: rgba(255,204,102,.4); }
+    .badge.running { color: var(--ok); border-color: rgba(53,208,143,.4); }
+    .badge.done { color: var(--muted); }
+    .badge.fault { color: var(--danger); border-color: rgba(255,93,93,.4); }
+    .badge.active-recipe { color: var(--accent); border-color: rgba(78,140,255,.45); }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .form-row .form-group { flex: 1; min-width: 120px; }
+    input, select, textarea {
+      width: 100%; padding: 8px 10px; border-radius: 6px;
+      border: 1px solid var(--line); background: #0a1120; color: var(--text);
+      font-size: 13px; font-family: inherit;
+    }
+    textarea { min-height: 160px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+    .btn {
+      padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
+      background: #162644; color: var(--text); font-size: 13px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .btn:hover { border-color: var(--accent); }
+    .btn.primary { background: rgba(78,140,255,.2); border-color: rgba(78,140,255,.5); color: #a8c8ff; }
+    .btn.danger { background: rgba(255,93,93,.12); border-color: rgba(255,93,93,.45); color: #ffb0b0; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+    .table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: 8px; }
+    .panel-title { font-size: 14px; font-weight: 700; margin: 0 0 12px; }
+    .log-box {
+      margin-top: 16px; padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--line); background: #0a1120;
+      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+      color: var(--muted); min-height: 40px; white-space: pre-wrap;
+    }
+    .log-box.ok { color: var(--ok); }
+    .log-box.err { color: var(--danger); }
+    .footer { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    code { color: #a8c8ff; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">SQLite 数据库维护</div>
+        <div class="sub" id="dbPath">加载中…</div>
+        <nav class="nav">
+          <a href="/">主界面</a>
+          <a href="/monitoringpage.html">运行监控</a>
+          <a href="/debugSerialDev.html">串口调试</a>
+          <a href="/monitorPlatform.html">平台示教</a>
+        </nav>
+      </div>
+      <button type="button" class="btn primary" id="btnRefreshAll">刷新全部</button>
+    </div>
+
+    <div class="stats" id="statsRow">
+      <div class="stat"><div class="stat-label">排单</div><div class="stat-value" id="statOrders">—</div></div>
+      <div class="stat"><div class="stat-label">配方</div><div class="stat-value" id="statRecipes">—</div></div>
+      <div class="stat"><div class="stat-label">点位文件</div><div class="stat-value" id="statTeachFiles">—</div></div>
+      <div class="stat"><div class="stat-label">示教点</div><div class="stat-value" id="statTeachPoints">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="tabs">
+        <button type="button" class="tab active" data-tab="orders">排单</button>
+        <button type="button" class="tab" data-tab="recipes">配方</button>
+        <button type="button" class="tab" data-tab="teach">点位</button>
+      </div>
+
+      <!-- 排单 -->
+      <div id="panel-orders" class="tab-panel active">
+        <div class="layout">
+          <div>
+            <div class="panel-title">生产订单列表</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>ID</th><th>产品</th><th>数量</th><th>状态</th><th>进度</th><th>配方</th></tr>
+                </thead>
+                <tbody id="orderRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="panel-title">编辑排单</div>
+            <div class="form-group"><label>ID</label><input id="orderId" placeholder="ORD-001" /></div>
+            <div class="form-group"><label>产品</label><input id="orderProduct" /></div>
+            <div class="form-row">
+              <div class="form-group"><label>数量</label><input id="orderQty" type="number" value="1" min="1" /></div>
+              <div class="form-group"><label>优先级</label><input id="orderPriority" type="number" value="0" /></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>状态</label>
+                <select id="orderStatus">
+                  <option value="pending">pending</option>
+                  <option value="running">running</option>
+                  <option value="done">done</option>
+                  <option value="fault">fault</option>
+                  <option value="cancelled">cancelled</option>
+                </select>
+              </div>
+              <div class="form-group"><label>进度 %</label><input id="orderProgress" type="number" min="0" max="100" value="0" /></div>
+            </div>
+            <div class="form-group"><label>关联配方 ID</label><input id="orderRecipeId" placeholder="default" /></div>
+            <div class="form-group"><label>备注</label><input id="orderNotes" /></div>
+            <div class="btn-group">
+              <button type="button" class="btn primary" id="btnSaveOrder">保存</button>
+              <button type="button" class="btn" id="btnNewOrder">新建</button>
+              <button type="button" class="btn danger" id="btnDeleteOrder">删除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 配方 -->
+      <div id="panel-recipes" class="tab-panel">
+        <div class="layout">
+          <div>
+            <div class="panel-title">配方列表 <span id="activeRecipeHint" style="font-weight:400;color:var(--muted);font-size:12px"></span></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ID</th><th>名称</th><th>描述</th><th></th></tr></thead>
+                <tbody id="recipeRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="panel-title">编辑配方</div>
+            <div class="form-group"><label>ID</label><input id="recipeId" /></div>
+            <div class="form-group"><label>名称</label><input id="recipeName" /></div>
+            <div class="form-group"><label>描述</label><input id="recipeDesc" /></div>
+            <div class="form-group"><label>Vars (JSON)</label><textarea id="recipeVars">{}</textarea></div>
+            <div class="btn-group">
+              <button type="button" class="btn primary" id="btnSaveRecipe">保存</button>
+              <button type="button" class="btn" id="btnApplyRecipe">应用</button>
+              <button type="button" class="btn" id="btnCaptureRecipe">从运行时采集</button>
+              <button type="button" class="btn danger" id="btnDeleteRecipe">删除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 点位 -->
+      <div id="panel-teach" class="tab-panel">
+        <div class="form-row" style="margin-bottom:12px">
+          <div class="form-group">
+            <label>平台设备</label>
+            <select id="teachPlatform"></select>
+          </div>
+          <div class="form-group">
+            <label>点文件</label>
+            <select id="teachFile"><option value="default">default</option></select>
+          </div>
+        </div>
+        <div class="layout">
+          <div>
+            <div class="panel-title">示教点</div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>点 ID</th><th>名称</th><th>轴坐标</th></tr></thead>
+                <tbody id="teachPointRows"></tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <div class="panel-title">编辑 / 导入</div>
+            <div class="form-group"><label>点 ID</label><input id="teachPointId" placeholder="P0" /></div>
+            <div class="form-group"><label>名称</label><input id="teachPointName" /></div>
+            <div class="form-group"><label>Axes (JSON)</label><textarea id="teachAxes">{"X":0,"Y":0,"Z":0}</textarea></div>
+            <div class="btn-group">
+              <button type="button" class="btn primary" id="btnSavePoint">保存点</button>
+              <button type="button" class="btn danger" id="btnDeletePoint">删除点</button>
+            </div>
+            <div class="form-group" style="margin-top:14px"><label>整文件 JSON</label><textarea id="teachFileJson" rows="6"></textarea></div>
+            <div class="btn-group">
+              <button type="button" class="btn" id="btnLoadFileJson">加载到编辑器</button>
+              <button type="button" class="btn primary" id="btnSaveFileJson">保存整文件</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="log-box" id="logBox">就绪</div>
+    <p class="footer">API: <code>/api/db</code> · <code>/api/orders</code> · <code>/api/recipe</code> · <code>/api/teach</code></p>
+  </div>
+
+<script>
+(function () {
+  const logBox = document.getElementById("logBox");
+  let selectedOrderId = null;
+  let selectedRecipeId = null;
+  let selectedPointId = null;
+  let activeRecipeId = null;
+  let platformDevices = [];
+
+  function log(msg, ok) {
+    logBox.textContent = msg;
+    logBox.className = "log-box" + (ok === true ? " ok" : ok === false ? " err" : "");
+  }
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  async function api(url, opts) {
+    const res = await fetch(url, { cache: "no-store", ...opts });
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+    if (!res.ok) {
+      const err = (data && data.error) || res.statusText || "request_failed";
+      throw new Error(err);
+    }
+    return data;
+  }
+
+  async function loadDbInfo() {
+    const info = await api("/api/db");
+    document.getElementById("dbPath").textContent = info.databasePath || "—";
+    document.getElementById("statOrders").textContent = info.counts?.orders ?? "0";
+    document.getElementById("statRecipes").textContent = info.counts?.recipes ?? "0";
+    document.getElementById("statTeachFiles").textContent = info.counts?.teachFiles ?? "0";
+    document.getElementById("statTeachPoints").textContent = info.counts?.teachPoints ?? "0";
+    activeRecipeId = info.activeRecipeId || null;
+    document.getElementById("activeRecipeHint").textContent = activeRecipeId
+      ? `(当前: ${activeRecipeId})` : "";
+  }
+
+  function statusBadge(st) {
+    const s = (st || "pending").toLowerCase();
+    return `<span class="badge ${escapeHtml(s)}">${escapeHtml(s)}</span>`;
+  }
+
+  /* ── 排单 ── */
+  async function loadOrders() {
+    const orders = await api("/api/orders");
+    const tbody = document.getElementById("orderRows");
+    if (!orders.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:16px">暂无排单</td></tr>';
+      return;
+    }
+    tbody.innerHTML = orders.map(o => {
+      const sel = o.id === selectedOrderId ? " selected" : "";
+      return `<tr class="${sel}" data-id="${escapeHtml(o.id)}">
+        <td>${escapeHtml(o.id)}</td>
+        <td>${escapeHtml(o.product)}</td>
+        <td>${o.qty ?? 0}</td>
+        <td>${statusBadge(o.status)}</td>
+        <td>${Math.round(o.progress ?? 0)}%</td>
+        <td>${escapeHtml(o.recipeId || "—")}</td>
+      </tr>`;
+    }).join("");
+    tbody.querySelectorAll("tr[data-id]").forEach(tr => {
+      tr.addEventListener("click", () => {
+        selectedOrderId = tr.getAttribute("data-id");
+        fillOrderForm(orders.find(x => x.id === selectedOrderId));
+        loadOrders();
+      });
+    });
+  }
+
+  function fillOrderForm(o) {
+    if (!o) { clearOrderForm(); return; }
+    document.getElementById("orderId").value = o.id || "";
+    document.getElementById("orderProduct").value = o.product || "";
+    document.getElementById("orderQty").value = o.qty ?? 1;
+    document.getElementById("orderPriority").value = o.priority ?? 0;
+    document.getElementById("orderStatus").value = o.status || "pending";
+    document.getElementById("orderProgress").value = o.progress ?? 0;
+    document.getElementById("orderRecipeId").value = o.recipeId || "";
+    document.getElementById("orderNotes").value = o.notes || "";
+  }
+
+  function clearOrderForm() {
+    selectedOrderId = null;
+    document.getElementById("orderId").value = "";
+    document.getElementById("orderProduct").value = "";
+    document.getElementById("orderQty").value = 1;
+    document.getElementById("orderPriority").value = 0;
+    document.getElementById("orderStatus").value = "pending";
+    document.getElementById("orderProgress").value = 0;
+    document.getElementById("orderRecipeId").value = "";
+    document.getElementById("orderNotes").value = "";
+  }
+
+  async function saveOrder() {
+    const body = {
+      id: document.getElementById("orderId").value.trim(),
+      product: document.getElementById("orderProduct").value.trim(),
+      qty: Number(document.getElementById("orderQty").value) || 1,
+      priority: Number(document.getElementById("orderPriority").value) || 0,
+      status: document.getElementById("orderStatus").value,
+      progress: Number(document.getElementById("orderProgress").value) || 0,
+      recipeId: document.getElementById("orderRecipeId").value.trim() || null,
+      notes: document.getElementById("orderNotes").value.trim() || null,
+    };
+    if (!body.id) { log("请填写排单 ID", false); return; }
+    await api("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    selectedOrderId = body.id;
+    log("排单已保存: " + body.id, true);
+    await loadDbInfo();
+    await loadOrders();
+  }
+
+  async function deleteOrder() {
+    const id = document.getElementById("orderId").value.trim();
+    if (!id || !confirm("删除排单 " + id + "？")) return;
+    await api("/api/orders/" + encodeURIComponent(id), { method: "DELETE" });
+    clearOrderForm();
+    log("已删除排单: " + id, true);
+    await loadDbInfo();
+    await loadOrders();
+  }
+
+  /* ── 配方 ── */
+  async function loadRecipes() {
+    const data = await api("/api/recipe");
+    activeRecipeId = data.activeRecipeId || activeRecipeId;
+    document.getElementById("activeRecipeHint").textContent = activeRecipeId
+      ? `(当前: ${activeRecipeId})` : "";
+    const recipes = data.recipes || [];
+    const tbody = document.getElementById("recipeRows");
+    if (!recipes.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);padding:16px">暂无配方</td></tr>';
+      return;
+    }
+    tbody.innerHTML = recipes.map(r => {
+      const sel = r.id === selectedRecipeId ? " selected" : "";
+      const active = r.id === activeRecipeId
+        ? ' <span class="badge active-recipe">当前</span>' : "";
+      return `<tr class="${sel}" data-id="${escapeHtml(r.id)}">
+        <td>${escapeHtml(r.id)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.description || "—")}</td>
+        <td>${active}</td>
+      </tr>`;
+    }).join("");
+    tbody.querySelectorAll("tr[data-id]").forEach(tr => {
+      tr.addEventListener("click", async () => {
+        selectedRecipeId = tr.getAttribute("data-id");
+        await loadRecipeDetail(selectedRecipeId);
+        loadRecipes();
+      });
+    });
+  }
+
+  async function loadRecipeDetail(id) {
+    const r = await api("/api/recipe/" + encodeURIComponent(id));
+    document.getElementById("recipeId").value = r.id || "";
+    document.getElementById("recipeName").value = r.name || "";
+    document.getElementById("recipeDesc").value = r.description || "";
+    document.getElementById("recipeVars").value = JSON.stringify(r.vars || {}, null, 2);
+  }
+
+  async function saveRecipe() {
+    let vars;
+    try { vars = JSON.parse(document.getElementById("recipeVars").value || "{}"); }
+    catch { log("Vars JSON 格式错误", false); return; }
+    const body = {
+      id: document.getElementById("recipeId").value.trim(),
+      name: document.getElementById("recipeName").value.trim(),
+      description: document.getElementById("recipeDesc").value.trim() || null,
+      vars,
+    };
+    if (!body.id || !body.name) { log("请填写配方 ID 与名称", false); return; }
+    await api("/api/recipe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    selectedRecipeId = body.id;
+    log("配方已保存: " + body.id, true);
+    await loadDbInfo();
+    await loadRecipes();
+  }
+
+  async function applyRecipe() {
+    const id = document.getElementById("recipeId").value.trim();
+    if (!id) { log("请选择配方", false); return; }
+    await api("/api/recipe/apply", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    log("已应用配方: " + id, true);
+    await loadDbInfo();
+    await loadRecipes();
+  }
+
+  async function captureRecipe() {
+    const id = document.getElementById("recipeId").value.trim();
+    const name = document.getElementById("recipeName").value.trim();
+    if (!id || !name) { log("请填写 ID 与名称后再采集", false); return; }
+    await api("/api/recipe/capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, name }) });
+    log("已从运行时采集配方: " + id, true);
+    await loadRecipeDetail(id);
+    await loadDbInfo();
+    await loadRecipes();
+  }
+
+  async function deleteRecipe() {
+    const id = document.getElementById("recipeId").value.trim();
+    if (!id || !confirm("删除配方 " + id + "？")) return;
+    await api("/api/recipe/" + encodeURIComponent(id), { method: "DELETE" });
+    selectedRecipeId = null;
+    document.getElementById("recipeId").value = "";
+    document.getElementById("recipeName").value = "";
+    document.getElementById("recipeDesc").value = "";
+    document.getElementById("recipeVars").value = "{}";
+    log("已删除配方: " + id, true);
+    await loadDbInfo();
+    await loadRecipes();
+  }
+
+  /* ── 点位 ── */
+  const PLATFORM_TYPES = new Set(["platform","xy","xyz","xyzu","xyzuv","xyzuvw"]);
+
+  async function loadPlatforms() {
+    const snap = await api("/api/status");
+    const devices = snap.devices || snap.Devices || {};
+    platformDevices = Object.entries(devices)
+      .map(([id, d]) => ({ id, name: d.name || d.Name || id, type: (d.type || d.Type || "").toLowerCase() }))
+      .filter(d => PLATFORM_TYPES.has(d.type));
+    const sel = document.getElementById("teachPlatform");
+    const cur = sel.value;
+    sel.innerHTML = platformDevices.length
+      ? platformDevices.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)} (${escapeHtml(d.id)})</option>`).join("")
+      : '<option value="">无平台设备</option>';
+    if (cur && platformDevices.some(d => d.id === cur)) sel.value = cur;
+    await loadTeachFiles();
+  }
+
+  async function loadTeachFiles() {
+    const platformId = document.getElementById("teachPlatform").value;
+    const fileSel = document.getElementById("teachFile");
+    if (!platformId) {
+      fileSel.innerHTML = '<option value="default">default</option>';
+      renderTeachPoints([]);
+      return;
+    }
+    const files = await api("/api/teach/files?platformId=" + encodeURIComponent(platformId));
+    const cur = fileSel.value || "default";
+    const names = files.length ? files.map(f => f.name) : ["default"];
+    if (!names.includes("default")) names.unshift("default");
+    fileSel.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+    if (names.includes(cur)) fileSel.value = cur;
+    else fileSel.value = names[0];
+    await loadTeachPoints();
+  }
+
+  async function loadTeachPoints() {
+    const platformId = document.getElementById("teachPlatform").value;
+    const file = document.getElementById("teachFile").value || "default";
+    if (!platformId) return;
+    const snap = await api("/api/teach?platformId=" + encodeURIComponent(platformId) + "&file=" + encodeURIComponent(file));
+    document.getElementById("teachFileJson").value = JSON.stringify(snap, null, 2);
+    renderTeachPoints(snap.points || []);
+  }
+
+  function renderTeachPoints(points) {
+    const tbody = document.getElementById("teachPointRows");
+    if (!points.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="color:var(--muted);padding:16px">暂无示教点</td></tr>';
+      return;
+    }
+    tbody.innerHTML = points.map(p => {
+      const sel = p.pointId === selectedPointId ? " selected" : "";
+      const axes = JSON.stringify(p.axes || {});
+      return `<tr class="${sel}" data-id="${escapeHtml(p.pointId)}">
+        <td>${escapeHtml(p.pointId)}</td>
+        <td>${escapeHtml(p.name || "")}</td>
+        <td style="font-family:monospace;font-size:11px">${escapeHtml(axes)}</td>
+      </tr>`;
+    }).join("");
+    tbody.querySelectorAll("tr[data-id]").forEach(tr => {
+      tr.addEventListener("click", () => {
+        selectedPointId = tr.getAttribute("data-id");
+        const p = points.find(x => x.pointId === selectedPointId);
+        if (p) {
+          document.getElementById("teachPointId").value = p.pointId || "";
+          document.getElementById("teachPointName").value = p.name || "";
+          document.getElementById("teachAxes").value = JSON.stringify(p.axes || {}, null, 2);
+        }
+        renderTeachPoints(points);
+      });
+    });
+  }
+
+  async function savePoint() {
+    const platformId = document.getElementById("teachPlatform").value;
+    const fileName = document.getElementById("teachFile").value || "default";
+    const pointId = document.getElementById("teachPointId").value.trim();
+    let axes;
+    try { axes = JSON.parse(document.getElementById("teachAxes").value || "{}"); }
+    catch { log("Axes JSON 格式错误", false); return; }
+    if (!platformId || !pointId) { log("请选择平台并填写点 ID", false); return; }
+    await api("/api/teach/point", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        platformId, fileName, pointId,
+        name: document.getElementById("teachPointName").value.trim(),
+        axes,
+      }),
+    });
+    selectedPointId = pointId;
+    log("示教点已保存: " + pointId, true);
+    await loadDbInfo();
+    await loadTeachPoints();
+  }
+
+  async function deletePoint() {
+    const platformId = document.getElementById("teachPlatform").value;
+    const file = document.getElementById("teachFile").value || "default";
+    const pointId = document.getElementById("teachPointId").value.trim();
+    if (!platformId || !pointId || !confirm("删除点 " + pointId + "？")) return;
+    await api("/api/teach/point?platformId=" + encodeURIComponent(platformId)
+      + "&file=" + encodeURIComponent(file)
+      + "&pointId=" + encodeURIComponent(pointId), { method: "DELETE" });
+    selectedPointId = null;
+    document.getElementById("teachPointId").value = "";
+    document.getElementById("teachPointName").value = "";
+    document.getElementById("teachAxes").value = '{"X":0,"Y":0,"Z":0}';
+    log("已删除示教点: " + pointId, true);
+    await loadDbInfo();
+    await loadTeachPoints();
+  }
+
+  async function saveFileJson() {
+    let snap;
+    try { snap = JSON.parse(document.getElementById("teachFileJson").value); }
+    catch { log("整文件 JSON 格式错误", false); return; }
+    const platformId = document.getElementById("teachPlatform").value;
+    if (!platformId) { log("请选择平台", false); return; }
+    snap.platformId = snap.platformId || platformId;
+    snap.fileName = snap.fileName || document.getElementById("teachFile").value || "default";
+    await api("/api/teach", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(snap) });
+    log("点位文件已保存", true);
+    await loadDbInfo();
+    await loadTeachFiles();
+  }
+
+  function loadFileJsonToEditor() {
+    try {
+      const snap = JSON.parse(document.getElementById("teachFileJson").value || "{}");
+      const pts = snap.points || [];
+      if (pts.length && !selectedPointId) {
+        const p = pts[0];
+        document.getElementById("teachPointId").value = p.pointId || "";
+        document.getElementById("teachPointName").value = p.name || "";
+        document.getElementById("teachAxes").value = JSON.stringify(p.axes || {}, null, 2);
+      }
+      log("已解析 JSON（共 " + pts.length + " 点）", true);
+    } catch { log("JSON 解析失败", false); }
+  }
+
+  /* ── Tabs ── */
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      tab.classList.add("active");
+      document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    });
+  });
+
+  document.getElementById("btnRefreshAll").addEventListener("click", refreshAll);
+  document.getElementById("btnSaveOrder").addEventListener("click", () => saveOrder().catch(e => log(e.message, false)));
+  document.getElementById("btnNewOrder").addEventListener("click", () => { clearOrderForm(); loadOrders(); });
+  document.getElementById("btnDeleteOrder").addEventListener("click", () => deleteOrder().catch(e => log(e.message, false)));
+  document.getElementById("btnSaveRecipe").addEventListener("click", () => saveRecipe().catch(e => log(e.message, false)));
+  document.getElementById("btnApplyRecipe").addEventListener("click", () => applyRecipe().catch(e => log(e.message, false)));
+  document.getElementById("btnCaptureRecipe").addEventListener("click", () => captureRecipe().catch(e => log(e.message, false)));
+  document.getElementById("btnDeleteRecipe").addEventListener("click", () => deleteRecipe().catch(e => log(e.message, false)));
+  document.getElementById("teachPlatform").addEventListener("change", () => loadTeachFiles().catch(e => log(e.message, false)));
+  document.getElementById("teachFile").addEventListener("change", () => loadTeachPoints().catch(e => log(e.message, false)));
+  document.getElementById("btnSavePoint").addEventListener("click", () => savePoint().catch(e => log(e.message, false)));
+  document.getElementById("btnDeletePoint").addEventListener("click", () => deletePoint().catch(e => log(e.message, false)));
+  document.getElementById("btnSaveFileJson").addEventListener("click", () => saveFileJson().catch(e => log(e.message, false)));
+  document.getElementById("btnLoadFileJson").addEventListener("click", loadFileJsonToEditor);
+
+  async function refreshAll() {
+    try {
+      log("刷新中…");
+      await loadDbInfo();
+      await Promise.all([loadOrders(), loadRecipes(), loadPlatforms()]);
+      log("刷新完成", true);
+    } catch (e) {
+      log("刷新失败: " + e.message, false);
+    }
+  }
+
+  refreshAll();
+})();
+</script>
+</body>
+</html>
