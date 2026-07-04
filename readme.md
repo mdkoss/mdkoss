@@ -24,6 +24,12 @@
 
 ---
 
+## 架构文档
+
+详细架构设计已整理至 **[docs/](./docs/README.md)**，包括分层结构、项目拆分、配置模型、扩展机制、监控 API、SQLite 持久化与 GUI 说明。下文 §2–§4 保留简要索引，完整内容以 docs 为准。
+
+---
+
 ## 1. 当前设计目标
 
 以最小依赖实现“可编译、可运行、可观测、可扩展”的运行时内核，保留 `mdkruntime` 的核心思想，去掉第一阶段非必需复杂度（桌面容器、复杂服务编排、Redis 同步等）。
@@ -44,58 +50,24 @@
 
 ## 2. 项目结构（当前实现）
 
+> 完整说明见 [docs/project-layout.md](./docs/project-layout.md)。
+
 ```text
 mdkoss/
 ├── MDKOSS.sln
 ├── readme.md
-├── tests/
-│   └── MDKOSS.Tests/
+├── docs/                         # 架构与设计文档
+├── tests/MDKOSS.Tests/
 └── src/
-    ├── MDKOSS.csproj
+    ├── MDKOSS.csproj             # 可执行 + GUI
+    ├── MDKOSS.Core.csproj        # 运行时内核
     ├── Program.cs
-    ├── configs/
-    │   └── sample.setting.json
-    ├── views/
-    │   ├── index.html
-    │   ├── monitoringpage.html
-    │   ├── monitorIO.html
-    │   ├── monitorPlatform.html
-    │   ├── monitorPlatform.js
-    │   ├── motiorplatform.md
-    │   └── debugserialdev.html
+    ├── configs/sample.setting.json
+    ├── views/                    # HMI 静态页
     ├── tasks/
-    ├── extensions/
-    │   ├── serialdev.cs
-    │   └── tcpdev.md
-    ├── gui/
-    │   ├── winform/
-    │   └── cef/
-    │       ├── CefMainForm.cs
-    │       └── CefRuntimeBootstrap.cs
-    └── core/
-        ├── mdk.cs
-        ├── msetting.cs
-        ├── mdev.cs
-        ├── mtask.cs
-        ├── mvar.cs
-        ├── serial_device_parameters.cs
-        ├── drivers/
-        │   ├── idriver.cs
-        │   ├── driver_factory.cs
-        │   ├── drvgts.cs
-        │   └── drvsim.cs
-        ├── gpio_device_parameters.cs
-        ├── platform_device_parameters.cs
-        ├── vio_device_parameters.cs
-        ├── mdk_errors.cs
-        ├── runtime_task_factory.cs
-        ├── monitor/
-        │   ├── monitoringserver.cs
-        │   ├── monitoringpage.cs
-        │   ├── monitoriopage.cs
-        │   ├── monitorplatformpage.cs
-        │   ├── debugserialdevpage.cs
-        │   └── indexpage.cs
+    ├── extensions/               # MDKOSS.Extensions（serialdev、tcpdev）
+    ├── gui/winform/ | gui/cef/
+    └── core/                     # mdk、msetting、mdev、monitor、data…
 ```
 
 构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
@@ -103,6 +75,8 @@ mdkoss/
 ---
 
 ## 3. 模块职责
+
+> 详见 [docs/core-subsystems.md](./docs/core-subsystems.md)、[docs/extensions.md](./docs/extensions.md)。
 
 - `Program.cs`  
   应用入口，支持三种 UI 模式：
@@ -187,6 +161,8 @@ mdkoss/
 ---
 
 ## 4. 运行时架构与数据流
+
+> 详见 [docs/architecture.md](./docs/architecture.md)。
 
 ### 4.1 分层架构
 

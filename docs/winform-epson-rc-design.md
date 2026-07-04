@@ -1,5 +1,7 @@
 # WinForms Configuration Design Reference
 
+> UI 设计参考，归属 [docs/gui.md](./gui.md)。文档索引见 [docs/README.md](./README.md)。
+
 This note records the UI direction learned from the EPSON RC+ 7.0 user guide and maps it to MDKOSS work items.
 
 ## Design Principles
