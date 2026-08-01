@@ -67,7 +67,8 @@ mdkoss/
     ├── tasks/
     ├── extensions/               # MDKOSS.Extensions（serialdev、tcpdev）
     ├── gui/winform/ | gui/cef/
-    └── core/                     # mdk、msetting、mdev、monitor、data…
+    ├── server/                   # HTTP 监控服务与 API
+    └── core/                     # mdk、msetting、mdev、data…
 ```
 
 构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
@@ -122,7 +123,7 @@ mdkoss/
 - `src/core/drivers/drvsim.cs`  
   软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
 
-- `src/core/monitor/monitoringserver.cs`
+- `src/server/monitoringserver.cs`
   轻量监控服务，提供：
   - `GET /`、`GET /index.html`：主界面（HMI）
   - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）
@@ -140,19 +141,19 @@ mdkoss/
   - `POST /api/serial/writeBin`：发送二进制
   - `POST /api/serial/read`：读取数据
 
-- `src/core/monitor/monitoringpage.cs`  
+- `src/server/monitoringpage.cs`  
   从输出目录旁 `views/monitoringpage.html` 加载综合监控页 HTML。
 
-- `src/core/monitor/monitoriopage.cs`  
+- `src/server/monitoriopage.cs`  
   从 `views/monitorIO.html` 加载 IO 监控页 HTML（与上相同复制规则）。
 
-- `src/core/monitor/monitorplatformpage.cs`  
+- `src/server/monitorplatformpage.cs`  
   从 `views/monitorPlatform.html` 加载平台步进示教页（设计说明见 `views/motiorplatform.md`）。
 
-- `src/core/monitor/indexpage.cs`  
+- `src/server/indexpage.cs`  
   从 `views/index.html` 加载主界面 HTML。
 
-- `src/core/monitor/debugserialdevpage.cs`  
+- `src/server/debugserialdevpage.cs`  
   从 `views/debugserialdev.html` 加载串口调试页 HTML。
 
 - `src/core/mdk.cs`（`TryWriteDigitalOutput`）  
@@ -311,7 +312,7 @@ CEF / WinForms 模式请查看 `logs/` 与窗体；浏览器亦可直接访问�
 
 ## 8. 下一步建议
 
-近期已补齐：HMI 主界面 `index.html`、`core/monitor/` 监控服务模块、**CefSharp.NETCore** 桌面壳（`--cef`）、`Program.cs` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 监控、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
+近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、**CefSharp.NETCore** 桌面壳（`--cef`）、`Program.cs` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 监控、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
 
 可选后续方向：
 

@@ -28,7 +28,8 @@ mdkoss/
 - **路径**：`src/MDKOSS.Core.csproj`
 - **程序集名**：`MDKOSS.Core.dll`
 - **编译范围**：
-  - `core/**/*.cs`（排除已迁移到 Extensions 的 serial/tcp 模块副本）
+  - `core/**/*.cs`
+  - `server/**/*.cs`（HTTP 监控服务与 API 模块）
   - `tasks/**/*.cs`
 
 ### MDKOSS.Extensions（可选扩展）
@@ -53,7 +54,8 @@ src/
 │   └── debugSerialDev.html       # 串口调试
 ├── tasks/                        # 内置任务实现
 │   ├── task_operation.cs
-│   └── task_cycle.cs
+│   ├── task_cycle.cs
+│   └── task_motion.cs            # MotionTask / TaskMotionTask（运动与 GPIO 设备封装）
 ├── core/                         # 内核（MDKOSS.Core）
 │   ├── mdk.cs                    # MdkRuntime 宿主
 │   ├── msetting.cs               # MdkSetting 配置模型
@@ -61,13 +63,11 @@ src/
 │   ├── mtask.cs                  # 任务基类与 MTaskScheduler
 │   ├── mvar.cs                   # MVarStore 变量中心
 │   ├── mrecipe.cs                # MdkRecipeManager 配方
-│   ├── motiontask.cs             # 运动相关任务
 │   ├── mdk_errors.cs             # 错误码
 │   ├── app_log.cs                # NLog 封装
 │   ├── runtime_task_factory.cs   # 任务类型注册表
 │   ├── device_extension_registry.cs
 │   ├── device_action_registry.cs
-│   ├── monitoring_module_registry.cs
 │   ├── gpio_device_parameters.cs
 │   ├── vio_device_parameters.cs
 │   ├── platform_device_parameters.cs
@@ -77,21 +77,23 @@ src/
 │   │   ├── drvgts.cs
 │   │   ├── drvsim.cs
 │   │   └── drvdmc.cs             # DMC 驱动实现（按需注册）
-│   ├── data/
-│   │   ├── mdk_database.cs
-│   │   ├── mdk_data_store.cs
-│   │   └── mdk_data_models.cs
-│   └── monitor/
-│       ├── monitoringserver.cs
-│       ├── monitoring_api_module.cs
-│       ├── api_status_module.cs
-│       ├── api_io_module.cs
-│       ├── api_devices_module.cs
-│       ├── api_recipe_module.cs
-│       ├── api_orders_module.cs
-│       ├── api_teach_module.cs
-│       ├── api_task_module.cs
-│       └── *page.cs              # 静态 HTML 加载器
+│   └── data/
+│       ├── mdk_database.cs
+│       ├── mdk_data_store.cs
+│       └── mdk_data_models.cs
+├── server/                       # HTTP 监控服务（编入 MDKOSS.Core）
+│   ├── monitoringserver.cs
+│   ├── monitoring_api_module.cs
+│   ├── monitoring_module_registry.cs
+│   ├── api_status_module.cs
+│   ├── api_io_module.cs
+│   ├── api_devices_module.cs
+│   ├── api_recipe_module.cs
+│   ├── api_orders_module.cs
+│   ├── api_teach_module.cs
+│   ├── api_task_module.cs
+│   ├── api_db_module.cs
+│   └── *page.cs                  # 静态 HTML 加载器
 ├── extensions/                   # MDKOSS.Extensions
 │   ├── ExtensionsBootstrap.cs    # 统一注册入口
 │   ├── serialdev.cs / tcpdev.cs
@@ -122,7 +124,7 @@ src/
 | 任务调度 | `core/mtask.cs`, `core/runtime_task_factory.cs`, `tasks/` |
 | 变量与配方 | `core/mvar.cs`, `core/mrecipe.cs` |
 | 持久化 | `core/data/mdk_data_store.cs` |
-| HTTP 监控 | `core/monitor/monitoringserver.cs` |
+| HTTP 监控 | `server/monitoringserver.cs` |
 | 扩展注册 | `extensions/ExtensionsBootstrap.cs` |
 
 ## 构建产物布局

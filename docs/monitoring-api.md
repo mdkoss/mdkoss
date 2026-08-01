@@ -1,6 +1,6 @@
 # 监控服务与 HTTP API
 
-运行时通过 `MonitoringServer`（`HttpListener`）提供静态 HMI 页面与 REST API。监听地址由配置项 `monitoringPrefix` 决定，默认 `http://127.0.0.1:5080/`（同时注册 `localhost` 别名）。
+运行时通过 `MonitoringServer`（`src/server/`，`HttpListener`）提供静态 HMI 页面与 REST API。监听地址由配置项 `monitoringPrefix` 决定，默认 `http://127.0.0.1:5080/`（同时注册 `localhost` 别名）。
 
 ## 架构
 

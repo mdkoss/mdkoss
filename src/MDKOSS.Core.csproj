@@ -14,8 +14,8 @@
     <PackageReference Include="NLog" Version="6.1.2" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="core\**\*.cs"
-              Exclude="core\monitor\api_serial_module.cs;core\monitor\api_tcp_module.cs;core\serial_device_parameters.cs;core\tcp_device_parameters.cs" />
+    <Compile Include="core\**\*.cs" />
+    <Compile Include="server\**\*.cs" />
     <Compile Include="tasks\**\*.cs" />
   </ItemGroup>
 </Project>

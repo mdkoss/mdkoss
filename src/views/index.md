@@ -35,6 +35,6 @@
 ## 相关文件
 
 - `src/views/index.html` — 页面实现
-- `src/core/monitor/indexpage.cs` — 嵌入/加载 HTML
-- `src/core/monitor/monitoringserver.cs` — 路由与任务 API
+- `src/server/indexpage.cs` — 嵌入/加载 HTML
+- `src/server/monitoringserver.cs` — 路由与任务 API
 - 详细监控页仍可通过 `/monitoringpage.html` 访问

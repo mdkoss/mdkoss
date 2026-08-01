@@ -1,78 +1,114 @@
 # 扩展机制（MDKOSS.Extensions）
 
-Core 保持最小内核；可选设备与 API 通过 **独立程序集 + 注册表** 接入，避免 Core 依赖 `System.IO.Ports` 等重量级或平台特定包。
+本文说明 **为何将可选设备拆成独立扩展项目**，以及 **如何按同一模式开发新扩展**。
 
-## 项目边界
+参考实现：`src/extensions/`（`serialdev`、`tcpdev`）。
+
+---
+
+## 1. 设计意义
+
+### 1.1 问题：内核膨胀
+
+串口（`System.IO.Ports`）、TCP 套接字等能力与运动控制内核（驱动 / GPIO / 轴 / 平台 / 任务调度）职责不同：
+
+| 维度 | Core 内核设备 | 通信类扩展设备 |
+|------|---------------|----------------|
+| 依赖 | `IDriver`、运动卡 / 仿真 | OS 通信栈、第三方协议库 |
+| 生命周期 | 随驱动连线、任务调度 | 独立 open/connect，可热插拔式开关 |
+| 部署场景 | 几乎每个项目都需要 | 按现场通信需求可选 |
+
+若把串口、TCP 直接写进 `MDKOSS.Core`，会出现：
+
+- Core 被迫引用平台/重量级 NuGet（如 `System.IO.Ports`）
+- 不需要通信设备的部署仍携带相关依赖与代码面
+- 每加一种协议设备都要改 Core 的 `BootstrapDevices` / `ExecuteDeviceAction` 分支，内核难以稳定
+
+### 1.2 解法：独立程序集 + 注册表解耦
+
+扩展采用 **「Core 定义插槽，Extensions 填实现」**：
+
+```text
+MDKOSS.exe
+  └─ ExtensionsBootstrap.Register()   ← 启动时注入实现
+         │
+         ▼
+MDKOSS.Extensions  ──引用──►  MDKOSS.Core
+  (serialdev / tcpdev / API)     (注册表 + 运行时编排)
+```
+
+**依赖方向单向**：`Extensions → Core`，**Core 永不引用 Extensions**。  
+Core 只保留三类注册表（接口式插槽），Extensions 在进程启动时写入工厂/处理器。
+
+### 1.3 带来的价值
+
+1. **内核可单独编译与测试** — 不装串口包也能验证驱动、任务、GPIO。
+2. **可选能力按需装配** — 主程序调用一次 `Register()`；测试或精简宿主可跳过或不注册部分类型。
+3. **扩展点稳定** — 新设备类型通常只改 Extensions（或新 DLL），不必改 `BootstrapDevices` 的 `switch`。
+4. **与监控/动作体系统一** — 设备工厂、统一 action、HTTP 模块走同一套注册机制，扩展设备与内置设备在运行时行为一致。
+5. **演进空间** — 未来可拆出更多扩展 DLL（扫码枪、Modbus、视觉协议等），只要遵守注册表约定即可。
+
+### 1.4 边界划分
 
 | 项目 | 包含 | 不包含 |
 |------|------|--------|
-| MDKOSS.Core | gpio/vio/axis/platform、监控内核、SQLite、内置驱动 | 串口/TCP 设备实现 |
-| MDKOSS.Extensions | `serialdev`、`tcpdev`、对应 API 模块 | GUI、Program 入口 |
-| MDKOSS | Program、WinForms、CEF | 业务设备逻辑 |
+| **MDKOSS.Core** | gpio / vio / axis / platform / cameradev、驱动、任务、监控内核、SQLite、三类注册表定义 | 串口/TCP 实现、`System.IO.Ports` |
+| **MDKOSS.Extensions** | `serialdev`、`tcpdev`、参数解析、动作处理、`/api/serial` `/api/tcp` | GUI、`Program` 入口 |
+| **MDKOSS** | `Program`、WinForms/CEF、配置编辑 | 业务设备逻辑本身 |
 
-Core 中仍保留扩展 **注册表** 定义：
+Core 中的扩展 **插槽**：
 
-- `DeviceExtensionRegistry`
-- `DeviceActionRegistry`
-- `MonitoringModuleRegistry`
+| 注册表 | 文件 | 作用 |
+|--------|------|------|
+| `DeviceExtensionRegistry` | `device_extension_registry.cs` | 按 `type` 字符串创建设备 |
+| `DeviceActionRegistry` | `device_action_registry.cs` | 按设备类型匹配统一 action |
+| `MonitoringModuleRegistry` | `server/monitoring_module_registry.cs` | 注入 HTTP API 模块 |
 
-Extensions 在启动时向这些注册表写入实现。
+枚举侧：`MDeviceType` 可为扩展类型预留值（如 `SerialDev`、`TcpDev`）；**创建设备的分支逻辑不写死在 Core**，而由注册表完成。
 
-## 启动注册
+---
 
-`Program.Main` 第一行：
+## 2. 运行时如何接入
+
+### 2.1 启动顺序（必须）
+
+`Program.Main` **第一行**（创建 `MdkRuntime` 之前）：
 
 ```csharp
 ExtensionsBootstrap.Register();
 ```
 
-必须在创建 `MdkRuntime` **之前** 调用。
+未注册时：配置里的 `serialdev` / `tcpdev` 会落入到「未知设备类型」或被跳过，对应 HTTP 模块也不会挂载。
 
-### ExtensionsBootstrap 做了什么
+### 2.2 ExtensionsBootstrap 注册内容
 
-`extensions/ExtensionsBootstrap.cs`：
+`src/extensions/ExtensionsBootstrap.cs` 一次性完成：
 
-1. **设备工厂** — `DeviceExtensionRegistry.Register("serialdev", ...)` / `"tcpdev"`
-2. **动作处理器** — `DeviceActionRegistry.Register` 匹配 `SerialDevice` / `TcpDevice`
-3. **HTTP 模块** — `MonitoringModuleRegistry.Register` → `SerialApiModule` / `TcpApiModule`
+1. **设备工厂** — `DeviceExtensionRegistry.Register("serialdev" | "tcpdev", …)`
+2. **动作处理器** — `DeviceActionRegistry.Register(predicate, handler)`
+3. **监控模块** — `MonitoringModuleRegistry.Register(runtime => new XxxApiModule(runtime))`
 
-## 设备扩展
+### 2.3 设备创建路径
 
-### 注册签名
+`MdkRuntime.BootstrapDevices` 顺序大致为：
 
-```csharp
-DeviceExtensionRegistry.Register(string deviceType, DeviceFactory factory);
+1. Core 内置：`gpio` / `vio` / `platform*`
+2. **`DeviceExtensionRegistry.TryCreate`**（扩展类型落点）
+3. 需要 `driverId` 的内置：`axis` / `cameradev`
+4. 仍无法识别则抛 `UnsupportedDeviceType`
 
-// DeviceFactory:
-MDeviceBase? (DeviceConfig config, string deviceName, MVarStore vars, IReadOnlyDictionary<string, IDriver> drivers)
-```
+扩展设备创建成功后，与内置设备相同：`Initialize()` → 加入 `_devices` → `Start()` 时统一启动。
 
-### 现有实现
+### 2.4 统一动作路径
 
-| type | 类 | 参数解析 |
-|------|-----|----------|
-| `serialdev` | `SerialDevice` | `SerialDeviceParameterSet` |
-| `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` |
+`MdkRuntime.ExecuteDeviceAction`：
 
-`MdkRuntime.BootstrapDevices` 在 Core 内置类型匹配失败后调用 `TryCreate`；成功则与普通设备一样 `Initialize` 并加入 `_devices`。
+1. 先 `DeviceActionRegistry.TryExecute`（扩展优先）
+2. 再 fallback 到 Core 内置 GPIO/VIO/Axis/Platform 逻辑
 
-## 设备动作扩展
+因此扩展设备可参与监控页「设备动作」与任务侧统一调用，无需改 Core 的 `switch`。
 
-```csharp
-DeviceActionRegistry.Register(
-    Func<MDeviceBase, bool> predicate,
-    Func<MDeviceBase, string, Dictionary<string, JsonElement>?, DeviceActionResult> handler);
-```
-
-`ExecuteDeviceAction` 优先查注册表，再 fallback 到 Core 内置 GPIO/VIO/Axis/Platform 逻辑。
-
-Serial/TCP 的 open、write、read 等 action 在 `ExtensionDeviceActions` 中实现。
-
-## 监控 API 扩展
-
-```csharp
-MonitoringModuleRegistry.Register(runtime => new SerialApiModule(runtime));
-```
+### 2.5 监控 HTTP 路径
 
 `MonitoringServer` 构造时：
 
@@ -80,39 +116,227 @@ MonitoringModuleRegistry.Register(runtime => new SerialApiModule(runtime));
 _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 ```
 
-模块按 `RoutePrefix` 分发请求，继承 `MonitoringApiModule` 基类。
+扩展模块按 `RoutePrefix`（如 `/api/serial`）分发；Core 内置模块（status / io / devices / recipe / …）不经过 Extensions。
 
-Core 内置模块（不经过 Extensions）：
+---
 
-- `StatusApiModule` — `/api/status`
-- `IoApiModule` — `/api/io/*`
-- `DevicesApiModule` — `/api/devices/*`
-- `RecipeApiModule`、`OrdersApiModule`、`TeachApiModule`、`TaskApiModule`
+## 3. 现有扩展一览
 
-## 添加新扩展类型（步骤）
+| 配置 `type` | 设备类 | 参数解析 | 动作 | HTTP | 快照字段 |
+|-------------|--------|----------|------|------|----------|
+| `serialdev` | `SerialDevice` | `SerialDeviceParameterSet` | open/close/write/read/status | `/api/serial/*` | `serialPortInfo` |
+| `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` | connect/disconnect/write/read/status | `/api/tcp/*` | （见 Tcp 快照） |
 
-1. 在 `MDKOSS.Extensions`（或新 DLL）中实现 `MDeviceBase` 子类
-2. 实现 `*ParameterSet` 解析 `DeviceConfig.Parameters`
-3. 在 Bootstrap 中 `DeviceExtensionRegistry.Register`
-4. 如需 HTTP：实现 `MonitoringApiModule` 并 `MonitoringModuleRegistry.Register`
-5. 如需自定义 action：`DeviceActionRegistry.Register`
-6. 在 `sample.setting.json` 增加示例条目
-7. 补充 `docs/` 与单元测试
+分层角色（以串口为例）：
 
-若扩展需 **新驱动类型**，还需 `DriverFactory.Register`（可在 Extensions Bootstrap 或 Core 静态构造函数中完成）。
+| 文件 | 职责 |
+|------|------|
+| `serialdev.cs` | 设备本体 + 内部 `SerialDriver` 占位（满足 `MDeviceBase` 对 `IDriver` 的构造要求） |
+| `serial_device_parameters.cs` | 从 `DeviceConfig.Parameters` 解析端口参数 |
+| `ExtensionDeviceActions.cs` | 统一 action 分发 |
+| `ExtensionDeviceApi.cs` | 供 HTTP 模块调用的运行时 API |
+| `api_serial_module.cs` | `MonitoringApiModule` 路由实现 |
+| `serialdev.md` | 命令语义对照（OpenCom / Print# 等） |
 
-## 依赖方向
+TCP 侧对称：`tcpdev.cs`、`tcp_device_parameters.cs`、`api_tcp_module.cs`、`tcpdev.md`。
 
-```text
-MDKOSS.exe → MDKOSS.Extensions → MDKOSS.Core
-                ↑
-         ExtensionsBootstrap.Register()
+NuGet：扩展项目单独引用 `System.IO.Ports`；Core 无此依赖。
+
+---
+
+## 4. 如何进行扩展开发
+
+以下以新增一种设备类型 `foo`（假设为某协议客户端）为例。可直接对照 `serialdev` / `tcpdev` 复制改造。
+
+### 步骤 0：判断放哪里
+
+| 情况 | 建议 |
+|------|------|
+| 与串口/TCP 类似的可选通信设备 | 放在 `MDKOSS.Extensions` |
+| 依赖很重、发布节奏独立 | 新建 DLL（如 `MDKOSS.Extensions.Foo`），同样只引用 Core，并在宿主里调用自己的 `FooBootstrap.Register()` |
+| 强依赖运动驱动、几乎必选 | 优先放 Core（gpio/axis 模式），而不是扩展 |
+
+### 步骤 1：设备类（`MDeviceBase`）
+
+```csharp
+public sealed class FooDevice : MDeviceBase
+{
+    public FooDevice(string id, string name, FooConfig config, MVarStore vars)
+        : base(id, name, MDeviceType.Generic /* 或新增枚举值 */, new FooDriverPlaceholder(), vars)
+    {
+        // ...
+    }
+
+    public override void Initialize() { /* 可选 */ base.Initialize(); }
+    public override void Start() { /* 扩展设备常覆盖：勿强依赖运动卡 IsConnected */ }
+    public override void Stop() { /* 关闭连接 */ }
+    public override void Dispose() { /* 释放句柄 */ base.Dispose(); }
+    public override DeviceSnapshot GetSnapshot() { /* 监控用 */ }
+}
 ```
 
-Core **不得** 引用 Extensions，保证内核可单独编译与测试（测试项目可引用 Extensions 以覆盖 serial/tcp）。
+注意：
 
-## 延伸阅读
+- `MDeviceBase` 构造需要 `IDriver`。通信设备通常提供 **轻量占位驱动**（如 `SerialDriver` / `TcpDriver`），表示「连接状态」由设备自己管理，而不是运动卡。
+- 若默认 `Start()` 的 `EnsureConnected()` 不符合通信设备语义，应重写 `Start`/`Stop`（串口/TCP 已如此）。
+- 需要新的 `MDeviceType` 时，在 Core 的枚举中增加一项（仅类型标记）；**工厂仍走注册表**。
 
-- [configuration.md](./configuration.md) — serialdev / tcpdev 参数字段
+### 步骤 2：参数解析
+
+从 `Dictionary<string, string> parameters` 解析配置，给出合理默认值：
+
+```csharp
+public static class FooDeviceParameterSet
+{
+    public static FooConfig ParseConfig(Dictionary<string, string> parameters) { ... }
+}
+```
+
+配置示例（写入 settings JSON）：
+
+```json
+{
+  "id": "foo1",
+  "name": "Foo Client",
+  "type": "foo",
+  "enabled": true,
+  "parameters": {
+    "host": "192.168.1.10",
+    "port": "4000"
+  }
+}
+```
+
+字段说明同步到 [configuration.md](./configuration.md)。
+
+### 步骤 3：注册设备工厂
+
+在 Bootstrap（或独立 `Register`）中：
+
+```csharp
+DeviceExtensionRegistry.Register("foo", (cfg, name, vars, drivers) =>
+{
+    var config = FooDeviceParameterSet.ParseConfig(cfg.Parameters);
+    return new FooDevice(cfg.Id, name, config, vars);
+});
+```
+
+`drivers` 参数在需要绑定已有驱动时使用；纯通信设备可忽略（串口/TCP 用 `_`）。
+
+### 步骤 4：注册统一动作（可选但推荐）
+
+```csharp
+DeviceActionRegistry.Register(
+    device => device is FooDevice,
+    (device, action, parameters) => ExecuteFoo((FooDevice)device, action, parameters));
+```
+
+动作名建议小写：`open` / `close` / `write` / `read` / `status` 等，返回 `DeviceActionResult.Ok(...)` 或 `Fail("reason")`。
+
+### 步骤 5：监控 HTTP 模块（可选）
+
+1. 实现 `MonitoringApiModule` 子类，设置 `RoutePrefix`（如 `"/api/foo"`）。
+2. 在 `HandleAsync` 中解析 path + GET/POST，调用设备 API。
+3. 可抽一层静态 API（参考 `ExtensionDeviceApi`），避免模块内直接堆业务逻辑。
+4. `MonitoringModuleRegistry.Register(runtime => new FooApiModule(runtime));`
+5. 在 [monitoring-api.md](./monitoring-api.md) 与调试页（如需要）中补充路由说明。
+
+### 步骤 6：宿主注册
+
+主程序（或测试 fixture）在创建 runtime **之前**：
+
+```csharp
+ExtensionsBootstrap.Register(); // 或 FooBootstrap.Register();
+```
+
+若新建独立 DLL：宿主项目需 `ProjectReference` 该 DLL，并显式调用其 Bootstrap。
+
+### 步骤 7：文档与测试
+
+- 设备命令语义：`src/extensions/foo.md`（可对标 Epson 风格命令列表，见 `serialdev.md`）
+- 单元/集成测试：`tests/MDKOSS.Tests` 可引用 Extensions，覆盖参数解析、注册后创建设备、action、API
+- 示例配置：`src/configs/sample.setting.json` 增加一条 `enabled: false` 的示例即可
+
+### 步骤 8：若扩展需要新驱动类型
+
+设备扩展与驱动扩展是正交的：
+
+```csharp
+DriverFactory.Register("foocard", () => new DrvFoo());
+```
+
+可在 Extensions Bootstrap 或 Core 中注册。仅当新硬件抽象属于「板卡驱动」时走 `IDriver`；纯 socket/串口设备不必新增 `DriverFactory` 条目。
+
+---
+
+## 5. 开发检查清单
+
+- [ ] 设备类继承 `MDeviceBase`，生命周期与 `Dispose` 正确释放资源
+- [ ] `*ParameterSet` 解析完整，缺省值安全
+- [ ] `DeviceExtensionRegistry.Register` 的 type 与 JSON `type` 一致（大小写不敏感）
+- [ ] 需要监控动作时已注册 `DeviceActionRegistry`
+- [ ] 需要 REST 时已注册 `MonitoringModuleRegistry`，且 `RoutePrefix` 不冲突
+- [ ] 宿主在 `new MdkRuntime` **之前** 调用 Bootstrap
+- [ ] Core **未** 增加对扩展程序集的项目引用
+- [ ] 配置 / 监控 API / 设备 md 文档已更新
+- [ ] 测试覆盖「未注册」与「已注册」两条路径（可选但有价值）
+
+---
+
+## 6. 反模式（避免）
+
+| 反模式 | 后果 |
+|--------|------|
+| 在 Core 的 `BootstrapDevices` 里 `new SerialDevice` | 破坏依赖方向，重新耦合 |
+| 忘记 `Register()` 却配置了扩展 type | 运行时类型不受支持或设备缺失 |
+| 扩展直接依赖 WinForms/CEF | 扩展无法被控制台/测试宿主复用 |
+| HTTP 模块绕过 `MdkRuntime.TryGetDevice` 自己扫全局状态 | 多实例/测试时行为不一致 |
+| 把必选运动设备硬塞进 Extensions | 增加启动仪式与发现成本，收益不大 |
+
+---
+
+## 7. 注册 API 速查
+
+### 设备工厂
+
+```csharp
+DeviceExtensionRegistry.Register(string deviceType, DeviceFactory factory);
+
+// DeviceFactory:
+MDeviceBase? (
+    MdkSetting.DeviceConfig config,
+    string deviceName,
+    MVarStore vars,
+    IReadOnlyDictionary<string, IDriver> drivers)
+```
+
+### 设备动作
+
+```csharp
+DeviceActionRegistry.Register(
+    Func<MDeviceBase, bool> match,
+    Func<MDeviceBase, string, Dictionary<string, JsonElement>?, DeviceActionResult> execute);
+```
+
+### 监控模块
+
+```csharp
+MonitoringModuleRegistry.Register(Func<MdkRuntime, MonitoringApiModule> factory);
+```
+
+### 驱动（可选）
+
+```csharp
+DriverFactory.Register(string type, Func<IDriver> factory);
+```
+
+---
+
+## 8. 延伸阅读
+
+- [architecture.md](./architecture.md) — 总体分层与启动时序
+- [project-layout.md](./project-layout.md) — 解决方案与目录职责
+- [configuration.md](./configuration.md) — `serialdev` / `tcpdev` 参数字段
 - [monitoring-api.md](./monitoring-api.md) — `/api/serial/*`、`/api/tcp/*`
-- `src/extensions/serialdev.md`、`src/extensions/tcpdev.md` — 设备命令说明
+- [core-subsystems.md](./core-subsystems.md) — 设备层与调度
+- `src/extensions/serialdev.md`、`src/extensions/tcpdev.md` — 设备命令语义
