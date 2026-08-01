@@ -99,7 +99,7 @@ HTTP `POST /api/devices/{id}/action` 与此路径一致。
 | PollDriverTask | `core/mtask.cs` | 轮询驱动在线/心跳 |
 | TaskOperation | `tasks/task_operation.cs` | 操作步骤序列 |
 | TaskCycle | `tasks/task_cycle.cs` | 周期循环逻辑 |
-| MotionTask | `core/motiontask.cs` | 运动相关（按配置使用） |
+| MotionTask / TaskMotionTask | `tasks/task_motion.cs` | 运动任务基类与可配置类型（type=`motion`）；运动走轴/平台设备，IO 走 GpioDevice |
 
 ## 变量中心（MVarStore）
 

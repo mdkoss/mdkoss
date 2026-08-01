@@ -46,6 +46,8 @@ public static class RuntimeTaskFactory
         RegisterCore("taskoperation", CreateOperation);
         RegisterCore("cycle", CreateCycle);
         RegisterCore("taskcycle", CreateCycle);
+        RegisterCore("motion", CreateMotion);
+        RegisterCore("motiontask", CreateMotion);
     }
 
     /// <summary>Registers or replaces a factory for the given task type key.</summary>
@@ -102,6 +104,23 @@ public static class RuntimeTaskFactory
     {
         _ = taskTypeKey;
         return new TaskCycleTask(ctx.Vars, ctx.GetSnapshot, ctx.ListTasks, config.IntervalMs);
+    }
+
+    private static MTaskBase? CreateMotion(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
+    {
+        if (!ctx.Drivers.TryGetValue(config.DriverId, out var driver))
+        {
+            return null;
+        }
+
+        var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskTypeKey : config.Name;
+        return new TaskMotionTask(
+            taskName,
+            config.IntervalMs,
+            driver,
+            ctx.Vars,
+            ctx.Devices,
+            config.Parameters);
     }
 
     private static GpioDevice? ResolveTaskGpio(TaskBootstrapContext ctx, IReadOnlyDictionary<string, string> parameters)

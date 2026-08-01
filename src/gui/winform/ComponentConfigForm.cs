@@ -1220,7 +1220,7 @@ public sealed class ComponentConfigForm : Form
         {
             using var dialog = new RowPropertyDialog("New Task");
             var name = dialog.AddText("Name", "task-main");
-            var type = dialog.AddCombo("Type", ["pollDriver", "operation", "cycle"], "pollDriver");
+            var type = dialog.AddCombo("Type", ["pollDriver", "operation", "cycle", "motion"], "pollDriver");
             var driverId = dialog.AddText("DriverId", "drv-main");
             var intervalMs = dialog.AddNumber("IntervalMs", 100, 1, 600000);
             var lastPreset = GetTaskParameterPreset(type.Text);
