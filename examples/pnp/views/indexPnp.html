@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS PNP 主界面</title>
+  <style>
+    :root {
+      --bg: #08101c;
+      --panel: #0e182c;
+      --panel2: #121f38;
+      --text: #e6efff;
+      --muted: #8fa3cc;
+      --line: #1c2b4a;
+      --accent: #4e8cff;
+      --ok: #35d08f;
+      --warn: #ffcc66;
+      --danger: #ff5d5d;
+      --top-h: 64px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 420px at 12% -10%, rgba(78,140,255,.18), transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, rgba(53,208,143,.08), transparent 50%),
+        var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: var(--top-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #142038 0%, #0d1628 100%);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #2a5fcc);
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 12px; letter-spacing: -.3px;
+    }
+    .brand h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
+    .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .runtime {
+      font-size: 12px; color: var(--muted);
+      padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #0a1324;
+    }
+    .runtime.on { color: var(--ok); border-color: rgba(53,208,143,.35); }
+    button {
+      border: 1px solid var(--line);
+      background: #0d1730;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.primary { background: rgba(78,140,255,.2); border-color: rgba(78,140,255,.45); }
+    button.danger { background: rgba(255,93,93,.14); border-color: rgba(255,93,93,.4); }
+    button:hover { filter: brightness(1.1); }
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr; overflow: auto; }
+      body { overflow: auto; }
+    }
+    .col { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 0;
+    }
+    .card h2 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600;
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(53,208,143,.4); }
+    .badge.warn { color: var(--warn); border-color: rgba(255,204,102,.4); }
+    .badge.err { color: var(--danger); border-color: rgba(255,93,93,.4); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat {
+      background: #0a1324;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat .n { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat .l { margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .kv {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 6px 10px;
+      font-size: 13px;
+    }
+    .kv .k { color: var(--muted); }
+    .kv .v { font-family: Consolas, "Cascadia Mono", monospace; word-break: break-all; }
+    .modules {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 10px;
+      overflow: auto;
+      max-height: 100%;
+      padding-right: 2px;
+    }
+    .mod {
+      background: #0a1324;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      min-height: 96px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mod .row { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+    .mod .name { font-size: 13px; font-weight: 700; }
+    .mod .id { font-size: 11px; color: var(--muted); font-family: Consolas, monospace; }
+    .mod .detail { font-size: 12px; color: var(--muted); margin-top: auto; }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0;
+    }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 8px rgba(53,208,143,.5); }
+    .dot.err { background: var(--danger); box-shadow: 0 0 8px rgba(255,93,93,.45); }
+    .log-card { flex: 1; display: flex; flex-direction: column; min-height: 280px; }
+    .log-toolbar { display: flex; gap: 8px; align-items: center; }
+    .log-toolbar .hint { color: var(--muted); font-size: 12px; font-weight: 500; }
+    .log-view {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #070e1a;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 12px;
+      line-height: 1.55;
+      padding: 10px 12px;
+    }
+    .log-line { white-space: pre-wrap; word-break: break-word; }
+    .log-line .t { color: #6f84ad; }
+    .log-line .s { color: var(--accent); }
+    .log-line.INFO .lv { color: var(--ok); }
+    .log-line.WARN .lv { color: var(--warn); }
+    .log-line.ERROR .lv { color: var(--danger); }
+    .links { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+    .links a { color: var(--accent); text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+    .msg {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #0a1324;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      min-height: 42px;
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">PNP</div>
+      <div>
+        <h1 id="projectName">PNP 拾取放置</h1>
+        <p id="subtitle">模块状态 · 执行日志 · 机型主界面</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="runtime" id="runtimeBadge">连接中…</div>
+      <button class="primary" id="btnStart" type="button">启动</button>
+      <button class="danger" id="btnStop" type="button">停止</button>
+      <button id="btnReset" type="button">复位</button>
+      <button id="btnTray" type="button">换盘</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="col">
+      <section class="card">
+        <h2>运行概览 <span class="badge" id="phaseBadge">—</span></h2>
+        <div class="stats">
+          <div class="stat"><div class="n" id="okCount">0</div><div class="l">OK</div></div>
+          <div class="stat"><div class="n" id="ngCount">0</div><div class="l">NG</div></div>
+          <div class="stat"><div class="n" id="yield">—</div><div class="l">良率</div></div>
+          <div class="stat"><div class="n" id="moduleOk">—</div><div class="l">模块正常</div></div>
+        </div>
+        <div class="kv">
+          <div class="k">循环阶段</div><div class="v" id="phase">—</div>
+          <div class="k">操作状态</div><div class="v" id="opState">—</div>
+          <div class="k">传送带</div><div class="v" id="conveyor">—</div>
+          <div class="k">视觉 XY</div><div class="v" id="visionXy">—</div>
+          <div class="k">视觉角度</div><div class="v" id="visionAngle">—</div>
+          <div class="k">Tray 到位</div><div class="v" id="trayPresent">—</div>
+        </div>
+        <div class="msg" id="message">等待状态…</div>
+        <div class="links">
+          <a href="/monitorPnp.html">循环细节</a>
+          <a href="/monitorIO.html">IO 监控</a>
+          <a href="/monitorPlatform.html?deviceId=robot-xyz">机器人示教</a>
+          <a href="/monitoringpage.html">综合监控</a>
+        </div>
+      </section>
+
+      <section class="card" style="flex:1; display:flex; flex-direction:column;">
+        <h2>模块运行状态 <span class="badge" id="moduleCount">0</span></h2>
+        <div class="modules" id="modules"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card log-card">
+        <h2>
+          <span>执行日志</span>
+          <span class="log-toolbar">
+            <span class="hint" id="logHint">0 条</span>
+            <button id="btnClearLog" type="button">清空</button>
+          </span>
+        </h2>
+        <div class="log-view" id="logView"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const modulesEl = document.getElementById("modules");
+    const logView = document.getElementById("logView");
+    let lastLogSignature = "";
+    let stickToBottom = true;
+
+    logView.addEventListener("scroll", () => {
+      const gap = logView.scrollHeight - logView.scrollTop - logView.clientHeight;
+      stickToBottom = gap < 40;
+    });
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value == null || value === "" ? "—" : String(value);
+    }
+
+    function phaseBadgeClass(phase) {
+      if (phase === "Fault") return "badge err";
+      if (phase === "Idle" || !phase || phase === "—") return "badge";
+      if (phase === "RequestTrayChange") return "badge warn";
+      return "badge ok";
+    }
+
+    function moduleTone(ok) {
+      return ok ? "ok" : "err";
+    }
+
+    function renderModules(modules) {
+      modulesEl.innerHTML = "";
+      const list = Array.isArray(modules) ? modules : [];
+      setText("moduleCount", String(list.length));
+      const okCount = list.filter((m) => m.ok).length;
+      setText("moduleOk", list.length ? `${okCount}/${list.length}` : "—");
+      list.forEach((m) => {
+        const el = document.createElement("div");
+        el.className = "mod";
+        el.innerHTML = `
+          <div class="row">
+            <div class="name">${escapeHtml(m.name || m.id || "")}</div>
+            <span class="dot ${moduleTone(!!m.ok)}"></span>
+          </div>
+          <div class="id">${escapeHtml(m.category || "")} · ${escapeHtml(m.id || "")}</div>
+          <div class="row">
+            <span class="badge ${m.ok ? "ok" : "err"}">${escapeHtml(m.state || "")}</span>
+          </div>
+          <div class="detail">${escapeHtml(m.detail || m.type || "")}</div>`;
+        modulesEl.appendChild(el);
+      });
+    }
+
+    function renderLogs(logs) {
+      const list = Array.isArray(logs) ? logs : [];
+      const signature = list.map((l) => `${l.time}|${l.level}|${l.message}`).join("\n");
+      if (signature === lastLogSignature) return;
+      lastLogSignature = signature;
+      setText("logHint", `${list.length} 条`);
+      logView.innerHTML = list.map((l) => {
+        const level = (l.level || "INFO").toUpperCase();
+        return `<div class="log-line ${level}"><span class="t">${escapeHtml(l.time || "")}</span> <span class="lv">[${escapeHtml(level)}]</span> <span class="s">${escapeHtml(l.source || "")}</span> ${escapeHtml(l.message || "")}</div>`;
+      }).join("");
+      if (stickToBottom) {
+        logView.scrollTop = logView.scrollHeight;
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    async function post(action) {
+      await fetch(`/api/pnp/${action}`, { method: "POST" });
+      await refresh();
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/pnp/dashboard", { cache: "no-store" });
+        const data = await res.json();
+        const phase = data.phase || "—";
+        document.getElementById("projectName").textContent = data.projectName || "PNP 拾取放置";
+        document.getElementById("subtitle").textContent = data.message || "模块状态 · 执行日志 · 机型主界面";
+        const runtime = document.getElementById("runtimeBadge");
+        runtime.textContent = data.isRunning ? "Runtime 运行中" : "Runtime 已停止";
+        runtime.className = "runtime" + (data.isRunning ? " on" : "");
+        setText("phase", phase);
+        setText("message", data.message);
+        setText("opState", data.operationState);
+        setText("conveyor", `${data.conveyorPhase || "—"} / ${data.conveyorMessage || ""}`.replace(/ \/ $/, ""));
+        setText("visionXy", `X=${data.vision?.topX ?? "—"}  Y=${data.vision?.topY ?? "—"}  OK=${data.vision?.topOk ?? "—"}`);
+        setText("visionAngle", `${data.vision?.angleDeg ?? "—"}°  OK=${data.vision?.angleOk ?? "—"}`);
+        setText("trayPresent", `源=${data.srcTrayPresent ?? "—"}  目标=${data.tgtTrayPresent ?? "—"}  换盘=${data.trayChangeRequest ?? "—"}`);
+        setText("okCount", data.okCount);
+        setText("ngCount", data.ngCount);
+        const ok = Number(data.okCount) || 0;
+        const ng = Number(data.ngCount) || 0;
+        const total = ok + ng;
+        setText("yield", total ? ((ok / total) * 100).toFixed(1) + "%" : "—");
+        const badge = document.getElementById("phaseBadge");
+        badge.className = phaseBadgeClass(phase);
+        badge.textContent = phase;
+        renderModules(data.modules);
+        renderLogs(data.logs);
+      } catch (e) {
+        setText("message", "状态刷新失败: " + e);
+        document.getElementById("runtimeBadge").textContent = "连接失败";
+        document.getElementById("runtimeBadge").className = "runtime";
+      }
+    }
+
+    document.getElementById("btnStart").onclick = () => post("start");
+    document.getElementById("btnStop").onclick = () => post("stop");
+    document.getElementById("btnReset").onclick = () => post("reset");
+    document.getElementById("btnTray").onclick = () => post("traychange");
+    document.getElementById("btnClearLog").onclick = () => post("clearlogs");
+    refresh();
+    setInterval(refresh, 500);
+  </script>
+</body>
+</html>

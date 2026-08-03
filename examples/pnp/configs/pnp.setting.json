@@ -1,0 +1,227 @@
+{
+  "projectName": "MDKOSS-PNP-Demo",
+  "monitoringPrefix": "http://127.0.0.1:5080/",
+  "cycleMs": 20,
+  "drivers": [
+    {
+      "id": "drv-main",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio-pnp",
+      "name": "PNP GPIO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "driverIds": "drv-main",
+        "in.startButton": "drv-main:X0",
+        "in.stopButton": "drv-main:X1",
+        "in.resetButton": "drv-main:X2",
+        "in.src.trayPresent": "drv-main:X10",
+        "in.tgt.trayPresent": "drv-main:X11",
+        "out.tower.red": "drv-main:Y0",
+        "out.tower.yellow": "drv-main:Y1",
+        "out.tower.green": "drv-main:Y2",
+        "out.vacuum": "drv-main:Y10",
+        "out.src.conveyorRun": "drv-main:Y20",
+        "out.tgt.conveyorRun": "drv-main:Y21"
+      }
+    },
+    {
+      "id": "robot-xyz",
+      "name": "PNP Robot XYZU",
+      "type": "xyzu",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "cam-top",
+      "name": "Top Camera",
+      "type": "cameradev",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "cam-bottom",
+      "name": "Bottom Camera",
+      "type": "cameradev",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
+    },
+    {
+      "id": "tray-source",
+      "name": "Source Tray",
+      "type": "tray",
+      "enabled": true,
+      "parameters": {
+        "role": "source",
+        "rows": "3",
+        "cols": "4",
+        "originX": "10",
+        "originY": "10",
+        "pitchX": "25",
+        "pitchY": "25",
+        "pickZ": "-12",
+        "safeZ": "0",
+        "startIndex": "0"
+      }
+    },
+    {
+      "id": "tray-target",
+      "name": "Target Tray",
+      "type": "tray",
+      "enabled": true,
+      "parameters": {
+        "role": "target",
+        "rows": "3",
+        "cols": "4",
+        "originX": "210",
+        "originY": "10",
+        "pitchX": "25",
+        "pitchY": "25",
+        "pickZ": "-12",
+        "safeZ": "0",
+        "startIndex": "0"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 200,
+      "parameters": {
+        "gpioDeviceId": "gpio-pnp"
+      }
+    },
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 1000,
+      "parameters": {}
+    },
+    {
+      "name": "poll-main",
+      "type": "pollDriver",
+      "driverId": "drv-main",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "pnp-cycle",
+      "type": "pnp",
+      "driverId": "drv-main",
+      "intervalMs": 100,
+      "parameters": {
+        "platformDeviceId": "robot-xyz",
+        "gpioDeviceId": "gpio-pnp",
+        "sourceTrayDeviceId": "tray-source",
+        "targetTrayDeviceId": "tray-target",
+        "topCameraDeviceId": "cam-top",
+        "bottomCameraDeviceId": "cam-bottom",
+        "vacuumAlias": "vacuum",
+        "dwellTicks": "2"
+      }
+    },
+    {
+      "name": "pnp-conveyor",
+      "type": "pnpConveyor",
+      "driverId": "drv-main",
+      "intervalMs": 100,
+      "parameters": {
+        "gpioDeviceId": "gpio-pnp",
+        "sourceTrayDeviceId": "tray-source",
+        "targetTrayDeviceId": "tray-target",
+        "sourceRunAlias": "src.conveyorRun",
+        "targetRunAlias": "tgt.conveyorRun",
+        "runTicks": "5"
+      }
+    }
+  ],
+  "recipeVarKeys": [
+    "machine.mode",
+    "task.operation.command",
+    "pnp.bottomCam.x",
+    "pnp.bottomCam.y",
+    "pnp.place.offsetX",
+    "pnp.place.offsetY",
+    "pnp.place.angleOffsetDeg",
+    "pnp.vision.top.recipe",
+    "pnp.vision.bottom.recipe",
+    "pnp.vision.top.noiseMm",
+    "pnp.vision.bottom.angleRangeDeg",
+    "pnp.vision.top.ngRate",
+    "pnp.vision.bottom.ngRate"
+  ],
+  "activeRecipeId": "chip-a",
+  "recipes": [
+    {
+      "id": "chip-a",
+      "name": "芯片A",
+      "description": "标准角度补偿放置",
+      "vars": {
+        "machine.mode": "AUTO",
+        "task.operation.command": "lamp:green",
+        "pnp.bottomCam.x": "150",
+        "pnp.bottomCam.y": "0",
+        "pnp.place.offsetX": "0",
+        "pnp.place.offsetY": "0",
+        "pnp.place.angleOffsetDeg": "0",
+        "pnp.vision.top.recipe": "top-locate",
+        "pnp.vision.bottom.recipe": "bottom-angle",
+        "pnp.vision.top.noiseMm": "0.3",
+        "pnp.vision.bottom.angleRangeDeg": "15",
+        "pnp.vision.top.ngRate": "0.02",
+        "pnp.vision.bottom.ngRate": "0.02"
+      }
+    },
+    {
+      "id": "chip-b",
+      "name": "芯片B",
+      "description": "更大角度范围与放置偏置",
+      "vars": {
+        "machine.mode": "AUTO",
+        "task.operation.command": "lamp:green",
+        "pnp.bottomCam.x": "150",
+        "pnp.bottomCam.y": "0",
+        "pnp.place.offsetX": "0.5",
+        "pnp.place.offsetY": "-0.2",
+        "pnp.place.angleOffsetDeg": "1.5",
+        "pnp.vision.top.recipe": "top-locate-b",
+        "pnp.vision.bottom.recipe": "bottom-angle-b",
+        "pnp.vision.top.noiseMm": "0.5",
+        "pnp.vision.bottom.angleRangeDeg": "30",
+        "pnp.vision.top.ngRate": "0.03",
+        "pnp.vision.bottom.ngRate": "0.03"
+      }
+    }
+  ],
+  "vars": {
+    "machine.mode": "AUTO",
+    "machine.ready": true,
+    "task.operation.alias.red": "tower.red",
+    "task.operation.alias.yellow": "tower.yellow",
+    "task.operation.alias.green": "tower.green",
+    "task.operation.command": "lamp:yellow",
+    "task.pnp.run": false,
+    "task.pnp.command": "",
+    "task.pnp.srcTrayPresent": true,
+    "task.pnp.tgtTrayPresent": true,
+    "task.pnp.trayChangeRequest": false,
+    "pnp.bottomCam.x": 150,
+    "pnp.bottomCam.y": 0,
+    "pnp.place.offsetX": 0,
+    "pnp.place.offsetY": 0,
+    "pnp.place.angleOffsetDeg": 0
+  }
+}

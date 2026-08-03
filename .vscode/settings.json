@@ -1,0 +1,11 @@
+{
+  "dotrush.roslyn.projectOrSolutionFiles": [
+    "${workspaceFolder}/MDKOSS.sln"
+  ],
+  "dotrush.roslyn.loadMetadataForReferencedProjects": true,
+  "dotrush.roslyn.restoreProjectsBeforeLoading": true,
+  "files.exclude": {
+    "**/bin": true,
+    "**/obj": true
+  }
+}

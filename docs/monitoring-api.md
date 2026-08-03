@@ -1,6 +1,6 @@
 # 监控服务与 HTTP API
 
-运行时通过 `MonitoringServer`（`src/server/`，`HttpListener`）提供静态 HMI 页面与 REST API。监听地址由配置项 `monitoringPrefix` 决定，默认 `http://127.0.0.1:5080/`（同时注册 `localhost` 别名）。
+运行时通过 `MonitoringServer`（`src/MDKOSS.Core/server/`，`HttpListener`）提供静态 HMI 页面与 REST API。监听地址由配置项 `monitoringPrefix` 决定，默认 `http://127.0.0.1:5080/`（同时注册 `localhost` 别名）。
 
 ## 架构
 
@@ -18,7 +18,7 @@ flowchart LR
 
 - 静态页在构建时复制到输出目录 `views/`，由 `*Page.cs` 在启动时读入内存
 - API 模块按 `RoutePrefix` 匹配，**更具体的前缀先注册**
-- 扩展模块通过 `MonitoringModuleRegistry` 注入（Serial/TCP）
+- 扩展模块通过 `MonitoringModuleRegistry` 注入（Serial/TCP/ExtCamera 等）
 
 ## 静态页面
 
@@ -30,7 +30,7 @@ flowchart LR
 | `/monitorPlatform.html` | `monitorPlatform.html` | 平台步进示教 |
 | `/debugSerialDev.html` | `debugSerialDev.html` | 串口调试 |
 
-平台示教页设计说明：`src/views/motiorplatform.md`。
+平台示教页设计说明：`src/MDKOSS.Cef/views/motiorplatform.md`。
 
 ## REST API 概览
 
@@ -77,6 +77,15 @@ flowchart LR
 ### TCP（Extensions）
 
 TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模块对称，具体路由见 `api_tcp_module.cs`）。
+
+### 扩展相机（MDKOSS.Extensions.Camera）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/extcamera/status` | GET | 查询 `deviceId` 对应扩展相机状态 |
+| `/api/extcamera/open` | POST | 打开相机会话 |
+| `/api/extcamera/close` | POST | 关闭相机会话 |
+| `/api/extcamera/trigger` | POST | 触发采集（可选 `recipe`） |
 
 ### 配方
 

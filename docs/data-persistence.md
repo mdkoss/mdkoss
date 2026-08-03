@@ -1,6 +1,6 @@
 # 数据持久化（SQLite）
 
-MDKOSS 使用 **Microsoft.Data.Sqlite** 持久化配方同步、生产排单与平台示教点。运行时通过 `MdkDataStore` 访问，由 `MdkRuntime` 在启动/关闭时协调与 JSON 配置的同步。
+MDKOSS 使用 **Microsoft.Data.Sqlite** 持久化配方同步、生产排单、平台示教点，以及（schema v2）完整工程配置导出表。运行时通过 `MdkDataStore` 访问业务数据；配置工具通过 `MdkConfigStore` 将 `*.setting.json` 导出到规范化表。
 
 ## 数据库位置
 
@@ -14,9 +14,27 @@ MDKOSS 使用 **Microsoft.Data.Sqlite** 持久化配方同步、生产排单与�
 
 | 类型 | 文件 | 职责 |
 |------|------|------|
-| `MdkDatabase` | `mdk_database.cs` | 连接、迁移、原始 SQL 执行 |
+| `MdkDatabase` | `mdk_database.cs` | 连接、迁移、原始 SQL 执行（当前 schema version = 2） |
 | `MdkDataStore` | `mdk_data_store.cs` | 业务 API：订单、配方、示教点 |
+| `MdkConfigStore` | `mdk_config_store.cs` | setting JSON ↔ 配置表导出/导入 |
 | `MdkDataModels` | `mdk_data_models.cs` | 记录 DTO |
+
+## 配置导出表（schema v2）
+
+| 表 | 来源 | 说明 |
+|----|------|------|
+| `drivers` | `setting.drivers` | 驱动 id/type/enabled/parameters |
+| `devices` | `setting.devices` | 全部设备（含 gpio/axis/platform 等） |
+| `gpios` | gpio/vio 的 `in.*`/`out.*` | 规范化点位路由 |
+| `axis` | type=`axis` 设备 | 单轴设备投影 |
+| `platform` | platform / xy… 族 | 平台设备 + kind |
+| `positions` | `teach_points` 镜像 | 导出时从示教点复制 |
+| `sysconfigs` | 顶层字段 | projectName/cycleMs/vars/tasks/… |
+| `recipes` | `setting.recipes` | 与运行时配方表共用 |
+| `logs` | 导出/导入事件 | 审计日志 |
+| `langs` | 内置种子 | zh-CN / en-US UI 文案 |
+
+WPF 配置工具：`dotnet run --project src/MDKOSS.Config.Wpf` → 菜单「导出到 SQLite」。
 
 ## 生命周期中的数据流
 
@@ -84,7 +102,7 @@ sequenceDiagram
 
 ## 测试
 
-`tests/MDKOSS.Tests/MdkRecipeTests.cs` 等用例覆盖配方与 API 行为；测试输出目录下可生成独立 `data/mdk.db`。
+`tests/MDKOSS.Tests/Core/core/MdkRecipeTests.cs`、`Core/server/RecipeApiModuleTests.cs` 等用例覆盖配方与 API 行为；测试输出目录下可生成独立 `data/mdk.db`。
 
 ## 延伸阅读
 

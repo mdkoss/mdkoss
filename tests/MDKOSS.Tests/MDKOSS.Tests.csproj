@@ -16,11 +16,12 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MDKOSS.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Config\MDKOSS.Config.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\configs\sample.setting.json" Link="configs\sample.setting.json">
+    <None Include="..\..\src\MDKOSS.Config\configs\sample.setting.json" Link="configs\sample.setting.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+  <Import Project="..\..\src\MdkPlugins.targets" />
 </Project>

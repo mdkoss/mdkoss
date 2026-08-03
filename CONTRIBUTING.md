@@ -21,7 +21,8 @@ Thanks for helping improve MDKOSS.
 3. Run locally / 本地运行：
 
 ```bash
-dotnet run --project src/MDKOSS.csproj
+dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj
+dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
 dotnet test MDKOSS.sln -c Release
 ```
 

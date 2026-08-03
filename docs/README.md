@@ -15,16 +15,18 @@
 | [data-persistence.md](./data-persistence.md) | SQLite 持久化：排单、示教点、配方同步 |
 | [gui.md](./gui.md) | WinForms / CEF 桌面壳与配置管理工具 |
 | [winform-epson-rc-design.md](./winform-epson-rc-design.md) | WinForms 配置界面设计参考（EPSON RC+ 风格） |
+| [MDKOSS.Config/design.md](../src/MDKOSS.Config/design.md) | Config 项目内配置界面设计指引（实现约定） |
 
 ## 阅读顺序建议
 
 1. **新人 onboarding**：architecture → project-layout → configuration → monitoring-api  
 2. **扩展新设备类型**：extensions → core-subsystems（设备层）→ monitoring-api  
-3. **改配置 UI**：gui → winform-epson-rc-design  
+3. **改配置 UI**：gui → [MDKOSS.Config/design.md](../src/MDKOSS.Config/design.md) → winform-epson-rc-design  
 
 ## 相关资源
 
-- 示例配置：`src/configs/sample.setting.json`
-- 设备扩展说明：`src/extensions/serialdev.md`、`src/extensions/tcpdev.md`
-- 平台示教页设计：`src/views/motiorplatform.md`
+- 示例配置：`src/MDKOSS.Cef/configs/sample.setting.json`
+- 配置模块说明：`src/MDKOSS.Config/config.md`、`src/MDKOSS.Config/design.md`
+- 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`
+- 平台示教页设计：`src/MDKOSS.Cef/views/motiorplatform.md`
 - 单元测试：`tests/MDKOSS.Tests/`

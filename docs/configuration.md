@@ -40,11 +40,11 @@
 
 | type | 实现 | 用途 |
 |------|------|------|
-| `sim` | `DrvSim` | 软件仿真：内存 DI/DO、轴等，适合无硬件开发 |
-| `gts` | `DrvGts` | GTS 示例驱动（内存映射模拟） |
-| `dmc` | `DrvDmc` | DMC 运动控制卡（实现存在于 `drvdmc.cs`，需在 `DriverFactory` 注册后可用） |
+| `sim` | `DrvSim`（`MDKOSS.Drivers.Sim`） | 软件仿真：内存 DI/DO、轴等 |
+| `gts` | `DrvGts`（`MDKOSS.Drivers.Gts`） | GTS 运动卡驱动（gts.dll） |
+| `dmc` | （待 `DrvDmc`） | LTDMC 原生绑定在 `MDKOSS.Drivers.Dmc`，IDriver 包装待补 |
 
-扩展新驱动：调用 `DriverFactory.Register(type, factory)`，通常在静态初始化或 Bootstrap 中完成。
+扩展新驱动：新建 `src/MDKOSS.Drivers.Xxx`，实现 `IDriver` + `IMdkExtension`（`registration.Driver`），宿主调用 `XxxDriverBootstrap.Register()`。
 
 ## devices[]
 
@@ -76,8 +76,9 @@
 | `axis` | Core | 单轴设备 |
 | `platform` | Core | 多轴平台；也支持 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw` 作为 type 简写 |
 | `cameradev` | Core | 相机类设备占位 |
-| `serialdev` | Extensions | RS-232C 串口 |
-| `tcpdev` | Extensions | TCP 客户端/服务端通信 |
+| `serialdev` | Extensions.Serial | RS-232C 串口 |
+| `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
+| `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
 
 ### gpio parameters
 
@@ -104,11 +105,23 @@
 
 `portName`、`baudRate`、`dataBits`、`parity`、`stopBits`、`readTimeout`、`writeTimeout`、`dtrEnable`、`rtsEnable` 等。
 
-解析：`SerialDeviceParameterSet`（Extensions）
+解析：`SerialDeviceParameterSet`（`src/MDKOSS.Extensions.Serial`）
 
 ### tcpdev parameters
 
-主机、端口、连接模式等，见 `TcpDeviceParameterSet`（Extensions）与 `src/extensions/tcpdev.md`。
+主机、端口、连接模式等，见 `TcpDeviceParameterSet`（`src/MDKOSS.Extensions.Tcp`）与 `tcpdev.md`。
+
+### extcamera parameters
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `backend` | 后端标记（示例实现 `sim`） | `sim` |
+| `deviceIndex` | 设备序号 | `0` |
+| `width` / `height` | 分辨率 | `1280` / `720` |
+| `exposureMs` | 曝光（ms，仿真占位） | `10` |
+| `noisePx` | 仿真偏移噪声幅度 | `0.5` |
+
+解析：`ExtCameraDeviceParameters`（`src/MDKOSS.Extensions.Camera`）。与 Core 内置 `cameradev` 占位设备不同。
 
 ## tasks[]
 
@@ -179,4 +192,4 @@ WinForms `ComponentConfigForm` 在保存前校验：重复 id、缺失驱动、�
 
 ## 示例
 
-完整示例见 `src/configs/sample.setting.json`。
+完整示例见 `src/MDKOSS.Cef/configs/sample.setting.json`。

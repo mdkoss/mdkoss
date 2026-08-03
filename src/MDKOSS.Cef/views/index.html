@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 主界面</title>
+  <style>
+    :root {
+      --bg: #0a0f1a;
+      --panel: #101a2e;
+      --panel2: #0d1528;
+      --text: #e8f0ff;
+      --muted: #8fa3cc;
+      --line: #1e2d4d;
+      --accent: #4e8cff;
+      --ok: #35d08f;
+      --warn: #ffcc66;
+      --danger: #ff5d5d;
+      --top-h: 52px;
+      --bottom-h: 72px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── 顶部控制栏 ── */
+    .topbar {
+      height: var(--top-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background: linear-gradient(180deg, #141e36 0%, #0f1729 100%);
+      border-bottom: 1px solid var(--line);
+      position: relative;
+      z-index: 50;
+      padding: 0 16px;
+    }
+    .topbar-inner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px 0 8px;
+      border-right: 1px solid var(--line);
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), #2a5fcc);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800; color: #fff;
+      letter-spacing: -0.5px;
+    }
+    .brand-name {
+      font-size: 15px; font-weight: 700; white-space: nowrap;
+      max-width: 180px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nav-item { position: relative; }
+    .nav-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, color .15s, border-color .15s;
+    }
+    .nav-btn:hover, .nav-btn.active {
+      background: rgba(78, 140, 255, 0.12);
+      border-color: rgba(78, 140, 255, 0.3);
+      color: var(--text);
+    }
+    .nav-btn .ico { font-size: 15px; line-height: 1; }
+    .nav-btn .caret {
+      font-size: 9px; opacity: .6; margin-left: 2px;
+      transition: transform .2s;
+    }
+    .nav-btn.active .caret { transform: rotate(180deg); }
+
+    /* 二级下拉面板 */
+    .dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: 280px;
+      max-width: 420px;
+      max-height: 360px;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 12px 40px rgba(0,0,0,.5);
+      z-index: 100;
+      padding: 10px;
+    }
+    .dropdown.open { display: block; }
+    .dropdown-title {
+      font-size: 11px; color: var(--muted); font-weight: 600;
+      text-transform: uppercase; letter-spacing: .5px;
+      padding: 4px 6px 8px; border-bottom: 1px solid var(--line); margin-bottom: 6px;
+    }
+    .dropdown table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .dropdown th, .dropdown td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+    .dropdown th { color: var(--muted); font-weight: 600; }
+    .dropdown a { color: var(--accent); text-decoration: none; font-size: 12px; }
+    .dropdown a:hover { text-decoration: underline; }
+    .dropdown .empty { color: var(--muted); font-size: 12px; padding: 8px; }
+    .dropdown .about-row { padding: 6px 8px; font-size: 12px; display: flex; justify-content: space-between; gap: 12px; }
+    .dropdown .about-row span:first-child { color: var(--muted); }
+
+    /* 报警灯 */
+    .alarm-lamp-wrap {
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 12px 0 16px;
+      border-left: 1px solid var(--line);
+      margin-left: 8px;
+      flex-shrink: 0;
+    }
+    .alarm-lamp-label { font-size: 11px; color: var(--muted); }
+    .alarm-lamp {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 12px rgba(255,93,93,.6);
+      transition: background .3s, box-shadow .3s;
+      cursor: default;
+    }
+    .alarm-lamp.yellow { background: var(--warn); box-shadow: 0 0 12px rgba(255,204,102,.6); }
+    .alarm-lamp.green { background: var(--ok); box-shadow: 0 0 12px rgba(53,208,143,.6); }
+
+    /* ── 主内容区：订单列表 ── */
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 16px;
+      overflow: hidden;
+    }
+    .main-header {
+      display: flex; align-items: baseline; justify-content: space-between;
+      margin-bottom: 10px; flex-shrink: 0;
+    }
+    .main-title { font-size: 16px; font-weight: 700; }
+    .main-sub { font-size: 12px; color: var(--muted); }
+    .order-panel {
+      flex: 1; min-height: 0;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .order-table-wrap { flex: 1; overflow: auto; }
+    .order-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .order-table th {
+      position: sticky; top: 0; z-index: 2;
+      background: #121c30;
+      color: var(--muted);
+      font-weight: 600;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+    .order-table td {
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: middle;
+    }
+    .order-table tbody tr { cursor: pointer; transition: background .12s; }
+    .order-table tbody tr:hover td { background: rgba(78,140,255,.06); }
+    .order-table tbody tr.selected td { background: rgba(78,140,255,.12); }
+    .badge {
+      display: inline-block; padding: 3px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; border: 1px solid var(--line);
+    }
+    .badge.running { color: var(--ok); border-color: rgba(53,208,143,.4); background: rgba(53,208,143,.1); }
+    .badge.pending { color: var(--warn); border-color: rgba(255,204,102,.4); background: rgba(255,204,102,.1); }
+    .badge.done { color: var(--muted); }
+    .badge.fault { color: var(--danger); border-color: rgba(255,93,93,.4); background: rgba(255,93,93,.1); }
+
+    /* ── 底部运行状态栏 ── */
+    .bottombar {
+      height: var(--bottom-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: stretch;
+      background: linear-gradient(0deg, #141e36 0%, #0f1729 100%);
+      border-top: 1px solid var(--line);
+      gap: 0;
+    }
+    .bottom-section {
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 8px 16px;
+      border-right: 1px solid var(--line);
+      min-width: 0;
+    }
+    .bottom-section:last-child { border-right: none; }
+    .bottom-label { font-size: 10px; color: var(--muted); font-weight: 600; letter-spacing: .3px; margin-bottom: 4px; }
+    .bottom-value { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .bottom-order { flex: 1.2; min-width: 160px; }
+    .bottom-status { flex: 2; min-width: 280px; }
+    .status-grid {
+      display: flex; gap: 16px; flex-wrap: wrap; align-items: center;
+    }
+    .status-chip {
+      display: flex; align-items: center; gap: 6px; font-size: 12px;
+    }
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--muted); flex-shrink: 0;
+    }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 8px rgba(53,208,143,.7); }
+    .dot.warn { background: var(--warn); box-shadow: 0 0 8px rgba(255,204,102,.7); }
+    .dot.bad { background: var(--danger); box-shadow: 0 0 8px rgba(255,93,93,.7); }
+    .bottom-ctrl {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 20px;
+      flex-shrink: 0;
+    }
+    .bottom-right {
+      display: flex; align-items: stretch; margin-left: auto; flex-shrink: 0;
+    }
+    .bottom-recipe {
+      min-width: 180px; max-width: 260px;
+      display: flex; flex-direction: column; justify-content: center;
+      padding: 8px 16px;
+      border-right: 1px solid var(--line);
+    }
+    .recipe-row {
+      display: flex; align-items: center; gap: 10px; min-width: 0;
+    }
+    .recipe-info { min-width: 0; flex: 1; }
+    .recipe-pick-btn {
+      flex-shrink: 0;
+      height: 36px; padding: 0 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(78, 140, 255, 0.45);
+      background: rgba(78, 140, 255, 0.12);
+      color: var(--accent);
+      font-size: 12px; font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .recipe-pick-btn:hover { background: rgba(78, 140, 255, 0.22); }
+
+    /* 排单选择弹层 */
+    .recipe-modal {
+      display: none; position: fixed; inset: 0; z-index: 200;
+      align-items: center; justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+    }
+    .recipe-modal.open { display: flex; }
+    .recipe-dialog {
+      width: min(420px, calc(100vw - 32px));
+      max-height: min(480px, calc(100vh - 48px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .recipe-dialog-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px; font-weight: 700;
+    }
+    .recipe-dialog-close {
+      border: none; background: transparent; color: var(--muted);
+      font-size: 18px; cursor: pointer; line-height: 1;
+    }
+    .recipe-dialog-body { overflow: auto; padding: 8px; }
+    .recipe-option {
+      display: block; width: 100%; text-align: left;
+      padding: 10px 12px; margin-bottom: 6px;
+      border: 1px solid var(--line); border-radius: 8px;
+      background: var(--panel2); color: var(--text);
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
+    }
+    .recipe-option:hover { background: rgba(78, 140, 255, 0.08); }
+    .recipe-option.active {
+      border-color: rgba(78, 140, 255, 0.55);
+      background: rgba(78, 140, 255, 0.14);
+    }
+    .recipe-option-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+    .recipe-option-meta { font-size: 11px; color: var(--muted); }
+    .recipe-dialog-empty { color: var(--muted); font-size: 12px; padding: 16px; text-align: center; }
+    .ctrl-btn {
+      min-width: 72px; height: 44px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #162644;
+      color: var(--text);
+      font-size: 14px; font-weight: 700;
+      cursor: pointer;
+      transition: background .15s, transform .08s;
+    }
+    .ctrl-btn:hover { background: #1d3157; }
+    .ctrl-btn:active { transform: scale(.97); }
+    .ctrl-btn.start { border-color: rgba(53,208,143,.5); color: var(--ok); }
+    .ctrl-btn.stop { border-color: rgba(255,93,93,.5); color: var(--danger); }
+    .ctrl-btn.reset { border-color: rgba(255,204,102,.5); color: var(--warn); }
+    .ctrl-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* 遮罩：点击外部关闭下拉 */
+    .backdrop {
+      display: none; position: fixed; inset: 0; z-index: 40;
+    }
+    .backdrop.show { display: block; }
+
+    @media (max-width: 900px) {
+      .topbar { overflow-x: auto; justify-content: flex-start; }
+      .topbar-inner { justify-content: flex-start; }
+      .brand-name { max-width: 100px; }
+      .nav-btn { padding: 6px 10px; font-size: 12px; }
+      .bottombar { flex-wrap: wrap; height: auto; }
+      .bottom-section { flex: 1 1 45%; border-bottom: 1px solid var(--line); }
+    }
+  </style>
+</head>
+<body>
+  <div class="backdrop" id="backdrop"></div>
+
+  <!-- 顶部控制栏 -->
+  <header class="topbar">
+    <div class="topbar-inner" id="topbarInner">
+      <div class="brand">
+        <div class="brand-icon" title="MDKOSS">M</div>
+        <div class="brand-name" id="deviceName" title="设备名称">—</div>
+      </div>
+
+      <div class="nav-item" data-panel="panelDevices">
+        <button class="nav-btn" type="button" data-nav="panelDevices"><span class="ico">⚙</span>组件<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelDevices">
+          <div class="dropdown-title">设备组件</div>
+          <div id="devicesDropdownBody"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+
+      <div class="nav-item" data-panel="panelTasks">
+        <button class="nav-btn" type="button" data-nav="panelTasks"><span class="ico">▶</span>任务<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelTasks">
+          <div class="dropdown-title">任务状态</div>
+          <div id="tasksDropdownBody"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+
+      <div class="nav-item" data-panel="panelVars">
+        <button class="nav-btn" type="button" data-nav="panelVars"><span class="ico">𝑥</span>变量<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelVars">
+          <div class="dropdown-title">运行变量（前 30 项）</div>
+          <div id="varsDropdownBody"><div class="empty">加载中…</div></div>
+        </div>
+      </div>
+
+      <div class="nav-item" data-panel="panelAlarms">
+        <button class="nav-btn" type="button" data-nav="panelAlarms"><span class="ico">⚠</span>报警<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelAlarms">
+          <div class="dropdown-title">报警 / 异常</div>
+          <div id="alarmsDropdownBody"><div class="empty">无报警</div></div>
+        </div>
+      </div>
+
+      <div class="nav-item" data-panel="panelUser">
+        <button class="nav-btn" type="button" data-nav="panelUser"><span class="ico">👤</span>用户<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelUser">
+          <div class="dropdown-title">当前用户</div>
+          <div class="about-row"><span>用户</span><span id="userName">operator</span></div>
+          <div class="about-row"><span>角色</span><span id="userRole">操作员</span></div>
+          <div class="about-row"><span>登录</span><span id="userLogin">本地会话</span></div>
+        </div>
+      </div>
+
+      <div class="nav-item" data-panel="panelAbout">
+        <button class="nav-btn" type="button" data-nav="panelAbout"><span class="ico">ℹ</span>关于<span class="caret">▼</span></button>
+        <div class="dropdown" id="panelAbout">
+          <div class="dropdown-title">关于 MDKOSS</div>
+          <div class="about-row"><span>项目</span><span id="aboutProject">—</span></div>
+          <div class="about-row"><span>运行时</span><span id="aboutRuntime">—</span></div>
+          <div class="about-row"><span>监控</span><span><a href="/monitoringpage.html">详细面板</a></span></div>
+          <div class="about-row"><span>IO</span><span><a href="/monitorIO.html">IO 监控</a></span></div>
+          <div class="about-row"><span>平台</span><span><a href="/monitorPlatform.html">步进示教</a></span></div>
+          <div class="about-row"><span>PNP</span><span><a href="/indexPnp.html">机型主界面</a></span></div>
+        </div>
+      </div>
+
+      <div class="alarm-lamp-wrap" title="三色报警灯（来自 task.operation.lamp）">
+        <span class="alarm-lamp-label">报警灯</span>
+        <div class="alarm-lamp" id="alarmLamp"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主内容：订单列表 -->
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title">订单列表</div>
+      <div class="main-sub" id="orderListMeta">—</div>
+    </div>
+    <div class="order-panel">
+      <div class="order-table-wrap">
+        <table class="order-table">
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>产品</th>
+              <th>数量</th>
+              <th>状态</th>
+              <th>进度</th>
+              <th>更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="orderRows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- 底部运行状态栏 -->
+  <footer class="bottombar">
+    <div class="bottom-section bottom-order">
+      <div class="bottom-label">当前订单</div>
+      <div class="bottom-value" id="currentOrderId">—</div>
+      <div class="bottom-value" id="currentOrderDetail" style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px">—</div>
+    </div>
+    <div class="bottom-section bottom-status">
+      <div class="bottom-label">重要状态监控</div>
+      <div class="status-grid" id="statusGrid">
+        <div class="status-chip"><span class="dot" id="dotRuntime"></span><span id="lblRuntime">运行时 —</span></div>
+        <div class="status-chip"><span class="dot" id="dotIo"></span><span id="lblIo">驱动 —</span></div>
+        <div class="status-chip"><span class="dot" id="dotDev"></span><span id="lblDev">设备 —</span></div>
+        <div class="status-chip"><span class="dot" id="dotTask"></span><span id="lblTaskOp">任务 —</span></div>
+      </div>
+    </div>
+    <div class="bottom-right">
+      <div class="bottom-section bottom-recipe">
+        <div class="bottom-label">当前排单</div>
+        <div class="recipe-row">
+          <div class="recipe-info">
+            <div class="bottom-value" id="currentRecipeName">—</div>
+            <div class="bottom-value" id="currentRecipeId" style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px">—</div>
+          </div>
+          <button class="recipe-pick-btn" type="button" id="btnPickRecipe">选择排单</button>
+        </div>
+      </div>
+      <div class="bottom-ctrl">
+        <button class="ctrl-btn start" type="button" id="btnStart">启动</button>
+        <button class="ctrl-btn stop" type="button" id="btnStop">停止</button>
+        <button class="ctrl-btn reset" type="button" id="btnReset">复位</button>
+      </div>
+    </div>
+  </footer>
+
+  <div class="recipe-modal" id="recipeModal" aria-hidden="true">
+    <div class="recipe-dialog" role="dialog" aria-labelledby="recipeModalTitle">
+      <div class="recipe-dialog-head">
+        <span id="recipeModalTitle">选择排单</span>
+        <button class="recipe-dialog-close" type="button" id="btnRecipeModalClose" aria-label="关闭">×</button>
+      </div>
+      <div class="recipe-dialog-body" id="recipeModalBody">
+        <div class="recipe-dialog-empty">加载中…</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function snapshotField(data, camel, pascal) {
+      const a = data[camel];
+      if (a !== undefined && a !== null) return a;
+      return data[pascal];
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function varStr(vars, key, fallback) {
+      const v = vars[key];
+      if (v === null || v === undefined || v === "") return fallback;
+      return String(v);
+    }
+
+    function varNum(vars, key, fallback) {
+      const v = vars[key];
+      if (v === null || v === undefined) return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : fallback;
+    }
+
+    const PLATFORM_TYPES = new Set(["platform", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
+    function isPlatformType(t) {
+      return PLATFORM_TYPES.has(String(t || "").toLowerCase());
+    }
+
+    let snapshotCache = null;
+    let selectedOrderId = null;
+    let openPanelId = null;
+
+    const backdrop = document.getElementById("backdrop");
+    const alarmLamp = document.getElementById("alarmLamp");
+    const deviceName = document.getElementById("deviceName");
+    const orderRows = document.getElementById("orderRows");
+    const orderListMeta = document.getElementById("orderListMeta");
+    const currentOrderId = document.getElementById("currentOrderId");
+    const currentOrderDetail = document.getElementById("currentOrderDetail");
+    const currentRecipeName = document.getElementById("currentRecipeName");
+    const currentRecipeId = document.getElementById("currentRecipeId");
+    const recipeModal = document.getElementById("recipeModal");
+    const recipeModalBody = document.getElementById("recipeModalBody");
+    const btnPickRecipe = document.getElementById("btnPickRecipe");
+    const btnRecipeModalClose = document.getElementById("btnRecipeModalClose");
+
+    /* ── 顶部下拉 ── */
+    document.querySelectorAll(".nav-btn[data-nav]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.getAttribute("data-nav");
+        togglePanel(id, btn);
+      });
+    });
+
+    backdrop.addEventListener("click", closeAllPanels);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAllPanels();
+    });
+
+    function togglePanel(panelId, btn) {
+      const panel = document.getElementById(panelId);
+      if (!panel) return;
+      const isOpen = panel.classList.contains("open");
+      closeAllPanels();
+      if (!isOpen) {
+        panel.classList.add("open");
+        btn.classList.add("active");
+        backdrop.classList.add("show");
+        openPanelId = panelId;
+      }
+    }
+
+    function closeAllPanels() {
+      document.querySelectorAll(".dropdown.open").forEach((p) => p.classList.remove("open"));
+      document.querySelectorAll(".nav-btn.active").forEach((b) => b.classList.remove("active"));
+      backdrop.classList.remove("show");
+      openPanelId = null;
+    }
+
+    /* ── 订单解析（vars: order.list JSON 或 order.* 单条） ── */
+    function parseOrders(vars) {
+      const raw = vars["order.list"] ?? vars["order.list.json"];
+      if (raw) {
+        try {
+          const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+          if (Array.isArray(arr) && arr.length) return arr.map(normalizeOrder);
+        } catch { /* fall through */ }
+      }
+      const id = varStr(vars, "order.current.id", "");
+      if (id) {
+        return [normalizeOrder({
+          id,
+          product: varStr(vars, "order.current.product", "—"),
+          qty: varNum(vars, "order.current.qty", 1),
+          status: varStr(vars, "order.current.status", "running"),
+          progress: varNum(vars, "order.current.progress", 0),
+          updatedAt: varStr(vars, "order.current.updatedAt", new Date().toLocaleString())
+        })];
+      }
+      return demoOrders();
+    }
+
+    function normalizeOrder(o) {
+      return {
+        id: o.id ?? o.orderId ?? "—",
+        product: o.product ?? o.name ?? "—",
+        qty: o.qty ?? o.quantity ?? 1,
+        status: String(o.status ?? "pending").toLowerCase(),
+        progress: Math.min(100, Math.max(0, Number(o.progress ?? 0) || 0)),
+        updatedAt: o.updatedAt ?? o.time ?? "—"
+      };
+    }
+
+    function demoOrders() {
+      return [
+        { id: "ORD-20260521-001", product: "样件 A", qty: 120, status: "running", progress: 45, updatedAt: "—" },
+        { id: "ORD-20260521-002", product: "样件 B", qty: 80, status: "pending", progress: 0, updatedAt: "—" },
+        { id: "ORD-20260520-018", product: "样件 C", qty: 200, status: "done", progress: 100, updatedAt: "—" }
+      ];
+    }
+
+    function statusBadge(status) {
+      const s = String(status).toLowerCase();
+      const cls = s === "running" ? "running" : s === "pending" ? "pending" : s === "fault" || s === "error" ? "fault" : "done";
+      const label = { running: "运行中", pending: "等待", done: "完成", fault: "故障", error: "故障" }[s] || status;
+      return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
+    }
+
+    function renderOrders(orders) {
+      if (!orders.length) {
+        orderRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted);padding:20px">暂无订单（可通过变量 order.list 注入）</td></tr>';
+        orderListMeta.textContent = "0 条";
+        return;
+      }
+      if (!selectedOrderId || !orders.some((o) => o.id === selectedOrderId)) {
+        selectedOrderId = orders[0].id;
+      }
+      orderListMeta.textContent = `${orders.length} 条 · 选中 ${selectedOrderId}`;
+      orderRows.innerHTML = orders.map((o) => {
+        const sel = o.id === selectedOrderId ? " selected" : "";
+        return `<tr class="${sel}" data-order-id="${escapeHtml(o.id)}">
+          <td>${escapeHtml(o.id)}</td>
+          <td>${escapeHtml(o.product)}</td>
+          <td>${escapeHtml(String(o.qty))}</td>
+          <td>${statusBadge(o.status)}</td>
+          <td>${o.progress}%</td>
+          <td>${escapeHtml(o.updatedAt)}</td>
+        </tr>`;
+      }).join("");
+      orderRows.querySelectorAll("tr[data-order-id]").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          selectedOrderId = tr.getAttribute("data-order-id");
+          renderOrders(orders);
+          updateCurrentOrder(orders.find((x) => x.id === selectedOrderId));
+        });
+      });
+      updateCurrentOrder(orders.find((x) => x.id === selectedOrderId));
+    }
+
+    function updateCurrentRecipe(vars) {
+      const name = varStr(vars, "recipe.activeName", "");
+      const id = varStr(vars, "recipe.activeId", "");
+      if (!name && !id) {
+        currentRecipeName.textContent = "未选择";
+        currentRecipeId.textContent = "—";
+        return;
+      }
+      currentRecipeName.textContent = name || id;
+      currentRecipeId.textContent = id ? `ID: ${id}` : "—";
+    }
+
+    /* ── 排单选择 ── */
+    btnPickRecipe.addEventListener("click", () => openRecipeModal());
+    btnRecipeModalClose.addEventListener("click", closeRecipeModal);
+    recipeModal.addEventListener("click", (e) => {
+      if (e.target === recipeModal) closeRecipeModal();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && recipeModal.classList.contains("open")) closeRecipeModal();
+    });
+
+    function closeRecipeModal() {
+      recipeModal.classList.remove("open");
+      recipeModal.setAttribute("aria-hidden", "true");
+    }
+
+    async function openRecipeModal() {
+      recipeModal.classList.add("open");
+      recipeModal.setAttribute("aria-hidden", "false");
+      recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">加载中…</div>';
+      try {
+        const res = await fetch("/api/recipe", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        renderRecipeOptions(data);
+      } catch {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">无法加载排单列表</div>';
+      }
+    }
+
+    function renderRecipeOptions(data) {
+      const activeId = snapshotField(data, "activeRecipeId", "ActiveRecipeId") || "";
+      const recipes = snapshotField(data, "recipes", "Recipes") || [];
+      if (!recipes.length) {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">暂无排单（请在 setting.json 中配置 recipes）</div>';
+        return;
+      }
+      recipeModalBody.innerHTML = recipes.map((r) => {
+        const id = r.id ?? r.Id ?? "—";
+        const name = r.name ?? r.Name ?? id;
+        const desc = r.description ?? r.Description ?? "";
+        const active = String(id).toLowerCase() === String(activeId).toLowerCase() ? " active" : "";
+        const meta = [id, desc].filter(Boolean).join(" · ");
+        return `<button type="button" class="recipe-option${active}" data-recipe-id="${escapeHtml(id)}">
+          <div class="recipe-option-name">${escapeHtml(name)}</div>
+          <div class="recipe-option-meta">${escapeHtml(meta)}</div>
+        </button>`;
+      }).join("");
+      recipeModalBody.querySelectorAll(".recipe-option[data-recipe-id]").forEach((btn) => {
+        btn.addEventListener("click", () => applyRecipe(btn.getAttribute("data-recipe-id")));
+      });
+    }
+
+    async function applyRecipe(recipeId) {
+      if (!recipeId) return;
+      recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">切换中…</div>';
+      try {
+        const res = await fetch(`/api/recipe/apply?id=${encodeURIComponent(recipeId)}`, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) {
+          throw new Error(data.error || "apply_failed");
+        }
+        closeRecipeModal();
+        await tick();
+      } catch {
+        recipeModalBody.innerHTML = '<div class="recipe-dialog-empty">切换排单失败</div>';
+        setTimeout(openRecipeModal, 1200);
+      }
+    }
+
+    function updateCurrentOrder(order) {
+      if (!order) {
+        currentOrderId.textContent = "—";
+        currentOrderDetail.textContent = "—";
+        return;
+      }
+      currentOrderId.textContent = order.id;
+      currentOrderDetail.textContent = `${order.product} · ${order.qty} 件 · ${order.progress}%`;
+    }
+
+    /* ── 下拉内容渲染 ── */
+    function renderDevicesDropdown(devices) {
+      const body = document.getElementById("devicesDropdownBody");
+      const entries = Object.entries(devices || {});
+      if (!entries.length) {
+        body.innerHTML = '<div class="empty">无设备</div>';
+        return;
+      }
+      body.innerHTML = `<table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th></th></tr></thead><tbody>${
+        entries.map(([id, d]) => {
+          const name = d.name ?? d.Name ?? id;
+          const type = d.type ?? d.Type ?? "—";
+          const link = isPlatformType(type)
+            ? `<a href="/monitorPlatform.html?deviceId=${encodeURIComponent(id)}">示教</a>`
+            : (String(type).toLowerCase() === "serialdev"
+              ? `<a href="/debugSerialDev.html?deviceId=${encodeURIComponent(id)}">串口</a>`
+              : "—");
+          return `<tr><td>${escapeHtml(id)}</td><td>${escapeHtml(String(name))}</td><td>${escapeHtml(String(type))}</td><td>${link}</td></tr>`;
+        }).join("")
+      }</tbody></table>`;
+    }
+
+    function renderTasksDropdown(vars) {
+      const body = document.getElementById("tasksDropdownBody");
+      let states = {};
+      const raw = vars["task.cycle.task.states.json"];
+      if (raw) {
+        try { states = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { states = {}; }
+      }
+      const keys = Object.keys(states).sort();
+      if (!keys.length) {
+        body.innerHTML = `<div class="empty">任务状态未上报</div>
+          <div class="about-row" style="margin-top:8px"><span>操作任务</span><span>${escapeHtml(varStr(vars, "task.operation.state", "—"))}</span></div>`;
+        return;
+      }
+      body.innerHTML = `<table><thead><tr><th>任务</th><th>状态</th></tr></thead><tbody>${
+        keys.map((k) => `<tr><td>${escapeHtml(k)}</td><td>${escapeHtml(String(states[k]))}</td></tr>`).join("")
+      }</tbody></table>`;
+    }
+
+    function renderVarsDropdown(vars) {
+      const body = document.getElementById("varsDropdownBody");
+      const keys = Object.keys(vars || {})
+        .filter((k) => !k.startsWith("order.list"))
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+        .slice(0, 30);
+      if (!keys.length) {
+        body.innerHTML = '<div class="empty">无变量</div>';
+        return;
+      }
+      body.innerHTML = `<table><thead><tr><th>键</th><th>值</th></tr></thead><tbody>${
+        keys.map((k) => {
+          let v = vars[k];
+          if (typeof v === "object") try { v = JSON.stringify(v); } catch { v = String(v); }
+          return `<tr><td>${escapeHtml(k)}</td><td style="font-family:monospace;font-size:11px;word-break:break-all">${escapeHtml(String(v ?? ""))}</td></tr>`;
+        }).join("")
+      }</tbody></table>`;
+    }
+
+    function renderAlarmsDropdown(vars, devices) {
+      const body = document.getElementById("alarmsDropdownBody");
+      const alarms = [];
+      const opState = varStr(vars, "task.operation.state", "");
+      if (opState === "fault" || opState === "stopped") {
+        alarms.push({ level: "warn", text: `操作任务: ${opState} — ${varStr(vars, "task.operation.message", "")}` });
+      }
+      const devFault = varNum(vars, "task.cycle.dev.fault", 0);
+      if (devFault > 0) alarms.push({ level: "bad", text: `设备故障 ${devFault} 台` });
+      const taskFault = varNum(vars, "task.cycle.task.fault", 0);
+      if (taskFault > 0) alarms.push({ level: "bad", text: `任务故障 ${taskFault} 个` });
+      for (const [id, d] of Object.entries(devices || {})) {
+        const st = String(d.state ?? d.State ?? "").toLowerCase();
+        if (st === "fault" || st === "error") {
+          alarms.push({ level: "bad", text: `设备 ${id}: ${st}` });
+        }
+      }
+      if (!alarms.length) {
+        body.innerHTML = '<div class="empty">无报警</div>';
+        return;
+      }
+      body.innerHTML = alarms.map((a) =>
+        `<div class="about-row"><span>${a.level === "bad" ? "🔴" : "🟡"}</span><span>${escapeHtml(a.text)}</span></div>`
+      ).join("");
+    }
+
+    function setLamp(lamp) {
+      alarmLamp.className = "alarm-lamp";
+      const c = String(lamp || "red").toLowerCase();
+      if (c === "green") alarmLamp.classList.add("green");
+      else if (c === "yellow") alarmLamp.classList.add("yellow");
+    }
+
+    function setDot(el, mode) {
+      el.className = "dot";
+      if (mode === "ok") el.classList.add("ok");
+      else if (mode === "warn") el.classList.add("warn");
+      else if (mode === "bad") el.classList.add("bad");
+    }
+
+    function renderBottomStatus(data, vars) {
+      const isRunning = !!snapshotField(data, "isRunning", "IsRunning");
+      setDot(document.getElementById("dotRuntime"), isRunning ? "ok" : "warn");
+      document.getElementById("lblRuntime").textContent = isRunning ? "运行时 运行中" : "运行时 已停止";
+
+      const ioOn = varNum(vars, "task.cycle.io.online", 0);
+      const ioTot = varNum(vars, "task.cycle.io.total", 0);
+      const ioOff = varNum(vars, "task.cycle.io.offline", Math.max(0, ioTot - ioOn));
+      setDot(document.getElementById("dotIo"), ioOff > 0 ? "warn" : "ok");
+      document.getElementById("lblIo").textContent = `驱动 ${ioOn}/${ioTot} 在线`;
+
+      const devFault = varNum(vars, "task.cycle.dev.fault", 0);
+      const devRun = varNum(vars, "task.cycle.dev.running", 0);
+      setDot(document.getElementById("dotDev"), devFault > 0 ? "bad" : "ok");
+      document.getElementById("lblDev").textContent = `设备 运行 ${devRun} · 故障 ${devFault}`;
+
+      const opState = varStr(vars, "task.operation.state", "—");
+      const opRun = vars["task.operation.running"];
+      setDot(document.getElementById("dotTask"), opState === "fault" ? "bad" : opRun ? "ok" : "warn");
+      document.getElementById("lblTaskOp").textContent = `操作 ${opState}`;
+
+      document.getElementById("aboutProject").textContent = snapshotField(data, "projectName", "ProjectName") || "—";
+      document.getElementById("aboutRuntime").textContent = isRunning ? "RUNNING" : "STOPPED";
+
+      const user = varStr(vars, "user.name", "");
+      if (user) document.getElementById("userName").textContent = user;
+      const role = varStr(vars, "user.role", "");
+      if (role) document.getElementById("userRole").textContent = role;
+
+      setLamp(vars["task.operation.lamp"] ?? "red");
+      document.getElementById("btnStart").disabled = opState === "running";
+      document.getElementById("btnStop").disabled = opState === "stopped";
+    }
+
+    async function sendTaskAction(url) {
+      try {
+        const res = await fetch(url, { method: "POST" });
+        if (!res.ok) throw new Error("http " + res.status);
+        await tick();
+      } catch {
+        document.getElementById("lblTaskOp").textContent = "操作失败";
+        setDot(document.getElementById("dotTask"), "bad");
+      }
+    }
+
+    document.getElementById("btnStart").addEventListener("click", () => sendTaskAction("/api/task/start"));
+    document.getElementById("btnStop").addEventListener("click", () => sendTaskAction("/api/task/stop"));
+    document.getElementById("btnReset").addEventListener("click", () => sendTaskAction("/api/task/reset"));
+
+    async function tick() {
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        snapshotCache = data;
+        const vars = snapshotField(data, "vars", "Vars") || {};
+        const devices = snapshotField(data, "devices", "Devices") || {};
+        const project = snapshotField(data, "projectName", "ProjectName") || "MDKOSS";
+        deviceName.textContent = varStr(vars, "machine.name", project);
+        deviceName.title = deviceName.textContent;
+
+        renderOrders(parseOrders(vars));
+        renderDevicesDropdown(devices);
+        renderTasksDropdown(vars);
+        renderVarsDropdown(vars);
+        renderAlarmsDropdown(vars, devices);
+        renderBottomStatus(data, vars);
+        updateCurrentRecipe(vars);
+      } catch {
+        deviceName.textContent = "未连接";
+        setDot(document.getElementById("dotRuntime"), "bad");
+        document.getElementById("lblRuntime").textContent = "无法连接 /api/status";
+      }
+    }
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

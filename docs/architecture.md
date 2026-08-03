@@ -74,13 +74,21 @@ flowchart TB
 
 ```text
 MDKOSS.sln
-├── MDKOSS.csproj              # 可执行入口 + GUI（WinForms / CEF）
-├── MDKOSS.Core.csproj         # 运行时内核（core/、tasks/）
-├── MDKOSS.Extensions.csproj   # 可选扩展（serialdev、tcpdev）
-└── MDKOSS.Tests               # xUnit 集成与单元测试
+├── src/MDKOSS.Cef/            # CEF / console 可执行入口
+├── src/MDKOSS.Config/         # WinForms 配置界面可执行入口
+├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）
+├── src/MDKOSS.Extensions/           # 扩展接入接口（IMdkExtension / Host）
+├── src/MDKOSS.Drivers.Sim/          # sim 驱动插件
+├── src/MDKOSS.Drivers.Gts/          # gts 驱动插件
+├── src/MDKOSS.Drivers.Dmc/          # LTDMC 原生绑定
+├── src/MDKOSS.Extensions.Serial/    # serialdev
+├── src/MDKOSS.Extensions.Tcp/       # tcpdev
+├── src/MDKOSS.Extensions.Camera/    # extcamera
+├── examples/pnp/                    # PNP 机型示例
+└── tests/MDKOSS.Tests/              # xUnit（按 Core/Config 等项目分子目录）
 ```
 
-应用启动时调用 `ExtensionsBootstrap.Register()`，再创建 `MdkRuntime`。详见 [extensions.md](./extensions.md)。
+应用启动时调用 `MdkExtensionHost.DiscoverAndRegister()` 扫描 `plugins/` 自动注册驱动与设备扩展，再创建 `MdkRuntime`。详见 [extensions.md](./extensions.md)。
 
 ## 生命周期
 
@@ -89,7 +97,7 @@ MDKOSS.sln
 ```mermaid
 sequenceDiagram
     participant P as Program
-    participant E as ExtensionsBootstrap
+    participant E as ExtensionBootstraps
     participant S as MdkSetting
     participant R as MdkRuntime
     participant M as MonitoringServer
@@ -146,11 +154,10 @@ flowchart LR
 
 ## UI 模式
 
-| 模式 | 启动参数 | 说明 |
-|------|----------|------|
-| WinForms（默认） | 无或 `--winform` | `MainForm` 托管运行时，提供配置管理与监控工具 |
-| CEF | `--cef` | CefSharp 加载 `views/index.html` HMI |
-| Console | `--console` | 无 GUI，仅后台运行时 + HTTP 监控 |
+| 项目 / 参数 | 说明 |
+|-------------|------|
+| `MDKOSS.Config` | `MainForm` 托管运行时，提供配置管理与监控工具 |
+| `MDKOSS.Cef` | CefSharp 加载 HMI；可选 `--console` 无 GUI |
 
 详见 [gui.md](./gui.md)。
 

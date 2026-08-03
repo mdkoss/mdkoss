@@ -1,0 +1,47 @@
+{
+  "name": "extcamera-demo",
+  "description": "Minimal project demonstrating MDKOSS.Extensions.Camera (extcamera)",
+  "databasePath": "data/mdk.db",
+  "monitoring": {
+    "enabled": true,
+    "url": "http://127.0.0.1:5080/"
+  },
+  "drivers": [
+    {
+      "id": "drv-sim",
+      "name": "Sim Driver",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {}
+    }
+  ],
+  "devices": [
+    {
+      "id": "cam-ext-1",
+      "name": "Demo Ext Camera",
+      "type": "extcamera",
+      "enabled": true,
+      "parameters": {
+        "backend": "sim",
+        "deviceIndex": "0",
+        "width": "1280",
+        "height": "720",
+        "exposureMs": "12",
+        "noisePx": "0.8"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "poll-main",
+      "name": "Poll Driver",
+      "type": "pollDriver",
+      "enabled": true,
+      "driverId": "drv-sim",
+      "intervalMs": 200,
+      "parameters": {}
+    }
+  ],
+  "vars": {},
+  "recipes": []
+}

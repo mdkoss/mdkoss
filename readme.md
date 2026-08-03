@@ -8,7 +8,7 @@
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）
 - 基础监控界面（`HttpListener + HTML Dashboard`），含 **主界面 HMI**（`index.html`）、**IO 专用页**（DI/DO 分栏、筛选、DO 写入）、**串口调试页**
-- 桌面壳：**WinForms 监控** 或 **CefSharp 嵌入式浏览器**（`--cef`，加载 `views/index.html`）
+- 桌面壳：独立项目 **MDKOSS.Config**（WinForms 配置）与 **MDKOSS.Cef**（CefSharp HMI）
 
 ---
 
@@ -40,7 +40,7 @@
 - 可启动任务循环并更新变量状态
 - 可通过监控接口获取运行时快照
 - 可通过网页或 CEF 桌面壳查看 HMI / 监控页
-- `Program.cs` 统一完成配置加载、运行时 `Initialize/Start/Stop` 与日志（`AppLog` / NLog）
+- `RuntimeHost` + 各宿主 `Program` 完成配置加载、运行时 `Initialize/Start/Stop` 与日志（`AppLog` / NLog）
 
 ### 1.2 暂不纳入
 - 完整 Nancy API 模块体系
@@ -59,16 +59,10 @@ mdkoss/
 ├── docs/                         # 架构与设计文档
 ├── tests/MDKOSS.Tests/
 └── src/
-    ├── MDKOSS.csproj             # 可执行 + GUI
-    ├── MDKOSS.Core.csproj        # 运行时内核
-    ├── Program.cs
-    ├── configs/sample.setting.json
-    ├── views/                    # HMI 静态页
-    ├── tasks/
-    ├── extensions/               # MDKOSS.Extensions（serialdev、tcpdev）
-    ├── gui/winform/ | gui/cef/
-    ├── server/                   # HTTP 监控服务与 API
-    └── core/                     # mdk、msetting、mdev、data…
+    ├── MDKOSS.Cef/               # CEF / console 宿主 + views/configs
+    ├── MDKOSS.Config/            # WinForms 配置宿主 + configs
+    ├── MDKOSS.Core/              # 运行时内核（core/server/tasks/host）
+    └── MDKOSS.Extensions/        # serialdev、tcpdev 扩展
 ```
 
 构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
@@ -79,51 +73,50 @@ mdkoss/
 
 > 详见 [docs/core-subsystems.md](./docs/core-subsystems.md)、[docs/extensions.md](./docs/extensions.md)。
 
-- `Program.cs`  
-  应用入口，支持三种 UI 模式：
-  - **默认 / `--winform`**：WinForms 监控窗（`MainForm`），运行时由 `Main` 加载配置并 `Initialize → Start`，关闭窗体后 `StopAsync`
-  - **`--cef`**：CefSharp 桌面壳（`CefMainForm`），打开输出目录下 `views/index.html`（HMI 导航至各监控页）
-  - **`--console`**：无 GUI，仅后台运行时 + HTTP 监控服务  
+- `MDKOSS.Config` / `MDKOSS.Cef`  
+  独立可执行入口（共用 `host/RuntimeHost.cs`）：
+  - **MDKOSS.Config**：WinForms 监控与配置（`MainForm`）
+  - **MDKOSS.Cef**：CefSharp 桌面壳（`CefMainForm`）；可选 `--console` 无 GUI
 
-  桌面模式均在 `Main` 中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
+  均在入口中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
 
-- `src/core/mdk.cs`  
+- `src/MDKOSS.Core/core/mdk.cs`  
   Runtime Host。统一管理生命周期：`Initialize -> Start -> StopAsync -> Dispose`。内部完成变量、驱动、设备、任务的注册与编排。
 
-- `src/core/msetting.cs`  
+- `src/MDKOSS.Core/core/msetting.cs`  
   配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
 
-- `src/core/mdev.cs`
+- `src/MDKOSS.Core/core/mdev.cs`
   设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `SerialDevice` / `CameraDevDevice` 子类。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。
 
-- `src/extensions/serialdev.cs`
+- `src/MDKOSS.Extensions/serialdev.cs`
   串口设备（`SerialDevice`）。提供 RS-232C 串口通信能力：打开/关闭端口、配置参数（波特率/数据位/校验位/停止位）、文本与二进制读写、缓冲区管理。
 
-- `src/core/gpio_device_parameters.cs`  
+- `src/MDKOSS.Core/core/gpio_device_parameters.cs`  
   解析 GPIO 的 `in.*` / `out.*` 与可选 `driverIds` 作用域。
 
-- `src/core/platform_device_parameters.cs`  
+- `src/MDKOSS.Core/core/platform_device_parameters.cs`  
   解析平台设备 `kind`、类型简写（`xy` / `xyz` / …）及按轴 `axis.X` 等驱动绑定。
 
-- `src/core/vio_device_parameters.cs`  
+- `src/MDKOSS.Core/core/vio_device_parameters.cs`  
   解析虚拟 GPIO（`vio`）的 `in.*` / `out.*`：取值须为空或 `virtual`，禁止物理 `driverId:address` 路由。
 
-- `src/core/mtask.cs`  
+- `src/MDKOSS.Core/core/mtask.cs`  
   任务体系。包含 `MTaskBase` 和 `MTaskScheduler`，并提供基础任务 `PollDriverTask` 用于驱动心跳监控。
 
-- `src/core/mvar.cs`  
+- `src/MDKOSS.Core/core/mvar.cs`  
   线程安全变量中心。提供 `Set/Get/TryGet/Snapshot`，用于模块间状态共享与监控导出。
 
-- `src/core/drivers/idriver.cs`  
+- `src/MDKOSS.Core/core/drivers/idriver.cs`  
   驱动统一接口，约束驱动初始化、连接状态、读写行为。
 
-- `src/core/drivers/drvgts.cs`  
+- `src/MDKOSS.Core/core/drivers/drvgts.cs`  
   GTS 示例驱动（内存映射模拟），用于本地联调和端到端流程验证。
 
-- `src/core/drivers/drvsim.cs`  
+- `src/MDKOSS.Core/core/drivers/drvsim.cs`  
   软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
 
-- `src/server/monitoringserver.cs`
+- `src/MDKOSS.Core/server/monitoringserver.cs`
   轻量监控服务，提供：
   - `GET /`、`GET /index.html`：主界面（HMI）
   - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）
@@ -141,22 +134,22 @@ mdkoss/
   - `POST /api/serial/writeBin`：发送二进制
   - `POST /api/serial/read`：读取数据
 
-- `src/server/monitoringpage.cs`  
+- `src/MDKOSS.Core/server/monitoringpage.cs`  
   从输出目录旁 `views/monitoringpage.html` 加载综合监控页 HTML。
 
-- `src/server/monitoriopage.cs`  
+- `src/MDKOSS.Core/server/monitoriopage.cs`  
   从 `views/monitorIO.html` 加载 IO 监控页 HTML（与上相同复制规则）。
 
-- `src/server/monitorplatformpage.cs`  
+- `src/MDKOSS.Core/server/monitorplatformpage.cs`  
   从 `views/monitorPlatform.html` 加载平台步进示教页（设计说明见 `views/motiorplatform.md`）。
 
-- `src/server/indexpage.cs`  
+- `src/MDKOSS.Core/server/indexpage.cs`  
   从 `views/index.html` 加载主界面 HTML。
 
-- `src/server/debugserialdevpage.cs`  
+- `src/MDKOSS.Core/server/debugserialdevpage.cs`  
   从 `views/debugserialdev.html` 加载串口调试页 HTML。
 
-- `src/core/mdk.cs`（`TryWriteDigitalOutput`）  
+- `src/MDKOSS.Core/core/mdk.cs`（`TryWriteDigitalOutput`）  
   供监控 HTTP 调用：在已注册设备中查找 `GpioDevice` 或 `VioDevice`，按别名执行 `WriteOutput`。
 
 ---
@@ -270,7 +263,7 @@ mdkoss/
 
 ## 7. 本地运行
 
-**环境**：Windows x64；CEF 模式需安装 [Visual C++ 2019+ 可再发行组件](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。主工程目标为 `win-x64`，输出在 `src/bin/{Configuration}/net8.0-windows10.0.22621.0/win-x64/`。
+**环境**：Windows x64；CEF 模式需安装 [Visual C++ 2019+ 可再发行组件](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。主工程目标为 `win-x64`，输出在各自项目目录 `bin/{Configuration}/net8.0-windows10.0.22621.0/win-x64/`。
 
 在仓库根目录构建与测试：
 
@@ -279,16 +272,16 @@ dotnet build MDKOSS.sln -c Release
 dotnet test MDKOSS.sln -c Release --no-build
 ```
 
-WinForms 监控（默认）：
+WinForms 配置界面：
 
 ```bash
-dotnet run --project src/MDKOSS.csproj
+dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj
 ```
 
-CEF 桌面壳（`views/index.html`）：
+CEF 桌面壳：
 
 ```bash
-dotnet run --project src/MDKOSS.csproj -- --cef
+dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
 ```
 
 也可使用根目录脚本 `run-src-mdkoss.bat` / `run-src-mdkoss-cef.bat`。
@@ -296,7 +289,7 @@ dotnet run --project src/MDKOSS.csproj -- --cef
 控制台模式（无 GUI，使用默认配置文件）：
 
 ```bash
-dotnet run --project src/MDKOSS.csproj -- --console
+dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --console
 ```
 
 默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。日志目录为输出目录下的 `logs/yyyyMMdd.log`。
@@ -312,7 +305,7 @@ CEF / WinForms 模式请查看 `logs/` 与窗体；浏览器亦可直接访问�
 
 ## 8. 下一步建议
 
-近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、**CefSharp.NETCore** 桌面壳（`--cef`）、`Program.cs` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 监控、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
+近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、独立宿主 **MDKOSS.Cef** / **MDKOSS.Config**、`RuntimeHost` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 配置、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
 
 可选后续方向：
 

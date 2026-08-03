@@ -1,0 +1,101 @@
+﻿<Window x:Class="MDKOSS.Config.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MDKOSS.Config.Wpf"
+        Height="720" Width="1280"
+        MinHeight="520" MinWidth="960"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextBrush}"
+        FontFamily="Segoe UI"
+        FontSize="13">
+  <DockPanel>
+    <Menu DockPanel.Dock="Top" Background="{StaticResource PanelBrush}" Padding="4,2">
+      <MenuItem Header="文件(_F)">
+        <MenuItem Header="打开配置 JSON(_O)…" Click="OpenSetting_Click" InputGestureText="Ctrl+O"/>
+        <MenuItem Header="保存 JSON(_S)" Click="SaveSetting_Click" InputGestureText="Ctrl+S"/>
+        <MenuItem Header="另存为 JSON…" Click="SaveSettingAs_Click"/>
+        <Separator/>
+        <MenuItem Header="导出到 SQLite(_E)…" Click="ExportDb_Click"/>
+        <MenuItem Header="导出到指定 DB…" Click="ExportDbAs_Click"/>
+        <MenuItem Header="从 SQLite 导入…" Click="ImportDb_Click"/>
+        <Separator/>
+        <MenuItem Header="退出" Click="Exit_Click"/>
+      </MenuItem>
+      <MenuItem Header="数据库(_D)">
+        <MenuItem Header="刷新表计数 / 日志预览" Click="ReloadDbPreview_Click"/>
+      </MenuItem>
+    </Menu>
+
+    <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="0,1,0,0">
+      <StatusBarItem>
+        <TextBlock x:Name="StatusText" Text="就绪" Foreground="{StaticResource MutedBrush}"/>
+      </StatusBarItem>
+    </StatusBar>
+
+    <Grid Margin="8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="220" MinWidth="160"/>
+        <ColumnDefinition Width="6"/>
+        <ColumnDefinition Width="*" MinWidth="360"/>
+        <ColumnDefinition Width="6"/>
+        <ColumnDefinition Width="280" MinWidth="200"/>
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="4">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="工程资源" FontWeight="SemiBold" Margin="6,4,6,8" Foreground="{StaticResource AccentBrush}"/>
+          <TreeView x:Name="NavTree" BorderThickness="0" Background="Transparent">
+            <TreeViewItem Header="Project" IsExpanded="True">
+              <TreeViewItem Header="Drivers" Tag="Drivers" IsSelected="True"/>
+              <TreeViewItem Header="Devices" Tag="Devices"/>
+              <TreeViewItem Header="GPIOs" Tag="GPIOs"/>
+              <TreeViewItem Header="Axis" Tag="Axis"/>
+              <TreeViewItem Header="Platform" Tag="Platform"/>
+              <TreeViewItem Header="Positions" Tag="Positions"/>
+              <TreeViewItem Header="Tasks" Tag="Tasks"/>
+              <TreeViewItem Header="Vars" Tag="Vars"/>
+              <TreeViewItem Header="Recipes" Tag="Recipes"/>
+              <TreeViewItem Header="SysConfigs" Tag="SysConfigs"/>
+            </TreeViewItem>
+            <TreeViewItem Header="Database" IsExpanded="True">
+              <TreeViewItem Header="Table Counts" Tag="DbCounts"/>
+              <TreeViewItem Header="Logs" Tag="Logs"/>
+              <TreeViewItem Header="Langs" Tag="Langs"/>
+            </TreeViewItem>
+          </TreeView>
+        </DockPanel>
+      </Border>
+
+      <GridSplitter Grid.Column="1" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+      <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="8">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <Button Content="打开 JSON" Click="OpenSetting_Click"/>
+            <Button Content="保存 JSON" Click="SaveSetting_Click"/>
+            <Button Content="导出 SQLite" Click="ExportDb_Click" Background="{StaticResource AccentBrush}" Foreground="White"/>
+            <Button Content="导入 SQLite" Click="ImportDb_Click"/>
+            <Button Content="刷新 DB" Click="ReloadDbPreview_Click"/>
+          </StackPanel>
+          <DataGrid x:Name="CenterGrid"/>
+        </DockPanel>
+      </Border>
+
+      <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+      <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="10">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="属性 / 摘要" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource AccentBrush}"/>
+          <TextBox x:Name="PropertyBox"
+                   IsReadOnly="True"
+                   TextWrapping="Wrap"
+                   AcceptsReturn="True"
+                   VerticalScrollBarVisibility="Auto"
+                   BorderThickness="0"
+                   Background="Transparent"
+                   FontFamily="Consolas"/>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

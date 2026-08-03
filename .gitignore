@@ -5,3 +5,12 @@ _build_verify/
 *.user
 /.cursor
 /marketing
+
+# Plugin build outputs (copied by MdkPlugins.targets)
+/src/plugins/
+/src/MDKOSS.Config/plugins/
+/tests/MDKOSS.Tests/plugins/
+
+# Local scratch logs
+/pnp-home-err.txt
+/pnp-home-out.txt
