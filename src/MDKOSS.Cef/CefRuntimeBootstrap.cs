@@ -1,10 +1,12 @@
 using CefSharp;
-using CefSharp.Enums;
 using CefSharp.WinForms;
 
 namespace MDKOSS.Gui.CefUi;
 
-internal static class CefRuntimeBootstrap
+/// <summary>
+/// CefSharp initialize / shutdown for desktop hosts that embed <see cref="CefMainForm"/>.
+/// </summary>
+public static class CefRuntimeBootstrap
 {
     private static bool _initialized;
 

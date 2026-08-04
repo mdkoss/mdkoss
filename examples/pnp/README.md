@@ -82,7 +82,7 @@ examples/pnp/
 
 ## 4. 接入方式
 
-在创建 `MdkRuntime` **之前**注册（CEF / Config 入口的 `Program.Main`）：
+在创建 `MdkRuntime` **之前**注册（Sample / Config 入口的 `Program.Main`）：
 
 ```csharp
 MdkExtensionHost.DiscoverAndRegister(); // 自动加载 plugins 下驱动/设备/Pnp
@@ -91,11 +91,11 @@ MdkExtensionHost.DiscoverAndRegister(); // 自动加载 plugins 下驱动/设备
 使用 PNP 配置启动：
 
 ```bash
-# 无 GUI 控制台（MDKOSS.Cef + --console）
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --console --setting configs/pnp.setting.json
+# 无 GUI 控制台（MDKOSS.Sample + --console）
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setting configs/pnp.setting.json
 
 # CEF HMI（PNP 默认加载 indexPnp.html）
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --setting configs/pnp.setting.json
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs/pnp.setting.json
 
 # WinForms 配置 / 监控
 dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj -- --setting configs/pnp.setting.json

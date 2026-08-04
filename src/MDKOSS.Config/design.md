@@ -179,9 +179,9 @@ MainForm 与 ComponentConfigForm 共用同一视觉骨架（工程软件 IDE 式
 
 ## 6. 视觉与交互约定
 
-- 技术栈：WinForms（.NET 8 Windows），不引入 WPF / WebView 做配置编辑。
+- 技术栈：WinForms（.NET 8 Windows）用于在线壳；**离线配置编辑优先使用** [MDKOSS.Config.Wpf](../MDKOSS.Config.Wpf/design.md)。
 - 主配置窗建议最小约 960×600，默认约 1280×760；导航栏约 210，属性页约 280，可拖拽但保留面板下限。
-- 命令以 `MenuStrip` 为准；中部可保留 Filter 搜索条，不使用顶栏按钮堆。
+- 命令以菜单栏为准；中部列表支持右键快捷编辑，不使用顶栏按钮堆。
 - 只读监控网格与可编辑配置属性页视觉区分：监控窗标题带 Monitor，配置窗带 Config；状态栏标明 Offline / Online。
 - 错误用 `MessageBox` 明确字段原因；状态栏显示路径、模式、选中项与计数。
 - 快捷键：`Ctrl+S` 保存；`Ctrl+N` / `Ctrl+D` 增删复制行（Edit 菜单）。

@@ -1,6 +1,7 @@
 ﻿<Application x:Class="MDKOSS.Config.Wpf.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:MDKOSS.Config.Wpf">
   <Application.Resources>
     <SolidColorBrush x:Key="BgBrush" Color="#F4F6F8"/>
     <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF"/>
@@ -9,6 +10,8 @@
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#E6F4EF"/>
     <SolidColorBrush x:Key="TextBrush" Color="#1F2328"/>
     <SolidColorBrush x:Key="MutedBrush" Color="#656D76"/>
+    <local:BoolToVisibilityConverter x:Key="BoolToVis"/>
+    <local:InvertBoolConverter x:Key="InvertBoolConverter"/>
     <Style TargetType="Button">
       <Setter Property="Padding" Value="10,4"/>
       <Setter Property="Margin" Value="0,0,6,0"/>
@@ -16,17 +19,9 @@
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrushKey}"/>
       <Setter Property="Foreground" Value="{StaticResource TextBrush}"/>
     </Style>
-    <Style TargetType="DataGrid">
-      <Setter Property="AutoGenerateColumns" Value="True"/>
-      <Setter Property="CanUserAddRows" Value="False"/>
-      <Setter Property="CanUserDeleteRows" Value="False"/>
-      <Setter Property="IsReadOnly" Value="True"/>
-      <Setter Property="HeadersVisibility" Value="Column"/>
-      <Setter Property="GridLinesVisibility" Value="Horizontal"/>
-      <Setter Property="AlternatingRowBackground" Value="#FAFBFC"/>
+    <Style TargetType="TextBox">
+      <Setter Property="Padding" Value="4,3"/>
       <Setter Property="BorderBrush" Value="{StaticResource BorderBrushKey}"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="RowHeaderWidth" Value="0"/>
     </Style>
   </Application.Resources>
 </Application>

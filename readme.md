@@ -8,7 +8,7 @@
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）
 - 基础监控界面（`HttpListener + HTML Dashboard`），含 **主界面 HMI**（`index.html`）、**IO 专用页**（DI/DO 分栏、筛选、DO 写入）、**串口调试页**
-- 桌面壳：独立项目 **MDKOSS.Config**（WinForms 配置）与 **MDKOSS.Cef**（CefSharp HMI）
+- 桌面壳：独立项目 **MDKOSS.Config**（WinForms 配置）、**MDKOSS.Sample**（Demo 宿主 + CEF HMI）；**MDKOSS.Cef** 仅为 CefSharp 界面库
 
 ---
 
@@ -59,7 +59,8 @@ mdkoss/
 ├── docs/                         # 架构与设计文档
 ├── tests/MDKOSS.Tests/
 └── src/
-    ├── MDKOSS.Cef/               # CEF / console 宿主 + views/configs
+    ├── MDKOSS.Sample/            # Demo / console 宿主 + configs（引用 Cef）
+    ├── MDKOSS.Cef/               # CefSharp 界面库 + views
     ├── MDKOSS.Config/            # WinForms 配置宿主 + configs
     ├── MDKOSS.Core/              # 运行时内核（core/server/tasks/host）
     └── MDKOSS.Extensions/        # serialdev、tcpdev 扩展
@@ -73,10 +74,11 @@ mdkoss/
 
 > 详见 [docs/core-subsystems.md](./docs/core-subsystems.md)、[docs/extensions.md](./docs/extensions.md)。
 
-- `MDKOSS.Config` / `MDKOSS.Cef`  
-  独立可执行入口（共用 `host/RuntimeHost.cs`）：
+- `MDKOSS.Config` / `MDKOSS.Sample` / `MDKOSS.Cef`  
+  宿主与 CEF 界面拆分（共用 `host/RuntimeHost.cs`）：
   - **MDKOSS.Config**：WinForms 监控与配置（`MainForm`）
-  - **MDKOSS.Cef**：CefSharp 桌面壳（`CefMainForm`）；可选 `--console` 无 GUI
+  - **MDKOSS.Sample**：Demo / PNP 可执行入口；嵌入 CEF；可选 `--console` 无 GUI
+  - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
   均在入口中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
 
@@ -278,10 +280,10 @@ WinForms 配置界面：
 dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj
 ```
 
-CEF 桌面壳：
+Sample + CEF 桌面壳：
 
 ```bash
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 ```
 
 也可使用根目录脚本 `run-src-mdkoss.bat` / `run-src-mdkoss-cef.bat`。
@@ -289,7 +291,7 @@ dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
 控制台模式（无 GUI，使用默认配置文件）：
 
 ```bash
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --console
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console
 ```
 
 默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。日志目录为输出目录下的 `logs/yyyyMMdd.log`。
@@ -305,7 +307,7 @@ CEF / WinForms 模式请查看 `logs/` 与窗体；浏览器亦可直接访问�
 
 ## 8. 下一步建议
 
-近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、独立宿主 **MDKOSS.Cef** / **MDKOSS.Config**、`RuntimeHost` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 配置、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
+近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、宿主 **MDKOSS.Sample** / **MDKOSS.Config**（CEF 界面库 **MDKOSS.Cef**）、`RuntimeHost` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 配置、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
 
 可选后续方向：
 

@@ -22,7 +22,7 @@ Thanks for helping improve MDKOSS.
 
 ```bash
 dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 dotnet test MDKOSS.sln -c Release
 ```
 

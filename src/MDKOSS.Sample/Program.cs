@@ -4,7 +4,7 @@ using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
 using System.Windows.Forms;
 
-namespace MDKOSS.CefHost;
+namespace MDKOSS.Sample;
 
 internal static class Program
 {
@@ -30,7 +30,7 @@ internal static class Program
     private static void RunCefDesktop(string settingPath)
     {
         var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
-        AppLog.Info($"MDKOSS.Cef starting (version: {version})================================================");
+        AppLog.Info($"MDKOSS.Sample starting (version: {version})================================================");
 
         ApplicationConfiguration.Initialize();
 
@@ -39,7 +39,7 @@ internal static class Program
             AppLog.Error($"Setting file not found: {settingPath}");
             MessageBox.Show(
                 $"Setting file not found:\n{settingPath}",
-                "MDKOSS.Cef",
+                "MDKOSS.Sample",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;

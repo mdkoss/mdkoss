@@ -1,68 +1,86 @@
 ﻿<Window x:Class="MDKOSS.Config.Wpf.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:MDKOSS.Config.Wpf"
         Title="MDKOSS.Config.Wpf"
-        Height="720" Width="1280"
-        MinHeight="520" MinWidth="960"
+        Height="760" Width="1360"
+        MinHeight="560" MinWidth="1040"
         Background="{StaticResource BgBrush}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI"
         FontSize="13">
+  <Window.InputBindings>
+    <KeyBinding Key="O" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Open}"/>
+    <KeyBinding Key="S" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Save}"/>
+    <KeyBinding Key="N" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Add}"/>
+    <KeyBinding Key="D" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Duplicate}"/>
+    <KeyBinding Key="Delete" Command="{x:Static local:MainWindowCommands.Delete}"/>
+  </Window.InputBindings>
   <DockPanel>
     <Menu DockPanel.Dock="Top" Background="{StaticResource PanelBrush}" Padding="4,2">
       <MenuItem Header="文件(_F)">
-        <MenuItem Header="打开配置 JSON(_O)…" Click="OpenSetting_Click" InputGestureText="Ctrl+O"/>
-        <MenuItem Header="保存 JSON(_S)" Click="SaveSetting_Click" InputGestureText="Ctrl+S"/>
-        <MenuItem Header="另存为 JSON…" Click="SaveSettingAs_Click"/>
+        <MenuItem Header="打开…(_O)" Command="{x:Static local:MainWindowCommands.Open}" InputGestureText="Ctrl+O"/>
+        <MenuItem Header="重新加载" Click="Reload_Click"/>
+        <MenuItem Header="保存(_S)" Command="{x:Static local:MainWindowCommands.Save}" InputGestureText="Ctrl+S"/>
         <Separator/>
-        <MenuItem Header="导出到 SQLite(_E)…" Click="ExportDb_Click"/>
-        <MenuItem Header="导出到指定 DB…" Click="ExportDbAs_Click"/>
-        <MenuItem Header="从 SQLite 导入…" Click="ImportDb_Click"/>
+        <MenuItem Header="另存为 JSON…" Click="SaveAsJson_Click"/>
+        <MenuItem Header="另存为数据库…" Click="SaveAsDb_Click"/>
+        <Separator/>
+        <MenuItem Header="导出为 JSON…" Click="ExportJson_Click"/>
+        <MenuItem Header="导出为数据库…" Click="ExportDb_Click"/>
         <Separator/>
         <MenuItem Header="退出" Click="Exit_Click"/>
       </MenuItem>
+      <MenuItem Header="编辑(_E)">
+        <MenuItem Header="新建组件(_N)" Command="{x:Static local:MainWindowCommands.Add}" InputGestureText="Ctrl+N"/>
+        <MenuItem Header="复制组件(_D)" Command="{x:Static local:MainWindowCommands.Duplicate}" InputGestureText="Ctrl+D"/>
+        <MenuItem Header="删除组件" Command="{x:Static local:MainWindowCommands.Delete}" InputGestureText="Del"/>
+        <Separator/>
+        <MenuItem Header="上移" Click="MoveUp_Click"/>
+        <MenuItem Header="下移" Click="MoveDown_Click"/>
+        <Separator/>
+        <MenuItem Header="应用属性" Click="Apply_Click"/>
+      </MenuItem>
+      <MenuItem Header="模块(_M)">
+        <MenuItem Header="导出当前模块…" Click="ExportModule_Click"/>
+        <MenuItem Header="导入当前模块（合并）…" Click="ImportModuleMerge_Click"/>
+        <MenuItem Header="导入当前模块（替换）…" Click="ImportModuleReplace_Click"/>
+        <Separator/>
+        <MenuItem Header="定位到 Drivers" Click="NavDrivers_Click"/>
+        <MenuItem Header="定位到 Devices" Click="NavDevices_Click"/>
+        <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
+        <MenuItem Header="定位到 Recipes" Click="NavRecipes_Click"/>
+      </MenuItem>
       <MenuItem Header="数据库(_D)">
-        <MenuItem Header="刷新表计数 / 日志预览" Click="ReloadDbPreview_Click"/>
+        <MenuItem Header="刷新表预览 / 计数" Click="RefreshDb_Click"/>
+        <MenuItem Header="刷新当前表数据" Click="RefreshDbTable_Click"/>
+      </MenuItem>
+      <MenuItem Header="帮助(_H)">
+        <MenuItem Header="界面说明" Click="Help_Click"/>
       </MenuItem>
     </Menu>
 
     <StatusBar DockPanel.Dock="Bottom" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="0,1,0,0">
       <StatusBarItem>
-        <TextBlock x:Name="StatusText" Text="就绪" Foreground="{StaticResource MutedBrush}"/>
+        <TextBlock Text="{Binding StatusLine}" Foreground="{StaticResource MutedBrush}"/>
       </StatusBarItem>
     </StatusBar>
 
     <Grid Margin="8">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="220" MinWidth="160"/>
+        <ColumnDefinition Width="240" MinWidth="180"/>
         <ColumnDefinition Width="6"/>
-        <ColumnDefinition Width="*" MinWidth="360"/>
+        <ColumnDefinition Width="*" MinWidth="380"/>
         <ColumnDefinition Width="6"/>
-        <ColumnDefinition Width="280" MinWidth="200"/>
+        <ColumnDefinition Width="360" MinWidth="300"/>
       </Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="4">
         <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="工程资源" FontWeight="SemiBold" Margin="6,4,6,8" Foreground="{StaticResource AccentBrush}"/>
-          <TreeView x:Name="NavTree" BorderThickness="0" Background="Transparent">
-            <TreeViewItem Header="Project" IsExpanded="True">
-              <TreeViewItem Header="Drivers" Tag="Drivers" IsSelected="True"/>
-              <TreeViewItem Header="Devices" Tag="Devices"/>
-              <TreeViewItem Header="GPIOs" Tag="GPIOs"/>
-              <TreeViewItem Header="Axis" Tag="Axis"/>
-              <TreeViewItem Header="Platform" Tag="Platform"/>
-              <TreeViewItem Header="Positions" Tag="Positions"/>
-              <TreeViewItem Header="Tasks" Tag="Tasks"/>
-              <TreeViewItem Header="Vars" Tag="Vars"/>
-              <TreeViewItem Header="Recipes" Tag="Recipes"/>
-              <TreeViewItem Header="SysConfigs" Tag="SysConfigs"/>
-            </TreeViewItem>
-            <TreeViewItem Header="Database" IsExpanded="True">
-              <TreeViewItem Header="Table Counts" Tag="DbCounts"/>
-              <TreeViewItem Header="Logs" Tag="Logs"/>
-              <TreeViewItem Header="Langs" Tag="Langs"/>
-            </TreeViewItem>
-          </TreeView>
+          <TextBlock DockPanel.Dock="Top" Text="模块 / 组件" FontWeight="SemiBold" Margin="6,4,6,8"
+                     Foreground="{StaticResource AccentBrush}"/>
+          <TreeView x:Name="NavTree" BorderThickness="0" Background="Transparent"
+                    SelectedItemChanged="NavTree_SelectedItemChanged"/>
         </DockPanel>
       </Border>
 
@@ -70,30 +88,159 @@
 
       <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="8">
         <DockPanel>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="打开 JSON" Click="OpenSetting_Click"/>
-            <Button Content="保存 JSON" Click="SaveSetting_Click"/>
-            <Button Content="导出 SQLite" Click="ExportDb_Click" Background="{StaticResource AccentBrush}" Foreground="White"/>
-            <Button Content="导入 SQLite" Click="ImportDb_Click"/>
-            <Button Content="刷新 DB" Click="ReloadDbPreview_Click"/>
-          </StackPanel>
-          <DataGrid x:Name="CenterGrid"/>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Content="新建" Click="AddToolbar_Click" Padding="10,3"/>
+              <Button Content="删行" Click="DeleteDbRow_Click" Padding="10,3"/>
+              <Button Content="刷新表" Click="RefreshDbTable_Click" Padding="10,3"/>
+              <Button Content="导入" Click="ImportModuleMerge_Click" Padding="10,3"/>
+              <Button Content="导出" Click="ExportModule_Click" Padding="10,3"/>
+            </StackPanel>
+            <TextBlock FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center">
+              <Run Text="组件列表 — "/><Run Text="{Binding ModuleTitle, Mode=OneWay}"/>
+            </TextBlock>
+          </DockPanel>
+          <DataGrid x:Name="CenterGrid"
+                    ItemsSource="{Binding Items}"
+                    SelectedItem="{Binding SelectedItem, Mode=OneWay}"
+                    AutoGenerateColumns="False"
+                    CanUserAddRows="False"
+                    CanUserDeleteRows="False"
+                    IsReadOnly="True"
+                    SelectionMode="Single"
+                    SelectionUnit="FullRow"
+                    HeadersVisibility="Column"
+                    GridLinesVisibility="Horizontal"
+                    AlternatingRowBackground="#FAFBFC"
+                    BorderBrush="{StaticResource BorderBrushKey}"
+                    BorderThickness="1"
+                    RowHeaderWidth="0"
+                    SelectionChanged="CenterGrid_SelectionChanged"
+                    MouseDoubleClick="CenterGrid_MouseDoubleClick">
+            <DataGrid.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="编辑属性" Click="CtxEdit_Click"/>
+                <Separator/>
+                <MenuItem Header="新建…" Command="{x:Static local:MainWindowCommands.Add}"/>
+                <MenuItem Header="复制" Command="{x:Static local:MainWindowCommands.Duplicate}"/>
+                <MenuItem Header="删除" Command="{x:Static local:MainWindowCommands.Delete}"/>
+                <Separator/>
+                <MenuItem Header="上移" Click="MoveUp_Click"/>
+                <MenuItem Header="下移" Click="MoveDown_Click"/>
+                <Separator/>
+                <MenuItem Header="导出模块…" Click="ExportModule_Click"/>
+                <MenuItem Header="导入模块（合并）…" Click="ImportModuleMerge_Click"/>
+                <Separator/>
+                <MenuItem Header="刷新数据库表" Click="RefreshDbTable_Click"/>
+                <MenuItem Header="删除数据库行" Click="DeleteDbRow_Click"/>
+              </ContextMenu>
+            </DataGrid.ContextMenu>
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="{Binding DataContext.ColHeader1, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col1}" Width="*"/>
+              <DataGridTextColumn Header="{Binding DataContext.ColHeader2, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col2}" Width="*"/>
+              <DataGridTextColumn Header="{Binding DataContext.ColHeader3, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col3}" Width="90"/>
+              <DataGridTextColumn Header="{Binding DataContext.ColHeader4, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col4}" Width="110"/>
+            </DataGrid.Columns>
+          </DataGrid>
         </DockPanel>
       </Border>
 
       <GridSplitter Grid.Column="3" Width="6" HorizontalAlignment="Stretch" Background="Transparent"/>
 
       <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="10">
-        <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="属性 / 摘要" FontWeight="SemiBold" Margin="0,0,0,8" Foreground="{StaticResource AccentBrush}"/>
-          <TextBox x:Name="PropertyBox"
-                   IsReadOnly="True"
-                   TextWrapping="Wrap"
-                   AcceptsReturn="True"
-                   VerticalScrollBarVisibility="Auto"
-                   BorderThickness="0"
-                   Background="Transparent"
-                   FontFamily="Consolas"/>
+        <DockPanel DataContext="{Binding Draft}">
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+            <Button DockPanel.Dock="Right" Content="应用属性" Click="Apply_Click"
+                    Background="{StaticResource AccentBrush}" Foreground="White" Padding="12,4"
+                    IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"/>
+            <TextBlock Text="{Binding Headline}" FontWeight="SemiBold" TextWrapping="Wrap"
+                       VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}"/>
+          </DockPanel>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <StackPanel Visibility="{Binding ShowId, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Id / Key" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding FieldId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                         IsReadOnly="{Binding IsReadOnly}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowName, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Name / Alias" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding FieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                         IsReadOnly="{Binding IsReadOnly}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowType, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Type / Direction" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <ComboBox ItemsSource="{Binding TypeOptions}"
+                          Text="{Binding FieldType, UpdateSourceTrigger=PropertyChanged}"
+                          IsEditable="True" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"
+                          Margin="0,0,0,8"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowDriverId, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="DriverId" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <ComboBox ItemsSource="{Binding DriverOptions}"
+                          Text="{Binding FieldDriverId, UpdateSourceTrigger=PropertyChanged}"
+                          IsEditable="True" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"
+                          Margin="0,0,0,8"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowInterval, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="IntervalMs" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding FieldInterval, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                         IsReadOnly="{Binding IsReadOnly}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowDescription, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Description" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding FieldDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                         AcceptsReturn="True" Height="56" TextWrapping="Wrap"
+                         IsReadOnly="{Binding IsReadOnly}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowValue, Converter={StaticResource BoolToVis}}">
+                <TextBlock Text="Value / Route" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBox Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
+                         AcceptsReturn="True" MinHeight="40" TextWrapping="Wrap"
+                         IsReadOnly="{Binding IsReadOnly}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowEnabled, Converter={StaticResource BoolToVis}}" Orientation="Horizontal" Margin="0,0,0,8">
+                <CheckBox Content="Enabled" IsChecked="{Binding FieldEnabled}"
+                          IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"/>
+              </StackPanel>
+              <StackPanel Visibility="{Binding ShowParameters, Converter={StaticResource BoolToVis}}">
+                <DockPanel Margin="0,0,0,4">
+                  <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
+                              IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}">
+                    <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParamRow_Click"/>
+                    <Button Content="删行" Padding="8,2" Margin="0,0,4,0" Click="RemoveParamRow_Click"/>
+                    <Button Content="JSON" Padding="8,2" Click="SyncParamsJson_Click" ToolTip="从表格同步预览 JSON"/>
+                  </StackPanel>
+                  <TextBlock Text="Parameters (Key / Value)" FontWeight="SemiBold"
+                             Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                </DockPanel>
+                <DataGrid x:Name="ParamGrid"
+                          ItemsSource="{Binding ParameterRows}"
+                          AutoGenerateColumns="False"
+                          CanUserAddRows="True"
+                          CanUserDeleteRows="True"
+                          HeadersVisibility="Column"
+                          MinHeight="160"
+                          MaxHeight="280"
+                          IsReadOnly="{Binding IsReadOnly}"
+                          BorderBrush="{StaticResource BorderBrushKey}"
+                          BorderThickness="1"
+                          Margin="0,0,0,6">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                    <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+                <Expander Header="原始 JSON 预览" IsExpanded="False">
+                  <TextBox Text="{Binding FieldParameters, UpdateSourceTrigger=PropertyChanged}"
+                           AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                           VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+                           IsReadOnly="{Binding IsReadOnly}"
+                           LostFocus="ParamsJson_LostFocus"/>
+                </Expander>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
         </DockPanel>
       </Border>
     </Grid>

@@ -235,6 +235,243 @@ public sealed class MdkConfigStore : IDisposable
         });
     }
 
+    /// <summary>Editable config tables exposed to the Database browser UI.</summary>
+    public static IReadOnlyList<string> EditableTableNames { get; } =
+    [
+        "drivers", "devices", "gpios", "axis", "platform", "positions",
+        "sysconfigs", "recipes", "logs", "langs",
+        "production_orders", "teach_point_files", "teach_points",
+    ];
+
+    public static bool IsEditableTable(string table) =>
+        EditableTableNames.Contains(table, StringComparer.OrdinalIgnoreCase);
+
+    public static string? GetPrimaryKeyColumn(string table) => table.ToLowerInvariant() switch
+    {
+        "drivers" or "devices" or "gpios" or "axis" or "platform" or "positions"
+            or "recipes" or "langs" or "production_orders" or "teach_point_files" or "teach_points"
+            => "id",
+        "sysconfigs" => "key",
+        "logs" => "id",
+        _ => null,
+    };
+
+    /// <summary>Reads all rows from a whitelisted table (string cells for UI editing).</summary>
+    public DbTableSnapshot QueryTable(string tableName, int limit = 2000)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var table = RequireEditableTable(tableName);
+        limit = Math.Clamp(limit, 1, 10000);
+        var pk = GetPrimaryKeyColumn(table);
+
+        return _db.Execute(conn =>
+        {
+            var columns = ReadColumnNames(conn, table);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT * FROM \"{table}\" LIMIT $limit;";
+            cmd.Parameters.AddWithValue("$limit", limit);
+
+            var rows = new List<Dictionary<string, string>>(capacity: 64);
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                for (var i = 0; i < reader.FieldCount; i++)
+                {
+                    var name = reader.GetName(i);
+                    row[name] = reader.IsDBNull(i) ? "" : Convert.ToString(reader.GetValue(i)) ?? "";
+                }
+
+                rows.Add(row);
+            }
+
+            return new DbTableSnapshot
+            {
+                TableName = table,
+                PrimaryKey = pk,
+                Columns = columns,
+                Rows = rows,
+            };
+        });
+    }
+
+    /// <summary>Inserts or updates a row by primary key. Returns the PK value used.</summary>
+    public string UpsertTableRow(string tableName, IReadOnlyDictionary<string, string> values)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var table = RequireEditableTable(tableName);
+        var pk = GetPrimaryKeyColumn(table)
+                 ?? throw new InvalidOperationException($"表 {table} 没有可识别的主键。");
+
+        var cols = values.Keys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (cols.Count == 0)
+        {
+            throw new InvalidOperationException("没有可写入的列。");
+        }
+
+        if (!cols.Contains(pk, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"缺少主键列 '{pk}'。");
+        }
+
+        var pkValue = values.First(kv => string.Equals(kv.Key, pk, StringComparison.OrdinalIgnoreCase)).Value?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(pkValue) && !string.Equals(table, "logs", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"主键 '{pk}' 不能为空。");
+        }
+
+        return _db.Execute(conn =>
+        {
+            var existingCols = new HashSet<string>(ReadColumnNames(conn, table), StringComparer.OrdinalIgnoreCase);
+            cols = cols.Where(c => existingCols.Contains(c)).ToList();
+            if (!cols.Contains(pk, StringComparer.OrdinalIgnoreCase))
+            {
+                cols.Insert(0, pk);
+            }
+
+            // logs: empty id → INSERT (autoincrement)
+            if (string.Equals(table, "logs", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(pkValue))
+            {
+                var insertCols = cols.Where(c => !string.Equals(c, pk, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (insertCols.Count == 0)
+                {
+                    insertCols.Add("message");
+                }
+
+                using var ins = conn.CreateCommand();
+                ins.CommandText =
+                    $"INSERT INTO \"{table}\" ({string.Join(",", insertCols.Select(c => $"\"{c}\""))}) " +
+                    $"VALUES ({string.Join(",", insertCols.Select(c => "$" + c))}); SELECT last_insert_rowid();";
+                foreach (var c in insertCols)
+                {
+                    values.TryGetValue(c, out var v);
+                    if (string.Equals(c, "created_at", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    {
+                        v = DateTime.UtcNow.ToString("O");
+                    }
+
+                    if (string.Equals(c, "message", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    {
+                        v = "";
+                    }
+
+                    ins.Parameters.AddWithValue("$" + c, (object?)v ?? "");
+                }
+
+                var id = Convert.ToInt64(ins.ExecuteScalar());
+                return id.ToString();
+            }
+
+            using (var existsCmd = conn.CreateCommand())
+            {
+                existsCmd.CommandText = $"SELECT 1 FROM \"{table}\" WHERE \"{pk}\" = $pk LIMIT 1;";
+                existsCmd.Parameters.AddWithValue("$pk", pkValue);
+                var exists = existsCmd.ExecuteScalar() is not null;
+                if (exists)
+                {
+                    var setCols = cols.Where(c => !string.Equals(c, pk, StringComparison.OrdinalIgnoreCase)).ToList();
+                    if (setCols.Count == 0)
+                    {
+                        return pkValue;
+                    }
+
+                    using var upd = conn.CreateCommand();
+                    upd.CommandText =
+                        $"UPDATE \"{table}\" SET {string.Join(", ", setCols.Select(c => $"\"{c}\" = ${c}"))} WHERE \"{pk}\" = $pk;";
+                    foreach (var c in setCols)
+                    {
+                        values.TryGetValue(c, out var v);
+                        if (string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase))
+                        {
+                            v = DateTime.UtcNow.ToString("O");
+                        }
+
+                    upd.Parameters.AddWithValue("$" + c, (object?)v ?? "");
+                }
+
+                    upd.Parameters.AddWithValue("$pk", pkValue);
+                    upd.ExecuteNonQuery();
+                    return pkValue;
+                }
+            }
+
+            using (var ins = conn.CreateCommand())
+            {
+                ins.CommandText =
+                    $"INSERT INTO \"{table}\" ({string.Join(",", cols.Select(c => $"\"{c}\""))}) " +
+                    $"VALUES ({string.Join(",", cols.Select(c => "$" + c))});";
+                foreach (var c in cols)
+                {
+                    values.TryGetValue(c, out var v);
+                    if (string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    {
+                        v = DateTime.UtcNow.ToString("O");
+                    }
+
+                    if (string.Equals(c, "created_at", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    {
+                        v = DateTime.UtcNow.ToString("O");
+                    }
+
+                    ins.Parameters.AddWithValue("$" + c, (object?)v ?? "");
+                }
+
+                ins.ExecuteNonQuery();
+            }
+
+            return pkValue;
+        });
+    }
+
+    public bool DeleteTableRow(string tableName, string primaryKeyValue)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var table = RequireEditableTable(tableName);
+        var pk = GetPrimaryKeyColumn(table)
+                 ?? throw new InvalidOperationException($"表 {table} 没有可识别的主键。");
+        if (string.IsNullOrWhiteSpace(primaryKeyValue))
+        {
+            throw new InvalidOperationException("主键值不能为空。");
+        }
+
+        return _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"DELETE FROM \"{table}\" WHERE \"{pk}\" = $pk;";
+            cmd.Parameters.AddWithValue("$pk", primaryKeyValue.Trim());
+            return cmd.ExecuteNonQuery() > 0;
+        });
+    }
+
+    private static string RequireEditableTable(string tableName)
+    {
+        var table = (tableName ?? "").Trim();
+        if (!IsEditableTable(table))
+        {
+            throw new InvalidOperationException($"不允许访问表: {tableName}");
+        }
+
+        return table.ToLowerInvariant();
+    }
+
+    private static List<string> ReadColumnNames(SqliteConnection conn, string table)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"PRAGMA table_info(\"{table}\");";
+        var list = new List<string>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(reader.GetString(1));
+        }
+
+        return list;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -883,3 +1120,13 @@ public sealed class ConfigLangRecord
     public string Value { get; set; } = string.Empty;
     public DateTime UpdatedAtUtc { get; set; }
 }
+
+/// <summary>Snapshot of one SQLite config table for the Database browser UI.</summary>
+public sealed class DbTableSnapshot
+{
+    public string TableName { get; set; } = string.Empty;
+    public string? PrimaryKey { get; set; }
+    public IReadOnlyList<string> Columns { get; set; } = [];
+    public IReadOnlyList<Dictionary<string, string>> Rows { get; set; } = [];
+}
+

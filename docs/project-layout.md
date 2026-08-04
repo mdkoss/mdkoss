@@ -13,6 +13,7 @@ src/
 ├── MDKOSS.Extensions.Tcp/
 ├── MDKOSS.Extensions.Camera/
 ├── MDKOSS.Cef/
+├── MDKOSS.Sample/
 └── MDKOSS.Config/
 ```
 

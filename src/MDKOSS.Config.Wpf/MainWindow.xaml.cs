@@ -1,81 +1,401 @@
-﻿using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.IO;
-using System.Runtime.CompilerServices;
-using System.Text.Json;
+﻿using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
 using Microsoft.Win32;
-using MDKOSS.Core;
-using MDKOSS.Core.Data;
 
 namespace MDKOSS.Config.Wpf;
+
+public static class MainWindowCommands
+{
+    public static readonly RoutedUICommand Open = new("Open", nameof(Open), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Save = new("Save", nameof(Save), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Add = new("Add", nameof(Add), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Duplicate = new("Duplicate", nameof(Duplicate), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Delete = new("Delete", nameof(Delete), typeof(MainWindowCommands));
+}
 
 public partial class MainWindow : Window
 {
     private readonly ConfigWorkspace _workspace = new();
+    private bool _suppressGridSelection;
+    private bool _suppressTreeSelection;
 
     public MainWindow(string? settingPath = null)
     {
         InitializeComponent();
         DataContext = _workspace;
-        NavTree.SelectedItemChanged += OnNavSelected;
+
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Open, (_, _) => OpenSetting()));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Save, (_, _) => SaveSetting()));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Add, (_, _) => AddComponent()));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Duplicate, (_, _) => DuplicateComponent()));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Delete, (_, _) => DeleteComponent()));
+
         Loaded += (_, _) =>
         {
             if (!string.IsNullOrWhiteSpace(settingPath) && System.IO.File.Exists(settingPath))
             {
-                _workspace.OpenSetting(settingPath!);
+                try
+                {
+                    _workspace.Open(settingPath!);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(this, ex.Message, "打开失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            else
+            {
+                _workspace.SelectModule(ConfigModule.Drivers, null);
             }
 
-            RefreshGrid();
+            RebuildNavTree(selectModule: ConfigModule.Drivers, selectKey: null);
+            UpdateGridHeaders();
+            SyncTitle();
         };
     }
 
-    private void OnNavSelected(object sender, RoutedPropertyChangedEventArgs<object> e)
+    private void SyncTitle()
     {
-        if (e.NewValue is TreeViewItem item && item.Tag is string key)
+        var kind = _workspace.DocumentKindLabel;
+        var path = string.IsNullOrWhiteSpace(_workspace.DocumentPath)
+            ? "(未打开)"
+            : System.IO.Path.GetFileName(_workspace.DocumentPath);
+        Title = $"MDKOSS.Config.Wpf [{kind}] — {_workspace.ProjectName} — {path}";
+    }
+
+    private void UpdateGridHeaders()
+    {
+        if (_workspace.IsBrowsingDbTable)
         {
-            _workspace.SelectedSection = key;
-            RefreshGrid();
+            EnterDbTableGridMode();
+            return;
+        }
+
+        ExitDbTableGridMode();
+        if (CenterGrid.Columns.Count < 4)
+        {
+            return;
+        }
+
+        CenterGrid.Columns[0].Header = _workspace.ColHeader1;
+        CenterGrid.Columns[1].Header = _workspace.ColHeader2;
+        CenterGrid.Columns[2].Header = string.IsNullOrEmpty(_workspace.ColHeader3) ? " " : _workspace.ColHeader3;
+        CenterGrid.Columns[3].Header = string.IsNullOrEmpty(_workspace.ColHeader4) ? " " : _workspace.ColHeader4;
+        CenterGrid.Columns[2].Visibility = string.IsNullOrEmpty(_workspace.ColHeader3) ? Visibility.Collapsed : Visibility.Visible;
+        CenterGrid.Columns[3].Visibility = string.IsNullOrEmpty(_workspace.ColHeader4) ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void EnterDbTableGridMode()
+    {
+        _suppressGridSelection = true;
+        CenterGrid.AutoGenerateColumns = false;
+        CenterGrid.Columns.Clear();
+        CenterGrid.Columns.Add(new DataGridTextColumn { Header = _workspace.DbPrimaryKey ?? "PK", Binding = new Binding(nameof(DbRowItem.RowKey)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col1", Binding = new Binding(nameof(DbRowItem.Col1)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col2", Binding = new Binding(nameof(DbRowItem.Col2)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Preview", Binding = new Binding(nameof(DbRowItem.Preview)), Width = new DataGridLength(2.2, DataGridLengthUnitType.Star) });
+        CenterGrid.ItemsSource = _workspace.DbRows;
+        CenterGrid.SelectedItem = _workspace.SelectedDbRow;
+        _suppressGridSelection = false;
+    }
+
+    private void ExitDbTableGridMode()
+    {
+        if (ReferenceEquals(CenterGrid.ItemsSource, _workspace.DbRows))
+        {
+            _suppressGridSelection = true;
+            CenterGrid.Columns.Clear();
+            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col1", Binding = new Binding(nameof(ComponentItem.Col1)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col2", Binding = new Binding(nameof(ComponentItem.Col2)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
+            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col3", Binding = new Binding(nameof(ComponentItem.Col3)), Width = 90 });
+            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col4", Binding = new Binding(nameof(ComponentItem.Col4)), Width = 110 });
+            CenterGrid.ItemsSource = _workspace.Items;
+            CenterGrid.SelectedItem = _workspace.SelectedItem;
+            _suppressGridSelection = false;
         }
     }
 
-    private void RefreshGrid()
+    private void RebuildNavTree(ConfigModule? selectModule, string? selectKey)
     {
-        CenterGrid.ItemsSource = _workspace.GetRowsForSelectedSection();
-        PropertyBox.Text = _workspace.BuildPropertySummary();
-        StatusText.Text = _workspace.StatusLine;
-        Title = $"MDKOSS.Config.Wpf — {_workspace.ProjectName}";
+        _suppressTreeSelection = true;
+        NavTree.Items.Clear();
+
+        var project = new TreeViewItem
+        {
+            Header = string.IsNullOrWhiteSpace(_workspace.ProjectName) ? "Project" : _workspace.ProjectName,
+            IsExpanded = true,
+            Tag = new NavTag(NavKind.Project, null, null),
+        };
+        NavTree.Items.Add(project);
+
+        TreeViewItem? toSelect = null;
+        foreach (var (module, title, components) in BuildModuleEntries())
+        {
+            var moduleNode = new TreeViewItem
+            {
+                Header = $"{title} ({components.Count})",
+                IsExpanded = module is ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Tasks or ConfigModule.Database,
+                Tag = new NavTag(NavKind.Module, module, null),
+            };
+            project.Items.Add(moduleNode);
+
+            if (selectModule == module && string.IsNullOrEmpty(selectKey))
+            {
+                toSelect = moduleNode;
+            }
+
+            foreach (var (key, compTitle) in components)
+            {
+                var leaf = new TreeViewItem
+                {
+                    Header = compTitle,
+                    Tag = new NavTag(NavKind.Component, module, key),
+                };
+                moduleNode.Items.Add(leaf);
+                if (selectModule == module && string.Equals(selectKey, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    toSelect = leaf;
+                }
+            }
+        }
+
+        if (toSelect is not null)
+        {
+            toSelect.IsSelected = true;
+            toSelect.BringIntoView();
+        }
+
+        _suppressTreeSelection = false;
     }
 
-    private void OpenSetting_Click(object sender, RoutedEventArgs e)
+    private List<(ConfigModule Module, string Title, List<(string Key, string Title)> Components)> BuildModuleEntries()
+    {
+        var result = new List<(ConfigModule, string, List<(string, string)>)>();
+        var current = _workspace.CurrentModule;
+        var selectedKey = _workspace.IsBrowsingDbTable
+            ? _workspace.SelectedDbTable
+            : _workspace.SelectedItem?.Key;
+
+        foreach (ConfigModule m in Enum.GetValues<ConfigModule>())
+        {
+            _workspace.SelectModule(m, null);
+            var comps = _workspace.Items.Select(i => (i.Key, i.Title)).ToList();
+            result.Add((m, ConfigWorkspace.ModuleDisplayName(m), comps));
+        }
+
+        _workspace.SelectModule(current, selectedKey);
+        return result;
+    }
+
+    private void NavTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (_suppressTreeSelection || e.NewValue is not TreeViewItem { Tag: NavTag tag })
+        {
+            return;
+        }
+
+        switch (tag.Kind)
+        {
+            case NavKind.Project:
+                break;
+            case NavKind.Module when tag.Module is { } module:
+                _workspace.SelectModule(module, null);
+                UpdateGridHeaders();
+                SyncGridSelection(null);
+                break;
+            case NavKind.Component when tag.Module is { } module && tag.Key is not null:
+                _workspace.SelectModule(module, tag.Key);
+                UpdateGridHeaders();
+                if (_workspace.IsBrowsingDbTable)
+                {
+                    SyncDbGridSelection(_workspace.SelectedDbRow);
+                }
+                else
+                {
+                    SyncGridSelection(_workspace.SelectedItem);
+                }
+
+                break;
+        }
+
+        SyncTitle();
+    }
+
+    private void CenterGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressGridSelection)
+        {
+            return;
+        }
+
+        if (CenterGrid.SelectedItem is DbRowItem dbRow)
+        {
+            _workspace.SelectDbRow(dbRow);
+            return;
+        }
+
+        if (CenterGrid.SelectedItem is ComponentItem item)
+        {
+            _workspace.SelectItem(item);
+            if (_workspace.IsBrowsingDbTable)
+            {
+                UpdateGridHeaders();
+                SyncDbGridSelection(_workspace.SelectedDbRow);
+            }
+            else
+            {
+                HighlightTreeComponent(item.Module, item.Key);
+            }
+        }
+    }
+
+    private void SyncDbGridSelection(DbRowItem? row)
+    {
+        _suppressGridSelection = true;
+        CenterGrid.SelectedItem = row;
+        if (row is not null)
+        {
+            CenterGrid.ScrollIntoView(row);
+        }
+
+        _suppressGridSelection = false;
+    }
+
+    private void CenterGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        // Focus property panel conceptually — draft already loaded.
+        if (_workspace.SelectedItem is not null && !_workspace.Draft.IsReadOnly)
+        {
+            // no-op visual focus; Apply remains explicit
+        }
+    }
+
+    private void SyncGridSelection(ComponentItem? item)
+    {
+        _suppressGridSelection = true;
+        CenterGrid.SelectedItem = item;
+        if (item is not null)
+        {
+            CenterGrid.ScrollIntoView(item);
+        }
+
+        _suppressGridSelection = false;
+    }
+
+    private void HighlightTreeComponent(ConfigModule module, string key)
+    {
+        _suppressTreeSelection = true;
+        foreach (TreeViewItem project in NavTree.Items)
+        {
+            foreach (TreeViewItem moduleNode in project.Items)
+            {
+                if (moduleNode.Tag is not NavTag { Kind: NavKind.Module } mt || mt.Module != module)
+                {
+                    continue;
+                }
+
+                foreach (TreeViewItem leaf in moduleNode.Items)
+                {
+                    if (leaf.Tag is NavTag { Kind: NavKind.Component } ct
+                        && string.Equals(ct.Key, key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        leaf.IsSelected = true;
+                        leaf.BringIntoView();
+                        _suppressTreeSelection = false;
+                        return;
+                    }
+                }
+            }
+        }
+
+        _suppressTreeSelection = false;
+    }
+
+    private void RefreshTreeKeepingSelection()
+    {
+        var module = _workspace.CurrentModule;
+        var key = _workspace.IsBrowsingDbTable
+            ? _workspace.SelectedDbTable
+            : _workspace.SelectedItem?.Key;
+        RebuildNavTree(module, key);
+        UpdateGridHeaders();
+        if (_workspace.IsBrowsingDbTable)
+        {
+            SyncDbGridSelection(_workspace.SelectedDbRow);
+        }
+        else
+        {
+            SyncGridSelection(_workspace.SelectedItem);
+        }
+
+        SyncTitle();
+    }
+
+    private void OpenSetting()
     {
         var dlg = new OpenFileDialog
         {
-            Filter = "Setting JSON (*.setting.json;*.json)|*.setting.json;*.json|All files|*.*",
-            Title = "打开配置 JSON",
+            Filter =
+                "配置文件 (*.setting.json;*.json;*.db)|*.setting.json;*.json;*.db|" +
+                "Setting JSON (*.setting.json;*.json)|*.setting.json;*.json|" +
+                "SQLite DB (*.db)|*.db|" +
+                "All files|*.*",
+            Title = "打开配置（JSON 或数据库）",
         };
-        if (dlg.ShowDialog(this) == true)
+        if (dlg.ShowDialog(this) != true)
         {
-            try
-            {
-                _workspace.OpenSetting(dlg.FileName);
-                RefreshGrid();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(this, ex.Message, "打开失败", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
+            return;
+        }
+
+        try
+        {
+            _workspace.Open(dlg.FileName);
+            RebuildNavTree(ConfigModule.Drivers, null);
+            UpdateGridHeaders();
+            SyncTitle();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "打开失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private void SaveSetting_Click(object sender, RoutedEventArgs e)
+    private void SaveSetting()
     {
         try
         {
-            _workspace.SaveSetting();
-            RefreshGrid();
-            MessageBox.Show(this, $"已保存:\n{_workspace.SettingPath}", "保存", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_workspace.DocumentKind == ConfigDocumentKind.None)
+            {
+                // No primary doc yet — ask user which format to create.
+                var pick = MessageBox.Show(
+                    this,
+                    "尚未打开文档。\n是 = 另存为 JSON\n否 = 另存为数据库\n取消 = 取消",
+                    "保存",
+                    MessageBoxButton.YesNoCancel,
+                    MessageBoxImage.Question);
+                if (pick == MessageBoxResult.Yes)
+                {
+                    SaveAsJson_Click(this, new RoutedEventArgs());
+                }
+                else if (pick == MessageBoxResult.No)
+                {
+                    SaveAsDb_Click(this, new RoutedEventArgs());
+                }
+
+                return;
+            }
+
+            _workspace.Save();
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(
+                this,
+                $"已保存 [{_workspace.DocumentKindLabel}]:\n{_workspace.DocumentPath}",
+                "保存",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
@@ -83,13 +403,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void SaveSettingAs_Click(object sender, RoutedEventArgs e)
+    private void Reload_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _workspace.Reload();
+            RebuildNavTree(_workspace.CurrentModule, null);
+            UpdateGridHeaders();
+            SyncTitle();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "重新加载失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SaveAsJson_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new SaveFileDialog
         {
             Filter = "Setting JSON (*.setting.json)|*.setting.json|JSON (*.json)|*.json",
-            FileName = System.IO.Path.GetFileName(_workspace.SettingPath) is { Length: > 0 } name ? name : "export.setting.json",
-            Title = "另存为配置 JSON",
+            FileName = SuggestJsonFileName(),
+            Title = "另存为 JSON（将成为当前文档）",
         };
         if (dlg.ShowDialog(this) != true)
         {
@@ -98,42 +433,76 @@ public partial class MainWindow : Window
 
         try
         {
-            _workspace.SaveSettingAs(dlg.FileName);
-            RefreshGrid();
-            MessageBox.Show(this, $"已保存:\n{dlg.FileName}", "另存为", MessageBoxButton.OK, MessageBoxImage.Information);
+            _workspace.SaveAsJson(dlg.FileName);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(this, $"已另存为 JSON:\n{dlg.FileName}", "另存为 JSON",
+                MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "另存为失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "另存为 JSON 失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SaveAsDb_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "SQLite DB (*.db)|*.db|All files|*.*",
+            FileName = SuggestDbFileName(),
+            Title = "另存为数据库（将成为当前文档）",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.SaveAsDatabase(dlg.FileName);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(this, $"已另存为数据库:\n{dlg.FileName}", "另存为数据库",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "另存为数据库失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ExportJson_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Setting JSON (*.setting.json)|*.setting.json|JSON (*.json)|*.json",
+            FileName = SuggestJsonFileName(),
+            Title = "导出为 JSON（不切换当前文档）",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ExportJson(dlg.FileName);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(this, $"已导出 JSON:\n{dlg.FileName}", "导出为 JSON",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "导出 JSON 失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void ExportDb_Click(object sender, RoutedEventArgs e)
     {
-        try
-        {
-            var result = _workspace.ExportToDatabase();
-            RefreshGrid();
-            MessageBox.Show(
-                this,
-                $"已导出到:\n{result.DatabasePath}\n\n{result}",
-                "导出到 SQLite",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, ex.Message, "导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void ExportDbAs_Click(object sender, RoutedEventArgs e)
-    {
         var dlg = new SaveFileDialog
         {
             Filter = "SQLite DB (*.db)|*.db|All files|*.*",
-            FileName = "mdk.db",
-            Title = "导出配置到 SQLite",
+            FileName = SuggestDbFileName(),
+            Title = "导出为数据库（不切换当前文档）",
         };
         if (dlg.ShowDialog(this) != true)
         {
@@ -142,27 +511,147 @@ public partial class MainWindow : Window
 
         try
         {
-            var result = _workspace.ExportToDatabase(dlg.FileName);
-            RefreshGrid();
+            var result = _workspace.ExportDatabase(dlg.FileName);
+            RefreshTreeKeepingSelection();
             MessageBox.Show(
                 this,
-                $"已导出到:\n{result.DatabasePath}\n\n{result}",
-                "导出到 SQLite",
+                $"已导出数据库:\n{result.DatabasePath}\n\n{result}",
+                "导出为数据库",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "导出数据库失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private void ImportDb_Click(object sender, RoutedEventArgs e)
+    private string SuggestJsonFileName()
     {
-        var dlg = new OpenFileDialog
+        if (!string.IsNullOrWhiteSpace(_workspace.JsonPath))
         {
-            Filter = "SQLite DB (*.db)|*.db|All files|*.*",
-            Title = "从 SQLite 导入配置",
+            return System.IO.Path.GetFileName(_workspace.JsonPath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_workspace.DatabasePath))
+        {
+            var name = System.IO.Path.GetFileNameWithoutExtension(_workspace.DatabasePath);
+            return $"{name}.setting.json";
+        }
+
+        return "export.setting.json";
+    }
+
+    private string SuggestDbFileName()
+    {
+        if (!string.IsNullOrWhiteSpace(_workspace.DatabasePath))
+        {
+            return System.IO.Path.GetFileName(_workspace.DatabasePath);
+        }
+
+        if (!string.IsNullOrWhiteSpace(_workspace.JsonPath))
+        {
+            var name = System.IO.Path.GetFileNameWithoutExtension(_workspace.JsonPath);
+            if (name.EndsWith(".setting", StringComparison.OrdinalIgnoreCase))
+            {
+                name = name[..^".setting".Length];
+            }
+
+            return string.IsNullOrWhiteSpace(name) ? "mdk.db" : $"{name}.db";
+        }
+
+        return "mdk.db";
+    }
+
+    private void AddComponent()
+    {
+        try
+        {
+            if (_workspace.IsBrowsingDbTable)
+            {
+                _workspace.AddDbRow();
+                return;
+            }
+
+            var req = _workspace.PrepareCreateRequest();
+            var dlg = new ComponentEditorDialog(_workspace.CurrentModule, req) { Owner = this };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _workspace.CommitCreate(req);
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "新建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void AddToolbar_Click(object sender, RoutedEventArgs e) => AddComponent();
+
+    private void AddParamRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.Draft.IsReadOnly)
+        {
+            return;
+        }
+
+        _workspace.Draft.ParameterRows.Add(new KvPairRow());
+    }
+
+    private void RemoveParamRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.Draft.IsReadOnly)
+        {
+            return;
+        }
+
+        if (ParamGrid.SelectedItem is KvPairRow row)
+        {
+            _workspace.Draft.ParameterRows.Remove(row);
+        }
+        else if (_workspace.Draft.ParameterRows.Count > 0)
+        {
+            _workspace.Draft.ParameterRows.RemoveAt(_workspace.Draft.ParameterRows.Count - 1);
+        }
+    }
+
+    private void SyncParamsJson_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.Draft.IsReadOnly)
+        {
+            return;
+        }
+
+        _workspace.Draft.SyncJsonFromRows();
+    }
+
+    private void ParamsJson_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (_workspace.Draft.IsReadOnly)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.Draft.SyncRowsFromJson();
+        }
+        catch
+        {
+            // ignore parse errors while typing
+        }
+    }
+
+    private void ExportModule_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Filter = "JSON (*.json)|*.json|All files|*.*",
+            FileName = $"{_workspace.ModuleTitle.ToLowerInvariant()}.json",
+            Title = $"导出模块 {_workspace.ModuleTitle}",
         };
         if (dlg.ShowDialog(this) != true)
         {
@@ -171,22 +660,202 @@ public partial class MainWindow : Window
 
         try
         {
-            _workspace.ImportFromDatabase(dlg.FileName);
-            RefreshGrid();
-            MessageBox.Show(this, "已从数据库导入到内存模型。请另存为 JSON 以落盘。", "导入", MessageBoxButton.OK, MessageBoxImage.Information);
+            _workspace.ExportModule(dlg.FileName);
+            MessageBox.Show(this, $"已导出:\n{dlg.FileName}", "导出模块", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "导出模块失败", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private void ReloadDbPreview_Click(object sender, RoutedEventArgs e)
+    private void ImportModuleMerge_Click(object sender, RoutedEventArgs e) => ImportModule(replace: false);
+
+    private void ImportModuleReplace_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            this,
+            $"替换当前模块「{_workspace.ModuleTitle}」全部数据？",
+            "确认替换导入",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        ImportModule(replace: true);
+    }
+
+    private void ImportModule(bool replace)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Filter = "JSON (*.json)|*.json|All files|*.*",
+            Title = replace ? $"导入并替换 {_workspace.ModuleTitle}" : $"导入并合并 {_workspace.ModuleTitle}",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ImportModule(dlg.FileName, replace);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(this, $"已导入:\n{dlg.FileName}", "导入模块", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "导入模块失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void DuplicateComponent()
+    {
+        try
+        {
+            _workspace.DuplicateSelected();
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "复制失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void DeleteComponent()
+    {
+        if (_workspace.IsBrowsingDbTable)
+        {
+            DeleteDbRow_Click(this, new RoutedEventArgs());
+            return;
+        }
+
+        if (_workspace.SelectedItem is null)
+        {
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"删除组件「{_workspace.SelectedItem.Title}」？",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.DeleteSelected();
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void RefreshDbTable_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _workspace.RefreshDbTable();
+            UpdateGridHeaders();
+            SyncDbGridSelection(_workspace.SelectedDbRow);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "刷新表失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void DeleteDbRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_workspace.IsBrowsingDbTable || _workspace.SelectedDbRow is null)
+        {
+            MessageBox.Show(this, "请先在 Database 表中选择一行。", "删除", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            this,
+            $"删除表 {_workspace.SelectedDbTable} 中主键为「{_workspace.SelectedDbRow.RowKey}」的行？",
+            "确认删除",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.DeleteDbRow();
+            UpdateGridHeaders();
+            SyncDbGridSelection(null);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void MoveUp_Click(object sender, RoutedEventArgs e) => Move(-1);
+    private void MoveDown_Click(object sender, RoutedEventArgs e) => Move(1);
+
+    private void Move(int delta)
+    {
+        try
+        {
+            _workspace.MoveSelected(delta);
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "排序失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void Apply_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!_workspace.Draft.IsReadOnly && _workspace.Draft.ShowParameters)
+            {
+                _workspace.Draft.SyncJsonFromRows();
+            }
+
+            _workspace.ApplyDraft();
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "应用属性失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void CtxEdit_Click(object sender, RoutedEventArgs e)
+    {
+        // Selection already drives the property panel.
+        if (_workspace.SelectedItem is null && CenterGrid.SelectedItem is ComponentItem item)
+        {
+            _workspace.SelectItem(item);
+        }
+    }
+
+    private void RefreshDb_Click(object sender, RoutedEventArgs e)
     {
         try
         {
             _workspace.RefreshDbPreview();
-            RefreshGrid();
+            if (_workspace.CurrentModule == ConfigModule.Database)
+            {
+                RefreshTreeKeepingSelection();
+            }
         }
         catch (Exception ex)
         {
@@ -194,299 +863,59 @@ public partial class MainWindow : Window
         }
     }
 
+    private void NavDrivers_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Drivers);
+    private void NavDevices_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Devices);
+    private void NavTasks_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Tasks);
+    private void NavRecipes_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Recipes);
+
+    private void JumpTo(ConfigModule module)
+    {
+        _workspace.SelectModule(module, null);
+        RebuildNavTree(module, null);
+        UpdateGridHeaders();
+    }
+
+    private void Help_Click(object sender, RoutedEventArgs e)
+    {
+        MessageBox.Show(
+            this,
+            "打开 JSON 或 DB 均可编辑。\n" +
+            "· 保存：写回当前打开的格式（JSON→JSON，DB→原 DB）\n" +
+            "· 另存为 / 导出：切换或写出另一种格式\n" +
+            "· 新建：弹窗快速配置；Type/DriverId 可下拉选择\n" +
+            "· Parameters：右侧 Key/Value 表编辑；模块菜单可导入导出\n" +
+            "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」。",
+            "界面说明",
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+    }
+
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 }
 
-/// <summary>Offline setting editor + SQLite export workspace.</summary>
-public sealed class ConfigWorkspace : INotifyPropertyChanged
+internal enum NavKind
 {
-    private static readonly JsonSerializerOptions PrettyJson = new()
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = true,
-    };
+    Project,
+    Module,
+    Component,
+}
 
-    private MdkSetting _setting = new();
-    private string _settingPath = string.Empty;
-    private string _selectedSection = "Drivers";
-    private string _statusLine = "未打开配置";
-    private ConfigTableCounts? _dbCounts;
-    private ObservableCollection<object> _logs = [];
-    private ObservableCollection<object> _langs = [];
+internal sealed record NavTag(NavKind Kind, ConfigModule? Module, string? Key);
 
-    public event PropertyChangedEventHandler? PropertyChanged;
+public sealed class BoolToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? Visibility.Visible : Visibility.Collapsed;
 
-    public string ProjectName => _setting.ProjectName;
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is Visibility.Visible;
+}
 
-    public string SettingPath => _settingPath;
+public sealed class InvertBoolConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is bool b && !b;
 
-    public string SelectedSection
-    {
-        get => _selectedSection;
-        set
-        {
-            _selectedSection = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public string StatusLine
-    {
-        get => _statusLine;
-        private set
-        {
-            _statusLine = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public void OpenSetting(string path)
-    {
-        _setting = MdkSetting.Load(path);
-        _settingPath = System.IO.Path.GetFullPath(path);
-        StatusLine = $"已打开 {_settingPath} | Drivers={_setting.Drivers.Count} Devices={_setting.Devices.Count} Recipes={_setting.Recipes.Count}";
-        OnPropertyChanged(nameof(ProjectName));
-        OnPropertyChanged(nameof(SettingPath));
-    }
-
-    public void SaveSetting()
-    {
-        if (string.IsNullOrWhiteSpace(_settingPath))
-        {
-            throw new InvalidOperationException("尚未指定配置文件路径，请使用「另存为」。");
-        }
-
-        _setting.Save(_settingPath);
-        StatusLine = $"已保存 {_settingPath}";
-    }
-
-    public void SaveSettingAs(string path)
-    {
-        _setting.Save(path);
-        _settingPath = System.IO.Path.GetFullPath(path);
-        StatusLine = $"已另存为 {_settingPath}";
-        OnPropertyChanged(nameof(SettingPath));
-    }
-
-    public ConfigExportResult ExportToDatabase(string? dbPath = null)
-    {
-        var path = ResolveDbPath(dbPath);
-        using var store = new MdkConfigStore(path);
-        var result = store.ExportSetting(_setting, _settingPath);
-        _dbCounts = store.CountTables();
-        _logs = new ObservableCollection<object>(store.ListLogs(100).Cast<object>());
-        _langs = new ObservableCollection<object>(store.ListLangs().Cast<object>());
-        StatusLine = $"已导出到 {result.DatabasePath} | {result}";
-        return result;
-    }
-
-    public void ImportFromDatabase(string dbPath)
-    {
-        using var store = new MdkConfigStore(dbPath);
-        _setting = store.ImportSetting();
-        _dbCounts = store.CountTables();
-        _logs = new ObservableCollection<object>(store.ListLogs(100).Cast<object>());
-        _langs = new ObservableCollection<object>(store.ListLangs().Cast<object>());
-        StatusLine = $"已从 {System.IO.Path.GetFullPath(dbPath)} 导入 | Drivers={_setting.Drivers.Count} Devices={_setting.Devices.Count}";
-        OnPropertyChanged(nameof(ProjectName));
-    }
-
-    public void RefreshDbPreview()
-    {
-        var path = ResolveDbPath(null);
-        if (!System.IO.File.Exists(path))
-        {
-            StatusLine = $"数据库不存在: {path}";
-            return;
-        }
-
-        using var store = new MdkConfigStore(path);
-        _dbCounts = store.CountTables();
-        _logs = new ObservableCollection<object>(store.ListLogs(100).Cast<object>());
-        _langs = new ObservableCollection<object>(store.ListLangs().Cast<object>());
-        StatusLine = $"DB {_dbCounts.Drivers}d/{_dbCounts.Devices}dev/{_dbCounts.Gpios}gpio/{_dbCounts.Recipes}r — {path}";
-    }
-
-    public IEnumerable<object> GetRowsForSelectedSection() => SelectedSection switch
-    {
-        "Drivers" => _setting.Drivers.Select(d => new
-        {
-            d.Id,
-            d.Type,
-            d.Enabled,
-            Parameters = JsonSerializer.Serialize(d.Parameters),
-        }),
-        "Devices" => _setting.Devices.Select(d => new
-        {
-            d.Id,
-            d.Name,
-            d.Type,
-            d.DriverId,
-            d.Enabled,
-            Parameters = JsonSerializer.Serialize(d.Parameters),
-        }),
-        "GPIOs" => BuildGpioRows(),
-        "Axis" => _setting.Devices
-            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
-            .Select(d => new { d.Id, d.Name, d.DriverId, d.Enabled, Parameters = JsonSerializer.Serialize(d.Parameters) }),
-        "Platform" => _setting.Devices
-            .Where(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant()))
-            .Select(d => new { d.Id, d.Name, d.Type, d.DriverId, d.Enabled, Kind = d.Parameters.GetValueOrDefault("kind", d.Type) }),
-        "Positions" => PreviewPositions(),
-        "Recipes" => _setting.Recipes.Select(r => new
-        {
-            r.Id,
-            r.Name,
-            r.Description,
-            Vars = JsonSerializer.Serialize(r.Vars),
-        }),
-        "SysConfigs" => BuildSysConfigRows(),
-        "Tasks" => _setting.Tasks.Select(t => new
-        {
-            t.Name,
-            t.Type,
-            t.DriverId,
-            t.IntervalMs,
-            Parameters = JsonSerializer.Serialize(t.Parameters),
-        }),
-        "Vars" => _setting.Vars.Select(kv => new { Key = kv.Key, Value = kv.Value?.ToString() ?? "" }),
-        "Logs" => _logs,
-        "Langs" => _langs,
-        "DbCounts" => _dbCounts is null
-            ? Array.Empty<object>()
-            : new object[]
-            {
-                new { Table = "drivers", Count = _dbCounts.Drivers },
-                new { Table = "devices", Count = _dbCounts.Devices },
-                new { Table = "gpios", Count = _dbCounts.Gpios },
-                new { Table = "axis", Count = _dbCounts.Axis },
-                new { Table = "platform", Count = _dbCounts.Platform },
-                new { Table = "positions", Count = _dbCounts.Positions },
-                new { Table = "sysconfigs", Count = _dbCounts.SysConfigs },
-                new { Table = "recipes", Count = _dbCounts.Recipes },
-                new { Table = "logs", Count = _dbCounts.Logs },
-                new { Table = "langs", Count = _dbCounts.Langs },
-            },
-        _ => Array.Empty<object>(),
-    };
-
-    public string BuildPropertySummary()
-    {
-        return SelectedSection switch
-        {
-            "Drivers" => $"Drivers: {_setting.Drivers.Count}",
-            "Devices" => $"Devices: {_setting.Devices.Count}",
-            "GPIOs" => $"GPIO/VIO points: {BuildGpioRows().Count()}",
-            "Axis" => $"Axis devices: {_setting.Devices.Count(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))}",
-            "Platform" => $"Platform devices: {_setting.Devices.Count(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant()))}",
-            "Recipes" => $"Recipes: {_setting.Recipes.Count} | Active: {_setting.ActiveRecipeId ?? "(none)"}",
-            "SysConfigs" => $"Project: {_setting.ProjectName}\nCycleMs: {_setting.CycleMs}\nDB: {_setting.DatabasePath ?? MdkSetting.DefaultDatabasePath}\nMonitoring: {_setting.MonitoringPrefix ?? "(default)"}",
-            "DbCounts" => _dbCounts is null
-                ? "尚未导出/刷新数据库"
-                : $"drivers={_dbCounts.Drivers}, devices={_dbCounts.Devices}, gpios={_dbCounts.Gpios}, axis={_dbCounts.Axis}, platform={_dbCounts.Platform}, positions={_dbCounts.Positions}, sysconfigs={_dbCounts.SysConfigs}, recipes={_dbCounts.Recipes}, logs={_dbCounts.Logs}, langs={_dbCounts.Langs}",
-            _ => $"Section: {SelectedSection}\nSetting: {_settingPath}",
-        };
-    }
-
-    private IEnumerable<object> BuildGpioRows()
-    {
-        foreach (var device in _setting.Devices)
-        {
-            var type = (device.Type ?? "").Trim().ToLowerInvariant();
-            if (type is not ("gpio" or "vio"))
-            {
-                continue;
-            }
-
-            foreach (var b in GpioDeviceParameterSet.ParseBindings(device.Parameters))
-            {
-                yield return new
-                {
-                    DeviceId = device.Id,
-                    Alias = b.Alias,
-                    Direction = b.IsOutput ? "out" : "in",
-                    b.DriverId,
-                    b.Address,
-                };
-            }
-
-            if (type != "vio")
-            {
-                continue;
-            }
-
-            foreach (var kv in device.Parameters)
-            {
-                string? direction = null;
-                string? alias = null;
-                if (kv.Key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
-                {
-                    direction = "in";
-                    alias = kv.Key[3..];
-                }
-                else if (kv.Key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
-                {
-                    direction = "out";
-                    alias = kv.Key[4..];
-                }
-
-                if (direction is null || alias is null)
-                {
-                    continue;
-                }
-
-                if (GpioDeviceParameterSet.TryParsePointRoute(kv.Value, out _, out _))
-                {
-                    continue;
-                }
-
-                yield return new
-                {
-                    DeviceId = device.Id,
-                    Alias = alias,
-                    Direction = direction,
-                    DriverId = device.DriverId,
-                    Address = "virtual",
-                };
-            }
-        }
-    }
-
-    private IEnumerable<object> BuildSysConfigRows()
-    {
-        yield return new { Key = "projectName", Value = _setting.ProjectName, Category = "general" };
-        yield return new { Key = "cycleMs", Value = _setting.CycleMs.ToString(), Category = "general" };
-        yield return new { Key = "monitoringPrefix", Value = _setting.MonitoringPrefix ?? "", Category = "general" };
-        yield return new { Key = "databasePath", Value = _setting.DatabasePath ?? "", Category = "general" };
-        yield return new { Key = "activeRecipeId", Value = _setting.ActiveRecipeId ?? "", Category = "recipe" };
-        yield return new { Key = "recipeVarKeys", Value = JsonSerializer.Serialize(_setting.RecipeVarKeys), Category = "recipe" };
-        yield return new { Key = "vars", Value = JsonSerializer.Serialize(_setting.Vars, PrettyJson), Category = "vars" };
-        yield return new { Key = "tasks", Value = $"[{_setting.Tasks.Count} tasks]", Category = "tasks" };
-    }
-
-    private static IEnumerable<object> PreviewPositions()
-    {
-        yield return new { Hint = "点位来自 teach_points；导出时镜像到 positions 表。可先示教再导出。" };
-    }
-
-    private string ResolveDbPath(string? overridePath)
-    {
-        if (!string.IsNullOrWhiteSpace(overridePath))
-        {
-            return System.IO.Path.GetFullPath(overridePath);
-        }
-
-        if (!string.IsNullOrWhiteSpace(_setting.DatabasePath))
-        {
-            var configured = _setting.DatabasePath!;
-            return System.IO.Path.IsPathRooted(configured)
-                ? configured
-                : System.IO.Path.GetFullPath(System.IO.Path.Combine(AppContext.BaseDirectory, configured));
-        }
-
-        return MdkSetting.DefaultDatabasePath;
-    }
-
-    private void OnPropertyChanged([CallerMemberName] string? name = null) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is bool b && !b;
 }

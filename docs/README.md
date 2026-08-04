@@ -25,7 +25,7 @@
 
 ## 相关资源
 
-- 示例配置：`src/MDKOSS.Cef/configs/sample.setting.json`
+- 示例配置：`src/MDKOSS.Sample/configs/sample.setting.json`
 - 配置模块说明：`src/MDKOSS.Config/config.md`、`src/MDKOSS.Config/design.md`
 - 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`
 - 平台示教页设计：`src/MDKOSS.Cef/views/motiorplatform.md`

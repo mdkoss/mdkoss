@@ -1,22 +1,28 @@
 # MDKOSS.Config.Wpf
 
-WPF 离线配置工具：编辑 `*.setting.json`，并导出到 SQLite 配置表。
+WPF 离线配置工具：菜单操作 + 左树模块/组件导航 + 中部列表（右键编辑）+ 右侧属性编辑。
+
+支持 **JSON ↔ SQLite** 双向打开与保存。
 
 ## 运行
 
 ```bash
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --setting configs/sample.setting.json
+dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --db data/mdk.db
 ```
 
 或 `run-config-wpf.bat`。
 
-## 能力
+## 文档模式
 
-| 操作 | 说明 |
+| 操作 | 行为 |
 |------|------|
-| 打开 / 保存 JSON | 读写 `MdkSetting` |
-| 导出到 SQLite | `MdkConfigStore.ExportSetting` → drivers/devices/gpios/axis/platform/positions/sysconfigs/recipes/logs/langs |
-| 从 SQLite 导入 | 重建内存 `MdkSetting`（可再另存为 JSON） |
+| 打开 JSON / DB | 自动识别格式，进入对应主文档模式 |
+| 保存 | 写回当前打开的文件（JSON→JSON，DB→原 DB） |
+| 另存为 JSON / 数据库 | 写出并切换主文档 |
+| 导出为 JSON / 数据库 | 写出副本，不切换主文档 |
 
-表结构见 [docs/data-persistence.md](../../docs/data-persistence.md)。WinForms 壳仍见 [MDKOSS.Config](../MDKOSS.Config/)。
+## 界面
+
+详见 [design.md](./design.md)。

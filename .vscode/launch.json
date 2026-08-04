@@ -13,13 +13,13 @@
             "stopAtEntry": false
         },
         {
-            "name": ".NET Core Launch (CEF)",
+            "name": ".NET Core Launch (Sample / CEF)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/MDKOSS.Cef/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.Cef.dll",
+            "program": "${workspaceFolder}/src/MDKOSS.Sample/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.Sample.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/MDKOSS.Cef/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
+            "cwd": "${workspaceFolder}/src/MDKOSS.Sample/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
             "console": "internalConsole",
             "stopAtEntry": false
         },

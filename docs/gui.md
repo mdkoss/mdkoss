@@ -1,13 +1,14 @@
 # 桌面壳与配置管理 UI
 
-MDKOSS 将桌面宿主拆成两个**独立可执行项目**，共享 `MdkRuntime` 与 HTTP 监控服务。
+MDKOSS 将桌面宿主拆成独立可执行项目，CEF 仅为界面库，共享 `MdkRuntime` 与 HTTP 监控服务。
 
 ## 独立启动项目
 
 | 项目 | 路径 | 入口 | 说明 |
 |------|------|------|------|
 | **MDKOSS.Config** | `src/MDKOSS.Config/MDKOSS.Config.csproj` | `MDKOSS.Config/Program.cs` → `MainForm` | WinForms 配置 / 监控工具 |
-| **MDKOSS.Cef** | `src/MDKOSS.Cef/MDKOSS.Cef.csproj` | `MDKOSS.Cef/Program.cs` → `CefMainForm` | CefSharp 嵌入 `views/*.html`；支持 `--console` |
+| **MDKOSS.Sample** | `src/MDKOSS.Sample/MDKOSS.Sample.csproj` | `MDKOSS.Sample/Program.cs` → `CefMainForm` | Demo / PNP 宿主；嵌入 CEF HMI；支持 `--console` |
+| **MDKOSS.Cef** | `src/MDKOSS.Cef/MDKOSS.Cef.csproj` | `CefMainForm` / `CefRuntimeBootstrap` | CefSharp 界面库 + `views/*.html`（非可执行） |
 
 共用启动逻辑在 `src/MDKOSS.Core/host/RuntimeHost.cs`（配置路径解析、Load / Initialize / Start / Stop）。
 
@@ -16,12 +17,12 @@ MDKOSS 将桌面宿主拆成两个**独立可执行项目**，共享 `MdkRuntime
 dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj
 dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj -- --setting configs/sample.setting.json
 
-# CEF HMI
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --setting configs/pnp.setting.json
+# Sample + CEF HMI
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs/pnp.setting.json
 
-# 无 GUI 控制台（仅 MDKOSS.Cef）
-dotnet run --project src/MDKOSS.Cef/MDKOSS.Cef.csproj -- --console --setting configs/pnp.setting.json
+# 无 GUI 控制台
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setting configs/pnp.setting.json
 ```
 
 桌面模式流程：

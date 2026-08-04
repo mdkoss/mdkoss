@@ -23,7 +23,7 @@ public sealed class CefMainForm : Form
     /// <summary>
     /// Prefer the monitoring HTTP prefix so relative <c>/api/*</c> calls work inside CEF.
     /// </summary>
-    internal static string ResolveStartUrl(MdkRuntime runtime, string? startPath = null)
+    public static string ResolveStartUrl(MdkRuntime runtime, string? startPath = null)
     {
         var path = string.IsNullOrWhiteSpace(startPath) ? "index.html" : startPath.Trim();
         path = path.TrimStart('/');
