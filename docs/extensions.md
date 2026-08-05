@@ -5,6 +5,7 @@
 参考实现：
 - `src/MDKOSS.Extensions/`（接入层）
 - `src/MDKOSS.Extensions.Camera/`（独立包 `extcamera`）
+- `src/MDKOSS.Extensions.PyScript/`（独立包 `devpyscript`）
 
 ---
 
@@ -147,6 +148,7 @@ _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 | `serialdev` | `SerialDevice` | `SerialDeviceParameterSet` | open/close/write/read/status | `/api/serial/*` | MDKOSS.Extensions.Serial |
 | `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` | connect/disconnect/write/read/status | `/api/tcp/*` | MDKOSS.Extensions.Tcp |
 | `extcamera` | `ExtCameraDevice` | `ExtCameraDeviceParameters` | open/close/trigger/status | `/api/extcamera/*` | MDKOSS.Extensions.Camera |
+| `devpyscript` | `PyScriptDevice` | `PyScriptDeviceParameters` | run/kill/status | `/api/pyscript/*` | MDKOSS.Extensions.PyScript |
 
 分层角色（以串口为例）：
 

@@ -87,6 +87,14 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 | `/api/extcamera/close` | POST | 关闭相机会话 |
 | `/api/extcamera/trigger` | POST | 触发采集（可选 `recipe`） |
 
+### Python 脚本（MDKOSS.Extensions.PyScript）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/pyscript/status` | GET | 查询 `deviceId` 对应脚本设备状态 |
+| `/api/pyscript/run` | POST | 执行脚本（可选覆盖 `scriptPath` / `arguments` / `timeoutMs`） |
+| `/api/pyscript/kill` | POST | 终止当前进程 |
+
 ### 配方
 
 | 路由 | 方法 | 说明 |

@@ -79,6 +79,7 @@
 | `serialdev` | Extensions.Serial | RS-232C 串口 |
 | `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
 | `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
+| `devpyscript` | Extensions.PyScript | 外部进程执行 Python 脚本（见 `src/MDKOSS.Extensions.PyScript`） |
 
 ### gpio parameters
 
@@ -122,6 +123,19 @@
 | `noisePx` | 仿真偏移噪声幅度 | `0.5` |
 
 解析：`ExtCameraDeviceParameters`（`src/MDKOSS.Extensions.Camera`）。与 Core 内置 `cameradev` 占位设备不同。
+
+### devpyscript parameters
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `pythonPath` | Python 可执行文件 | `python` |
+| `scriptPath` | 默认脚本路径 | 空 |
+| `workingDirectory` | 工作目录；空则用脚本目录 | 空 |
+| `arguments` | 额外命令行参数 | 空 |
+| `timeoutMs` | 超时毫秒；`0` 不超时 | `30000` |
+| `captureOutput` | 是否捕获 stdout/stderr | `true` |
+
+解析：`PyScriptDeviceParameters`（`src/MDKOSS.Extensions.PyScript`）。
 
 ## tasks[]
 

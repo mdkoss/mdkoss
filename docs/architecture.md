@@ -85,6 +85,7 @@ MDKOSS.sln
 ├── src/MDKOSS.Extensions.Serial/    # serialdev
 ├── src/MDKOSS.Extensions.Tcp/       # tcpdev
 ├── src/MDKOSS.Extensions.Camera/    # extcamera
+├── src/MDKOSS.Extensions.PyScript/  # devpyscript
 ├── examples/pnp/                    # PNP 机型示例
 └── tests/MDKOSS.Tests/              # xUnit（按 Core/Config 等项目分子目录）
 ```

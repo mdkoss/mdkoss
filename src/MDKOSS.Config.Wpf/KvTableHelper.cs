@@ -38,7 +38,7 @@ public static class ConfigTypeCatalog
     [
         "gpio", "vio", "axis", "platform",
         "xy", "xyz", "xyzu", "xyzuv", "xyzuvw",
-        "cameradev", "serialdev", "tcpdev", "extcamera", "tray",
+        "cameradev", "serialdev", "tcpdev", "extcamera", "devpyscript", "tray",
     ];
 
     public static IReadOnlyList<string> TaskTypes { get; } =

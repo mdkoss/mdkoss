@@ -34,6 +34,10 @@
       <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="..\MDKOSS.Extensions.PyScript\configs\**\*">
+      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
   <Import Project="..\MdkPlugins.targets" />
 </Project>

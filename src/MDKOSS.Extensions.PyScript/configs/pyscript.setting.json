@@ -1,0 +1,46 @@
+{
+  "name": "devpyscript-demo",
+  "description": "Minimal project demonstrating MDKOSS.Extensions.PyScript (devpyscript)",
+  "databasePath": "data/mdk.db",
+  "monitoring": {
+    "enabled": true,
+    "url": "http://127.0.0.1:5080/"
+  },
+  "drivers": [
+    {
+      "id": "drv-sim",
+      "name": "Sim Driver",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {}
+    }
+  ],
+  "devices": [
+    {
+      "id": "py-1",
+      "name": "Demo Python Script",
+      "type": "devpyscript",
+      "enabled": true,
+      "parameters": {
+        "pythonPath": "python",
+        "scriptPath": "configs/scripts/hello.py",
+        "arguments": "demo 1",
+        "timeoutMs": "30000",
+        "captureOutput": "true"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "poll-main",
+      "name": "Poll Driver",
+      "type": "pollDriver",
+      "enabled": true,
+      "driverId": "drv-sim",
+      "intervalMs": 200,
+      "parameters": {}
+    }
+  ],
+  "vars": {},
+  "recipes": []
+}

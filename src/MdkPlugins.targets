@@ -14,6 +14,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\MDKOSS.Extensions.Serial.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\MDKOSS.Extensions.Tcp.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\MDKOSS.Extensions.PyScript.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
 
@@ -24,6 +25,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Serial.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Tcp.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Camera.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.PyScript.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" />
   </ItemGroup>
 
