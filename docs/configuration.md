@@ -80,6 +80,7 @@
 | `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
 | `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
 | `devpyscript` | Extensions.PyScript | 外部进程执行 Python 脚本（见 `src/MDKOSS.Extensions.PyScript`） |
+| `devmodserver` | Extensions.ModServer | Modbus TCP Server/Slave（见 `src/MDKOSS.Extensions.ModServer`） |
 
 ### gpio parameters
 
@@ -136,6 +137,17 @@
 | `captureOutput` | 是否捕获 stdout/stderr | `true` |
 
 解析：`PyScriptDeviceParameters`（`src/MDKOSS.Extensions.PyScript`）。
+
+### devmodserver parameters
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `bindAddress` | 监听地址 | `0.0.0.0` |
+| `port` | TCP 端口 | `502` |
+| `unitId` | Modbus 从站地址 | `1` |
+| `autoStart` | 设备 Start 时自动监听 | `true` |
+
+解析：`ModServerDeviceParameters`（`src/MDKOSS.Extensions.ModServer`）。
 
 ## tasks[]
 

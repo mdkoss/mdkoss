@@ -15,6 +15,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\MDKOSS.Extensions.Tcp.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\MDKOSS.Extensions.PyScript.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\MDKOSS.Extensions.ModServer.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
 
@@ -26,6 +27,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Tcp.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Camera.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.PyScript.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.ModServer.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" />
   </ItemGroup>
 
@@ -56,6 +58,9 @@
       <_SerialDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\System.IO.Ports.*.dll" />
       <_SerialDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
       <_SerialRuntime Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\runtimes\**\*.*" />
+      <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.dll" />
+      <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.*.dll" />
+      <_ModServerDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
     </ItemGroup>
 
     <Copy
@@ -75,5 +80,17 @@
       DestinationFiles="@(_SerialRuntime->'$(MdkPluginsOutputDir)runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
       Condition="'@(_SerialRuntime)' != ''" />
+
+    <Copy
+      SourceFiles="@(_ModServerDeps)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_ModServerDeps.Identity)')" />
+
+    <Copy
+      SourceFiles="@(_ModServerDepsJson)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="'@(_ModServerDepsJson)' != ''" />
   </Target>
 </Project>

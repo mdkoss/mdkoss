@@ -1,0 +1,45 @@
+{
+  "name": "devmodserver-demo",
+  "description": "Minimal project demonstrating MDKOSS.Extensions.ModServer (devmodserver)",
+  "databasePath": "data/mdk.db",
+  "monitoring": {
+    "enabled": true,
+    "url": "http://127.0.0.1:5080/"
+  },
+  "drivers": [
+    {
+      "id": "drv-sim",
+      "name": "Sim Driver",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {}
+    }
+  ],
+  "devices": [
+    {
+      "id": "mod-1",
+      "name": "Demo Modbus TCP Server",
+      "type": "devmodserver",
+      "enabled": true,
+      "parameters": {
+        "bindAddress": "0.0.0.0",
+        "port": "1502",
+        "unitId": "1",
+        "autoStart": "true"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "poll-main",
+      "name": "Poll Driver",
+      "type": "pollDriver",
+      "enabled": true,
+      "driverId": "drv-sim",
+      "intervalMs": 200,
+      "parameters": {}
+    }
+  ],
+  "vars": {},
+  "recipes": []
+}

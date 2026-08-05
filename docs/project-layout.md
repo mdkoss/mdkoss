@@ -13,6 +13,7 @@ src/
 ├── MDKOSS.Extensions.Tcp/
 ├── MDKOSS.Extensions.Camera/
 ├── MDKOSS.Extensions.PyScript/
+├── MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Sample/
 └── MDKOSS.Config/
@@ -37,6 +38,7 @@ src/
 | `MDKOSS.Extensions.Serial` | `serialdev` | `SerialExtensionBootstrap` |
 | `MDKOSS.Extensions.Tcp` | `tcpdev` | `TcpExtensionBootstrap` |
 | `MDKOSS.Extensions.Camera` | `extcamera` | `CameraExtensionBootstrap` |
+| `MDKOSS.Extensions.ModServer` | `devmodserver` | `ModServerExtensionBootstrap` |
 | `MDKOSS.Extensions.PyScript` | `devpyscript` | `PyScriptExtensionBootstrap` |
 
 ## 延伸阅读

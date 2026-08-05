@@ -149,6 +149,7 @@ _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 | `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` | connect/disconnect/write/read/status | `/api/tcp/*` | MDKOSS.Extensions.Tcp |
 | `extcamera` | `ExtCameraDevice` | `ExtCameraDeviceParameters` | open/close/trigger/status | `/api/extcamera/*` | MDKOSS.Extensions.Camera |
 | `devpyscript` | `PyScriptDevice` | `PyScriptDeviceParameters` | run/kill/status | `/api/pyscript/*` | MDKOSS.Extensions.PyScript |
+| `devmodserver` | `ModServerDevice` | `ModServerDeviceParameters` | start/stop/status/寄存器读写 | `/api/modserver/*` | MDKOSS.Extensions.ModServer |
 
 分层角色（以串口为例）：
 
