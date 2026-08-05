@@ -121,9 +121,12 @@ mdkoss/
 - `src/MDKOSS.Core/server/monitoringserver.cs`
   轻量监控服务，提供：
   - `GET /`、`GET /index.html`：主界面（HMI）
-  - `GET /monitorIO.html`：IO 监控页（DI/DO 分栏、本地筛选、DO 拨动写入）
-  - `GET /debugSerialDev.html`：串口调试页（端口配置、文本/十六进制收发、实时状态）
-  - `GET /monitorPlatform.html`：平台步进示教页（`PlatformDevice` 点动、位置监视、示教点 localStorage）
+  - `GET /monitor_io.html`：IO 监控页（DI/DO 分栏、本地筛选；写操作见 `debug_io`；旧路径 `/monitorIO.html` 别名）
+  - `GET /debug_serial.html`：串口调试页（端口配置、文本/十六进制收发、实时状态；旧路径 `/debugSerialDev.html` 别名）
+  - `GET /debug_platform.html`：平台步进示教页（`PlatformDevice` 点动、位置监视、示教点；旧路径 `/monitorPlatform.html` 别名）
+  - `GET /monitor_platform.html`：平台状态只读监控
+  - `GET /monitor_runtime.html`：运行时总览（旧路径 `/monitoringpage.html` 别名）
+  - 界面分组说明：`src/MDKOSS.Cef/views/README.md`
   - `GET /api/status`：运行时快照 JSON
   - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备）
   - `GET /api/devices`：列出所有设备
@@ -137,19 +140,22 @@ mdkoss/
   - `POST /api/serial/read`：读取数据
 
 - `src/MDKOSS.Core/server/monitoringpage.cs`  
-  从输出目录旁 `views/monitoringpage.html` 加载综合监控页 HTML。
+  从输出目录旁 `views/monitor_runtime.html` 加载综合监控页 HTML。
 
 - `src/MDKOSS.Core/server/monitoriopage.cs`  
-  从 `views/monitorIO.html` 加载 IO 监控页 HTML（与上相同复制规则）。
+  从 `views/monitor_io.html` 加载 IO 监控页 HTML（与上相同复制规则）。
 
 - `src/MDKOSS.Core/server/monitorplatformpage.cs`  
-  从 `views/monitorPlatform.html` 加载平台步进示教页（设计说明见 `views/motiorplatform.md`）。
+  从 `views/debug_platform.html` 加载平台步进示教页（设计说明见 `views/_docs/debug_platform.md`）。
 
 - `src/MDKOSS.Core/server/indexpage.cs`  
   从 `views/index.html` 加载主界面 HTML。
 
 - `src/MDKOSS.Core/server/debugserialdevpage.cs`  
-  从 `views/debugserialdev.html` 加载串口调试页 HTML。
+  从 `views/debug_serial.html` 加载串口调试页 HTML。
+
+- `src/MDKOSS.Cef/views/README.md`  
+  界面分层：`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*`。
 
 - `src/MDKOSS.Core/core/mdk.cs`（`TryWriteDigitalOutput`）  
   供监控 HTTP 调用：在已注册设备中查找 `GpioDevice` 或 `VioDevice`，按别名执行 `WriteOutput`。
@@ -197,7 +203,8 @@ mdkoss/
 
 `configs/sample.setting.json`（随构建复制到输出目录）包含如下核心字段：
 
-- `projectName`：项目名称
+- `projectName`：项目名称（区分不同机型/工程）
+- `startPage`（可选）：CEF/监控首页，如 `indexDieBonder.html` / `indexPnp.html`；缺省 `index.html`
 - `monitoringPrefix`（可选）：监控 HTTP 监听地址，必须以 `/` 结尾，例如 `http://127.0.0.1:5081/`。默认 `http://127.0.0.1:5080/`（并自动登记 `localhost` 别名，不登记 `[::1]` 以避免 Windows http.sys 冲突）。端口被占用时请改此项。
 - `cycleMs`：主循环周期（预留）
 - `drivers[]`：
@@ -230,9 +237,11 @@ mdkoss/
 运行后可访问（端口以 `monitoringPrefix` 为准，默认可用 `127.0.0.1` 或 `localhost`）：
 
 - 综合监控页：`http://127.0.0.1:5080/`
-- IO 监控页：`http://127.0.0.1:5080/monitorIO.html`（左侧 DI、右侧 DO；各列表支持关键词筛选；DO 在驱动在线时可拨动写入，底层为 `POST /api/io/write`）
-- 串口调试页：`http://127.0.0.1:5080/debugSerialDev.html`（端口配置、文本/十六进制收发、实时状态监控）
-- 平台步进示教：`http://127.0.0.1:5080/monitorPlatform.html?deviceId={platformId}`（步进点动、使能、示教点；平台设备也可从综合监控页设备表跳转）
+- IO 监控页：`http://127.0.0.1:5080/monitor_io.html`（左侧 DI、右侧 DO；各列表支持关键词筛选）
+- 串口调试页：`http://127.0.0.1:5080/debug_serial.html`（端口配置、文本/十六进制收发、实时状态监控）
+- 平台步进示教：`http://127.0.0.1:5080/debug_platform.html?deviceId={platformId}`（步进点动、使能、示教点）
+- 平台只读监控：`http://127.0.0.1:5080/monitor_platform.html?deviceId={platformId}`
+- 运行时总览：`http://127.0.0.1:5080/monitor_runtime.html`
 - 快照接口：`http://127.0.0.1:5080/api/status`
 
 ### 6.1 API 端点

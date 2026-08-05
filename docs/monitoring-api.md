@@ -25,12 +25,16 @@ flowchart LR
 | URL | 文件 | 功能 |
 |-----|------|------|
 | `/`、`/index.html` | `index.html` | HMI 导航首页 |
-| `/monitoringpage.html` | `monitoringpage.html` | 综合运行时监控 |
-| `/monitorIO.html` | `monitorIO.html` | DI/DO 分栏、筛选、DO 写入 |
-| `/monitorPlatform.html` | `monitorPlatform.html` | 平台步进示教 |
-| `/debugSerialDev.html` | `debugSerialDev.html` | 串口调试 |
+| `/popup_*.html` | `popup_*.html` | 主界面二级弹窗 |
+| `/monitor_runtime.html` | `monitor_runtime.html` | 综合运行时监控（旧路径 `/monitoringpage.html` 别名） |
+| `/monitor_io.html` | `monitor_io.html` | DI/DO 分栏、筛选（旧路径 `/monitorIO.html` 别名） |
+| `/monitor_platform.html` | `monitor_platform.html` | 平台状态只读监控 |
+| `/debug_platform.html` | `debug_platform.html` | 平台步进示教（旧路径 `/monitorPlatform.html` 别名） |
+| `/debug_serial.html` | `debug_serial.html` | 串口调试（旧路径 `/debugSerialDev.html` 别名） |
+| `/debug_db.html` | `debug_db.html` | 数据库维护 |
+| `/man_*.html` | `man_*.html` | 配置管理（骨架） |
 
-平台示教页设计说明：`src/MDKOSS.Cef/views/motiorplatform.md`。
+平台示教页设计说明：`src/MDKOSS.Cef/views/_docs/debug_platform.md`。界面分组见 `src/MDKOSS.Cef/views/README.md`。
 
 ## REST API 概览
 
@@ -87,13 +91,14 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 | `/api/extcamera/close` | POST | 关闭相机会话 |
 | `/api/extcamera/trigger` | POST | 触发采集（可选 `recipe`） |
 
-### Python 脚本（MDKOSS.Extensions.PyScript）
+### Modbus TCP Server（MDKOSS.Extensions.ModServer）
 
 | 路由 | 方法 | 说明 |
 |------|------|------|
-| `/api/pyscript/status` | GET | 查询 `deviceId` 对应脚本设备状态 |
-| `/api/pyscript/run` | POST | 执行脚本（可选覆盖 `scriptPath` / `arguments` / `timeoutMs`） |
-| `/api/pyscript/kill` | POST | 终止当前进程 |
+| `/api/modserver/status` | GET | 查询监听状态 |
+| `/api/modserver/start` | POST | 启动 Modbus TCP 监听 |
+| `/api/modserver/stop` | POST | 停止监听 |
+| `/api/modserver/readHolding` 等 | POST | 本机读写保持/输入寄存器、线圈、离散量 |
 
 ### 配方
 

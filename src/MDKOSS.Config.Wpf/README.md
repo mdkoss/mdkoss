@@ -26,3 +26,14 @@ dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --db data
 ## 界面
 
 详见 [design.md](./design.md)。
+
+组件联调（独立窗口，说明见 `Debug/*.md`）：
+
+| 菜单 | 文档 |
+|------|------|
+| 调试 → Driver | [Debug/DriverDebug.md](./Debug/DriverDebug.md) |
+| 调试 → Axis | [Debug/AxisDebug.md](./Debug/AxisDebug.md) |
+| 调试 → Platform | [Debug/PlatformDebug.md](./Debug/PlatformDebug.md) |
+| 调试 → CameraDev | [Debug/CameraDevDebug.md](./Debug/CameraDevDebug.md) |
+| 调试 → Task 编辑 | [Debug/TaskDebug.md](./Debug/TaskDebug.md) |
+| 调试 → Flow 流程编辑 | [Debug/Flow/FlowEditor.md](./Debug/Flow/FlowEditor.md) |

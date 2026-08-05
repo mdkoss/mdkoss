@@ -193,9 +193,23 @@ public sealed class MdkRuntime : IDisposable
             _devices,
             Vars,
             GetSnapshot,
-            () => _tasks.Values.ToList());
+            () => _tasks.Values.ToList(),
+            flowHost: new RuntimeFlowHost(this));
 
         return RuntimeTaskFactory.Create(taskType, ctx, config);
+    }
+
+    /// <summary>Adapts <see cref="MdkRuntime"/> for flow task host ops.</summary>
+    private sealed class RuntimeFlowHost(MdkRuntime runtime) : Flow.IFlowRuntimeHost
+    {
+        public bool TryWriteDigitalOutput(string deviceId, string alias, bool value, out string? error) =>
+            runtime.TryWriteDigitalOutput(deviceId, alias, value, out error);
+
+        public DeviceActionResult ExecuteDeviceAction(
+            string deviceId,
+            string action,
+            Dictionary<string, System.Text.Json.JsonElement>? parameters) =>
+            runtime.ExecuteDeviceAction(deviceId, action, parameters);
     }
 
     // Instantiate and initialize all enabled devices.

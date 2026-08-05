@@ -1,0 +1,107 @@
+<Window x:Class="MDKOSS.Config.Wpf.Debug.PlatformDebugWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Platform 调试"
+        Height="760" Width="1100"
+        MinHeight="600" MinWidth="900"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="10">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button x:Name="BtnConnect" Content="连接" Click="Connect_Click"/>
+        <Button x:Name="BtnDisconnect" Content="断开" Click="Disconnect_Click" IsEnabled="False"/>
+        <Button Content="刷新状态" Click="Refresh_Click"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="Platform" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0"/>
+        <ComboBox x:Name="PlatformCombo" Width="280" SelectionChanged="PlatformCombo_SelectionChanged"/>
+        <TextBlock x:Name="KindBadge" Text="kind=-" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+        <TextBlock x:Name="ConnBadge" Text="未连接" Margin="16,0,0,0" VerticalAlignment="Center"
+                   FontWeight="SemiBold" Foreground="{StaticResource MutedBrush}"/>
+      </StackPanel>
+    </DockPanel>
+
+    <TextBox x:Name="LogBox" DockPanel.Dock="Bottom" Height="100" Margin="0,10,0,0"
+             IsReadOnly="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+             BorderBrush="{StaticResource BorderBrushKey}"/>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.2*"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
+              BorderThickness="1" CornerRadius="4" Padding="12">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="轴状态" FontWeight="SemiBold"
+                     Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
+          <DataGrid x:Name="AxisGrid" AutoGenerateColumns="False" CanUserAddRows="False" IsReadOnly="True"
+                    HeadersVisibility="Column" SelectionMode="Single"
+                    BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1"
+                    SelectionChanged="AxisGrid_SelectionChanged">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="轴" Binding="{Binding Letter}" Width="50"/>
+              <DataGridTextColumn Header="轴号" Binding="{Binding AxisIndex}" Width="50"/>
+              <DataGridTextColumn Header="DriverId" Binding="{Binding DriverId}" Width="*"/>
+              <DataGridTextColumn Header="在线" Binding="{Binding Online}" Width="50"/>
+              <DataGridTextColumn Header="使能" Binding="{Binding Enabled}" Width="50"/>
+              <DataGridTextColumn Header="指令位" Binding="{Binding PrfPos}" Width="80"/>
+              <DataGridTextColumn Header="编码位" Binding="{Binding EncPos}" Width="80"/>
+              <DataGridTextColumn Header="速度" Binding="{Binding Velocity}" Width="70"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+
+      <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
+              BorderThickness="1" CornerRadius="4" Padding="12">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="当前轴操作" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
+            <TextBlock x:Name="ActiveAxisLabel" Text="选中轴: —" Margin="0,0,0,8"/>
+            <Grid Margin="0,0,0,8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/>
+              </Grid.RowDefinitions>
+              <TextBlock Grid.Row="0" Text="速度" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+              <TextBox Grid.Row="0" Grid.Column="1" x:Name="VelBox" Text="100" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="1" Text="加速度" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+              <TextBox Grid.Row="1" Grid.Column="1" x:Name="AccBox" Text="500" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="2" Text="减速度" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+              <TextBox Grid.Row="2" Grid.Column="1" x:Name="DecBox" Text="500" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="3" Text="目标位置" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+              <TextBox Grid.Row="3" Grid.Column="1" x:Name="PosBox" Text="1000" Margin="0,0,0,6"/>
+              <TextBlock Grid.Row="4" Text="回零模式" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
+              <TextBox Grid.Row="4" Grid.Column="1" x:Name="HomeModeBox" Text="0"/>
+            </Grid>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+              <Button Content="使能" Click="Enable_Click"/>
+              <Button Content="去使能" Click="Disable_Click"/>
+              <Button Content="停止" Click="Stop_Click"/>
+            </StackPanel>
+            <Button Content="回原点" Click="Home_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+              <Button Content="点动 −" PreviewMouseLeftButtonDown="JogNeg_Down" PreviewMouseLeftButtonUp="Jog_Up"
+                      MouseLeave="Jog_Up" Width="90"/>
+              <Button Content="点动 +" PreviewMouseLeftButtonDown="JogPos_Down" PreviewMouseLeftButtonUp="Jog_Up"
+                      MouseLeave="Jog_Up" Width="90"/>
+            </StackPanel>
+            <Button Content="速度移动" Click="VelMove_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
+            <Button Content="位置移动" Click="PosMove_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
+            <Button Content="全部轴停止" Click="StopAll_Click" Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
+            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,10,0,0"
+                       Text="平台按 kind 展开轴字母；每轴可独立 DriverId（parameters.axis.X）。点动/运动 API 与 Axis 调试相同，作用在当前选中轴。"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

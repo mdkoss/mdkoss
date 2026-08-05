@@ -1,4 +1,5 @@
 using MDKOSS.Core.Drivers;
+using MDKOSS.Core.Flow;
 using MDKOSS.Tasks;
 
 namespace MDKOSS.Core;
@@ -11,13 +12,15 @@ public sealed class TaskBootstrapContext
         IReadOnlyDictionary<string, MDeviceBase> devices,
         MVarStore vars,
         Func<RuntimeSnapshot> getSnapshot,
-        Func<IReadOnlyList<MTaskBase>> listTasks)
+        Func<IReadOnlyList<MTaskBase>> listTasks,
+        IFlowRuntimeHost? flowHost = null)
     {
         Drivers = drivers;
         Devices = devices;
         Vars = vars;
         GetSnapshot = getSnapshot;
         ListTasks = listTasks;
+        FlowHost = flowHost;
     }
 
     public IReadOnlyDictionary<string, IDriver> Drivers { get; }
@@ -29,6 +32,9 @@ public sealed class TaskBootstrapContext
     public Func<RuntimeSnapshot> GetSnapshot { get; }
 
     public Func<IReadOnlyList<MTaskBase>> ListTasks { get; }
+
+    /// <summary>Optional host for <c>flow</c> task IO / device actions.</summary>
+    public IFlowRuntimeHost? FlowHost { get; }
 }
 
 /// <summary>Registry for task implementations keyed by config <c>type</c> string.</summary>
@@ -48,6 +54,8 @@ public static class RuntimeTaskFactory
         RegisterCore("taskcycle", CreateCycle);
         RegisterCore("motion", CreateMotion);
         RegisterCore("motiontask", CreateMotion);
+        RegisterCore("flow", CreateFlow);
+        RegisterCore("script", CreateFlow);
     }
 
     /// <summary>Registers or replaces a factory for the given task type key.</summary>
@@ -121,6 +129,12 @@ public static class RuntimeTaskFactory
             ctx.Vars,
             ctx.Devices,
             config.Parameters);
+    }
+
+    private static MTaskBase? CreateFlow(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
+    {
+        _ = taskTypeKey;
+        return FlowTask.Create(config, ctx.Vars, ctx.FlowHost);
     }
 
     private static GpioDevice? ResolveTaskGpio(TaskBootstrapContext ctx, IReadOnlyDictionary<string, string> parameters)

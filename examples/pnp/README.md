@@ -94,7 +94,7 @@ MdkExtensionHost.DiscoverAndRegister(); // 自动加载 plugins 下驱动/设备
 # 无 GUI 控制台（MDKOSS.Sample + --console）
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setting configs/pnp.setting.json
 
-# CEF HMI（PNP 默认加载 indexPnp.html）
+# CEF HMI（读取配置 startPage → indexPnp.html）
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs/pnp.setting.json
 
 # WinForms 配置 / 监控
@@ -103,9 +103,11 @@ dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj -- --setting configs
 
 或根目录脚本：`run-pnp-cef.bat` / `run-pnp-console.bat`。
 
+`pnp.setting.json` 通过 `projectName` 标识工程，通过 `startPage: "indexPnp.html"` 指定启动页（不再由 RuntimeHost 按机型推断）。
+
 监控页：
 
-- **机型主界面**：`http://127.0.0.1:5080/indexPnp.html`（模块状态 + 执行日志；PNP 配置默认 CEF 加载此页）
+- **机型主界面**：`http://127.0.0.1:5080/indexPnp.html`（模块状态 + 执行日志；由 `startPage` 决定 CEF 首页）
 - 循环细节：`http://127.0.0.1:5080/monitorPnp.html`
 - API：`GET /api/pnp/dashboard`（含 modules/logs），`GET /api/pnp/logs`，`POST /api/pnp/start|stop|reset|traychange|clearlogs`
 

@@ -6,7 +6,8 @@
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `projectName` | string | 工程显示名称 |
+| `projectName` | string | 工程显示名称（区分不同机型/工程） |
+| `startPage` | string? | CEF/监控首页，如 `indexDieBonder.html`；缺省为 `index.html` |
 | `monitoringPrefix` | string? | 监控 HTTP 前缀，须以 `/` 结尾，如 `http://127.0.0.1:5081/`。默认 `http://127.0.0.1:5080/` |
 | `cycleMs` | int | 主循环周期提示（毫秒），默认 20 |
 | `databasePath` | string? | SQLite 路径，默认 `data/mdk.db` |

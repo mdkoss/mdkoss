@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 贴片循环监控</title>
+  <style>
+    :root {
+      --bg: #071018;
+      --text: #e8f4f2;
+      --muted: #7fa39c;
+      --ok: #35d08f;
+      --warn: #ffcc66;
+      --danger: #ff5d5d;
+      --line: #1a3340;
+      --accent: #2ec4b6;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at top right, #12303a 0%, var(--bg) 42%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-end;
+      gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .title { font-size: 24px; font-weight: 700; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      border: 1px solid var(--line);
+      background: #0d1f28;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary { background: rgba(46,196,182,.18); border-color: rgba(46,196,182,.45); }
+    button.danger { background: rgba(255,93,93,.14); border-color: rgba(255,93,93,.4); }
+    button:hover { filter: brightness(1.12); }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 10px 0;
+      font-size: 15px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(53,208,143,.4); }
+    .badge.warn { color: var(--warn); border-color: rgba(255,204,102,.4); }
+    .badge.err { color: var(--danger); border-color: rgba(255,93,93,.4); }
+    .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 10px; font-size: 13px; }
+    .kv .k { color: var(--muted); }
+    .kv .v { font-family: Consolas, "Cascadia Mono", monospace; }
+    .flow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .step {
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+      background: #08151c;
+    }
+    .step.active {
+      color: var(--text);
+      border-color: rgba(46,196,182,.55);
+      background: rgba(46,196,182,.16);
+      box-shadow: 0 0 0 1px rgba(46,196,182,.15);
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .stat {
+      background: #08151c;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat .n { font-size: 22px; font-weight: 700; }
+    .stat .l { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .links { margin-top: 14px; font-size: 13px; color: var(--muted); }
+    .links a { color: var(--accent); text-decoration: none; margin-right: 12px; }
+    .links a:hover { text-decoration: underline; }
+    .msg {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #08151c;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      min-height: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">贴片循环监控</div>
+        <div class="sub">晶圆盘 → 下视定位 → 顶针拾取 → 上视测角 → 贴装基板 → nest 推进</div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btnStart" type="button">启动</button>
+        <button class="danger" id="btnStop" type="button">停止</button>
+        <button id="btnReset" type="button">复位</button>
+        <button id="btnTray" type="button">换盘</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h3>循环状态 <span class="badge" id="phaseBadge">—</span></h3>
+        <div class="kv">
+          <div class="k">Phase</div><div class="v" id="phase">—</div>
+          <div class="k">传送带</div><div class="v" id="conveyor">—</div>
+          <div class="k">晶圆盘到位</div><div class="v" id="srcPresent">—</div>
+          <div class="k">基板到位</div><div class="v" id="tgtPresent">—</div>
+          <div class="k">换盘请求</div><div class="v" id="trayReq">—</div>
+          <div class="k">配方</div><div class="v" id="recipe">—</div>
+        </div>
+        <div class="msg" id="message">等待状态…</div>
+        <div class="flow" id="flow"></div>
+        <div class="stats">
+          <div class="stat"><div class="n" id="okCount">0</div><div class="l">OK</div></div>
+          <div class="stat"><div class="n" id="ngCount">0</div><div class="l">NG</div></div>
+          <div class="stat"><div class="n" id="yield">—</div><div class="l">良率</div></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>视觉结果</h3>
+        <div class="kv">
+          <div class="k">下视 X</div><div class="v" id="topX">—</div>
+          <div class="k">下视 Y</div><div class="v" id="topY">—</div>
+          <div class="k">下视 OK</div><div class="v" id="topOk">—</div>
+          <div class="k">上视角度°</div><div class="v" id="angle">—</div>
+          <div class="k">角度 OK</div><div class="v" id="angleOk">—</div>
+        </div>
+        <div class="links">
+          <a href="/indexDieBonder.html">贴片机主界面</a>
+          <a href="/index.html">系统主界面</a>
+          <a href="/monitorIO.html">IO 监控</a>
+          <a href="/monitorPlatform.html?deviceId=head-bond">贴装头示教</a>
+          <a href="/monitoringpage.html">综合监控</a>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const STEPS = [
+      "Idle", "WaitTrays", "CheckSafety", "LocateDownlook",
+      "MovePickSafe", "MovePickXy", "EjectorOn", "DescendPick", "VacuumOn", "AscendPick", "EjectorOff",
+      "MoveUplook", "MeasureAngle", "CalcPlace",
+      "MovePlaceSafe", "MovePlaceXyU", "Dispense", "DescendPlace", "VacuumOff", "AscendPlace",
+      "AdvanceNests", "RequestTrayChange", "Fault"
+    ];
+
+    const flow = document.getElementById("flow");
+    STEPS.forEach((s) => {
+      const el = document.createElement("div");
+      el.className = "step";
+      el.dataset.phase = s;
+      el.textContent = s;
+      flow.appendChild(el);
+    });
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value == null || value === "" ? "—" : String(value);
+    }
+
+    function badgeClass(phase) {
+      if (phase === "Fault") return "badge err";
+      if (phase === "Idle") return "badge";
+      if (phase === "RequestTrayChange") return "badge warn";
+      return "badge ok";
+    }
+
+    async function post(action) {
+      await fetch(`/api/bond/${action}`, { method: "POST" });
+      await refresh();
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/bond/status");
+        const data = await res.json();
+        const phase = data.phase || "—";
+        setText("phase", phase);
+        setText("message", data.message);
+        setText("conveyor", data.conveyorPhase);
+        setText("srcPresent", data.srcTrayPresent);
+        setText("tgtPresent", data.tgtTrayPresent);
+        setText("trayReq", data.trayChangeRequest);
+        setText("recipe", data.activeRecipeId);
+        setText("okCount", data.okCount);
+        setText("ngCount", data.ngCount);
+        const ok = Number(data.okCount) || 0;
+        const ng = Number(data.ngCount) || 0;
+        const total = ok + ng;
+        setText("yield", total ? ((ok / total) * 100).toFixed(1) + "%" : "—");
+        setText("topX", data.vision?.topX);
+        setText("topY", data.vision?.topY);
+        setText("topOk", data.vision?.topOk);
+        setText("angle", data.vision?.angleDeg);
+        setText("angleOk", data.vision?.angleOk);
+        const badge = document.getElementById("phaseBadge");
+        badge.className = badgeClass(phase);
+        badge.textContent = phase;
+        document.querySelectorAll(".step").forEach((el) => {
+          el.classList.toggle("active", el.dataset.phase === phase);
+        });
+      } catch (e) {
+        setText("message", "状态刷新失败: " + e);
+      }
+    }
+
+    document.getElementById("btnStart").onclick = () => post("start");
+    document.getElementById("btnStop").onclick = () => post("stop");
+    document.getElementById("btnReset").onclick = () => post("reset");
+    document.getElementById("btnTray").onclick = () => post("traychange");
+    refresh();
+    setInterval(refresh, 500);
+  </script>
+</body>
+</html>

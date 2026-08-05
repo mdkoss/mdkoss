@@ -6,8 +6,8 @@
 
 | 区域 | 内容 |
 |------|------|
-| 顶部控制栏（居中） | 图标、设备名称、组件 / 任务 / 变量 / 报警 / 用户 / 关于；点击后在按钮下方展开二级面板 |
-| 主内容区 | 订单列表（可点击行选中当前订单） |
+| 顶部控制栏（居中） | 图标、设备名称、组件 / 任务 / 变量 / 报警 / 工单 / 用户 / 关于；点击后打开 `popup_*.html` 二级弹窗 |
+| 主内容区 | 订单列表（可点击行选中当前订单；双击打开工单详情 popup） |
 | 底部状态栏 | 当前订单摘要、重要状态监控、**右下角当前排单与选择按钮**、启动 / 停止 / 复位 |
 
 右上角 **报警灯** 同步 `task.operation.lamp`（红 / 黄 / 绿）。
@@ -30,11 +30,15 @@
 
 - 配置见 `setting.json` 的 `recipes` / `activeRecipeId` / `recipeVarKeys`
 - 运行时变量：`recipe.activeId`、`recipe.activeName`（由 `MdkRecipeManager` 维护）
-- 主界面右下角显示当前排单名称，点击「选择排单」可切换
+- 主界面右下角显示当前排单名称，点击「选择排单」打开 `popup_recipe.html`
 
 ## 相关文件
 
 - `src/MDKOSS.Cef/views/index.html` — 页面实现
+- `src/MDKOSS.Cef/views/popup_*.html` — 二级弹窗
+- `src/MDKOSS.Cef/views/css/main.css` — 主界面风格（HMI）
+- `src/MDKOSS.Cef/views/css/debug.css` — 调试 / 监控工具页风格
+- `src/MDKOSS.Cef/views/README.md` — 界面分组总览
 - `src/MDKOSS.Core/server/indexpage.cs` — 嵌入/加载 HTML
-- `src/MDKOSS.Core/server/monitoringserver.cs` — 路由与任务 API
-- 详细监控页仍可通过 `/monitoringpage.html` 访问
+- `src/MDKOSS.Core/server/monitoringserver.cs` — 路由、静态资源与任务 API
+- 详细监控页：`/monitor_runtime.html`

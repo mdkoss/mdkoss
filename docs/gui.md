@@ -93,7 +93,7 @@ EPSON RC+ 风格的工程配置界面，实现约定见 [MDKOSS.Config/design.md
 ## CEF 桌面壳
 
 - `CefRuntimeBootstrap` 初始化 CefSharp 运行时
-- `CefMainForm` 加载监控 HTTP 前缀下的首页（PNP 为 `indexPnp.html`，否则 `index.html`）
+- `CefMainForm` 加载监控 HTTP 前缀下的首页（由配置 `startPage` 指定，缺省 `index.html`）
 - 页面内链接跳转至各监控子页（IO、串口、平台示教等）
 - 需 VC++ 2019+ 可再发行组件（见 readme 环境说明）
 

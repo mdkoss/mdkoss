@@ -31,7 +31,11 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" />
   </ItemGroup>
 
-  <Target Name="BuildAndCopyMdkPlugins" AfterTargets="Build">
+  <!-- Skip design-time / IntelliSense builds: VS evaluates every host that imports this
+       file and would otherwise nested-MSBuild ~9 plugins in parallel per host → OOM. -->
+  <Target Name="BuildAndCopyMdkPlugins"
+          AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(BuildingProject)' == 'true'">
     <PropertyGroup>
       <_HostOutDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(OutputPath)'))</_HostOutDir>
       <MdkPluginsOutputDir>$(_HostOutDir)plugins\</MdkPluginsOutputDir>

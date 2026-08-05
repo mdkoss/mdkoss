@@ -496,7 +496,7 @@
           esc(type) +
           "</td><td>" +
           esc(d.state ?? d.State ?? "-") +
-          '</td><td><a href="/monitorIO.html">IO 监控</a></td></tr>'
+          '</td><td><a href="/monitor_io.html">IO 监控</a></td></tr>'
       );
     }
     $("ioTableBody").innerHTML = rows.length

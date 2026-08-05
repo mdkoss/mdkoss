@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using MDKOSS.Core;
+using MDKOSS.Extensions;
 
 namespace MDKOSS.Config.Wpf;
 
@@ -9,6 +10,12 @@ public partial class App : Application
     {
         base.OnStartup(e);
         AppLog.Configure();
+
+        // Load driver/device plugins (sim/gts/dmc/camera/…) for debug windows.
+        MdkExtensionHost.DiscoverAndRegister(new ExtensionDiscoveryOptions
+        {
+            Log = msg => AppLog.Info(msg),
+        });
 
         var path = ResolveDocumentPath(e.Args);
         var main = new MainWindow(path);

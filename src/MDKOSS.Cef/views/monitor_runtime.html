@@ -4,121 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDKOSS 监控面板</title>
-  <style>
-    :root {
-      --bg: #0b1220;
-      --panel: #101a2e;
-      --text: #dce7ff;
-      --muted: #90a4d4;
-      --ok: #35d08f;
-      --warn: #ffcc66;
-      --line: #1f2c4a;
-      --accent: #4e8cff;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: radial-gradient(circle at top right, #16264a 0%, var(--bg) 40%);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
-    .header {
-      display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px;
-      flex-wrap: wrap; gap: 8px 16px;
-    }
-    .title { font-size: 26px; font-weight: 700; letter-spacing: .5px; }
-    .sub { color: var(--muted); font-size: 13px; }
-    .grid {
-      display: grid; gap: 12px; grid-template-columns: repeat(12, 1fr);
-      grid-auto-rows: minmax(0, auto);
-    }
-    .card {
-      min-width: 0;
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      backdrop-filter: blur(4px);
-    }
-    .span-4 { grid-column: span 4; }
-    .span-8 { grid-column: span 8; }
-    .span-12 { grid-column: span 12; }
-    .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-    .value { font-size: 24px; font-weight: 700; line-height: 1.25; word-break: break-word; }
-    .pill {
-      display: inline-block; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600;
-      border: 1px solid var(--line); color: var(--muted);
-    }
-    .pill.ok { color: var(--ok); border-color: rgba(53,208,143,.4); background: rgba(53,208,143,.1); }
-    .pill.warn { color: var(--warn); border-color: rgba(255,204,102,.4); background: rgba(255,204,102,.1); }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-    th { color: var(--muted); font-weight: 600; }
-    pre {
-      margin: 0; background: #0a1120; border: 1px solid var(--line); border-radius: 10px; padding: 12px;
-      max-height: 340px; overflow: auto; color: #c8d7ff;
-    }
-    .vars-wrap {
-      max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 10px;
-      background: #0a1120;
-    }
-    .vars-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .vars-table th {
-      position: sticky; top: 0; z-index: 1;
-      background: #121c30; color: var(--muted); font-weight: 600; text-align: left;
-      padding: 10px 12px; border-bottom: 1px solid var(--line);
-    }
-    .vars-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-    .vars-table td.var-key {
-      width: 38%; max-width: 0; color: #a8c4ff; font-family: ui-monospace, Consolas, monospace;
-      word-break: break-all; white-space: normal;
-    }
-    .vars-table td.var-value {
-      color: #c8d7ff; word-break: break-word; white-space: pre-wrap;
-      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
-    }
-    .vars-table tbody tr:hover td { background: rgba(78, 140, 255, 0.06); }
-    .dot {
-      width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle;
-      background: var(--warn);
-    }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 10px rgba(53,208,143,.8); }
-    .footer { margin-top: 10px; color: var(--muted); font-size: 12px; }
-    .nav { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-    .nav a {
-      color: var(--accent); text-decoration: none; font-size: 13px;
-      padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
-    }
-    .nav a:hover { background: rgba(78, 140, 255, 0.1); }
-    .op-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .link-btn {
-      color: var(--accent); text-decoration: none; font-size: 12px; font-weight: 600;
-    }
-    .link-btn:hover { text-decoration: underline; }
-    .btn {
-      border: 1px solid var(--line);
-      background: #162644;
-      color: var(--text);
-      border-radius: 8px;
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    .btn:hover { background: #1d3157; }
-    .btn.green { border-color: rgba(53,208,143,.4); }
-    .btn.yellow { border-color: rgba(255,204,102,.4); }
-    .btn.red { border-color: rgba(255,93,93,.4); }
-    .io-wrap {
-      max-height: 380px;
-      overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: #0a1120;
-    }
-    @media (max-width: 900px) { .span-4, .span-8 { grid-column: span 12; } }
-  </style>
+  <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body>
   <div class="wrap">
@@ -126,10 +12,11 @@
       <div>
         <div class="title">MDKOSS Runtime Monitor</div>
         <nav class="nav">
-          <a href="/monitorPlatform.html">平台步进示教</a>
-          <a href="/monitorIO.html">IO 监控</a>
-          <a href="/debugSerialDev.html">串口调试</a>
-          <a href="/debugdb.html">数据库维护</a>
+          <a href="/debug_platform.html">平台步进示教</a>
+          <a href="/monitor_io.html">IO 监控</a>
+          <a href="/monitor_platform.html">平台监控</a>
+          <a href="/debug_serial.html">串口调试</a>
+          <a href="/debug_db.html">数据库维护</a>
         </nav>
       </div>
       <div class="sub">自动刷新间隔：1s</div>
@@ -231,7 +118,7 @@
         </div>
       </div>
     </div>
-    <div class="footer">接口: <code>/api/status</code> · 平台调试: <a class="link-btn" href="/monitorPlatform.html">monitorPlatform.html</a></div>
+    <div class="footer">接口: <code>/api/status</code> · 平台调试: <a class="link-btn" href="/debug_platform.html">debug_platform.html</a> · 只读: <a class="link-btn" href="/monitor_platform.html">monitor_platform.html</a></div>
   </div>
 
   <script>
@@ -369,7 +256,8 @@
         const state = d.state ?? d.State ?? "-";
         const driverType = d.driverType ?? d.DriverType ?? "-";
         const debugCell = isPlatformDeviceType(type)
-          ? `<a class="link-btn" href="/monitorPlatform.html?deviceId=${encodeURIComponent(id)}">步进示教</a>`
+          ? `<a class="link-btn" href="/debug_platform.html?deviceId=${encodeURIComponent(id)}">步进示教</a>
+             <a class="link-btn" href="/monitor_platform.html?deviceId=${encodeURIComponent(id)}">监控</a>`
           : "—";
         return `<tr>
           <td>${escapeHtml(id)}</td>

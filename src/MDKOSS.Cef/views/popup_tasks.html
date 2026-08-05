@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>任务状态</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    body { margin: 0; background: var(--bg); }
+    .popup-page { padding: 12px 14px; }
+    .popup-page table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .popup-page th, .popup-page td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+    .popup-page th { color: var(--muted); }
+    .row { display:flex; justify-content:space-between; gap:12px; padding:6px 8px; font-size:12px; border-bottom:1px solid var(--line); }
+    .row span:first-child { color: var(--muted); }
+    .empty { color: var(--muted); padding: 16px; text-align: center; }
+    body.embedded .standalone-title { display: none; }
+  </style>
+</head>
+<body>
+  <div class="popup-page">
+    <div class="standalone-title" style="font-weight:700;margin-bottom:10px">任务状态</div>
+    <div id="op"></div>
+    <div id="body"><div class="empty">加载中…</div></div>
+    <div style="margin-top:12px;font-size:12px"><a href="/monitor_task.html" target="_blank" style="color:var(--accent)">任务详细监控 →</a></div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
+    function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+    function v(vars,k,fb){const x=vars[k]; return (x==null||x==="")?fb:String(x);}
+    async function tick(){
+      try{
+        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
+        const vars = data.vars || data.Vars || {};
+        document.getElementById("op").innerHTML =
+          `<div class="row"><span>操作任务</span><span>${esc(v(vars,"task.operation.state","—"))}</span></div>`
+          +`<div class="row"><span>消息</span><span>${esc(v(vars,"task.operation.message","—"))}</span></div>`;
+        let states = {};
+        const raw = vars["task.cycle.task.states.json"];
+        if (raw) { try { states = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { states = {}; } }
+        const keys = Object.keys(states).sort();
+        const el = document.getElementById("body");
+        if (!keys.length) { el.innerHTML = '<div class="empty">任务状态未上报</div>'; return; }
+        el.innerHTML = `<table><thead><tr><th>任务</th><th>状态</th></tr></thead><tbody>${
+          keys.map(k=>`<tr><td>${esc(k)}</td><td>${esc(String(states[k]))}</td></tr>`).join("")
+        }</tbody></table>`;
+      }catch{
+        document.getElementById("body").innerHTML='<div class="empty">无法连接</div>';
+      }
+    }
+    tick(); setInterval(tick, 1000);
+  </script>
+</body>
+</html>

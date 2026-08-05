@@ -1,0 +1,100 @@
+<Window x:Class="MDKOSS.Config.Wpf.Debug.TaskDebugWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Task 编辑"
+        Height="700" Width="960"
+        MinHeight="540" MinWidth="780"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI" FontSize="13"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="10">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="应用参数模板" Click="Preset_Click" Padding="10,4"/>
+        <Button Content="校验" Click="Validate_Click" Padding="10,4"/>
+        <Button Content="应用到工作区" Click="Apply_Click" Padding="12,4"
+                Background="{StaticResource AccentBrush}" Foreground="White"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="Task" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0"/>
+        <ComboBox x:Name="TaskCombo" Width="280" SelectionChanged="TaskCombo_SelectionChanged"/>
+        <TextBlock x:Name="DirtyBadge" Text="" Margin="16,0,0,0" VerticalAlignment="Center"
+                   Foreground="#B54708" FontWeight="SemiBold"/>
+      </StackPanel>
+    </DockPanel>
+
+    <TextBox x:Name="LogBox" DockPanel.Dock="Bottom" Height="100" Margin="0,10,0,0"
+             IsReadOnly="True" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+             BorderBrush="{StaticResource BorderBrushKey}"/>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.15*"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+
+      <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
+              BorderThickness="1" CornerRadius="4" Padding="12">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <TextBlock Text="基本属性" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
+            <TextBlock Text="Name" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+            <TextBox x:Name="NameBox" Margin="0,0,0,8" TextChanged="Field_Changed"/>
+            <TextBlock Text="Type" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+            <ComboBox x:Name="TypeCombo" IsEditable="True" Margin="0,0,0,8"
+                      SelectionChanged="TypeCombo_SelectionChanged"
+                      LostFocus="TypeCombo_LostFocus"/>
+            <TextBlock Text="DriverId" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+            <ComboBox x:Name="DriverCombo" IsEditable="True" Margin="0,0,0,8"
+                      SelectionChanged="FieldCombo_Changed" LostFocus="FieldCombo_LostFocus"/>
+            <TextBlock Text="IntervalMs" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+            <TextBox x:Name="IntervalBox" Margin="0,0,0,12" TextChanged="Field_Changed"/>
+
+            <DockPanel Margin="0,0,0,4">
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParam_Click"/>
+                <Button Content="删行" Padding="8,2" Margin="0,0,4,0" Click="RemoveParam_Click"/>
+                <Button Content="JSON" Padding="8,2" Click="SyncJson_Click" ToolTip="从表格同步预览 JSON"/>
+              </StackPanel>
+              <TextBlock Text="Parameters" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"
+                         VerticalAlignment="Center"/>
+            </DockPanel>
+            <DataGrid x:Name="ParamGrid"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="True"
+                      CanUserDeleteRows="True"
+                      HeadersVisibility="Column"
+                      MinHeight="180"
+                      MaxHeight="280"
+                      BorderBrush="{StaticResource BorderBrushKey}"
+                      BorderThickness="1"
+                      Margin="0,0,0,8"
+                      CellEditEnding="ParamGrid_CellEditEnding">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <Expander Header="原始 JSON 预览" IsExpanded="False">
+              <TextBox x:Name="ParamsJsonBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"
+                       VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="11"
+                       LostFocus="ParamsJson_LostFocus"/>
+            </Expander>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+
+      <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
+              BorderThickness="1" CornerRadius="4" Padding="12">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="类型说明 / 校验" FontWeight="SemiBold"
+                     Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
+          <TextBox x:Name="HelpBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                   VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="12"
+                   BorderThickness="0" Background="Transparent"/>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>

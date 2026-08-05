@@ -1,0 +1,144 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 平台状态监控</title>
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">平台状态监控 <span class="pill warn">只读</span></div>
+        <div class="sub" id="hdrSubtitle">选择平台设备查看轴位置 / 使能 / 在线状态</div>
+      </div>
+      <nav class="nav">
+        <a href="/">主界面</a>
+        <a href="/monitor_runtime.html">运行监控</a>
+        <a href="/debug_platform.html" id="lnkTeach">步进示教</a>
+        <a href="/monitor_io.html">IO 监控</a>
+      </nav>
+    </div>
+
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="flex:2">
+        <label>平台设备</label>
+        <select id="selPlatform"><option value="">— 选择平台 —</option></select>
+      </div>
+      <div class="form-group">
+        <label>刷新</label>
+        <div class="value" style="font-size:12px;color:var(--muted)">1s 轮询</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card span-4">
+        <div class="label">设备状态</div>
+        <div class="value" id="devState">—</div>
+      </div>
+      <div class="card span-4">
+        <div class="label">类型</div>
+        <div class="value" id="devType">—</div>
+      </div>
+      <div class="card span-4">
+        <div class="label">驱动</div>
+        <div class="value" id="devDriver">—</div>
+      </div>
+      <div class="card span-12">
+        <div class="label">轴状态（platformAxes）</div>
+        <table>
+          <thead>
+            <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>位置</th><th>速度</th><th>报警</th></tr>
+          </thead>
+          <tbody id="axisRows"><tr><td colspan="7" style="color:var(--muted)">请选择平台</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script>
+    const PLATFORM = new Set(["platform","xy","xyz","xyzu","xyzuv","xyzuvw"]);
+    const sel = document.getElementById("selPlatform");
+    const lnkTeach = document.getElementById("lnkTeach");
+    const q = new URLSearchParams(location.search);
+    let preferred = q.get("deviceId") || "";
+
+    function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+    function field(o,a,b){return o?.[a]??o?.[b];}
+
+    function fillSelect(devices){
+      const cur = sel.value || preferred;
+      const opts = Object.entries(devices||{})
+        .filter(([,d])=>PLATFORM.has(String(field(d,"type","Type")||"").toLowerCase()))
+        .map(([id,d])=>{
+          const name = field(d,"name","Name") || id;
+          return `<option value="${esc(id)}">${esc(name)} (${esc(id)})</option>`;
+        });
+      sel.innerHTML = '<option value="">— 选择平台 —</option>' + opts.join("");
+      if (cur && [...sel.options].some(o=>o.value===cur)) sel.value = cur;
+      else if (sel.options.length > 1) sel.selectedIndex = 1;
+      preferred = "";
+      updateTeachLink();
+    }
+
+    function updateTeachLink(){
+      const id = sel.value;
+      lnkTeach.href = id ? `/debug_platform.html?deviceId=${encodeURIComponent(id)}` : "/debug_platform.html";
+    }
+
+    function renderDevice(id, devices){
+      updateTeachLink();
+      const d = devices?.[id];
+      if (!d) {
+        document.getElementById("hdrSubtitle").textContent = "未找到设备";
+        document.getElementById("devState").textContent = "—";
+        document.getElementById("devType").textContent = "—";
+        document.getElementById("devDriver").textContent = "—";
+        document.getElementById("axisRows").innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无数据</td></tr>';
+        return;
+      }
+      const name = field(d,"name","Name") || id;
+      document.getElementById("hdrSubtitle").textContent = `${name} · ${id}`;
+      document.getElementById("devState").textContent = String(field(d,"state","State") || "—");
+      document.getElementById("devType").textContent = String(field(d,"type","Type") || "—");
+      document.getElementById("devDriver").textContent = String(field(d,"driverId","DriverId") || field(d,"driverType","DriverType") || "—");
+
+      const axes = field(d,"platformAxes","PlatformAxes") || [];
+      const list = Array.isArray(axes) ? axes : Object.entries(axes).map(([letter,ax])=>({letter,...ax}));
+      if (!list.length) {
+        document.getElementById("axisRows").innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无 platformAxes</td></tr>';
+        return;
+      }
+      document.getElementById("axisRows").innerHTML = list.map(ax=>{
+        const letter = ax.letter ?? ax.Letter ?? ax.axis ?? ax.Axis ?? "—";
+        const driver = ax.driverId ?? ax.DriverId ?? "—";
+        const online = ax.driverConnected ?? ax.DriverConnected ?? ax.online ?? ax.Online;
+        const enabled = ax.enabled ?? ax.Enabled ?? ax.enable ?? ax.Enable;
+        const pos = ax.position ?? ax.Position ?? ax.pos ?? "—";
+        const vel = ax.velocity ?? ax.Velocity ?? ax.speed ?? "—";
+        const alarm = ax.alarm ?? ax.Alarm ?? ax.fault ?? ax.Fault ?? "—";
+        return `<tr>
+          <td>${esc(letter)}</td><td>${esc(driver)}</td>
+          <td>${online===true?"是":online===false?"否":esc(online)}</td>
+          <td>${enabled===true?"是":enabled===false?"否":esc(enabled)}</td>
+          <td>${esc(pos)}</td><td>${esc(vel)}</td><td>${esc(alarm)}</td>
+        </tr>`;
+      }).join("");
+    }
+
+    sel.addEventListener("change", () => tick());
+
+    async function tick(){
+      try{
+        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
+        const devices = field(data,"devices","Devices") || {};
+        fillSelect(devices);
+        if (sel.value) renderDevice(sel.value, devices);
+      }catch{
+        document.getElementById("hdrSubtitle").textContent = "无法连接 /api/status";
+      }
+    }
+    tick(); setInterval(tick, 1000);
+  </script>
+</body>
+</html>

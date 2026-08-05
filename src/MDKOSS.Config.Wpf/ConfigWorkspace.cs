@@ -912,11 +912,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         object payload = _module switch
         {
             ConfigModule.Drivers => _setting.Drivers,
-            ConfigModule.Devices => _setting.Devices,
+            ConfigModule.Devices => _setting.Devices.Where(IsDevicesModuleEntry).ToList(),
             ConfigModule.Axis => _setting.Devices
                 .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase)).ToList(),
             ConfigModule.Platform => _setting.Devices
-                .Where(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant())).ToList(),
+                .Where(IsPlatformModuleEntry).ToList(),
             ConfigModule.Tasks => _setting.Tasks,
             ConfigModule.Recipes => _setting.Recipes,
             ConfigModule.Vars => _setting.Vars,
@@ -925,6 +925,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 ["projectName"] = _setting.ProjectName,
                 ["cycleMs"] = _setting.CycleMs,
                 ["monitoringPrefix"] = _setting.MonitoringPrefix,
+                ["startPage"] = _setting.StartPage,
                 ["databasePath"] = _setting.DatabasePath,
                 ["activeRecipeId"] = _setting.ActiveRecipeId,
                 ["recipeVarKeys"] = _setting.RecipeVarKeys,
@@ -981,8 +982,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             }
             case ConfigModule.Devices:
             {
-                var rows = JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [];
-                MergeDevices(rows, replace, filter: null);
+                var rows = (JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [])
+                    .Where(IsDevicesModuleEntry)
+                    .ToList();
+                // 替换时只动 Devices 条目，保留 Platform 族
+                MergeDevices(rows, replace, IsDevicesModuleEntry);
                 break;
             }
             case ConfigModule.Axis:
@@ -993,9 +997,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             }
             case ConfigModule.Platform:
             {
-                var rows = JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [];
-                MergeDevices(rows, replace, d =>
-                    PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant()));
+                var rows = (JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [])
+                    .Where(IsPlatformModuleEntry)
+                    .ToList();
+                MergeDevices(rows, replace, IsPlatformModuleEntry);
                 break;
             }
             case ConfigModule.Tasks:
@@ -1132,6 +1137,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
 
         var type = string.IsNullOrWhiteSpace(req.Type) ? ConfigTypeCatalog.DefaultType(_module) : req.Type;
+        EnsureDeviceTypeForModule(_module, type);
         var d = new MdkSetting.DeviceConfig
         {
             Id = req.Id,
@@ -1300,7 +1306,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 MoveInList(_setting.Drivers, _selected.Source as MdkSetting.DriverConfig, delta);
                 break;
             case ConfigModule.Devices:
-                MoveInList(_setting.Devices, _selected.Source as MdkSetting.DeviceConfig, delta);
+                MoveAmongFiltered(
+                    _setting.Devices,
+                    _selected.Source as MdkSetting.DeviceConfig,
+                    delta,
+                    IsDevicesModuleEntry);
                 break;
             case ConfigModule.Tasks:
                 MoveInList(_setting.Tasks, _selected.Source as MdkSetting.TaskConfig, delta);
@@ -1392,12 +1402,15 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Enabled = d.Enabled,
             HasEnabled = true,
         }).ToList(),
-        ConfigModule.Devices => _setting.Devices.Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
+        // Platform 不作为 Devices 子项：仅出现在 Platform 模块树下
+        ConfigModule.Devices => _setting.Devices
+            .Where(IsDevicesModuleEntry)
+            .Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
         ConfigModule.Axis => _setting.Devices
             .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
             .Select(d => ToDeviceItem(d, ConfigModule.Axis)).ToList(),
         ConfigModule.Platform => _setting.Devices
-            .Where(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant()))
+            .Where(IsPlatformModuleEntry)
             .Select(d =>
             {
                 var item = ToDeviceItem(d, ConfigModule.Platform);
@@ -1500,6 +1513,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ("projectName", _setting.ProjectName),
             ("cycleMs", _setting.CycleMs.ToString()),
             ("monitoringPrefix", _setting.MonitoringPrefix ?? ""),
+            ("startPage", _setting.StartPage ?? ""),
             ("databasePath", _setting.DatabasePath ?? ""),
             ("activeRecipeId", _setting.ActiveRecipeId ?? ""),
             ("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys, JsonOptions)),
@@ -1681,9 +1695,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             throw new InvalidOperationException($"设备 Id 已存在: {newId}");
         }
 
+        var type = string.IsNullOrWhiteSpace(Draft.FieldType)
+            ? (_module == ConfigModule.Platform ? "xyz" : "gpio")
+            : Draft.FieldType.Trim();
+        EnsureDeviceTypeForModule(_module, type);
+
         d.Id = newId;
         d.Name = Draft.FieldName.Trim();
-        d.Type = string.IsNullOrWhiteSpace(Draft.FieldType) ? "gpio" : Draft.FieldType.Trim();
+        d.Type = type;
         d.DriverId = Draft.FieldDriverId.Trim();
         d.Enabled = Draft.FieldEnabled;
         d.Parameters = Draft.CollectStringParameters();
@@ -1774,6 +1793,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case "monitoringPrefix":
                 _setting.MonitoringPrefix = string.IsNullOrWhiteSpace(value) ? null : value;
+                break;
+            case "startPage":
+                _setting.StartPage = string.IsNullOrWhiteSpace(value) ? null : value.Trim().TrimStart('/');
                 break;
             case "databasePath":
                 _setting.DatabasePath = string.IsNullOrWhiteSpace(value) ? null : value;
@@ -1871,6 +1893,34 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         _ => m.ToString(),
     };
 
+    /// <summary>Platform 族不归属 Devices 模块（独立 Platform 树节点）。</summary>
+    private static bool IsPlatformModuleEntry(MdkSetting.DeviceConfig d) =>
+        PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant());
+
+    private static bool IsDevicesModuleEntry(MdkSetting.DeviceConfig d) => !IsPlatformModuleEntry(d);
+
+    private static void EnsureDeviceTypeForModule(ConfigModule module, string type)
+    {
+        var lower = (type ?? "").ToLowerInvariant();
+        var isPlatform = PlatformDeviceParameterSet.IsPlatformFamilyType(lower);
+        if (module == ConfigModule.Devices && isPlatform)
+        {
+            throw new InvalidOperationException(
+                "Platform 不属于 Devices 模块。请在左侧「Platform」下新建或编辑。");
+        }
+
+        if (module == ConfigModule.Platform && !isPlatform)
+        {
+            throw new InvalidOperationException(
+                "Platform 模块仅支持 platform / xy / xyz / xyzu / xyzuv / xyzuvw。");
+        }
+
+        if (module == ConfigModule.Axis && !string.Equals(lower, "axis", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Axis 模块仅支持 type=axis。");
+        }
+    }
+
     private static string RequireId(string? value, string label)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -1948,6 +1998,36 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         list.RemoveAt(index);
         list.Insert(target, item);
+    }
+
+    /// <summary>在完整列表中，仅与满足 <paramref name="include"/> 的相邻项交换位置（跳过被过滤的项）。</summary>
+    private static void MoveAmongFiltered<T>(List<T> list, T? item, int delta, Func<T, bool> include)
+        where T : class
+    {
+        if (item is null || !include(item))
+        {
+            return;
+        }
+
+        var index = list.IndexOf(item);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var step = delta < 0 ? -1 : 1;
+        for (var i = index + step; i >= 0 && i < list.Count; i += step)
+        {
+            if (!include(list[i]))
+            {
+                continue;
+            }
+
+            list.RemoveAt(index);
+            // 移除后：下移时邻居下标 -1，Insert(i) 落在邻居之后；上移时 Insert(i) 落在邻居之前。
+            list.Insert(i, item);
+            return;
+        }
     }
 
     private static MdkSetting.DriverConfig CloneDriver(MdkSetting.DriverConfig d) => new()

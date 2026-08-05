@@ -1,194 +1,124 @@
 {
-  "projectName": "MDKOSS-Demo",
+  "projectName": "半导体贴片机-DieBonder",
+  "startPage": "indexDieBonder.html",
+  "monitoringPrefix": "http://127.0.0.1:5080/",
   "cycleMs": 20,
   "drivers": [
     {
-      "id": "drv-main",
+      "id": "drv-motion",
       "type": "sim",
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5000"
+        "port": "5000",
+        "note": "运动控制卡：贴装头 XYZU + 相机触发"
       }
     },
     {
-      "id": "drv-gpio-aux",
+      "id": "drv-io",
       "type": "sim",
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5001"
-      }
-    },
-    {
-      "id": "drv-gpio-io2",
-      "type": "sim",
-      "enabled": true,
-      "parameters": {
-        "ip": "127.0.0.1",
-        "port": "5002"
+        "port": "5001",
+        "note": "IO 卡：真空/顶针/传送带/塔灯/安全"
       }
     }
   ],
   "devices": [
     {
-      "id": "gpio-main",
-      "name": "GPIO Main",
+      "id": "gpio-machine",
+      "name": "整机 IO",
       "type": "gpio",
       "enabled": true,
       "parameters": {
-        "driverIds": "drv-main,drv-gpio-aux,drv-gpio-io2",
-        "in.startButton": "drv-main:X0",
-        "in.stopButton": "drv-gpio-aux:X1",
-        "in.resetButton": "drv-gpio-io2:X2",
-        "in.safetyDoor": "drv-gpio-io2:X3",
-        "out.tower.red": "drv-main:Y0",
-        "out.tower.yellow": "drv-gpio-aux:Y1",
-        "out.tower.green": "drv-main:Y2",
-        "out.buzzer": "drv-gpio-io2:Y3"
+        "driverIds": "drv-io",
+        "in.startButton": "drv-io:X0",
+        "in.stopButton": "drv-io:X1",
+        "in.resetButton": "drv-io:X2",
+        "in.safetyDoor": "drv-io:X3",
+        "in.wafer.present": "drv-io:X10",
+        "in.substrate.present": "drv-io:X11",
+        "in.vacuum.ok": "drv-io:X12",
+        "out.tower.red": "drv-io:Y0",
+        "out.tower.yellow": "drv-io:Y1",
+        "out.tower.green": "drv-io:Y2",
+        "out.buzzer": "drv-io:Y3",
+        "out.vacuum": "drv-io:Y10",
+        "out.ejector": "drv-io:Y11",
+        "out.dispenser": "drv-io:Y12",
+        "out.wafer.conveyorRun": "drv-io:Y20",
+        "out.substrate.conveyorRun": "drv-io:Y21"
       }
     },
     {
-      "id": "vio-sim",
-      "name": "Virtual GPIO (SIM)",
-      "type": "vio",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "in.vtest.di": "virtual",
-        "out.vtest.do": ""
-      }
-    },
-    {
-      "id": "dev-axis",
-      "name": "Sample Axis",
-      "type": "axis",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-cameradev",
-      "name": "Sample Camera",
-      "type": "cameradev",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-extcamera",
-      "name": "Sample Ext Camera",
-      "type": "extcamera",
-      "enabled": false,
-      "parameters": {
-        "backend": "sim",
-        "deviceIndex": "0",
-        "width": "1280",
-        "height": "720",
-        "exposureMs": "10",
-        "noisePx": "0.5"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xy",
-      "name": "Platform kind=xy",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xy"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xyz",
-      "name": "Platform kind=xyz",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyz"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xyzu",
-      "name": "Platform kind=xyzu",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyzu"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xyzuv",
-      "name": "Platform kind=xyzuv",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyzuv"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xyzuvw",
-      "name": "Platform kind=xyzuvw",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyzuvw"
-      }
-    },
-    {
-      "id": "dev-type-xy",
-      "name": "Shorthand type xy",
-      "type": "xy",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyz",
-      "name": "Shorthand type xyz",
-      "type": "xyz",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzu",
-      "name": "Shorthand type xyzu",
+      "id": "head-bond",
+      "name": "贴装头 XYZU",
       "type": "xyzu",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzuv",
-      "name": "Shorthand type xyzuv",
-      "type": "xyzuv",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzuvw",
-      "name": "Shorthand type xyzuvw",
-      "type": "xyzuvw",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-platform-per-axis",
-      "name": "XYZ per-axis drivers",
-      "type": "xyz",
-      "driverId": "",
+      "driverId": "drv-motion",
       "enabled": true,
       "parameters": {
-        "axis.X": "drv-main",
-        "axis.Y": "drv-gpio-aux",
-        "axis.Z": "drv-gpio-io2"
+        "note": "Bond Head：X/Y 平面、Z 升降、U 旋转补偿"
+      }
+    },
+    {
+      "id": "cam-downlook",
+      "name": "下视相机",
+      "type": "cameradev",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "role": "downlook",
+        "note": "定位晶圆 Die / 基板焊盘 XY"
+      }
+    },
+    {
+      "id": "cam-uplook",
+      "name": "上视相机",
+      "type": "cameradev",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "role": "uplook",
+        "note": "吸嘴下方 Die 角度测量，供 U 轴补偿"
+      }
+    },
+    {
+      "id": "tray-wafer",
+      "name": "晶圆源盘",
+      "type": "tray",
+      "enabled": true,
+      "parameters": {
+        "role": "source",
+        "rows": "8",
+        "cols": "8",
+        "originX": "20",
+        "originY": "20",
+        "pitchX": "5",
+        "pitchY": "5",
+        "pickZ": "-8",
+        "safeZ": "0",
+        "startIndex": "0",
+        "note": "Waffle / Gel-Pak 源料盘，仿真 8×8 Die"
+      }
+    },
+    {
+      "id": "tray-substrate",
+      "name": "基板目标盘",
+      "type": "tray",
+      "enabled": true,
+      "parameters": {
+        "role": "target",
+        "rows": "2",
+        "cols": "8",
+        "originX": "280",
+        "originY": "30",
+        "pitchX": "15",
+        "pitchY": "20",
+        "pickZ": "-6",
+        "safeZ": "0",
+        "startIndex": "0",
+        "note": "Leadframe / PCB 贴装 nest"
       }
     }
   ],
@@ -197,7 +127,9 @@
       "name": "task-operation",
       "type": "operation",
       "intervalMs": 200,
-      "parameters": {}
+      "parameters": {
+        "gpioDeviceId": "gpio-machine"
+      }
     },
     {
       "name": "task-cycle",
@@ -206,49 +138,131 @@
       "parameters": {}
     },
     {
-      "name": "poll-main",
+      "name": "poll-motion",
       "type": "pollDriver",
-      "driverId": "drv-main",
+      "driverId": "drv-motion",
       "intervalMs": 500,
       "parameters": {}
     },
     {
-      "name": "poll-gpio-aux",
+      "name": "poll-io",
       "type": "pollDriver",
-      "driverId": "drv-gpio-aux",
+      "driverId": "drv-io",
       "intervalMs": 500,
       "parameters": {}
     },
     {
-      "name": "poll-gpio-io2",
-      "type": "pollDriver",
-      "driverId": "drv-gpio-io2",
-      "intervalMs": 500,
-      "parameters": {}
+      "name": "bond-cycle",
+      "type": "bond",
+      "driverId": "drv-motion",
+      "intervalMs": 100,
+      "parameters": {
+        "platformDeviceId": "head-bond",
+        "gpioDeviceId": "gpio-machine",
+        "sourceTrayDeviceId": "tray-wafer",
+        "targetTrayDeviceId": "tray-substrate",
+        "downlookCameraDeviceId": "cam-downlook",
+        "uplookCameraDeviceId": "cam-uplook",
+        "vacuumAlias": "vacuum",
+        "ejectorAlias": "ejector",
+        "dispenserAlias": "dispenser",
+        "safetyDoorAlias": "safetyDoor",
+        "useEjector": "true",
+        "useDispenser": "false",
+        "checkSafetyDoor": "false",
+        "dwellTicks": "2"
+      }
+    },
+    {
+      "name": "material-conveyor",
+      "type": "materialConveyor",
+      "driverId": "drv-io",
+      "intervalMs": 100,
+      "parameters": {
+        "gpioDeviceId": "gpio-machine",
+        "sourceTrayDeviceId": "tray-wafer",
+        "targetTrayDeviceId": "tray-substrate",
+        "sourceRunAlias": "wafer.conveyorRun",
+        "targetRunAlias": "substrate.conveyorRun",
+        "runTicks": "5"
+      }
     }
   ],
   "recipeVarKeys": [
     "machine.mode",
-    "task.operation.command"
+    "task.operation.command",
+    "pnp.bottomCam.x",
+    "pnp.bottomCam.y",
+    "pnp.place.offsetX",
+    "pnp.place.offsetY",
+    "pnp.place.angleOffsetDeg",
+    "pnp.vision.top.recipe",
+    "pnp.vision.bottom.recipe",
+    "pnp.vision.top.noiseMm",
+    "pnp.vision.bottom.angleRangeDeg",
+    "pnp.vision.top.ngRate",
+    "pnp.vision.bottom.ngRate"
   ],
-  "activeRecipeId": "default",
+  "activeRecipeId": "qfn-3x3",
   "recipes": [
     {
-      "id": "default",
-      "name": "默认配方",
-      "description": "自动运行，绿灯指示",
+      "id": "qfn-3x3",
+      "name": "QFN 3×3mm",
+      "description": "标准 Die Attach：小角度补偿、低视觉噪声",
       "vars": {
         "machine.mode": "AUTO",
-        "task.operation.command": "lamp:green"
+        "task.operation.command": "lamp:green",
+        "pnp.bottomCam.x": "180",
+        "pnp.bottomCam.y": "100",
+        "pnp.place.offsetX": "0",
+        "pnp.place.offsetY": "0",
+        "pnp.place.angleOffsetDeg": "0",
+        "pnp.vision.top.recipe": "wafer-die-locate",
+        "pnp.vision.bottom.recipe": "die-angle",
+        "pnp.vision.top.noiseMm": "0.2",
+        "pnp.vision.bottom.angleRangeDeg": "10",
+        "pnp.vision.top.ngRate": "0.01",
+        "pnp.vision.bottom.ngRate": "0.01"
       }
     },
     {
-      "id": "manual",
-      "name": "手动配方",
-      "description": "手动模式，黄灯指示",
+      "id": "bga-10x10",
+      "name": "BGA 10×10mm",
+      "description": "大 Die 贴装：更大角度范围与放置偏置",
       "vars": {
-        "machine.mode": "MANUAL",
-        "task.operation.command": "lamp:yellow"
+        "machine.mode": "AUTO",
+        "task.operation.command": "lamp:green",
+        "pnp.bottomCam.x": "180",
+        "pnp.bottomCam.y": "100",
+        "pnp.place.offsetX": "0.3",
+        "pnp.place.offsetY": "-0.2",
+        "pnp.place.angleOffsetDeg": "0.5",
+        "pnp.vision.top.recipe": "wafer-die-locate-bga",
+        "pnp.vision.bottom.recipe": "die-angle-bga",
+        "pnp.vision.top.noiseMm": "0.4",
+        "pnp.vision.bottom.angleRangeDeg": "20",
+        "pnp.vision.top.ngRate": "0.02",
+        "pnp.vision.bottom.ngRate": "0.02"
+      }
+    },
+    {
+      "id": "flipchip",
+      "name": "Flip-Chip",
+      "description": "倒装贴片：U 轴预偏置 + 严格角度窗口",
+      "vars": {
+        "machine.mode": "AUTO",
+        "task.operation.command": "lamp:green",
+        "pnp.bottomCam.x": "180",
+        "pnp.bottomCam.y": "100",
+        "pnp.place.offsetX": "0",
+        "pnp.place.offsetY": "0",
+        "pnp.place.angleOffsetDeg": "180",
+        "pnp.vision.top.recipe": "pad-locate",
+        "pnp.vision.bottom.recipe": "bump-angle",
+        "pnp.vision.top.noiseMm": "0.15",
+        "pnp.vision.bottom.angleRangeDeg": "5",
+        "pnp.vision.top.ngRate": "0.015",
+        "pnp.vision.bottom.ngRate": "0.015"
       }
     }
   ],
@@ -258,6 +272,16 @@
     "task.operation.alias.red": "tower.red",
     "task.operation.alias.yellow": "tower.yellow",
     "task.operation.alias.green": "tower.green",
-    "task.operation.command": "lamp:green"
+    "task.operation.command": "lamp:yellow",
+    "task.pnp.run": false,
+    "task.pnp.command": "",
+    "task.pnp.srcTrayPresent": true,
+    "task.pnp.tgtTrayPresent": true,
+    "task.pnp.trayChangeRequest": false,
+    "pnp.bottomCam.x": 180,
+    "pnp.bottomCam.y": 100,
+    "pnp.place.offsetX": 0,
+    "pnp.place.offsetY": 0,
+    "pnp.place.angleOffsetDeg": 0
   }
 }

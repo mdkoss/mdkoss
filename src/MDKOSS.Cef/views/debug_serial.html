@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 串口调试</title>
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="title">串口调试</div>
+      <div class="sub">Serial Device Debug · API: <code>/api/serial/*</code></div>
+    </div>
+
+    <div class="layout">
+      <!-- 左侧配置面板 -->
+      <div class="card">
+        <h2 class="panel-title">
+          <span>端口状态</span>
+          <span id="statusBadge" class="status-badge closed">
+            <span class="dot"></span>
+            <span id="statusText">已关闭</span>
+          </span>
+        </h2>
+
+        <div id="portInfo" style="display: none; margin-bottom: 12px;">
+          <div class="info-row"><span class="info-label">端口名</span><span class="info-value" id="infoPortName">-</span></div>
+          <div class="info-row"><span class="info-label">波特率</span><span class="info-value" id="infoBaudRate">-</span></div>
+          <div class="info-row"><span class="info-label">数据位</span><span class="info-value" id="infoDataBits">-</span></div>
+          <div class="info-row"><span class="info-label">校验位</span><span class="info-value" id="infoParity">-</span></div>
+          <div class="info-row"><span class="info-label">停止位</span><span class="info-value" id="infoStopBits">-</span></div>
+          <div class="info-row"><span class="info-label">待读字节</span><span class="info-value" id="infoBytesToRead">-</span></div>
+        </div>
+
+        <div class="btn-group">
+          <button id="btnOpen" class="btn primary">打开</button>
+          <button id="btnClose" class="btn danger" disabled>关闭</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="panel-title">端口配置</h2>
+
+        <div class="form-group">
+          <label>设备 ID</label>
+          <input type="text" id="deviceId" placeholder="serial1" value="serial1" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>端口名</label>
+            <select id="portName">
+              <option value="COM1">COM1</option>
+              <option value="COM2">COM2</option>
+              <option value="COM3">COM3</option>
+              <option value="COM4">COM4</option>
+              <option value="COM5">COM5</option>
+              <option value="COM6">COM6</option>
+              <option value="COM7">COM7</option>
+              <option value="COM8">COM8</option>
+              <option value="COM9">COM9</option>
+              <option value="COM10">COM10</option>
+              <option value="COM11">COM11</option>
+              <option value="COM12">COM12</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>波特率</label>
+            <select id="baudRate">
+              <option value="1200">1200</option>
+              <option value="2400">2400</option>
+              <option value="4800">4800</option>
+              <option value="9600" selected>9600</option>
+              <option value="14400">14400</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="115200">115200</option>
+              <option value="230400">230400</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>数据位</label>
+            <select id="dataBits">
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8" selected>8</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>校验位</label>
+            <select id="parity">
+              <option value="None" selected>无</option>
+              <option value="Odd">奇校验</option>
+              <option value="Even">偶校验</option>
+              <option value="Mark">Mark</option>
+              <option value="Space">Space</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>停止位</label>
+            <select id="stopBits">
+              <option value="One" selected>1</option>
+              <option value="OnePointFive">1.5</option>
+              <option value="Two">2</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>读超时 (ms)</label>
+            <input type="number" id="readTimeout" value="5000" min="100" max="60000" />
+          </div>
+          <div class="form-group">
+            <label>写超时 (ms)</label>
+            <input type="number" id="writeTimeout" value="5000" min="100" max="60000" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="dtrEnable" />
+            启用 DTR
+          </label>
+          <label class="checkbox-label" style="margin-left: 16px;">
+            <input type="checkbox" id="rtsEnable" />
+            启用 RTS
+          </label>
+        </div>
+
+        <div class="btn-group">
+          <button id="btnApply" class="btn">应用配置</button>
+        </div>
+      </div>
+
+      <!-- 右侧收发区域 -->
+      <div class="card" style="grid-column: 2;">
+        <div class="rx-area">
+          <div class="rx-header">
+            <h3>接收数据 (RX)</h3>
+            <div class="rx-stats">
+              已接收: <span id="rxBytes">0</span> 字节
+            </div>
+          </div>
+          <textarea id="rxData" class="rx-textarea empty" readonly placeholder="等待接收数据..."></textarea>
+          <div class="btn-group" style="margin-top: 8px;">
+            <button id="btnClearRx" class="btn">清空接收</button>
+            <button id="btnRead" class="btn">立即读取</button>
+            <button id="btnDiscard" class="btn danger">清空缓冲区</button>
+          </div>
+        </div>
+
+        <div class="tx-area">
+          <div class="tx-header">
+            <h3>发送数据 (TX)</h3>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="txMode" value="text" checked />
+                文本
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="txMode" value="hex" />
+                十六进制
+              </label>
+            </div>
+          </div>
+          <textarea id="txData" placeholder="输入要发送的数据..."></textarea>
+          <div class="hex-mode" id="hexModeHint"></div>
+          <div class="btn-group" style="margin-top: 8px;">
+            <button id="btnSend" class="btn primary">发送</button>
+            <button id="btnSendLine" class="btn">发送行</button>
+            <button id="btnClearTx" class="btn">清空</button>
+          </div>
+        </div>
+
+        <div class="msg" id="msg"></div>
+      </div>
+    </div>
+
+    <div class="footer">自动刷新: <span id="lastUpdate">-</span></div>
+  </div>
+
+  <script>
+    const els = {
+      statusBadge: document.getElementById("statusBadge"),
+      statusText: document.getElementById("statusText"),
+      portInfo: document.getElementById("portInfo"),
+      infoPortName: document.getElementById("infoPortName"),
+      infoBaudRate: document.getElementById("infoBaudRate"),
+      infoDataBits: document.getElementById("infoDataBits"),
+      infoParity: document.getElementById("infoParity"),
+      infoStopBits: document.getElementById("infoStopBits"),
+      infoBytesToRead: document.getElementById("infoBytesToRead"),
+      btnOpen: document.getElementById("btnOpen"),
+      btnClose: document.getElementById("btnClose"),
+      btnApply: document.getElementById("btnApply"),
+      btnSend: document.getElementById("btnSend"),
+      btnSendLine: document.getElementById("btnSendLine"),
+      btnClearRx: document.getElementById("btnClearRx"),
+      btnClearTx: document.getElementById("btnClearTx"),
+      btnRead: document.getElementById("btnRead"),
+      btnDiscard: document.getElementById("btnDiscard"),
+      deviceId: document.getElementById("deviceId"),
+      portName: document.getElementById("portName"),
+      baudRate: document.getElementById("baudRate"),
+      dataBits: document.getElementById("dataBits"),
+      parity: document.getElementById("parity"),
+      stopBits: document.getElementById("stopBits"),
+      readTimeout: document.getElementById("readTimeout"),
+      writeTimeout: document.getElementById("writeTimeout"),
+      dtrEnable: document.getElementById("dtrEnable"),
+      rtsEnable: document.getElementById("rtsEnable"),
+      txData: document.getElementById("txData"),
+      rxData: document.getElementById("rxData"),
+      rxBytes: document.getElementById("rxBytes"),
+      msg: document.getElementById("msg"),
+      lastUpdate: document.getElementById("lastUpdate"),
+      hexModeHint: document.getElementById("hexModeHint")
+    };
+
+    let rxTotal = 0;
+    let isOpen = false;
+    let autoRefreshTimer = null;
+
+    function showMsg(text, type = "info") {
+      els.msg.textContent = text;
+      els.msg.className = "msg " + type;
+      if (type === "ok" || type === "err") {
+        setTimeout(() => {
+          if (els.msg.textContent === text) {
+            els.msg.textContent = "";
+            els.msg.className = "msg";
+          }
+        }, 3000);
+      }
+    }
+
+    function updateStatus(open, error = null) {
+      isOpen = open;
+      els.btnOpen.disabled = open;
+      els.btnClose.disabled = !open;
+      els.portInfo.style.display = open ? "block" : "none";
+
+      if (error) {
+        els.statusBadge.className = "status-badge error";
+        els.statusText.textContent = "错误";
+        els.statusBadge.querySelector(".dot").className = "dot err";
+        return;
+      }
+
+      if (open) {
+        els.statusBadge.className = "status-badge open";
+        els.statusText.textContent = "已打开";
+        els.statusBadge.querySelector(".dot").className = "dot ok";
+      } else {
+        els.statusBadge.className = "status-badge closed";
+        els.statusText.textContent = "已关闭";
+        els.statusBadge.querySelector(".dot").className = "dot";
+      }
+    }
+
+    function getConfig() {
+      return {
+        portName: els.portName.value,
+        baudRate: parseInt(els.baudRate.value, 10),
+        dataBits: parseInt(els.dataBits.value, 10),
+        parity: els.parity.value,
+        stopBits: els.stopBits.value,
+        readTimeout: parseInt(els.readTimeout.value, 10),
+        writeTimeout: parseInt(els.writeTimeout.value, 10),
+        dtrEnable: els.dtrEnable.checked,
+        rtsEnable: els.rtsEnable.checked
+      };
+    }
+
+    function getDeviceId() {
+      return els.deviceId.value.trim() || "serial1";
+    }
+
+    async function apiCall(endpoint, method = "GET", body = null) {
+      const opts = { method };
+      if (body) {
+        opts.headers = { "Content-Type": "application/json" };
+        opts.body = JSON.stringify(body);
+      }
+      const res = await fetch("/api/serial/" + endpoint, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "HTTP " + res.status);
+      return data;
+    }
+
+    async function openPort() {
+      try {
+        showMsg("正在打开端口...", "info");
+        const data = await apiCall("open", "POST", {
+          deviceId: getDeviceId(),
+          config: getConfig()
+        });
+        updateStatus(true);
+        showMsg("端口已打开", "ok");
+        refreshStatus();
+        startAutoRefresh();
+      } catch (e) {
+        updateStatus(false, true);
+        showMsg("打开失败: " + e.message, "err");
+      }
+    }
+
+    async function closePort() {
+      try {
+        await apiCall("close", "POST", { deviceId: getDeviceId() });
+        updateStatus(false);
+        showMsg("端口已关闭", "ok");
+        stopAutoRefresh();
+        clearPortInfo();
+      } catch (e) {
+        showMsg("关闭失败: " + e.message, "err");
+      }
+    }
+
+    async function applyConfig() {
+      try {
+        await apiCall("config", "POST", {
+          deviceId: getDeviceId(),
+          config: getConfig()
+        });
+        showMsg("配置已应用", "ok");
+        if (isOpen) refreshStatus();
+      } catch (e) {
+        showMsg("配置失败: " + e.message, "err");
+      }
+    }
+
+    function parseHexInput(text) {
+      const cleaned = text.replace(/\s+/g, "").replace(/0x/gi, "");
+      if (!/^[0-9a-fA-F]*$/.test(cleaned)) {
+        throw new Error("无效的十六进制字符");
+      }
+      const bytes = [];
+      for (let i = 0; i < cleaned.length; i += 2) {
+        bytes.push(parseInt(cleaned.substr(i, 2), 16));
+      }
+      return new Uint8Array(bytes);
+    }
+
+    function arrayToHex(arr) {
+      return Array.from(arr)
+        .map(b => b.toString(16).padStart(2, "0").toUpperCase())
+        .join(" ");
+    }
+
+    async function sendText(text, addNewline = false) {
+      if (!text) {
+        showMsg("请输入要发送的数据", "err");
+        return;
+      }
+      try {
+        await apiCall("write", "POST", {
+          deviceId: getDeviceId(),
+          data: addNewline ? text + "\r\n" : text
+        });
+        showMsg("已发送 " + text.length + " 字节", "ok");
+      } catch (e) {
+        showMsg("发送失败: " + e.message, "err");
+      }
+    }
+
+    async function sendHex(hexStr) {
+      try {
+        const bytes = parseHexInput(hexStr);
+        if (bytes.length === 0) {
+          showMsg("请输入有效的十六进制数据", "err");
+          return;
+        }
+        await apiCall("writeBin", "POST", {
+          deviceId: getDeviceId(),
+          data: Array.from(bytes)
+        });
+        showMsg("已发送 " + bytes.length + " 字节", "ok");
+      } catch (e) {
+        showMsg("发送失败: " + e.message, "err");
+      }
+    }
+
+    async function readData() {
+      try {
+        const data = await apiCall("read", "POST", { deviceId: getDeviceId() });
+        if (data.data) {
+          appendRx(data.data);
+          showMsg("已读取 " + data.data.length + " 字节", "ok");
+        } else {
+          showMsg("无数据可读", "info");
+        }
+      } catch (e) {
+        showMsg("读取失败: " + e.message, "err");
+      }
+    }
+
+    async function discardBuffers() {
+      try {
+        await apiCall("discard", "POST", { deviceId: getDeviceId() });
+        showMsg("缓冲区已清空", "ok");
+      } catch (e) {
+        showMsg("操作失败: " + e.message, "err");
+      }
+    }
+
+    function appendRx(text) {
+      if (!text) return;
+      els.rxData.classList.remove("empty");
+      els.rxData.value += text;
+      rxTotal += text.length;
+      els.rxBytes.textContent = rxTotal;
+      els.rxData.scrollTop = els.rxData.scrollHeight;
+    }
+
+    function clearRx() {
+      els.rxData.value = "";
+      els.rxData.classList.add("empty");
+      rxTotal = 0;
+      els.rxBytes.textContent = "0";
+    }
+
+    function clearTx() {
+      els.txData.value = "";
+      updateHexHint();
+    }
+
+    function clearPortInfo() {
+      els.infoPortName.textContent = "-";
+      els.infoBaudRate.textContent = "-";
+      els.infoDataBits.textContent = "-";
+      els.infoParity.textContent = "-";
+      els.infoStopBits.textContent = "-";
+      els.infoBytesToRead.textContent = "-";
+    }
+
+    async function refreshStatus() {
+      if (!isOpen) return;
+      try {
+        const data = await apiCall("status?deviceId=" + encodeURIComponent(getDeviceId()));
+        if (data.isOpen) {
+          els.infoPortName.textContent = data.portName || "-";
+          els.infoBaudRate.textContent = data.baudRate || "-";
+          els.infoDataBits.textContent = data.dataBits || "-";
+          els.infoParity.textContent = data.parity || "-";
+          els.infoStopBits.textContent = data.stopBits === "OnePointFive" ? "1.5" : data.stopBits || "-";
+          els.infoBytesToRead.textContent = data.bytesToRead ?? "-";
+
+          if (data.pendingData) {
+            appendRx(data.pendingData);
+          }
+        } else {
+          updateStatus(false);
+        }
+        els.lastUpdate.textContent = new Date().toLocaleTimeString();
+      } catch (e) {
+        console.error("Status refresh error:", e);
+      }
+    }
+
+    function startAutoRefresh() {
+      stopAutoRefresh();
+      autoRefreshTimer = setInterval(refreshStatus, 500);
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshTimer) {
+        clearInterval(autoRefreshTimer);
+        autoRefreshTimer = null;
+      }
+    }
+
+    function updateHexHint() {
+      const mode = document.querySelector("input[name='txMode']:checked").value;
+      if (mode === "hex") {
+        els.hexModeHint.textContent = "格式: 01 02 AB CD 或 0102ABCD";
+      } else {
+        els.hexModeHint.textContent = "";
+      }
+    }
+
+    // Event listeners
+    els.btnOpen.addEventListener("click", openPort);
+    els.btnClose.addEventListener("click", closePort);
+    els.btnApply.addEventListener("click", applyConfig);
+
+    els.btnSend.addEventListener("click", () => {
+      const mode = document.querySelector("input[name='txMode']:checked").value;
+      const data = els.txData.value;
+      if (mode === "hex") {
+        sendHex(data);
+      } else {
+        sendText(data, false);
+      }
+    });
+
+    els.btnSendLine.addEventListener("click", () => {
+      const mode = document.querySelector("input[name='txMode']:checked").value;
+      const data = els.txData.value;
+      if (mode === "hex") {
+        showMsg("十六进制模式不支持发送行", "err");
+      } else {
+        sendText(data, true);
+      }
+    });
+
+    els.btnClearRx.addEventListener("click", clearRx);
+    els.btnClearTx.addEventListener("click", clearTx);
+    els.btnRead.addEventListener("click", readData);
+    els.btnDiscard.addEventListener("click", discardBuffers);
+
+    document.querySelectorAll("input[name='txMode']").forEach(radio => {
+      radio.addEventListener("change", updateHexHint);
+    });
+
+    els.txData.addEventListener("input", updateHexHint);
+
+    // Initial state
+    updateHexHint();
+    els.lastUpdate.textContent = new Date().toLocaleTimeString();
+  </script>
+</body>
+</html>

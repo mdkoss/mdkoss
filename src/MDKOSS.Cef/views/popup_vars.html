@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>运行变量</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    body { margin: 0; background: var(--bg); }
+    .popup-page { padding: 12px 14px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; word-break: break-all; }
+    th { color: var(--muted); }
+    td:last-child { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+    .empty { color: var(--muted); padding: 16px; text-align: center; }
+    body.embedded .standalone-title { display: none; }
+  </style>
+</head>
+<body>
+  <div class="popup-page">
+    <div class="standalone-title" style="font-weight:700;margin-bottom:10px">运行变量（前 30 项）</div>
+    <div id="body"><div class="empty">加载中…</div></div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
+    function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+    async function tick(){
+      try{
+        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
+        const vars = data.vars || data.Vars || {};
+        const keys = Object.keys(vars).filter(k=>!k.startsWith("order.list"))
+          .sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:"base"})).slice(0,30);
+        const el = document.getElementById("body");
+        if (!keys.length) { el.innerHTML = '<div class="empty">无变量</div>'; return; }
+        el.innerHTML = `<table><thead><tr><th>键</th><th>值</th></tr></thead><tbody>${
+          keys.map(k=>{
+            let v=vars[k];
+            if(typeof v==="object") try{v=JSON.stringify(v);}catch{v=String(v);}
+            return `<tr><td>${esc(k)}</td><td>${esc(String(v??""))}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      }catch{
+        document.getElementById("body").innerHTML='<div class="empty">无法连接</div>';
+      }
+    }
+    tick(); setInterval(tick, 1000);
+  </script>
+</body>
+</html>

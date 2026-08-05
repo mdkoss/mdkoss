@@ -4,116 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDKOSS 数据库维护</title>
-  <style>
-    :root {
-      --bg: #0b1220;
-      --panel: #101a2e;
-      --text: #dce7ff;
-      --muted: #90a4d4;
-      --ok: #35d08f;
-      --warn: #ffcc66;
-      --danger: #ff5d5d;
-      --line: #1f2c4a;
-      --accent: #4e8cff;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: radial-gradient(circle at top right, #16264a 0%, var(--bg) 40%);
-      color: var(--text);
-      min-height: 100vh;
-    }
-    .wrap { max-width: 1480px; margin: 0 auto; padding: 20px; }
-    .header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      margin-bottom: 16px; flex-wrap: wrap; gap: 12px;
-    }
-    .title { font-size: 24px; font-weight: 700; }
-    .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
-    .nav { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
-    .nav a { color: var(--accent); text-decoration: none; font-size: 13px; }
-    .nav a:hover { text-decoration: underline; }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
-    }
-    .stat {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px 14px;
-    }
-    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-    .stat-value { font-size: 22px; font-weight: 700; margin-top: 4px; }
-    .card {
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-    .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
-    .tab {
-      padding: 10px 16px; border: none; background: transparent; color: var(--muted);
-      cursor: pointer; font-size: 13px; font-weight: 600;
-      border-bottom: 2px solid transparent; margin-bottom: -1px;
-    }
-    .tab.active { color: var(--text); border-bottom-color: var(--accent); }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
-    .layout { display: grid; grid-template-columns: 1fr 340px; gap: 16px; align-items: start; }
-    @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; }
-    th { color: var(--muted); font-size: 11px; font-weight: 600; }
-    tbody tr { cursor: pointer; transition: background .12s; }
-    tbody tr:hover td { background: rgba(78,140,255,.06); }
-    tbody tr.selected td { background: rgba(78,140,255,.12); }
-    .badge {
-      display: inline-block; padding: 2px 8px; border-radius: 999px;
-      font-size: 11px; font-weight: 600; border: 1px solid var(--line);
-    }
-    .badge.pending { color: var(--warn); border-color: rgba(255,204,102,.4); }
-    .badge.running { color: var(--ok); border-color: rgba(53,208,143,.4); }
-    .badge.done { color: var(--muted); }
-    .badge.fault { color: var(--danger); border-color: rgba(255,93,93,.4); }
-    .badge.active-recipe { color: var(--accent); border-color: rgba(78,140,255,.45); }
-    .form-group { margin-bottom: 10px; }
-    .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-    .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
-    .form-row .form-group { flex: 1; min-width: 120px; }
-    input, select, textarea {
-      width: 100%; padding: 8px 10px; border-radius: 6px;
-      border: 1px solid var(--line); background: #0a1120; color: var(--text);
-      font-size: 13px; font-family: inherit;
-    }
-    textarea { min-height: 160px; resize: vertical; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
-    .btn {
-      padding: 8px 14px; border-radius: 6px; border: 1px solid var(--line);
-      background: #162644; color: var(--text); font-size: 13px; font-weight: 600;
-      cursor: pointer; transition: all .15s;
-    }
-    .btn:hover { border-color: var(--accent); }
-    .btn.primary { background: rgba(78,140,255,.2); border-color: rgba(78,140,255,.5); color: #a8c8ff; }
-    .btn.danger { background: rgba(255,93,93,.12); border-color: rgba(255,93,93,.45); color: #ffb0b0; }
-    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-    .table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: 8px; }
-    .panel-title { font-size: 14px; font-weight: 700; margin: 0 0 12px; }
-    .log-box {
-      margin-top: 16px; padding: 10px 12px; border-radius: 8px;
-      border: 1px solid var(--line); background: #0a1120;
-      font-family: ui-monospace, Consolas, monospace; font-size: 12px;
-      color: var(--muted); min-height: 40px; white-space: pre-wrap;
-    }
-    .log-box.ok { color: var(--ok); }
-    .log-box.err { color: var(--danger); }
-    .footer { color: var(--muted); font-size: 12px; margin-top: 8px; }
-    code { color: #a8c8ff; }
-  </style>
+  <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body>
   <div class="wrap">
@@ -123,9 +14,10 @@
         <div class="sub" id="dbPath">加载中…</div>
         <nav class="nav">
           <a href="/">主界面</a>
-          <a href="/monitoringpage.html">运行监控</a>
-          <a href="/debugSerialDev.html">串口调试</a>
-          <a href="/monitorPlatform.html">平台示教</a>
+          <a href="/monitor_runtime.html">运行监控</a>
+          <a href="/debug_serial.html">串口调试</a>
+          <a href="/debug_platform.html">平台示教</a>
+          <a href="/monitor_platform.html">平台监控</a>
         </nav>
       </div>
       <button type="button" class="btn primary" id="btnRefreshAll">刷新全部</button>

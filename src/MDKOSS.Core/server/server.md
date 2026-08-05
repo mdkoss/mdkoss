@@ -6,7 +6,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `monitoringserver.cs` | 监听、路由分发、静态页、模块注册 |
+| `monitoringserver.cs` | 监听、路由分发、静态页 / 静态资源、模块注册 |
 | `monitoring_api_module.cs` | API 模块基类：JSON 选项、读写 body、统一成功/错误响应 |
 | `monitoring_module_registry.cs` | 扩展程序集注入 API 模块（Serial/TCP 等） |
 | `api_*_module.cs` | 各资源前缀的具体处理 |
@@ -16,7 +16,16 @@
 
 1. `MonitoringServer` 按模块 `RoutePrefix` **前缀匹配**（更具体的前缀须先注册）
 2. 模块 `HandleAsync` 返回 `true` 表示已处理；`false` 则继续尝试后续模块 / 静态页
-3. 未命中 → `404 Not Found`
+3. 命中注册的 HTML 路由 → 返回页面
+4. 否则尝试从 `views/` 提供静态资源（`/css/*`、`*.js` 等）
+5. 未命中 → `404 Not Found`
+
+### 前端样式
+
+| 主题 | 文件 | 适用页面 |
+|------|------|----------|
+| 主界面 | `views/css/main.css` | `index.html` 及同类 HMI 子界面 |
+| 调试 / 监控 | `views/css/debug.css` | `monitor_*` / `debug_*` / `man_*` 等 |
 
 扩展模块经 `MonitoringModuleRegistry.Register` 注册，在构造函数中 `CreateModules` 插入；也可用 `AddModule` 在 `Start()` 前追加。
 

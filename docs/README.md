@@ -28,5 +28,6 @@
 - 示例配置：`src/MDKOSS.Sample/configs/sample.setting.json`
 - 配置模块说明：`src/MDKOSS.Config/config.md`、`src/MDKOSS.Config/design.md`
 - 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`
-- 平台示教页设计：`src/MDKOSS.Cef/views/motiorplatform.md`
+- 平台示教页设计：`src/MDKOSS.Cef/views/_docs/debug_platform.md`
+- 界面分组：`src/MDKOSS.Cef/views/README.md`
 - 单元测试：`tests/MDKOSS.Tests/`

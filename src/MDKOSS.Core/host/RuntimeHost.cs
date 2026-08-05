@@ -62,16 +62,15 @@ public static class RuntimeHost
         return Path.Combine(Environment.CurrentDirectory, "MDKOSS", "configs", "sample.setting.json");
     }
 
-    public static bool IsPnpSettingPath(string settingPath)
+    /// <summary>
+    /// CEF / monitor start page from <see cref="MdkSetting.StartPage"/> (default <c>index.html</c>).
+    /// </summary>
+    public static string ResolveStartPage(MdkSetting setting)
     {
-        var name = Path.GetFileName(settingPath);
-        return name.Contains("pnp", StringComparison.OrdinalIgnoreCase);
-    }
-
-    public static bool IsPnpProject(MdkSetting setting, string settingPath)
-    {
-        return IsPnpSettingPath(settingPath)
-               || setting.ProjectName.Contains("PNP", StringComparison.OrdinalIgnoreCase);
+        ArgumentNullException.ThrowIfNull(setting);
+        return string.IsNullOrWhiteSpace(setting.StartPage)
+            ? "index.html"
+            : setting.StartPage.Trim().TrimStart('/');
     }
 
     public static bool TryLoadSettings(string settingPath, out MdkSetting setting)
@@ -152,10 +151,11 @@ public static class RuntimeHost
             return;
         }
 
+        var startPage = ResolveStartPage(setting);
         Console.WriteLine("MDKOSS runtime started.");
+        Console.WriteLine($"Project: {setting.ProjectName}");
         Console.WriteLine($"Monitor UI: {runtime.MonitoringPrefix}");
-        Console.WriteLine($"PNP home: {runtime.MonitoringPrefix}indexPnp.html");
-        Console.WriteLine($"PNP cycle: {runtime.MonitoringPrefix}monitorPnp.html");
+        Console.WriteLine($"Start page: {runtime.MonitoringPrefix}{startPage}");
 
         using var shutdown = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>

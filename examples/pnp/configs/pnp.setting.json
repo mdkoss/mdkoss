@@ -1,5 +1,6 @@
 {
   "projectName": "MDKOSS-PNP-Demo",
+  "startPage": "indexPnp.html",
   "monitoringPrefix": "http://127.0.0.1:5080/",
   "cycleMs": 20,
   "drivers": [

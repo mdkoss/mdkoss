@@ -766,6 +766,7 @@ public sealed class MdkConfigStore : IDisposable
             ("projectName", setting.ProjectName ?? string.Empty, "general"),
             ("cycleMs", setting.CycleMs.ToString(), "general"),
             ("monitoringPrefix", setting.MonitoringPrefix ?? string.Empty, "general"),
+            ("startPage", setting.StartPage ?? string.Empty, "general"),
             ("databasePath", setting.DatabasePath ?? string.Empty, "general"),
             ("activeRecipeId", setting.ActiveRecipeId ?? string.Empty, "recipe"),
             ("recipeVarKeys", JsonSerializer.Serialize(setting.RecipeVarKeys, JsonOptions), "recipe"),
@@ -942,6 +943,9 @@ public sealed class MdkConfigStore : IDisposable
                     break;
                 case "monitoringPrefix":
                     setting.MonitoringPrefix = string.IsNullOrWhiteSpace(value) ? null : value;
+                    break;
+                case "startPage":
+                    setting.StartPage = string.IsNullOrWhiteSpace(value) ? null : value;
                     break;
                 case "databasePath":
                     setting.DatabasePath = string.IsNullOrWhiteSpace(value) ? null : value;

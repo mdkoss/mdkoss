@@ -51,7 +51,17 @@
         <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
         <MenuItem Header="定位到 Recipes" Click="NavRecipes_Click"/>
       </MenuItem>
-      <MenuItem Header="数据库(_D)">
+      <MenuItem Header="调试(_D)">
+        <MenuItem Header="Driver 调试…" Click="DebugDriver_Click"/>
+        <MenuItem Header="Axis 调试…" Click="DebugAxis_Click"/>
+        <MenuItem Header="Platform 调试…" Click="DebugPlatform_Click"/>
+        <MenuItem Header="CameraDev 调试…" Click="DebugCamera_Click"/>
+        <MenuItem Header="Task 编辑…" Click="DebugTask_Click"/>
+        <MenuItem Header="Flow 流程编辑…" Click="DebugFlow_Click"/>
+        <Separator/>
+        <MenuItem Header="打开当前选中组件调试…" Click="DebugSelected_Click"/>
+      </MenuItem>
+      <MenuItem Header="数据库(_B)">
         <MenuItem Header="刷新表预览 / 计数" Click="RefreshDb_Click"/>
         <MenuItem Header="刷新当前表数据" Click="RefreshDbTable_Click"/>
       </MenuItem>
@@ -120,6 +130,7 @@
             <DataGrid.ContextMenu>
               <ContextMenu>
                 <MenuItem Header="编辑属性" Click="CtxEdit_Click"/>
+                <MenuItem Header="打开调试界面…" Click="DebugSelected_Click"/>
                 <Separator/>
                 <MenuItem Header="新建…" Command="{x:Static local:MainWindowCommands.Add}"/>
                 <MenuItem Header="复制" Command="{x:Static local:MainWindowCommands.Duplicate}"/>

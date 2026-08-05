@@ -17,9 +17,13 @@
     <ProjectReference Include="..\MDKOSS.Core\MDKOSS.Core.csproj" />
     <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
     <ProjectReference Include="..\MDKOSS.Cef\MDKOSS.Cef.csproj" />
+    <ProjectReference Include="..\..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="views\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\..\examples\pnp\configs\**\*">
@@ -35,6 +39,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\MDKOSS.Extensions.PyScript\configs\**\*">
+      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\MDKOSS.Extensions.ModServer\configs\**\*">
       <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

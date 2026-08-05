@@ -79,7 +79,7 @@ sequenceDiagram
 
 - 按 `platformId` 组织
 - 支持列出文件、读写/删除单个示教点
-- 供 `monitorPlatform.html` 与 WinForms 示教功能使用
+- 供 `debug_platform.html` 与 WinForms 示教功能使用
 
 具体表结构见 `MdkDatabase` 迁移脚本。
 

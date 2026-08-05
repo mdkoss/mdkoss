@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MDKOSS.Core\MDKOSS.Core.csproj" />
+    <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">
@@ -24,5 +25,9 @@
       <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Debug\**\*.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
+  <Import Project="..\MdkPlugins.targets" />
 </Project>

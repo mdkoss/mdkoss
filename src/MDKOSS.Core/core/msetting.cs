@@ -7,7 +7,7 @@ namespace MDKOSS.Core;
 /// </summary>
 public sealed class MdkSetting
 {
-    /// <summary>Project display name.</summary>
+    /// <summary>Project display name (distinguishes machine/project identity).</summary>
     public string ProjectName { get; set; } = "MDKOSS";
 
     /// <summary>Main loop cycle hint in milliseconds.</summary>
@@ -18,6 +18,12 @@ public sealed class MdkSetting
     /// When unset, the runtime uses its built-in default.
     /// </summary>
     public string? MonitoringPrefix { get; set; }
+
+    /// <summary>
+    /// CEF / monitor home page under <see cref="MonitoringPrefix"/> (e.g. <c>indexDieBonder.html</c>).
+    /// When unset or blank, hosts fall back to <c>index.html</c>.
+    /// </summary>
+    public string? StartPage { get; set; }
 
     public List<DriverConfig> Drivers { get; set; } = [];
 

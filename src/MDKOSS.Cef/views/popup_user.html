@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>当前用户</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    body { margin: 0; background: var(--bg); }
+    .popup-page { padding: 12px 14px; }
+    .row { display:flex; justify-content:space-between; gap:12px; padding:8px; border-bottom:1px solid var(--line); font-size:13px; }
+    .row span:first-child { color: var(--muted); }
+    body.embedded .standalone-title { display: none; }
+  </style>
+</head>
+<body>
+  <div class="popup-page">
+    <div class="standalone-title" style="font-weight:700;margin-bottom:10px">当前用户</div>
+    <div class="row"><span>用户</span><span id="userName">operator</span></div>
+    <div class="row"><span>角色</span><span id="userRole">操作员</span></div>
+    <div class="row"><span>登录</span><span id="userLogin">本地会话</span></div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
+    async function tick(){
+      try{
+        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
+        const vars = data.vars || data.Vars || {};
+        if (vars["user.name"]) document.getElementById("userName").textContent = String(vars["user.name"]);
+        if (vars["user.role"]) document.getElementById("userRole").textContent = String(vars["user.role"]);
+      }catch{}
+    }
+    tick(); setInterval(tick, 2000);
+  </script>
+</body>
+</html>

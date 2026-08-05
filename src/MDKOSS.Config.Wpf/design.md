@@ -59,9 +59,9 @@
 | 模块 Tag | 组件来源 | 列表列 |
 |----------|----------|--------|
 | `Drivers` | `setting.Drivers` | Id, Type, Enabled |
-| `Devices` | `setting.Devices` | Id, Name, Type, DriverId, Enabled |
+| `Devices` | `setting.Devices`（**不含** platform 族） | Id, Name, Type, DriverId, Enabled |
 | `Axis` | type=`axis` 设备 | Id, Name, DriverId, Enabled |
-| `Platform` | platform 族设备 | Id, Name, Type, Kind, DriverId |
+| `Platform` | platform 族（`platform` / `xy`…`xyzuvw`），**不挂在 Devices 树下** | Id, Name, Type, Kind, DriverId |
 | `Gpios` | gpio/vio 点位投影 | DeviceId, Alias, Direction, Route |
 | `Tasks` | `setting.Tasks` | Name, Type, DriverId, IntervalMs |
 | `Vars` | `setting.Vars` | Key, Value |
@@ -78,6 +78,21 @@
 3. 右键 / 编辑菜单 → 新建、复制、删除、排序；新建后右侧聚焦编辑。
 4. 右侧改字段 → **应用属性** 回写内存；**文件 → 保存** 写回当前打开的 JSON 或 DB。
 5. **导出为** 另一种格式写出副本；**另存为** 切换当前文档。
+
+## 调试界面（独立窗）
+
+离线配置与联调分离：主窗口仍只编辑 setting；联调通过 **调试** 菜单或列表右键打开独立窗口，按需连接驱动（不启动完整 Monitoring HTTP，除非后续扩展）。
+
+| 窗口 | 文档 | 能力摘要 |
+|------|------|----------|
+| Driver | [Debug/DriverDebug.md](./Debug/DriverDebug.md) | IO 读写、参数、配置路径 |
+| Axis | [Debug/AxisDebug.md](./Debug/AxisDebug.md) | 状态、回零、点动、速度/位置移动 |
+| Platform | [Debug/PlatformDebug.md](./Debug/PlatformDebug.md) | 多轴状态、选中轴运动测试 |
+| CameraDev | [Debug/CameraDevDebug.md](./Debug/CameraDevDebug.md) | 打开/关闭/采集（含 extcamera） |
+| Task | [Debug/TaskDebug.md](./Debug/TaskDebug.md) | Name/Type/DriverId/Interval/参数编辑与校验 |
+| Flow | [Debug/Flow/FlowEditor.md](./Debug/Flow/FlowEditor.md) | 节点图编辑 `parameters.flowJson`；运行时 FlowTask 执行 |
+
+共享逻辑：`Debug/DebugSession.cs`。启动时 `MdkExtensionHost.DiscoverAndRegister` 加载 `plugins/`。
 
 ## 属性编辑策略
 

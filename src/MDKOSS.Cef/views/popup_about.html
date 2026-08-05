@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>关于 / 工具目录</title>
+  <link rel="stylesheet" href="/css/main.css" />
+  <style>
+    body { margin: 0; background: var(--bg); }
+    .popup-page { padding: 12px 14px; font-size: 13px; }
+    .row { display:flex; justify-content:space-between; gap:12px; padding:6px 0; border-bottom:1px solid var(--line); }
+    .row span:first-child { color: var(--muted); }
+    .sec { margin-top: 14px; font-weight: 700; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .links a { display:inline-block; margin: 4px 10px 4px 0; color: var(--accent); text-decoration: none; font-size: 12px; }
+    body.embedded .standalone-title { display: none; }
+  </style>
+</head>
+<body>
+  <div class="popup-page">
+    <div class="standalone-title" style="font-weight:700;margin-bottom:10px">关于 MDKOSS</div>
+    <div class="row"><span>项目</span><span id="aboutProject">—</span></div>
+    <div class="row"><span>运行时</span><span id="aboutRuntime">—</span></div>
+
+    <div class="sec">监控 monitor_*</div>
+    <div class="links">
+      <a href="/monitor_runtime.html" target="_blank">运行总览</a>
+      <a href="/monitor_io.html" target="_blank">IO</a>
+      <a href="/monitor_platform.html" target="_blank">平台</a>
+      <a href="/monitor_axis.html" target="_blank">轴</a>
+      <a href="/monitor_camera.html" target="_blank">相机</a>
+      <a href="/monitor_task.html" target="_blank">任务</a>
+    </div>
+
+    <div class="sec">调试 debug_*</div>
+    <div class="links">
+      <a href="/debug_platform.html" target="_blank">平台示教</a>
+      <a href="/debug_serial.html" target="_blank">串口</a>
+      <a href="/debug_db.html" target="_blank">数据库</a>
+      <a href="/debug_axis.html" target="_blank">轴</a>
+      <a href="/debug_io.html" target="_blank">IO 强制</a>
+      <a href="/debug_camera.html" target="_blank">相机</a>
+      <a href="/debug_driver.html" target="_blank">驱动</a>
+      <a href="/debug_machine.html" target="_blank">整机</a>
+    </div>
+
+    <div class="sec">配置 man_*（工程师）</div>
+    <div class="links">
+      <a href="/man_driver.html" target="_blank">驱动</a>
+      <a href="/man_device.html" target="_blank">设备</a>
+      <a href="/man_axis.html" target="_blank">轴</a>
+      <a href="/man_platform.html" target="_blank">平台</a>
+      <a href="/man_gpio.html" target="_blank">GPIO</a>
+      <a href="/man_recipe.html" target="_blank">排单</a>
+      <a href="/man_task.html" target="_blank">任务</a>
+    </div>
+
+    <div class="sec">机型扩展</div>
+    <div class="links">
+      <a href="/indexPnp.html" target="_blank">PNP 主界面</a>
+    </div>
+  </div>
+  <script>
+    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
+    async function tick(){
+      try{
+        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
+        document.getElementById("aboutProject").textContent = data.projectName || data.ProjectName || "—";
+        document.getElementById("aboutRuntime").textContent = (data.isRunning || data.IsRunning) ? "RUNNING" : "STOPPED";
+      }catch{
+        document.getElementById("aboutRuntime").textContent = "离线";
+      }
+    }
+    tick(); setInterval(tick, 2000);
+  </script>
+</body>
+</html>

@@ -225,6 +225,15 @@
       "driverId": "drv-gpio-io2",
       "intervalMs": 500,
       "parameters": {}
+    },
+    {
+      "name": "task-flow-demo",
+      "type": "flow",
+      "intervalMs": 100,
+      "parameters": {
+        "loop": "true",
+        "flowJson": "{\"version\":1,\"variables\":[{\"name\":\"x\",\"type\":\"number\",\"init\":\"0\"}],\"functions\":[{\"name\":\"main\",\"entryNodeId\":\"n-start\"}],\"nodes\":[{\"id\":\"n-start\",\"kind\":\"start\",\"x\":80,\"y\":120,\"props\":{}},{\"id\":\"n-set\",\"kind\":\"setVar\",\"x\":260,\"y\":120,\"props\":{\"name\":\"x\",\"expr\":\"x + 1\"}},{\"id\":\"n-log\",\"kind\":\"op.log\",\"x\":440,\"y\":120,\"props\":{\"message\":\"\\\"tick \\\" + x\"}},{\"id\":\"n-end\",\"kind\":\"end\",\"x\":620,\"y\":120,\"props\":{}}],\"edges\":[{\"from\":\"n-start\",\"to\":\"n-set\",\"port\":\"next\"},{\"from\":\"n-set\",\"to\":\"n-log\",\"port\":\"next\"},{\"from\":\"n-log\",\"to\":\"n-end\",\"port\":\"next\"}]}"
+      }
     }
   ],
   "recipeVarKeys": [

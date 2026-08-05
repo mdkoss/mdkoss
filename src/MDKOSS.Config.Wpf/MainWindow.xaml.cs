@@ -4,6 +4,9 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
+using MDKOSS.Config.Wpf.Debug;
+using MDKOSS.Config.Wpf.Debug.Flow;
+using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
 
@@ -884,10 +887,142 @@ public partial class MainWindow : Window
             "· 另存为 / 导出：切换或写出另一种格式\n" +
             "· 新建：弹窗快速配置；Type/DriverId 可下拉选择\n" +
             "· Parameters：右侧 Key/Value 表编辑；模块菜单可导入导出\n" +
+            "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow 独立窗（见 Debug/*.md）\n" +
             "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」。",
             "界面说明",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
+    }
+
+    private void DebugDriver_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new DriverDebugWindow(_workspace, PreferKeyIfModule(ConfigModule.Drivers)));
+
+    private void DebugAxis_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new AxisDebugWindow(_workspace, PreferKeyIfModule(ConfigModule.Axis)));
+
+    private void DebugPlatform_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new PlatformDebugWindow(_workspace, PreferKeyIfModule(ConfigModule.Platform)));
+
+    private void DebugCamera_Click(object sender, RoutedEventArgs e)
+    {
+        string? prefer = null;
+        if (_workspace.SelectedItem is { } item)
+        {
+            var type = ResolveDeviceType(item);
+            if (type is "cameradev" or "extcamera")
+            {
+                prefer = item.Key;
+            }
+        }
+
+        OpenDebugWindow(new CameraDevDebugWindow(_workspace, prefer));
+    }
+
+    private void DebugTask_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new TaskDebugWindow(
+            _workspace,
+            PreferKeyIfModule(ConfigModule.Tasks),
+            RefreshTreeKeepingSelection));
+
+    private void DebugFlow_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new FlowEditorWindow(
+            _workspace,
+            PreferKeyIfModule(ConfigModule.Tasks),
+            RefreshTreeKeepingSelection));
+
+    private void DebugSelected_Click(object sender, RoutedEventArgs e)
+    {
+        var item = _workspace.SelectedItem;
+        if (item is null)
+        {
+            MessageBox.Show(this, "请先选中一个组件。", "调试", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        switch (item.Module)
+        {
+            case ConfigModule.Drivers:
+                OpenDebugWindow(new DriverDebugWindow(_workspace, item.Key));
+                return;
+            case ConfigModule.Axis:
+                OpenDebugWindow(new AxisDebugWindow(_workspace, item.Key));
+                return;
+            case ConfigModule.Platform:
+                OpenDebugWindow(new PlatformDebugWindow(_workspace, item.Key));
+                return;
+            case ConfigModule.Tasks:
+            {
+                if (item.Source is MdkSetting.TaskConfig task
+                    && string.Equals(task.Type, "flow", StringComparison.OrdinalIgnoreCase))
+                {
+                    OpenDebugWindow(new FlowEditorWindow(_workspace, item.Key, RefreshTreeKeepingSelection));
+                }
+                else
+                {
+                    OpenDebugWindow(new TaskDebugWindow(_workspace, item.Key, RefreshTreeKeepingSelection));
+                }
+
+                return;
+            }
+            case ConfigModule.Devices:
+            {
+                var type = ResolveDeviceType(item);
+                if (type == "axis")
+                {
+                    OpenDebugWindow(new AxisDebugWindow(_workspace, item.Key));
+                    return;
+                }
+
+                if (PlatformDeviceParameterSet.IsPlatformFamilyType(type))
+                {
+                    OpenDebugWindow(new PlatformDebugWindow(_workspace, item.Key));
+                    return;
+                }
+
+                if (type is "cameradev" or "extcamera")
+                {
+                    OpenDebugWindow(new CameraDevDebugWindow(_workspace, item.Key));
+                    return;
+                }
+
+                MessageBox.Show(
+                    this,
+                    $"设备类型「{type}」暂无专用调试窗。\n可用：axis / platform 族 / cameradev / extcamera，或 Drivers / Tasks / Flow。",
+                    "调试",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+            default:
+                MessageBox.Show(
+                    this,
+                    $"模块「{item.Module}」无专用调试窗。\n请从菜单「调试」打开。",
+                    "调试",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+        }
+    }
+
+    private string? PreferKeyIfModule(ConfigModule module) =>
+        _workspace.CurrentModule == module ? _workspace.SelectedItem?.Key : null;
+
+    private string ResolveDeviceType(ComponentItem item)
+    {
+        if (item.Source is MdkSetting.DeviceConfig dev)
+        {
+            return (dev.Type ?? "").ToLowerInvariant();
+        }
+
+        var found = _workspace.Setting.Devices.FirstOrDefault(d =>
+            string.Equals(d.Id, item.Key, StringComparison.OrdinalIgnoreCase));
+        return (found?.Type ?? "").ToLowerInvariant();
+    }
+
+    private void OpenDebugWindow(Window window)
+    {
+        window.Owner = this;
+        window.Show();
     }
 
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();

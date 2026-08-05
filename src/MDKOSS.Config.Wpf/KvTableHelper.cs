@@ -34,15 +34,15 @@ public static class ConfigTypeCatalog
     public static IReadOnlyList<string> DriverTypes { get; } =
         ["sim", "gts", "dmc"];
 
+    /// <summary>Devices 模块可选类型（不含 platform 族，平台请在 Platform 模块编辑）。</summary>
     public static IReadOnlyList<string> DeviceTypes { get; } =
     [
-        "gpio", "vio", "axis", "platform",
-        "xy", "xyz", "xyzu", "xyzuv", "xyzuvw",
+        "gpio", "vio", "axis",
         "cameradev", "serialdev", "tcpdev", "extcamera", "devpyscript", "tray",
     ];
 
     public static IReadOnlyList<string> TaskTypes { get; } =
-        ["pollDriver", "operation", "cycle", "motion", "pnpCycle", "pnpConveyor"];
+        ["pollDriver", "operation", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor"];
 
     public static IReadOnlyList<string> GpioDirections { get; } =
         ["in", "out"];

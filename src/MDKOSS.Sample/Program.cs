@@ -2,6 +2,7 @@ using MDKOSS.Core;
 using MDKOSS.Extensions;
 using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
+using MDKOSS.Sample.DieBonder;
 using System.Windows.Forms;
 
 namespace MDKOSS.Sample;
@@ -16,6 +17,8 @@ internal static class Program
         {
             Log = msg => AppLog.Info(msg),
         });
+        // Sample-owned die bonder: tasks + /api/bond + indexDieBonder.html (tray device from MDKOSS.Pnp plugin).
+        MdkExtensionHost.Register(new DieBonderExtension());
 
         var settingPath = RuntimeHost.ResolveSettingPath(args);
         if (args.Any(a => string.Equals(a, "--console", StringComparison.OrdinalIgnoreCase)))
@@ -30,16 +33,18 @@ internal static class Program
     private static void RunCefDesktop(string settingPath)
     {
         var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
-        AppLog.Info($"MDKOSS.Sample starting (version: {version})================================================");
+        AppLog.Info($"MDKOSS.Sample (Die Bonder) starting (version: {version})================================================");
 
         ApplicationConfiguration.Initialize();
+
+        const string appTitle = "MDKOSS Sample — 半导体贴片机";
 
         if (!File.Exists(settingPath))
         {
             AppLog.Error($"Setting file not found: {settingPath}");
             MessageBox.Show(
                 $"Setting file not found:\n{settingPath}",
-                "MDKOSS.Sample",
+                appTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;
@@ -49,7 +54,7 @@ internal static class Program
         {
             MessageBox.Show(
                 "Failed to load settings. See logs for details.",
-                "Settings Load Failed",
+                appTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;
@@ -60,19 +65,19 @@ internal static class Program
         {
             MessageBox.Show(
                 startupError ?? "Startup failed.",
-                "Startup Failed",
+                appTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;
         }
 
-        var startPath = RuntimeHost.IsPnpProject(setting, settingPath) ? "indexPnp.html" : "index.html";
+        var startPath = RuntimeHost.ResolveStartPage(setting);
         if (!CefRuntimeBootstrap.TryInitialize(out var cefError))
         {
             AppLog.Error($"CEF init failed: {cefError}");
             MessageBox.Show(
                 cefError ?? "Failed to initialize CEF.",
-                "CEF Startup Failed",
+                appTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             RuntimeHost.ShutdownRuntime(runtime);

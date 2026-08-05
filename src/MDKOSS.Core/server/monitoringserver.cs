@@ -29,16 +29,57 @@ public sealed class MonitoringServer : IDisposable
         _modules.Add(new TaskApiModule(runtime));
 
         // Static HTML pages (built-in + extension / machine registrations)
+        // Canonical names use snake_case; legacy camelCase URLs kept as aliases.
+        var monitorRuntime = MonitoringPage.Html;
+        var monitorIo = MonitorIoPage.Html;
+        var debugPlatform = MonitorPlatformPage.Html;
+        var debugSerial = DebugSerialDevPage.Html;
+        var debugDb = DebugDbPage.Html;
         _staticPages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["/"] = IndexPage.Html,
             ["/index.html"] = IndexPage.Html,
-            ["/monitoringpage.html"] = MonitoringPage.Html,
-            ["/monitorIO.html"] = MonitorIoPage.Html,
-            ["/debugSerialDev.html"] = DebugSerialDevPage.Html,
-            ["/debugdb.html"] = DebugDbPage.Html,
-            ["/monitorPlatform.html"] = MonitorPlatformPage.Html,
+
+            ["/monitor_runtime.html"] = monitorRuntime,
+            ["/monitoringpage.html"] = monitorRuntime,
+
+            ["/monitor_io.html"] = monitorIo,
+            ["/monitorIO.html"] = monitorIo,
+
+            ["/debug_platform.html"] = debugPlatform,
+            ["/monitorPlatform.html"] = debugPlatform,
+
+            ["/debug_serial.html"] = debugSerial,
+            ["/debugSerialDev.html"] = debugSerial,
+            ["/debugserialdev.html"] = debugSerial,
+
+            ["/debug_db.html"] = debugDb,
+            ["/debugdb.html"] = debugDb,
         };
+        RegisterViewsPage(_staticPages, "/monitor_platform.html");
+        RegisterViewsPage(_staticPages, "/monitor_axis.html");
+        RegisterViewsPage(_staticPages, "/monitor_camera.html");
+        RegisterViewsPage(_staticPages, "/monitor_task.html");
+        RegisterViewsPage(_staticPages, "/debug_axis.html");
+        RegisterViewsPage(_staticPages, "/debug_camera.html");
+        RegisterViewsPage(_staticPages, "/debug_driver.html");
+        RegisterViewsPage(_staticPages, "/debug_io.html");
+        RegisterViewsPage(_staticPages, "/debug_machine.html");
+        RegisterViewsPage(_staticPages, "/man_driver.html");
+        RegisterViewsPage(_staticPages, "/man_device.html");
+        RegisterViewsPage(_staticPages, "/man_axis.html");
+        RegisterViewsPage(_staticPages, "/man_platform.html");
+        RegisterViewsPage(_staticPages, "/man_gpio.html");
+        RegisterViewsPage(_staticPages, "/man_recipe.html");
+        RegisterViewsPage(_staticPages, "/man_task.html");
+        RegisterViewsPage(_staticPages, "/popup_devices.html");
+        RegisterViewsPage(_staticPages, "/popup_tasks.html");
+        RegisterViewsPage(_staticPages, "/popup_vars.html");
+        RegisterViewsPage(_staticPages, "/popup_alarms.html");
+        RegisterViewsPage(_staticPages, "/popup_order.html");
+        RegisterViewsPage(_staticPages, "/popup_recipe.html");
+        RegisterViewsPage(_staticPages, "/popup_user.html");
+        RegisterViewsPage(_staticPages, "/popup_about.html");
         foreach (var (path, html) in StaticPageRegistry.CreatePages())
         {
             _staticPages[path] = html;
@@ -51,6 +92,12 @@ public sealed class MonitoringServer : IDisposable
     public void AddModule(MonitoringApiModule module)
     {
         _modules.Add(module);
+    }
+
+    private static void RegisterViewsPage(Dictionary<string, string> pages, string path)
+    {
+        var fileName = path.TrimStart('/');
+        pages[path] = ViewsHtml.Load(fileName, fileName);
     }
 
     private static string NormalizePrefix(string prefix)
@@ -194,7 +241,7 @@ public sealed class MonitoringServer : IDisposable
             }
         }
 
-        // 2. Static pages
+        // 2. Static pages (HTML loaded at startup)
         if (_staticPages.TryGetValue(path, out var html))
         {
             await WriteResponseAsync(context.Response, "text/html; charset=utf-8", html, cancellationToken)
@@ -202,10 +249,77 @@ public sealed class MonitoringServer : IDisposable
             return;
         }
 
-        // 3. 404
+        // 3. Static assets under views/ (css / js / images)
+        var assetPath = context.Request.Url?.AbsolutePath ?? path;
+        if (await TryServeViewsAssetAsync(context.Response, assetPath, cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        // 4. 404
         context.Response.StatusCode = (int)HttpStatusCode.NotFound;
         await WriteResponseAsync(context.Response, "text/plain; charset=utf-8", "Not Found", cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static readonly HashSet<string> ViewsAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".css", ".js", ".map", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".woff", ".woff2",
+    };
+
+    /// <summary>
+    /// Serves files from <c>{BaseDirectory}/views/</c> for relative URLs such as
+    /// <c>/css/main.css</c> or <c>/debug_platform.js</c>.
+    /// </summary>
+    private static async Task<bool> TryServeViewsAssetAsync(
+        HttpListenerResponse response,
+        string requestPath,
+        CancellationToken cancellationToken)
+    {
+        var relative = Uri.UnescapeDataString(requestPath).TrimStart('/');
+        if (string.IsNullOrWhiteSpace(relative) ||
+            relative.Contains("..", StringComparison.Ordinal) ||
+            Path.IsPathRooted(relative))
+        {
+            return false;
+        }
+
+        var ext = Path.GetExtension(relative);
+        if (string.IsNullOrEmpty(ext) || !ViewsAssetExtensions.Contains(ext))
+        {
+            return false;
+        }
+
+        var viewsRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "views"));
+        var fullPath = Path.GetFullPath(Path.Combine(viewsRoot, relative.Replace('/', Path.DirectorySeparatorChar)));
+        var rootPrefix = viewsRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                         + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase) || !File.Exists(fullPath))
+        {
+            return false;
+        }
+
+        var contentType = ext.ToLowerInvariant() switch
+        {
+            ".css" => "text/css; charset=utf-8",
+            ".js" => "application/javascript; charset=utf-8",
+            ".map" => "application/json; charset=utf-8",
+            ".svg" => "image/svg+xml",
+            ".png" => "image/png",
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".woff" => "font/woff",
+            ".woff2" => "font/woff2",
+            _ => "application/octet-stream",
+        };
+
+        var bytes = await File.ReadAllBytesAsync(fullPath, cancellationToken).ConfigureAwait(false);
+        response.ContentType = contentType;
+        response.ContentLength64 = bytes.Length;
+        await response.OutputStream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        response.OutputStream.Close();
+        return true;
     }
 
     private static async Task WriteResponseAsync(
