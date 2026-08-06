@@ -1,29 +1,283 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>IO 强制输出</title>
+  <title>MDKOSS IO 强制输出</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_io">
   <div class="wrap">
     <div class="header">
-      <div>
-        <div class="title">IO 强制输出 <span class="pill warn">可写</span></div>
-        <div class="sub">DO / VIO 强制写入</div>
+      <div class="title">IO 强制输出 <span class="pill warn">可写</span></div>
+      <div class="sub">数据：<code>/api/status</code> · 刷新 1s · POST /api/io/write · <a class="link-btn" href="/monitor_io.html">只读监控</a></div>
+    </div>
+
+    <div class="io-layout">
+      <div class="card">
+        <h2 class="panel-title">数字输入 <span class="hint">DI</span></h2>
+        <input type="search" class="filter" id="diFilter" placeholder="筛选：设备 ID、别名、驱动、地址、状态…" autocomplete="off" />
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>设备 ID</th>
+                <th>别名</th>
+                <th>驱动 ID</th>
+                <th>地址</th>
+                <th>驱动在线</th>
+                <th>读值</th>
+              </tr>
+            </thead>
+            <tbody id="diRows"></tbody>
+          </table>
+        </div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+
+      <div class="card">
+        <h2 class="panel-title">数字输出 <span class="hint">DO · 点击拨动开关写入</span></h2>
+        <input type="search" class="filter" id="doFilter" placeholder="筛选：设备 ID、别名、驱动、地址、状态…" autocomplete="off" />
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>设备 ID</th>
+                <th>别名</th>
+                <th>驱动 ID</th>
+                <th>地址</th>
+                <th>驱动在线</th>
+                <th>读值</th>
+                <th>输出</th>
+              </tr>
+            </thead>
+            <tbody id="doRows"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">从 monitor_io 拆出写能力；POST /api/io/write。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
-    </div>
+
+    <div class="msg" id="ioMsg"></div>
+    <div class="footer">上次刷新：<span id="lastUpdate">-</span></div>
   </div>
+
+  <script>
+    function snapshotField(data, camel, pascal) {
+      const a = data[camel];
+      if (a !== undefined && a !== null) return a;
+      return data[pascal];
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function normDir(d) {
+      return String(d || "").trim().toLowerCase();
+    }
+
+    function parseBoolVal(valStr) {
+      if (valStr === null || valStr === undefined) return null;
+      const t = String(valStr).trim().toLowerCase();
+      if (t === "true" || t === "1" || t === "on" || t === "yes") return true;
+      if (t === "false" || t === "0" || t === "off" || t === "no") return false;
+      return null;
+    }
+
+    function collectPoints(devices) {
+      const flat = [];
+      const obj = devices && typeof devices === "object" ? devices : {};
+      for (const [devId, d] of Object.entries(obj)) {
+        const pts = d.gpioIoPoints ?? d.GpioIoPoints;
+        if (!Array.isArray(pts) || !pts.length) continue;
+        for (const p of pts) {
+          const alias = p.alias ?? p.Alias ?? "-";
+          const dir = normDir(p.direction ?? p.Direction ?? "-");
+          const drv = p.driverId ?? p.DriverId ?? "-";
+          const addr = p.address ?? p.Address ?? "-";
+          const online = !!(p.driverOnline ?? p.DriverOnline);
+          const val = p.value ?? p.Value;
+          const valStr = val === null || val === undefined ? "—" : String(val);
+          flat.push({ devId, alias, dir, drv, addr, online, valStr });
+        }
+      }
+      return flat;
+    }
+
+    const diRows = document.getElementById("diRows");
+    const doRows = document.getElementById("doRows");
+    const diFilter = document.getElementById("diFilter");
+    const doFilter = document.getElementById("doFilter");
+    const lastUpdate = document.getElementById("lastUpdate");
+    const ioMsg = document.getElementById("ioMsg");
+
+    let lastDi = [];
+    let lastDo = [];
+
+    function rowKey(r) {
+      return r.devId + "\0" + r.alias;
+    }
+
+    function rowMatches(r, q) {
+      if (!q) return true;
+      const hay = [r.devId, r.alias, r.drv, r.addr, r.valStr, r.online ? "在线" : "离线", r.dir]
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    }
+
+    function applyDiFilter() {
+      const q = diFilter.value.trim().toLowerCase();
+      const trs = diRows.querySelectorAll("tr[data-key]");
+      trs.forEach((tr) => {
+        const key = tr.getAttribute("data-key");
+        const r = lastDi.find((x) => rowKey(x) === key);
+        if (!r) return;
+        tr.classList.toggle("hidden", !rowMatches(r, q));
+      });
+    }
+
+    function applyDoFilter() {
+      const q = doFilter.value.trim().toLowerCase();
+      const trs = doRows.querySelectorAll("tr[data-key]");
+      trs.forEach((tr) => {
+        const key = tr.getAttribute("data-key");
+        const r = lastDo.find((x) => rowKey(x) === key);
+        if (!r) return;
+        tr.classList.toggle("hidden", !rowMatches(r, q));
+      });
+    }
+
+    function statusCell(online) {
+      return `<td><span class="dot ${online ? "ok" : ""}"></span>${online ? "Yes" : "No"}</td>`;
+    }
+
+    function valueCell(valStr) {
+      const b = parseBoolVal(valStr);
+      if (b === true) {
+        return `<td class="mono"><span class="pill-on">ON</span> <span style="color:var(--muted)">${escapeHtml(valStr)}</span></td>`;
+      }
+      if (b === false) {
+        return `<td class="mono"><span class="pill-off">OFF</span> <span style="color:var(--muted)">${escapeHtml(valStr)}</span></td>`;
+      }
+      return `<td class="mono"><span class="pill-unk">${escapeHtml(valStr)}</span></td>`;
+    }
+
+    function renderDi(list) {
+      lastDi = list;
+      if (!list.length) {
+        diRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">（无 DI 映射或暂无数据）</td></tr>';
+        return;
+      }
+      diRows.innerHTML = list
+        .map(
+          (r) => `<tr data-key="${escapeHtml(rowKey(r))}">
+          <td class="mono">${escapeHtml(r.devId)}</td>
+          <td>${escapeHtml(r.alias)}</td>
+          <td class="mono">${escapeHtml(r.drv)}</td>
+          <td class="mono">${escapeHtml(r.addr)}</td>
+          ${statusCell(r.online)}
+          ${valueCell(r.valStr)}
+        </tr>`
+        )
+        .join("");
+      applyDiFilter();
+    }
+
+    function renderDo(list) {
+      lastDo = list;
+      if (!list.length) {
+        doRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">（无 DO 映射或暂无数据）</td></tr>';
+        return;
+      }
+      doRows.innerHTML = list
+        .map((r) => {
+          const b = parseBoolVal(r.valStr);
+          const onClass = b === true ? " on" : "";
+          const disabled = r.online ? "" : " disabled";
+          return `<tr data-key="${escapeHtml(rowKey(r))}">
+          <td class="mono">${escapeHtml(r.devId)}</td>
+          <td>${escapeHtml(r.alias)}</td>
+          <td class="mono">${escapeHtml(r.drv)}</td>
+          <td class="mono">${escapeHtml(r.addr)}</td>
+          ${statusCell(r.online)}
+          ${valueCell(r.valStr)}
+          <td>
+            <div class="toggle-wrap">
+              <button type="button" class="toggle${onClass}"${disabled}
+                title="${r.online ? "切换输出电平" : "驱动离线，无法写入"}"
+                data-dev="${escapeHtml(r.devId)}"
+                data-alias="${escapeHtml(r.alias)}"
+                aria-label="切换 DO ${escapeHtml(r.alias)}"></button>
+            </div>
+          </td>
+        </tr>`;
+        })
+        .join("");
+
+      doRows.querySelectorAll("button.toggle").forEach((btn) => {
+        btn.addEventListener("click", onToggleClick);
+      });
+      applyDoFilter();
+    }
+
+    async function onToggleClick(ev) {
+      const btn = ev.currentTarget;
+      if (btn.disabled) return;
+      const devId = btn.getAttribute("data-dev");
+      const alias = btn.getAttribute("data-alias");
+      const r = lastDo.find((x) => x.devId === devId && x.alias === alias);
+      const cur = r ? parseBoolVal(r.valStr) : null;
+      const next = cur === true ? false : true;
+      ioMsg.textContent = "正在写入…";
+      ioMsg.classList.remove("err");
+      try {
+        const res = await fetch("/api/io/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deviceId: devId, alias: alias, value: next }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || "http " + res.status);
+        }
+        ioMsg.textContent = "写入成功";
+        await tick();
+      } catch (e) {
+        ioMsg.textContent = "写入失败: " + (e && e.message ? e.message : String(e));
+        ioMsg.classList.add("err");
+      }
+    }
+
+    async function tick() {
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        const devicesObj = snapshotField(data, "devices", "Devices");
+        const all = collectPoints(devicesObj);
+        const di = all.filter((r) => r.dir === "in");
+        const dout = all.filter((r) => r.dir === "out");
+        renderDi(di);
+        renderDo(dout);
+        lastUpdate.textContent = new Date().toLocaleTimeString();
+      } catch (err) {
+        diRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">无法加载</td></tr>';
+        doRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">无法加载</td></tr>';
+        ioMsg.textContent = "无法连接 /api/status";
+        ioMsg.classList.add("err");
+      }
+    }
+
+    diFilter.addEventListener("input", applyDiFilter);
+    doFilter.addEventListener("input", applyDoFilter);
+
+    tick();
+    setInterval(tick, 1000);
+  </script>
+  <script src="/js/tool_nav.js"></script>
 </body>
 </html>

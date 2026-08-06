@@ -27,14 +27,16 @@ public sealed class FlowDocument
     {
         var startId = "n-start";
         var endId = "n-end";
+        // Vertical centered defaults (workflow layout)
+        const double left = 300;
         return new FlowDocument
         {
             Version = 1,
             Functions = [new FlowFunction { Name = "main", EntryNodeId = startId }],
             Nodes =
             [
-                new FlowNode { Id = startId, Kind = FlowNodeKinds.Start, X = 80, Y = 120 },
-                new FlowNode { Id = endId, Kind = FlowNodeKinds.End, X = 360, Y = 120 },
+                new FlowNode { Id = startId, Kind = FlowNodeKinds.Start, X = left, Y = 40 },
+                new FlowNode { Id = endId, Kind = FlowNodeKinds.End, X = left, Y = 152 },
             ],
             Edges =
             [
@@ -176,6 +178,20 @@ public sealed class FlowDocument
                 case "op.writeio":
                 case "op.deviceaction":
                 case "op.log":
+                case "motion.axismoveto":
+                case "motion.axisenable":
+                case "motion.platformsetmotion":
+                case "motion.platformstart":
+                case "motion.platformstop":
+                case "motion.platformaxismoveto":
+                case "motion.gpiowrite":
+                case "motion.gpioread":
+                case "motion.devicesnapshot":
+                case "motion.ensuredriver":
+                case "motion.setparam":
+                case "motion.getparam":
+                case "motion.settaskvar":
+                case "motion.setglobalvar":
                     if (!outs.Contains(FlowPorts.Next))
                     {
                         errors.Add($"node '{node.Id}' ({kind}) missing port '{FlowPorts.Next}'");
@@ -263,9 +279,28 @@ public static class FlowNodeKinds
     public const string OpDeviceAction = "op.deviceAction";
     public const string OpLog = "op.log";
 
+    // MotionTask function blocks
+    public const string MotionAxisMoveTo = "motion.axisMoveTo";
+    public const string MotionAxisEnable = "motion.axisEnable";
+    public const string MotionPlatformSetMotion = "motion.platformSetMotion";
+    public const string MotionPlatformStart = "motion.platformStart";
+    public const string MotionPlatformStop = "motion.platformStop";
+    public const string MotionPlatformAxisMoveTo = "motion.platformAxisMoveTo";
+    public const string MotionGpioWrite = "motion.gpioWrite";
+    public const string MotionGpioRead = "motion.gpioRead";
+    public const string MotionDeviceSnapshot = "motion.deviceSnapshot";
+    public const string MotionEnsureDriver = "motion.ensureDriver";
+    public const string MotionSetParam = "motion.setParam";
+    public const string MotionGetParam = "motion.getParam";
+    public const string MotionSetTaskVar = "motion.setTaskVar";
+    public const string MotionSetGlobalVar = "motion.setGlobalVar";
+
     public static readonly string[] All =
     [
         Start, End, DeclareVar, SetVar, If, While, Delay, Call, OpWriteIo, OpDeviceAction, OpLog,
+        MotionAxisMoveTo, MotionAxisEnable, MotionPlatformSetMotion, MotionPlatformStart, MotionPlatformStop,
+        MotionPlatformAxisMoveTo, MotionGpioWrite, MotionGpioRead, MotionDeviceSnapshot, MotionEnsureDriver,
+        MotionSetParam, MotionGetParam, MotionSetTaskVar, MotionSetGlobalVar,
     ];
 
     public static bool IsKnown(string? kind) =>

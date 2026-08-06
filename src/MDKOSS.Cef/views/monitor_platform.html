@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -6,19 +6,14 @@
   <title>MDKOSS 平台状态监控</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="monitor" data-tool-page="monitor_platform">
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">平台状态监控 <span class="pill warn">只读</span></div>
         <div class="sub" id="hdrSubtitle">选择平台设备查看轴位置 / 使能 / 在线状态</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/debug_platform.html" id="lnkTeach">步进示教</a>
-        <a href="/monitor_io.html">IO 监控</a>
-      </nav>
+      <a class="link-btn" id="lnkTeach" href="/debug_platform.html">步进示教 →</a>
     </div>
 
     <div class="form-row" style="margin-bottom:12px">
@@ -83,6 +78,7 @@
 
     function updateTeachLink(){
       const id = sel.value;
+      if (!lnkTeach) return;
       lnkTeach.href = id ? `/debug_platform.html?deviceId=${encodeURIComponent(id)}` : "/debug_platform.html";
     }
 
@@ -140,5 +136,6 @@
     }
     tick(); setInterval(tick, 1000);
   </script>
+  <script src="/js/tool_nav.js"></script>
 </body>
 </html>

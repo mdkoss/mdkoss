@@ -1,29 +1,94 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>相机状态监控</title>
+  <title>MDKOSS 相机状态监控</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="monitor" data-tool-page="monitor_camera">
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">相机状态监控 <span class="pill warn">只读</span></div>
-        <div class="sub">相机连接与取流状态</div>
+        <div class="sub" id="hdrSubtitle">cameradev / camera 设备</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+      <a class="link-btn" id="lnkDebug" href="/debug_camera.html">相机调试 →</a>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">展示 cameradev 在线、会话、最近触发结果；试调见 debug_camera。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="flex:2">
+        <label>相机设备</label>
+        <select id="selCam"><option value="">— 选择 —</option></select>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card span-4"><div class="label">状态</div><div class="value" id="vState">—</div></div>
+      <div class="card span-4"><div class="label">类型</div><div class="value" id="vType">—</div></div>
+      <div class="card span-4"><div class="label">驱动在线</div><div class="value" id="vOnline">—</div></div>
+      <div class="card span-12">
+        <div class="label">扩展状态（/api/extcamera/status）</div>
+        <pre id="extStatus" style="margin:8px 0 0;font-size:12px;color:var(--muted);white-space:pre-wrap">—</pre>
+      </div>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, qs, fetchJson } = MdkTool;
+    const CAM = new Set(["cameradev", "camera", "extcamera"]);
+    const sel = document.getElementById("selCam");
+    let preferred = qs("deviceId", "");
+
+    function isCam(t) { return CAM.has(String(t || "").toLowerCase()); }
+
+    function updateLink() {
+      const id = sel.value;
+      document.getElementById("lnkDebug").href = id
+        ? `/debug_camera.html?deviceId=${encodeURIComponent(id)}`
+        : "/debug_camera.html";
+    }
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        const devices = field(data, "devices", "Devices") || {};
+        const cur = sel.value || preferred;
+        const opts = Object.entries(devices)
+          .filter(([, d]) => isCam(field(d, "type", "Type")))
+          .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)} (${esc(id)})</option>`);
+        sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
+        if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+        else if (sel.options.length > 1) sel.selectedIndex = 1;
+        preferred = "";
+        updateLink();
+
+        const id = sel.value;
+        if (!id) {
+          document.getElementById("hdrSubtitle").textContent = opts.length ? "请选择相机" : "无相机设备";
+          return;
+        }
+        const d = devices[id];
+        document.getElementById("hdrSubtitle").textContent = `${field(d, "name", "Name") || id} · ${id}`;
+        document.getElementById("vState").textContent = String(field(d, "state", "State") || "—");
+        document.getElementById("vType").textContent = String(field(d, "type", "Type") || "—");
+        document.getElementById("vOnline").textContent =
+          field(d, "driverConnected", "DriverConnected") === true ? "是" :
+          field(d, "driverConnected", "DriverConnected") === false ? "否" : "—";
+
+        try {
+          const st = await fetchJson(`/api/extcamera/status?deviceId=${encodeURIComponent(id)}`);
+          document.getElementById("extStatus").textContent = JSON.stringify(st, null, 2);
+        } catch (e) {
+          document.getElementById("extStatus").textContent =
+            "扩展未加载或不可用: " + (e.message || e);
+        }
+      } catch {
+        document.getElementById("hdrSubtitle").textContent = "无法连接 /api/status";
+      }
+    }
+    sel.addEventListener("change", () => tick());
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>

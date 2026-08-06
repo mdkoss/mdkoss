@@ -690,3 +690,86 @@ textarea {
 .meta-row { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; }
 .nav a { color: var(--accent); text-decoration: none; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; margin-left: 6px; }
 
+/* ——— 统一工具标题栏（tool_nav.js） ——— */
+.tool-chrome {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(10, 16, 28, 0.92);
+  border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+}
+.tool-chrome-inner {
+  max-width: 1480px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tool-home {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #142038;
+}
+.tool-home:hover { background: #1a2a4a; }
+.tool-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.tool-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+.tool-page-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+}
+.tool-page-link:hover {
+  color: var(--text);
+  background: rgba(78, 140, 255, 0.08);
+  border-color: var(--line);
+}
+.tool-page-link.active {
+  color: var(--text);
+  background: rgba(78, 140, 255, 0.18);
+  border-color: rgba(78, 140, 255, 0.45);
+  font-weight: 700;
+}
+.tool-cross {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+.tool-cross-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+}
+.tool-cross-link:hover { color: var(--text); }
+.tool-cross-link.active {
+  color: var(--accent);
+  border-color: rgba(78, 140, 255, 0.5);
+  background: rgba(78, 140, 255, 0.1);
+}
+body[data-tool-group] .wrap { padding-top: 16px; }
+

@@ -534,6 +534,30 @@ public sealed class AxisDevice : MDeviceBase
         WriteState(State.ToString().ToLowerInvariant());
         return ok;
     }
+
+    /// <summary>Stops axis motion (clears jog and disables motion enable).</summary>
+    public bool StopMotion()
+    {
+        EnsureConnected();
+        Driver.Write(BuildVarKey("jogCommand"), 0.0);
+        Vars.Set(BuildVarKey("jogCommand"), 0.0);
+        return SetMotionEnabled(false);
+    }
+
+    /// <summary>Issues a jog command: signed velocity = direction * velocity.</summary>
+    public bool Jog(double direction, double velocity = 1.0)
+    {
+        EnsureConnected();
+        var command = direction * velocity;
+        var ok = Driver.Write(BuildVarKey("jogCommand"), command);
+        if (ok)
+        {
+            Vars.Set(BuildVarKey("jogCommand"), command);
+        }
+
+        WriteState(State.ToString().ToLowerInvariant());
+        return ok;
+    }
 }
 
 /// <summary>One axis slot on a <see cref="PlatformDevice"/> (letter key, config driver id, runtime axis device).</summary>

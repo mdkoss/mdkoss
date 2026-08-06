@@ -20,6 +20,9 @@ public sealed class MdkRuntime : IDisposable
 
     public MdkSetting Setting { get; }
 
+    /// <summary>Path of the JSON setting file last loaded / to persist via <see cref="SaveSetting()"/>.</summary>
+    public string? SettingPath { get; set; }
+
     public MVarStore Vars { get; } = new();
 
     /// <summary>Recipe presets backed by <see cref="MdkSetting.Recipes"/>.</summary>
@@ -32,9 +35,10 @@ public sealed class MdkRuntime : IDisposable
 
     public string MonitoringPrefix => _monitoringServer?.Prefix ?? DefaultMonitoringPrefix;
 
-    public MdkRuntime(MdkSetting setting)
+    public MdkRuntime(MdkSetting setting, string? settingPath = null)
     {
         Setting = setting;
+        SettingPath = string.IsNullOrWhiteSpace(settingPath) ? null : Path.GetFullPath(settingPath.Trim());
         DataStore = new MdkDataStore(ResolveDatabasePath(setting));
         RecipeManager = new MdkRecipeManager(setting, Vars);
     }
@@ -47,7 +51,7 @@ public sealed class MdkRuntime : IDisposable
     public static MdkRuntime CreateFromFile(string settingPath)
     {
         var setting = MdkSetting.Load(settingPath);
-        return new MdkRuntime(setting);
+        return new MdkRuntime(setting, settingPath);
     }
 
     /// <summary>
@@ -199,7 +203,7 @@ public sealed class MdkRuntime : IDisposable
         return RuntimeTaskFactory.Create(taskType, ctx, config);
     }
 
-    /// <summary>Adapts <see cref="MdkRuntime"/> for flow task host ops.</summary>
+    /// <summary>Adapts <see cref="MdkRuntime"/> for flow task host ops (MotionTask helpers).</summary>
     private sealed class RuntimeFlowHost(MdkRuntime runtime) : Flow.IFlowRuntimeHost
     {
         public bool TryWriteDigitalOutput(string deviceId, string alias, bool value, out string? error) =>
@@ -210,6 +214,159 @@ public sealed class MdkRuntime : IDisposable
             string action,
             Dictionary<string, System.Text.Json.JsonElement>? parameters) =>
             runtime.ExecuteDeviceAction(deviceId, action, parameters);
+
+        public bool TryAxisMoveTo(string axisDeviceId, double position, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            if (!axis.MoveTo(position))
+            {
+                error = "axis_move_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryAxisSetMotionEnabled(string axisDeviceId, bool enabled, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            if (!axis.SetMotionEnabled(enabled))
+            {
+                error = "axis_enable_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            if (!platform.SetMotion(enabled))
+            {
+                error = "platform_set_motion_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryPlatformAxisMoveTo(
+            string platformDeviceId,
+            string axisLetter,
+            double position,
+            out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                error = "platform_axis_not_found";
+                return false;
+            }
+
+            if (!entry.Axis.MoveTo(position))
+            {
+                error = "platform_axis_move_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryGpioWriteOutput(string gpioDeviceId, string alias, bool value, out string? error) =>
+            runtime.TryWriteDigitalOutput(gpioDeviceId, alias, value, out error);
+
+        public bool TryGpioReadInput(string gpioDeviceId, string alias, out bool value, out string? error)
+        {
+            value = false;
+            error = null;
+            if (!runtime._devices.TryGetValue(gpioDeviceId, out var raw))
+            {
+                error = "device_not_found";
+                return false;
+            }
+
+            switch (raw)
+            {
+                case GpioDevice gpio:
+                    value = gpio.ReadInput(alias);
+                    return true;
+                case VioDevice vio:
+                    value = vio.ReadInput(alias);
+                    return true;
+                default:
+                    error = "device_not_gpio_or_vio";
+                    return false;
+            }
+        }
+
+        public bool TryGetDeviceSnapshot(
+            string deviceId,
+            out string? deviceType,
+            out string? state,
+            out bool driverConnected,
+            out string? error)
+        {
+            deviceType = null;
+            state = null;
+            driverConnected = false;
+            error = null;
+            if (!runtime._devices.TryGetValue(deviceId, out var device))
+            {
+                error = "device_not_found";
+                return false;
+            }
+
+            var snap = device.GetSnapshot();
+            deviceType = snap.Type;
+            state = snap.State;
+            driverConnected = snap.DriverConnected;
+            return true;
+        }
+
+        public bool TryEnsureDriverConnected(string deviceId, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(deviceId, out var device))
+            {
+                error = "device_not_found";
+                return false;
+            }
+
+            if (device.LinkedDriver.IsConnected)
+            {
+                return true;
+            }
+
+            error = $"driver_not_connected:{device.LinkedDriver.Name}";
+            return false;
+        }
     }
 
     // Instantiate and initialize all enabled devices.
@@ -554,6 +711,26 @@ public sealed class MdkRuntime : IDisposable
                 : DeviceActionResult.Fail("disable_failed");
         }
 
+        if (action.Equals("stop", StringComparison.OrdinalIgnoreCase))
+        {
+            return axis.StopMotion()
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("stop_failed");
+        }
+
+        if (action.Equals("jog", StringComparison.OrdinalIgnoreCase) && parameters != null)
+        {
+            var direction = parameters.TryGetValue("direction", out var dirElem)
+                ? dirElem.GetDouble()
+                : 0;
+            var velocity = parameters.TryGetValue("velocity", out var velElem)
+                ? velElem.GetDouble()
+                : 1.0;
+            return axis.Jog(direction, velocity)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("jog_failed");
+        }
+
         return DeviceActionResult.Fail("unknown_action");
     }
 
@@ -571,6 +748,25 @@ public sealed class MdkRuntime : IDisposable
             return platform.SetMotion(false)
                 ? DeviceActionResult.Ok()
                 : DeviceActionResult.Fail("disable_failed");
+        }
+
+        if (action.Equals("moveAxis", StringComparison.OrdinalIgnoreCase)
+            && parameters != null
+            && parameters.TryGetValue("axis", out var axisElem)
+            && parameters.TryGetValue("position", out var posElem))
+        {
+            var letter = axisElem.GetString() ?? "";
+            var position = posElem.GetDouble();
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, letter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                return DeviceActionResult.Fail("platform_axis_not_found");
+            }
+
+            return entry.Axis.MoveTo(position)
+                ? DeviceActionResult.Ok()
+                : DeviceActionResult.Fail("move_failed");
         }
 
         return DeviceActionResult.Fail("unknown_action");
@@ -619,11 +815,33 @@ public sealed class MdkRuntime : IDisposable
         return true;
     }
 
-    /// <summary>Persists the current setting (including recipes) to disk and SQLite.</summary>
+    /// <summary>Persists the current setting to <see cref="SettingPath"/> (JSON + recipe SQLite + config tables).</summary>
+    public void SaveSetting()
+    {
+        if (string.IsNullOrWhiteSpace(SettingPath))
+        {
+            throw new InvalidOperationException("setting_path_unset");
+        }
+
+        SaveSetting(SettingPath);
+    }
+
+    /// <summary>Persists the current setting (including recipes) to disk and SQLite config tables.</summary>
     public void SaveSetting(string settingPath)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(settingPath);
         DataStore.PersistRecipesFromSetting(Setting);
         Setting.Save(settingPath);
+        SettingPath = Path.GetFullPath(settingPath);
+        try
+        {
+            using var configStore = new MdkConfigStore(DataStore.DatabasePath);
+            configStore.ExportSetting(Setting, SettingPath);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Info($"Config SQLite export skipped: {ex.Message}");
+        }
     }
 
     /// <summary>Refreshes <see cref="MdkDataStore.OrderListVarKey"/> from SQLite.</summary>

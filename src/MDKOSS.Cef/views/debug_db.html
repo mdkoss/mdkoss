@@ -6,19 +6,12 @@
   <title>MDKOSS 数据库维护</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_db">
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">SQLite 数据库维护</div>
         <div class="sub" id="dbPath">加载中…</div>
-        <nav class="nav">
-          <a href="/">主界面</a>
-          <a href="/monitor_runtime.html">运行监控</a>
-          <a href="/debug_serial.html">串口调试</a>
-          <a href="/debug_platform.html">平台示教</a>
-          <a href="/monitor_platform.html">平台监控</a>
-        </nav>
       </div>
       <button type="button" class="btn primary" id="btnRefreshAll">刷新全部</button>
     </div>
@@ -557,5 +550,6 @@
   refreshAll();
 })();
 </script>
+  <script src="/js/tool_nav.js"></script>
 </body>
 </html>

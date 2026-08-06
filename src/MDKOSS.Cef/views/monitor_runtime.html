@@ -6,18 +6,11 @@
   <title>MDKOSS 监控面板</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="monitor" data-tool-page="monitor_runtime">
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">MDKOSS Runtime Monitor</div>
-        <nav class="nav">
-          <a href="/debug_platform.html">平台步进示教</a>
-          <a href="/monitor_io.html">IO 监控</a>
-          <a href="/monitor_platform.html">平台监控</a>
-          <a href="/debug_serial.html">串口调试</a>
-          <a href="/debug_db.html">数据库维护</a>
-        </nav>
       </div>
       <div class="sub">自动刷新间隔：1s</div>
     </div>
@@ -359,5 +352,6 @@
     setInterval(tick, 1000);
     setInterval(loadRecipes, 3000);
   </script>
+  <script src="/js/tool_nav.js"></script>
 </body>
 </html>

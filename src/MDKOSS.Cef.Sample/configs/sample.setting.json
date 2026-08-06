@@ -1,0 +1,123 @@
+{
+  "projectName": "CEF HMI Demo",
+  "startPage": "index.html",
+  "monitoringPrefix": "http://127.0.0.1:5081/",
+  "cycleMs": 20,
+  "drivers": [
+    {
+      "id": "sim1",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "note": "仿真驱动：IO + 轴"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio1",
+      "name": "主 IO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "driverIds": "sim1",
+        "in.start": "sim1:X0",
+        "in.stop": "sim1:X1",
+        "in.reset": "sim1:X2",
+        "out.tower.red": "sim1:Y0",
+        "out.tower.yellow": "sim1:Y1",
+        "out.tower.green": "sim1:Y2",
+        "out.ready": "sim1:Y3"
+      }
+    },
+    {
+      "id": "axis-x",
+      "name": "X 轴",
+      "type": "axis",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "0"
+      }
+    },
+    {
+      "id": "axis-y",
+      "name": "Y 轴",
+      "type": "axis",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "1"
+      }
+    },
+    {
+      "id": "platform-xy",
+      "name": "XY 平台",
+      "type": "xy",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "note": "步进示教 / 平台监控联调"
+      }
+    },
+    {
+      "id": "cam1",
+      "name": "演示相机",
+      "type": "cameradev",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "role": "demo"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 100,
+      "parameters": {}
+    },
+    {
+      "name": "poll-sim",
+      "type": "pollDriver",
+      "driverId": "sim1",
+      "intervalMs": 50,
+      "parameters": {}
+    }
+  ],
+  "vars": {
+    "machine.name": "CEF HMI Demo",
+    "user.name": "operator",
+    "user.role": "操作员",
+    "order.list": "[{\"id\":\"ORD-DEMO-001\",\"product\":\"样件 A\",\"qty\":100,\"status\":\"running\",\"progress\":35,\"updatedAt\":\"—\"},{\"id\":\"ORD-DEMO-002\",\"product\":\"样件 B\",\"qty\":50,\"status\":\"pending\",\"progress\":0,\"updatedAt\":\"—\"}]"
+  },
+  "recipeVarKeys": [ "process.speed", "process.dwellMs" ],
+  "activeRecipeId": "rcp-fast",
+  "recipes": [
+    {
+      "id": "rcp-fast",
+      "name": "快速模式",
+      "description": "演示排单 A",
+      "vars": {
+        "process.speed": 1.0,
+        "process.dwellMs": 50
+      }
+    },
+    {
+      "id": "rcp-safe",
+      "name": "安全模式",
+      "description": "演示排单 B",
+      "vars": {
+        "process.speed": 0.3,
+        "process.dwellMs": 200
+      }
+    }
+  ]
+}

@@ -152,12 +152,16 @@
       popupFrame.src = `/${name}.html?${qs.toString()}`;
       popupModal.classList.add("open");
       popupModal.setAttribute("aria-hidden", "false");
+      document.querySelectorAll(".nav-btn[data-popup]").forEach((b) => {
+        b.classList.toggle("active", b.getAttribute("data-popup") === name);
+      });
     }
 
     function closePopup(refresh) {
       popupModal.classList.remove("open");
       popupModal.setAttribute("aria-hidden", "true");
       popupFrame.src = "about:blank";
+      document.querySelectorAll(".nav-btn[data-popup].active").forEach((b) => b.classList.remove("active"));
       if (refresh) tick();
     }
 

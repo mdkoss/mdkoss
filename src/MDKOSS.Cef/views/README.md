@@ -14,6 +14,10 @@
 
 机型扩展页（如 PNP 的 `indexPnp.html`）由 `StaticPageRegistry` 注册，不纳入核心改名。
 
+`monitor_*` / `debug_*` / `man_*` 共用顶部工具栏 [`js/tool_nav.js`](js/tool_nav.js)（`.tool-chrome` 样式在 `css/debug.css`）：同组页面互相跳转，右侧切换「监控 / 调试 / 配置」，左侧回主界面。`index.html` 顶栏通过 iframe 打开 `popup_*.html?embedded=1`。
+
+公共脚本：[`js/tool_common.js`](js/tool_common.js)（fetch/toast）、[`js/man_editor.js`](js/man_editor.js)（配置页 PATCH + save）。
+
 ```
 index ──popup_*──► monitor_* ──► debug_*
                  └──────────► man_*

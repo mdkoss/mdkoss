@@ -1,29 +1,54 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>驱动调试</title>
+  <title>MDKOSS 驱动调试</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_driver">
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">驱动调试 <span class="pill warn">可写</span></div>
-        <div class="sub">驱动连接与原始命令试探</div>
+        <div class="title">驱动状态 <span class="pill warn">只读联调</span></div>
+        <div class="sub">运行时驱动在线状态 · 连接/断开请用 Config.Wpf 或重启后配置</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+      <a class="link-btn" href="/man_driver.html">驱动配置 →</a>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">连接/断开驱动，IO/轴底层试探（对标 DriverDebug）。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
+    <div class="card">
+      <div class="label">驱动列表（/api/status）</div>
+      <table>
+        <thead><tr><th>Driver ID</th><th>类型</th><th>在线</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">加载中…</td></tr></tbody>
+      </table>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, fetchJson } = MdkTool;
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        const drivers = field(data, "drivers", "Drivers") || {};
+        const entries = Object.entries(drivers);
+        const body = document.getElementById("rows");
+        if (!entries.length) {
+          body.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">无驱动</td></tr>';
+          return;
+        }
+        body.innerHTML = entries.map(([id, d]) => {
+          const type = field(d, "type", "Type") ?? field(d, "name", "Name") ?? "—";
+          const online = field(d, "isConnected", "IsConnected");
+          return `<tr><td>${esc(id)}</td><td>${esc(type)}</td><td>${online === true ? "是" : online === false ? "否" : esc(online)}</td></tr>`;
+        }).join("");
+      } catch (e) {
+        document.getElementById("rows").innerHTML =
+          `<tr><td colspan="3" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>

@@ -144,7 +144,7 @@ public static class RuntimeHost
             return;
         }
 
-        using var runtime = new MdkRuntime(setting);
+        using var runtime = new MdkRuntime(setting, settingPath);
         if (!TryBootstrapRuntime(runtime, out var startupError))
         {
             Console.WriteLine(startupError ?? "Startup failed.");

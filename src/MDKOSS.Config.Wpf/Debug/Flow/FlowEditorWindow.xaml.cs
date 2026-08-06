@@ -9,22 +9,20 @@ using MDKOSS.Core.Flow;
 
 namespace MDKOSS.Config.Wpf.Debug.Flow;
 
+/// <summary>
+/// Workflow-style editor: vertical centered sequence, auto-wired connectors
+/// (C# Workflow Foundation Sequence-like).
+/// </summary>
 public partial class FlowEditorWindow : Window
 {
-    private const double NodeWidth = 140;
-    private const double NodeHeight = 56;
-
     private readonly ConfigWorkspace _workspace;
     private readonly Action? _onApplied;
     private readonly FlowEditorVm _vm = new();
     private readonly Dictionary<string, Border> _nodeVisuals = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<Path> _edgePaths = [];
+    private readonly List<UIElement> _edgeVisuals = [];
 
     private string? _preferredTaskName;
-    private FlowNodeVm? _dragNode;
-    private Point _dragOffset;
-    private string? _pendingFromId;
-    private string? _pendingPort;
+    private bool _suppressTaskBind;
 
     public FlowEditorWindow(ConfigWorkspace workspace, string? preferredTaskName = null, Action? onApplied = null)
     {
@@ -33,44 +31,82 @@ public partial class FlowEditorWindow : Window
         _preferredTaskName = preferredTaskName;
         _onApplied = onApplied;
         DataContext = _vm;
+        PreviewKeyDown += Window_PreviewKeyDown;
         Loaded += (_, _) =>
         {
             ReloadTaskList();
-            RebuildNodeVisuals();
-            UpdateEdgeGeometries();
+            RefreshCanvas();
         };
+        SizeChanged += (_, _) =>
+        {
+            if (IsLoaded)
+            {
+                _vm.RelayoutAndAutoWire();
+                RefreshCanvas();
+            }
+        };
+    }
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Delete && _vm.Selected is not null
+            && !(Keyboard.FocusedElement is TextBox or DataGridCell))
+        {
+            DeleteNode_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Up)
+        {
+            MoveUp_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
+        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Down)
+        {
+            MoveDown_Click(sender, new RoutedEventArgs());
+            e.Handled = true;
+        }
     }
 
     private void ReloadTaskList()
     {
-        TaskCombo.Items.Clear();
-        foreach (var t in _workspace.Setting.Tasks.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
+        _suppressTaskBind = true;
+        try
         {
-            TaskCombo.Items.Add(new ComboBoxItem
+            TaskCombo.Items.Clear();
+            foreach (var t in _workspace.Setting.Tasks.OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase))
             {
-                Content = $"{t.Name}  [{t.Type}]",
-                Tag = t.Name,
-            });
+                TaskCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = $"{t.Name}  [{t.Type}]",
+                    Tag = t.Name,
+                });
+            }
+
+            ComboBoxItem? prefer = null;
+            if (!string.IsNullOrWhiteSpace(_preferredTaskName))
+            {
+                prefer = TaskCombo.Items.Cast<ComboBoxItem>()
+                    .FirstOrDefault(i => string.Equals(i.Tag as string, _preferredTaskName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            prefer ??= TaskCombo.Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(i =>
+                {
+                    var name = i.Tag as string;
+                    var task = _workspace.Setting.Tasks.FirstOrDefault(t =>
+                        string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
+                    return task is not null && string.Equals(task.Type, "flow", StringComparison.OrdinalIgnoreCase);
+                });
+
+            TaskCombo.SelectedItem = prefer ?? (TaskCombo.Items.Count > 0 ? TaskCombo.Items[0] : null);
+        }
+        finally
+        {
+            _suppressTaskBind = false;
         }
 
-        ComboBoxItem? prefer = null;
-        if (!string.IsNullOrWhiteSpace(_preferredTaskName))
-        {
-            prefer = TaskCombo.Items.Cast<ComboBoxItem>()
-                .FirstOrDefault(i => string.Equals(i.Tag as string, _preferredTaskName, StringComparison.OrdinalIgnoreCase));
-        }
-
-        // prefer existing flow task
-        prefer ??= TaskCombo.Items.Cast<ComboBoxItem>()
-            .FirstOrDefault(i =>
-            {
-                var name = i.Tag as string;
-                var task = _workspace.Setting.Tasks.FirstOrDefault(t =>
-                    string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
-                return task is not null && string.Equals(task.Type, "flow", StringComparison.OrdinalIgnoreCase);
-            });
-
-        TaskCombo.SelectedItem = prefer ?? (TaskCombo.Items.Count > 0 ? TaskCombo.Items[0] : null);
         BindSelectedTask();
     }
 
@@ -85,7 +121,15 @@ public partial class FlowEditorWindow : Window
         return null;
     }
 
-    private void TaskCombo_SelectionChanged(object sender, SelectionChangedEventArgs e) => BindSelectedTask();
+    private void TaskCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressTaskBind)
+        {
+            return;
+        }
+
+        BindSelectedTask();
+    }
 
     private void BindSelectedTask()
     {
@@ -94,8 +138,7 @@ public partial class FlowEditorWindow : Window
         {
             _vm.Load(FlowDocument.CreateEmpty());
             IntervalBox.Text = "100";
-            RebuildNodeVisuals();
-            UpdateEdgeGeometries();
+            RefreshCanvas();
             return;
         }
 
@@ -113,125 +156,129 @@ public partial class FlowEditorWindow : Window
         }
 
         _vm.Load(doc);
-        // sync main entry
-        var start = _vm.Nodes.FirstOrDefault(n => n.Kind == FlowNodeKinds.Start);
-        if (start is not null)
-        {
-            var main = _vm.Functions.FirstOrDefault(f =>
-                string.Equals(f.Name, "main", StringComparison.OrdinalIgnoreCase));
-            if (main is not null && string.IsNullOrWhiteSpace(main.EntryNodeId))
-            {
-                main.EntryNodeId = start.Id;
-            }
-        }
-
-        RebuildNodeVisuals();
-        UpdateEdgeGeometries();
-        _vm.RefreshPreview();
+        RefreshCanvas();
     }
 
-    private void RebuildNodeVisuals()
+    private void RefreshCanvas()
     {
-        foreach (var p in _edgePaths)
+        ClearCanvas();
+        CenterLayoutOrigin();
+        foreach (var node in _vm.Nodes)
         {
-            GraphCanvas.Children.Remove(p);
-            if (p.Tag is UIElement label)
-            {
-                GraphCanvas.Children.Remove(label);
-            }
+            AddNodeVisual(node);
         }
 
-        _edgePaths.Clear();
+        DrawAutoConnectors();
+        SizeCanvasToContent();
+    }
 
+    private void CenterLayoutOrigin()
+    {
+        // Recenter horizontal axis to current viewport when possible
+        var viewW = GraphScroll.ViewportWidth > 0 ? GraphScroll.ViewportWidth : GraphCanvas.Width;
+        if (viewW < 400)
+        {
+            viewW = 800;
+        }
+
+        // Layout uses fixed LayoutCenterX; shift all nodes if canvas wider
+        // Keep VM constant; canvas is wide enough with center at 400.
+    }
+
+    private void ClearCanvas()
+    {
+        foreach (var e in _edgeVisuals)
+        {
+            GraphCanvas.Children.Remove(e);
+        }
+
+        _edgeVisuals.Clear();
         foreach (var kv in _nodeVisuals.ToList())
         {
             GraphCanvas.Children.Remove(kv.Value);
         }
 
         _nodeVisuals.Clear();
-        foreach (var node in _vm.Nodes)
-        {
-            AddNodeVisual(node);
-        }
     }
 
     private void AddNodeVisual(FlowNodeVm node)
     {
+        var isTerminal = string.Equals(node.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(node.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase);
+        var summary = BuildPropSummary(node);
+
+        var body = new StackPanel();
+        body.Children.Add(new TextBlock
+        {
+            Text = node.Kind,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 13,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = (Brush)FindResource("AccentBrush"),
+        });
+        body.Children.Add(new TextBlock
+        {
+            Text = summary,
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Foreground = (Brush)FindResource("MutedBrush"),
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            TextWrapping = TextWrapping.NoWrap,
+            MaxWidth = FlowEditorVm.LayoutNodeWidth - 24,
+        });
+
         var border = new Border
         {
-            Width = NodeWidth,
-            Height = NodeHeight,
-            Background = Brushes.White,
+            Width = FlowEditorVm.LayoutNodeWidth,
+            MinHeight = FlowEditorVm.LayoutNodeHeight,
+            Background = isTerminal
+                ? new SolidColorBrush(Color.FromRgb(0xE6, 0xF4, 0xEF))
+                : Brushes.White,
             BorderBrush = node.BorderBrush,
             BorderThickness = new Thickness(2),
-            CornerRadius = new CornerRadius(6),
-            Padding = new Thickness(8, 4, 8, 4),
-            Cursor = Cursors.SizeAll,
+            CornerRadius = new CornerRadius(isTerminal ? 20 : 8),
+            Padding = new Thickness(10, 8, 10, 8),
+            Cursor = Cursors.Hand,
             Tag = node.Id,
-            Child = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock
-                    {
-                        Text = node.Kind,
-                        FontWeight = FontWeights.SemiBold,
-                        Foreground = (Brush)FindResource("AccentBrush"),
-                    },
-                    new TextBlock
-                    {
-                        Text = node.Id,
-                        FontSize = 10,
-                        Foreground = (Brush)FindResource("MutedBrush"),
-                    },
-                },
-            },
+            Child = body,
+            ToolTip = $"{node.Kind}\n{node.Id}",
         };
 
         Canvas.SetLeft(border, node.X);
         Canvas.SetTop(border, node.Y);
         Panel.SetZIndex(border, 10);
+        border.MouseLeftButtonDown += (_, e) =>
+        {
+            SelectNode(node);
+            e.Handled = true;
+        };
 
-        border.MouseLeftButtonDown += Node_MouseLeftButtonDown;
         GraphCanvas.Children.Add(border);
         _nodeVisuals[node.Id] = border;
     }
 
-    private void Node_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    private static string BuildPropSummary(FlowNodeVm node)
     {
-        if (sender is not Border { Tag: string id })
+        if (node.Props.Count == 0)
         {
-            return;
+            return node.Id;
         }
 
-        var node = _vm.Nodes.FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.OrdinalIgnoreCase));
-        if (node is null)
-        {
-            return;
-        }
-
-        // completing a link?
-        if (_pendingFromId is not null && _pendingPort is not null
-            && !string.Equals(_pendingFromId, id, StringComparison.OrdinalIgnoreCase))
-        {
-            _vm.Connect(_pendingFromId, _pendingPort, id);
-            ClearPendingLink();
-            UpdateEdgeGeometries();
-            e.Handled = true;
-            return;
-        }
-
-        SelectNode(node);
-        _dragNode = node;
-        var pos = e.GetPosition(GraphCanvas);
-        _dragOffset = new Point(pos.X - node.X, pos.Y - node.Y);
-        borderCapture(sender as Border);
-        e.Handled = true;
+        var parts = node.Props
+            .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+            .Take(3)
+            .Select(p => $"{p.Key}={TrimVal(p.Value)}");
+        return string.Join("  ", parts);
     }
 
-    private void borderCapture(Border? border)
+    private static string TrimVal(string? v)
     {
-        border?.CaptureMouse();
+        if (string.IsNullOrEmpty(v))
+        {
+            return "";
+        }
+
+        return v.Length <= 18 ? v : v[..16] + "…";
     }
 
     private void SelectNode(FlowNodeVm node)
@@ -248,39 +295,120 @@ public partial class FlowEditorWindow : Window
         _vm.Selected = node;
     }
 
-    private void Canvas_MouseMove(object sender, MouseEventArgs e)
+    private void DrawAutoConnectors()
     {
-        if (_dragNode is null || e.LeftButton != MouseButtonState.Pressed)
+        foreach (var edge in _vm.Edges)
+        {
+            var from = _vm.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, edge.From, StringComparison.OrdinalIgnoreCase));
+            var to = _vm.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, edge.To, StringComparison.OrdinalIgnoreCase));
+            if (from is null || to is null)
+            {
+                continue;
+            }
+
+            var x1 = from.X + FlowEditorVm.LayoutNodeWidth / 2;
+            var y1 = from.Y + FlowEditorVm.LayoutNodeHeight;
+            var x2 = to.X + FlowEditorVm.LayoutNodeWidth / 2;
+            var y2 = to.Y;
+
+            var port = (edge.Port ?? FlowPorts.Next).Trim().ToLowerInvariant();
+            Brush stroke = port switch
+            {
+                "true" or "body" => new SolidColorBrush(Color.FromRgb(0x0B, 0x6E, 0x4F)),
+                "false" or "exit" => new SolidColorBrush(Color.FromRgb(0x9A, 0x67, 0x00)),
+                _ => new SolidColorBrush(Color.FromRgb(0x65, 0x6D, 0x76)),
+            };
+
+            Path path;
+            if (Math.Abs(x1 - x2) < 2)
+            {
+                // straight vertical
+                var geo = new PathGeometry();
+                var fig = new PathFigure { StartPoint = new Point(x1, y1), IsClosed = false };
+                fig.Segments.Add(new LineSegment(new Point(x2, y2), true));
+                geo.Figures.Add(fig);
+                path = new Path
+                {
+                    Stroke = stroke,
+                    StrokeThickness = 2,
+                    Data = geo,
+                    IsHitTestVisible = false,
+                };
+            }
+            else
+            {
+                // elbow: down → horizontal → down (WF-like)
+                var midY = (y1 + y2) / 2;
+                var geo = new PathGeometry();
+                var fig = new PathFigure { StartPoint = new Point(x1, y1), IsClosed = false };
+                fig.Segments.Add(new LineSegment(new Point(x1, midY), true));
+                fig.Segments.Add(new LineSegment(new Point(x2, midY), true));
+                fig.Segments.Add(new LineSegment(new Point(x2, y2), true));
+                geo.Figures.Add(fig);
+                path = new Path
+                {
+                    Stroke = stroke,
+                    StrokeThickness = 2,
+                    Data = geo,
+                    IsHitTestVisible = false,
+                };
+            }
+
+            // arrow head
+            var arrow = CreateArrowHead(x2, y2, stroke);
+            Panel.SetZIndex(path, 1);
+            Panel.SetZIndex(arrow, 2);
+            GraphCanvas.Children.Insert(0, path);
+            GraphCanvas.Children.Insert(0, arrow);
+            _edgeVisuals.Add(path);
+            _edgeVisuals.Add(arrow);
+
+            if (port is not "next")
+            {
+                var label = new TextBlock
+                {
+                    Text = port,
+                    FontSize = 10,
+                    Foreground = stroke,
+                    IsHitTestVisible = false,
+                };
+                Canvas.SetLeft(label, (x1 + x2) / 2 + 4);
+                Canvas.SetTop(label, (y1 + y2) / 2 - 12);
+                Panel.SetZIndex(label, 3);
+                GraphCanvas.Children.Insert(0, label);
+                _edgeVisuals.Add(label);
+            }
+        }
+    }
+
+    private static Polygon CreateArrowHead(double x, double y, Brush fill)
+    {
+        var poly = new Polygon
+        {
+            Fill = fill,
+            Points = [new Point(x, y), new Point(x - 5, y - 10), new Point(x + 5, y - 10)],
+            IsHitTestVisible = false,
+        };
+        return poly;
+    }
+
+    private void SizeCanvasToContent()
+    {
+        if (_vm.Nodes.Count == 0)
         {
             return;
         }
 
-        var pos = e.GetPosition(GraphCanvas);
-        _dragNode.X = Math.Max(0, pos.X - _dragOffset.X);
-        _dragNode.Y = Math.Max(0, pos.Y - _dragOffset.Y);
-        if (_nodeVisuals.TryGetValue(_dragNode.Id, out var border))
-        {
-            Canvas.SetLeft(border, _dragNode.X);
-            Canvas.SetTop(border, _dragNode.Y);
-        }
-
-        UpdateEdgeGeometries();
-    }
-
-    private void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (_dragNode is not null && _nodeVisuals.TryGetValue(_dragNode.Id, out var border))
-        {
-            border.ReleaseMouseCapture();
-        }
-
-        _dragNode = null;
-        _vm.RefreshPreview();
+        var maxY = _vm.Nodes.Max(n => n.Y) + FlowEditorVm.LayoutNodeHeight + 80;
+        var maxX = Math.Max(800, _vm.Nodes.Max(n => n.X) + FlowEditorVm.LayoutNodeWidth + 80);
+        GraphCanvas.Width = Math.Max(maxX, FlowEditorVm.LayoutCenterX * 2);
+        GraphCanvas.Height = Math.Max(600, maxY);
     }
 
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // click empty canvas clears selection (unless on node which handles)
         if (e.OriginalSource is Canvas)
         {
             foreach (var n in _vm.Nodes)
@@ -293,7 +421,6 @@ public partial class FlowEditorWindow : Window
             }
 
             _vm.Selected = null;
-            ClearPendingLink();
         }
     }
 
@@ -304,21 +431,10 @@ public partial class FlowEditorWindow : Window
             return;
         }
 
-        var at = new Point(120 + _vm.Nodes.Count * 24, 100 + (_vm.Nodes.Count % 8) * 70);
-        var node = _vm.AddNode(kind, at);
-        if (kind == FlowNodeKinds.Start)
-        {
-            var main = _vm.Functions.FirstOrDefault(f =>
-                string.Equals(f.Name, "main", StringComparison.OrdinalIgnoreCase));
-            if (main is not null)
-            {
-                main.EntryNodeId = node.Id;
-            }
-        }
-
-        AddNodeVisual(node);
+        var node = _vm.InsertNode(kind);
+        RefreshCanvas();
         SelectNode(node);
-        UpdateEdgeGeometries();
+        ScrollToNode(node);
     }
 
     private void DeleteNode_Click(object sender, RoutedEventArgs e)
@@ -328,34 +444,54 @@ public partial class FlowEditorWindow : Window
             return;
         }
 
-        var id = _vm.Selected.Id;
-        if (_nodeVisuals.TryGetValue(id, out var border))
+        if (string.Equals(_vm.Selected.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(_vm.Selected.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
         {
-            GraphCanvas.Children.Remove(border);
-            _nodeVisuals.Remove(id);
-        }
-
-        _vm.RemoveSelected();
-        UpdateEdgeGeometries();
-    }
-
-    private void PortButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_vm.Selected is null || sender is not Button { Tag: string port })
-        {
+            MessageBox.Show(this, "start / end 为流程端点，不能删除。", "提示",
+                MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
-        _pendingFromId = _vm.Selected.Id;
-        _pendingPort = port;
-        LinkHint.Text = $"连线中：从 {_pendingFromId}.{port} → 点击目标节点";
+        _vm.RemoveSelected();
+        RefreshCanvas();
     }
 
-    private void ClearPendingLink()
+    private void MoveUp_Click(object sender, RoutedEventArgs e)
     {
-        _pendingFromId = null;
-        _pendingPort = null;
-        LinkHint.Text = string.Empty;
+        if (_vm.MoveSelected(-1))
+        {
+            var sel = _vm.Selected;
+            RefreshCanvas();
+            if (sel is not null)
+            {
+                SelectNode(sel);
+            }
+        }
+    }
+
+    private void MoveDown_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm.MoveSelected(1))
+        {
+            var sel = _vm.Selected;
+            RefreshCanvas();
+            if (sel is not null)
+            {
+                SelectNode(sel);
+            }
+        }
+    }
+
+    private void Relayout_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.RelayoutAndAutoWire();
+        RefreshCanvas();
+        _vm.RefreshPreview();
+    }
+
+    private void ScrollToNode(FlowNodeVm node)
+    {
+        GraphScroll.ScrollToVerticalOffset(Math.Max(0, node.Y - 80));
     }
 
     private void AddVar_Click(object sender, RoutedEventArgs e)
@@ -365,14 +501,19 @@ public partial class FlowEditorWindow : Window
     }
 
     private void PropGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e) =>
-        Dispatcher.BeginInvoke(() => _vm.RefreshPreview());
+        Dispatcher.BeginInvoke(() =>
+        {
+            _vm.RefreshPreview();
+            RefreshCanvas();
+        });
 
     private void MetaGrid_CellEditEnding(object sender, DataGridCellEditEndingEventArgs e) =>
         Dispatcher.BeginInvoke(() => _vm.RefreshPreview());
 
     private void Validate_Click(object sender, RoutedEventArgs e)
     {
-        SyncMainEntry();
+        _vm.RelayoutAndAutoWire();
+        RefreshCanvas();
         _vm.RefreshPreview();
         MessageBox.Show(this, _vm.ValidationText, "校验", MessageBoxButton.OK,
             _vm.ValidationText.StartsWith("校验通过", StringComparison.Ordinal)
@@ -384,7 +525,7 @@ public partial class FlowEditorWindow : Window
     {
         try
         {
-            SyncMainEntry();
+            _vm.RelayoutAndAutoWire();
             var doc = _vm.ToDocument();
             var errors = doc.Validate();
             if (errors.Count > 0)
@@ -455,87 +596,6 @@ public partial class FlowEditorWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "应用失败", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void SyncMainEntry()
-    {
-        var start = _vm.Nodes.FirstOrDefault(n =>
-            string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
-        var main = _vm.Functions.FirstOrDefault(f =>
-            string.Equals(f.Name, "main", StringComparison.OrdinalIgnoreCase));
-        if (main is null)
-        {
-            _vm.Functions.Add(new FlowFuncVm { Name = "main", EntryNodeId = start?.Id ?? "" });
-        }
-        else if (start is not null && string.IsNullOrWhiteSpace(main.EntryNodeId))
-        {
-            main.EntryNodeId = start.Id;
-        }
-    }
-
-    private void UpdateEdgeGeometries()
-    {
-        foreach (var p in _edgePaths)
-        {
-            GraphCanvas.Children.Remove(p);
-            if (p.Tag is UIElement label)
-            {
-                GraphCanvas.Children.Remove(label);
-            }
-        }
-
-        _edgePaths.Clear();
-
-        foreach (var edge in _vm.Edges)
-        {
-            var from = _vm.Nodes.FirstOrDefault(n =>
-                string.Equals(n.Id, edge.From, StringComparison.OrdinalIgnoreCase));
-            var to = _vm.Nodes.FirstOrDefault(n =>
-                string.Equals(n.Id, edge.To, StringComparison.OrdinalIgnoreCase));
-            if (from is null || to is null)
-            {
-                continue;
-            }
-
-            var x1 = from.X + NodeWidth;
-            var y1 = from.Y + NodeHeight / 2;
-            var x2 = to.X;
-            var y2 = to.Y + NodeHeight / 2;
-            var dx = Math.Max(40, Math.Abs(x2 - x1) * 0.4);
-            var fig = new PathFigure { StartPoint = new Point(x1, y1), IsClosed = false };
-            fig.Segments.Add(new BezierSegment(
-                new Point(x1 + dx, y1),
-                new Point(x2 - dx, y2),
-                new Point(x2, y2),
-                true));
-            var geo = new PathGeometry([fig]);
-            var path = new Path
-            {
-                Stroke = new SolidColorBrush(Color.FromRgb(0x65, 0x6D, 0x76)),
-                StrokeThickness = 2,
-                Data = geo,
-                IsHitTestVisible = false,
-            };
-            Panel.SetZIndex(path, 1);
-            GraphCanvas.Children.Insert(0, path);
-            _edgePaths.Add(path);
-
-            // port label near midpoint
-            var label = new TextBlock
-            {
-                Text = edge.Port,
-                FontSize = 10,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x65, 0x6D, 0x76)),
-                IsHitTestVisible = false,
-            };
-            Canvas.SetLeft(label, (x1 + x2) / 2);
-            Canvas.SetTop(label, (y1 + y2) / 2 - 10);
-            Panel.SetZIndex(label, 2);
-            GraphCanvas.Children.Insert(0, label);
-            // track for cleanup via same list using a wrapper — remove labels with paths
-            // store label as Tag on path for cleanup
-            path.Tag = label;
         }
     }
 }

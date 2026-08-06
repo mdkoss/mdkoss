@@ -71,7 +71,8 @@ public sealed class FlowTask : MTaskBase
     {
         if (_interpreter.State == FlowRunState.Completed && _loop)
         {
-            _interpreter.Reset();
+            // Keep locals across loop so counters / state persist (only first Start re-inits).
+            _interpreter.Reset(reinitializeVariables: false);
         }
 
         if (_interpreter.State is FlowRunState.Running or FlowRunState.Waiting)

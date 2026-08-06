@@ -16,24 +16,22 @@
   <ItemGroup>
     <ProjectReference Include="..\MDKOSS.Core\MDKOSS.Core.csproj" />
     <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
+    <!-- Cef Content views/** 经 ProjectReference 复制到输出 views/，勿再 Link 一遍以免 views\views 嵌套 -->
     <ProjectReference Include="..\MDKOSS.Cef\MDKOSS.Cef.csproj" />
+    <!-- Pnp 的 views/configs 同样经 ProjectReference 流出；勿再对 examples/pnp/views 做 Link -->
     <ProjectReference Include="..\..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+
+    <!-- 仅机型定制页；核心 HMI 复用 MDKOSS.Cef/views -->
     <None Update="views\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="..\..\examples\pnp\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\examples\pnp\views\**\*">
-      <Link>views\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+
+    <!-- 扩展示例配置（插件工程未必把 configs 流到宿主） -->
     <None Include="..\MDKOSS.Extensions.Camera\configs\**\*">
       <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

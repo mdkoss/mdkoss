@@ -26,6 +26,8 @@ public sealed class MonitoringServer : IDisposable
         _modules.Add(new OrdersApiModule(runtime));
         _modules.Add(new TeachApiModule(runtime));
         _modules.Add(new DbApiModule(runtime));
+        _modules.Add(new ConfigApiModule(runtime));
+        _modules.Add(new TasksApiModule(runtime));
         _modules.Add(new TaskApiModule(runtime));
 
         // Static HTML pages (built-in + extension / machine registrations)

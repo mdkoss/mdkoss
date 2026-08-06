@@ -60,7 +60,7 @@ internal static class Program
             return;
         }
 
-        using var runtime = new MdkRuntime(setting);
+        using var runtime = new MdkRuntime(setting, settingPath);
         if (!RuntimeHost.TryBootstrapRuntime(runtime, out var startupError))
         {
             MessageBox.Show(

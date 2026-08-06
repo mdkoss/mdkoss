@@ -20,6 +20,7 @@ public sealed class FlowInterpreter
     private readonly MVarStore _vars;
     private readonly IFlowRuntimeHost _host;
     private readonly Dictionary<string, object?> _locals = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, object?> _params = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, FlowNode> _nodes;
     private readonly List<(string NodeId, string ResumePort)> _stack = [];
     private readonly HashSet<string> _whileActive = new(StringComparer.OrdinalIgnoreCase);
@@ -42,14 +43,23 @@ public sealed class FlowInterpreter
     public string? ProgramCounter => _pc;
     public string? LastError => _lastError;
 
-    public void Reset()
+    /// <param name="reinitializeVariables">
+    /// When true (first start), clears locals and applies document <c>variables[].init</c>.
+    /// When false (loop restart), keeps locals so counters persist across main re-entry.
+    /// </param>
+    public void Reset(bool reinitializeVariables = true)
     {
-        _locals.Clear();
         _stack.Clear();
         _whileActive.Clear();
         _waitUntilUtc = null;
         _lastError = null;
-        InitVariables();
+        if (reinitializeVariables)
+        {
+            _locals.Clear();
+            _params.Clear();
+            InitVariables();
+        }
+
         var main = _doc.Functions.FirstOrDefault(f =>
             string.Equals(f.Name, "main", StringComparison.OrdinalIgnoreCase));
         if (main is null || !_nodes.TryGetValue(main.EntryNodeId, out _))
@@ -266,6 +276,188 @@ public sealed class FlowInterpreter
                 var msg = FlowExpr.ToStringValue(FlowExpr.Eval(msgExpr, Resolve));
                 AppLog.Info($"[flow:{_taskName}] {msg}");
                 _vars.Set($"task.{_taskName}.flow.lastLog", msg);
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.axismoveto":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var pos = FlowExpr.EvalNumber(Prop(node, "position", "0"), Resolve);
+                if (!_host.TryAxisMoveTo(deviceId, pos, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "axis_move_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.axisenable":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var enabled = FlowExpr.EvalBool(Prop(node, "enabled", "true"), Resolve);
+                if (!_host.TryAxisSetMotionEnabled(deviceId, enabled, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "axis_enable_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformsetmotion":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var enabled = FlowExpr.EvalBool(Prop(node, "enabled", "true"), Resolve);
+                if (!_host.TryPlatformSetMotion(deviceId, enabled, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_set_motion_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformstart":
+            {
+                var deviceId = Prop(node, "deviceId");
+                if (!_host.TryPlatformSetMotion(deviceId, true, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_start_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformstop":
+            {
+                var deviceId = Prop(node, "deviceId");
+                if (!_host.TryPlatformSetMotion(deviceId, false, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_stop_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformaxismoveto":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var axis = Prop(node, "axis", "X");
+                var pos = FlowExpr.EvalNumber(Prop(node, "position", "0"), Resolve);
+                if (!_host.TryPlatformAxisMoveTo(deviceId, axis, pos, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_axis_move_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.gpiowrite":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var alias = Prop(node, "alias");
+                var value = FlowExpr.EvalBool(Prop(node, "value", "true"), Resolve);
+                if (!_host.TryGpioWriteOutput(deviceId, alias, value, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "gpio_write_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.gpioread":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var alias = Prop(node, "alias");
+                var name = Prop(node, "name", "io");
+                if (!_host.TryGpioReadInput(deviceId, alias, out var value, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "gpio_read_failed");
+                }
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    throw new InvalidOperationException("gpioRead missing name");
+                }
+
+                SetLocal(name.Trim(), value);
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.devicesnapshot":
+            {
+                var deviceId = Prop(node, "deviceId");
+                if (!_host.TryGetDeviceSnapshot(deviceId, out var type, out var state, out var connected, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "snapshot_failed");
+                }
+
+                var prefix = Prop(node, "prefix", "snap");
+                SetLocal($"{prefix}.type", type ?? "");
+                SetLocal($"{prefix}.state", state ?? "");
+                SetLocal($"{prefix}.driverConnected", connected);
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.ensuredriver":
+            {
+                var deviceId = Prop(node, "deviceId");
+                if (!_host.TryEnsureDriverConnected(deviceId, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "driver_not_connected");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.setparam":
+            {
+                var key = Prop(node, "key");
+                var expr = Prop(node, "expr", "0");
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new InvalidOperationException("setParam missing key");
+                }
+
+                _params[key.Trim()] = FlowExpr.Eval(expr, Resolve);
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.getparam":
+            {
+                var key = Prop(node, "key");
+                var name = Prop(node, "name");
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(name))
+                {
+                    throw new InvalidOperationException("getParam requires key and name");
+                }
+
+                _params.TryGetValue(key.Trim(), out var raw);
+                SetLocal(name.Trim(), raw);
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.settaskvar":
+            {
+                var suffix = Prop(node, "key");
+                var expr = Prop(node, "expr", "0");
+                if (string.IsNullOrWhiteSpace(suffix))
+                {
+                    throw new InvalidOperationException("setTaskVar missing key");
+                }
+
+                _vars.Set($"task.{_taskName}.{suffix.Trim()}", FlowExpr.Eval(expr, Resolve));
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.setglobalvar":
+            {
+                var key = Prop(node, "key");
+                var expr = Prop(node, "expr", "0");
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    throw new InvalidOperationException("setGlobalVar missing key");
+                }
+
+                _vars.Set(key.Trim(), FlowExpr.Eval(expr, Resolve));
                 Advance(node.Id, FlowPorts.Next);
                 break;
             }

@@ -53,7 +53,15 @@
 - 拾取顶针（`useEjector`）
 - 可选点胶（`useDispenser`）
 
-## 3. Sample 定制界面与 API（对齐 PNP 结构）
+## 3. Sample 定制界面与 API（对齐 Cef 页面分组）
+
+输出目录 `views/` 由引用叠加（**不要**再对 Cef/Pnp 的 views 做 `Link`，否则易出现 `views\views` 嵌套）：
+
+| 来源 | 方式 | 内容 |
+|------|------|------|
+| `MDKOSS.Cef` | `ProjectReference` → Content | 核心：`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*` / `css` / `js` |
+| `MDKOSS.Sample/views/**` | 本项目 `None` | 机型：`indexDieBonder.html` / `monitorDieBonder.html` |
+| `MDKOSS.Pnp` | `ProjectReference` → None | 可选 PNP 演示页 |
 
 ```text
 src/MDKOSS.Sample/
@@ -71,8 +79,12 @@ src/MDKOSS.Sample/
 
 | 能力 | 路径 |
 |------|------|
-| 主界面 | `/indexDieBonder.html`（配置 `startPage`） |
+| 机型主界面 | `/indexDieBonder.html`（配置 `startPage`） |
 | 循环监控 | `/monitorDieBonder.html` |
+| 系统主界面 | `/index.html`（Cef） |
+| IO / 平台监控 | `/monitor_io.html` · `/monitor_platform.html` |
+| 平台示教 | `/debug_platform.html?deviceId=head-bond` |
+| 运行总览 | `/monitor_runtime.html` |
 | Dashboard | `GET /api/bond/dashboard` |
 | 日志 | `GET /api/bond/logs` |
 | 启停复位换盘 | `POST /api/bond/start\|stop\|reset\|traychange\|clearlogs` |
@@ -108,8 +120,10 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs
 
 监控入口：
 
-- `http://127.0.0.1:5080/indexDieBonder.html`
-- `http://127.0.0.1:5080/monitorDieBonder.html`
+- `http://127.0.0.1:5080/indexDieBonder.html` — 机型主界面
+- `http://127.0.0.1:5080/monitorDieBonder.html` — 循环细节
+- `http://127.0.0.1:5080/index.html` — 系统主界面（Cef）
+- `http://127.0.0.1:5080/monitor_runtime.html` — 运行总览
 - `http://127.0.0.1:5080/api/bond/dashboard`
 
 不同工程用 `projectName` 区分身份，用 `startPage` 指定启动页；`RuntimeHost` 不再按机型硬编码判断。

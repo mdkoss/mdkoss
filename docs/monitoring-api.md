@@ -130,7 +130,22 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 
 | 路由 | 方法 | 说明 |
 |------|------|------|
-| `/api/tasks` | GET | 运行时任务快照（名称、间隔、状态等） |
+| `/api/tasks` | GET | 运行时任务快照（名称、类型、间隔、状态） |
+| `/api/task/start\|stop\|reset` | POST | 写入 `task.operation.command` |
+| `/api/task/lamp?color=` | POST | 三色灯 |
+
+### 配置（轻量）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/config` | GET | 配置摘要（projectName、settingPath、计数） |
+| `/api/config/drivers` | GET | 驱动配置列表 |
+| `/api/config/drivers/{id}` | PATCH | 更新 enabled / parameters（内存） |
+| `/api/config/devices` | GET | 设备配置列表 |
+| `/api/config/devices/{id}` | PATCH | 更新 name / enabled / driverId / parameters |
+| `/api/config/tasks` | GET | 任务配置列表 |
+| `/api/config/tasks/{name}` | PATCH | 更新 intervalMs / parameters 等 |
+| `/api/config/save` | POST | 写入 setting JSON + SQLite 配置表；**需重启运行时**后设备/驱动变更才生效 |
 
 供 Task Manager 与监控页展示。
 
@@ -145,7 +160,10 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 5. `RecipeApiModule`
 6. `OrdersApiModule`
 7. `TeachApiModule`
-8. `TaskApiModule`
+8. `DbApiModule`
+9. `ConfigApiModule`
+10. `TasksApiModule`
+11. `TaskApiModule`
 
 运行时可通过 `AddModule` 在 `Start()` 前追加模块。
 

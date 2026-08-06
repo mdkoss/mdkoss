@@ -1,29 +1,119 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>轴调试</title>
+  <title>MDKOSS 轴调试</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_axis">
+  <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">轴调试 <span class="pill warn">可写</span></div>
-        <div class="sub">单轴回零 / 点动 / 绝对移动</div>
+        <div class="sub" id="hdrSubtitle">enable / disable / move / stop / jog</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+      <a class="link-btn" href="/monitor_axis.html">只读监控 →</a>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">对标 Config.Wpf AxisDebug；调用设备 action enable/move/home。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>轴设备</label>
+        <select id="selAxis"><option value="">— 选择 —</option></select>
+      </div>
+      <div class="form-group"><label>状态</label><div id="vState">—</div></div>
+      <div class="form-group"><label>在线</label><div id="vOnline">—</div></div>
+    </div>
+    <div class="grid">
+      <div class="card span-6">
+        <h2 class="panel-title">动作</h2>
+        <div class="btn-group" style="margin-bottom:12px">
+          <button type="button" class="btn primary" id="btnEnable">使能</button>
+          <button type="button" class="btn" id="btnDisable">去使能</button>
+          <button type="button" class="btn danger" id="btnStop">停止</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>目标位置</label><input type="number" id="txtPos" value="0" step="0.1" /></div>
+          <div class="form-group" style="align-self:flex-end"><button type="button" class="btn primary" id="btnMove">位置移动</button></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>点动速度</label><input type="number" id="txtVel" value="1" step="0.1" /></div>
+          <div class="form-group" style="align-self:flex-end">
+            <button type="button" class="btn" id="btnJogNeg">Jog −</button>
+            <button type="button" class="btn" id="btnJogPos">Jog +</button>
+          </div>
+        </div>
+      </div>
+      <div class="card span-6">
+        <h2 class="panel-title">日志</h2>
+        <div class="log-box" id="logBox" style="min-height:160px;max-height:280px;overflow:auto;font-size:12px"></div>
+      </div>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, qs, fetchJson, postJson, toast, logLine } = MdkTool;
+    const sel = document.getElementById("selAxis");
+    const logBox = document.getElementById("logBox");
+    let preferred = qs("deviceId", "");
+
+    function fillSelect(devices) {
+      const cur = sel.value || preferred;
+      const opts = Object.entries(devices || {})
+        .filter(([, d]) => String(field(d, "type", "Type") || "").toLowerCase() === "axis")
+        .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)} (${esc(id)})</option>`);
+      sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
+      if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      else if (sel.options.length > 1) sel.selectedIndex = 1;
+      preferred = "";
+    }
+
+    async function action(name, parameters) {
+      const id = sel.value;
+      if (!id) { toast("请选择轴", false); return; }
+      try {
+        await postJson(`/api/devices/${encodeURIComponent(id)}/action`, { action: name, parameters });
+        toast(name + " 成功", true);
+        logLine(logBox, name + " ok", true);
+        await tick();
+      } catch (e) {
+        toast(e.message || "失败", false);
+        logLine(logBox, name + " fail: " + e.message, false);
+      }
+    }
+
+    document.getElementById("btnEnable").onclick = () => action("enable");
+    document.getElementById("btnDisable").onclick = () => action("disable");
+    document.getElementById("btnStop").onclick = () => action("stop");
+    document.getElementById("btnMove").onclick = () =>
+      action("move", { position: Number(document.getElementById("txtPos").value) || 0 });
+    document.getElementById("btnJogPos").onclick = () =>
+      action("jog", { direction: 1, velocity: Number(document.getElementById("txtVel").value) || 1 });
+    document.getElementById("btnJogNeg").onclick = () =>
+      action("jog", { direction: -1, velocity: Number(document.getElementById("txtVel").value) || 1 });
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        const devices = field(data, "devices", "Devices") || {};
+        fillSelect(devices);
+        const id = sel.value;
+        const d = id ? devices[id] : null;
+        document.getElementById("hdrSubtitle").textContent = id
+          ? `${field(d, "name", "Name") || id} · ${id}`
+          : "请选择轴设备";
+        document.getElementById("vState").textContent = d ? String(field(d, "state", "State") || "—") : "—";
+        document.getElementById("vOnline").textContent = d
+          ? (field(d, "driverConnected", "DriverConnected") ? "是" : "否")
+          : "—";
+      } catch (e) {
+        document.getElementById("hdrSubtitle").textContent = "无法连接";
+      }
+    }
+    sel.addEventListener("change", () => tick());
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>

@@ -1,29 +1,87 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>任务状态监控</title>
+  <title>MDKOSS 任务状态监控</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="monitor" data-tool-page="monitor_task">
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">任务状态监控 <span class="pill warn">只读</span></div>
-        <div class="sub">任务周期与操作任务明细</div>
+        <div class="sub">GET /api/tasks · task.operation / task.cycle</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+      <a class="link-btn" href="/debug_machine.html">整机调试 →</a>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">展示 task.cycle.* / task.operation.* 与任务图状态。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
+    <div class="grid">
+      <div class="card span-4"><div class="label">操作任务</div><div class="value" id="opState">—</div></div>
+      <div class="card span-4"><div class="label">消息</div><div class="value" id="opMsg" style="font-size:14px">—</div></div>
+      <div class="card span-4"><div class="label">灯</div><div class="value" id="opLamp">—</div></div>
+      <div class="card span-12">
+        <div class="label">运行时任务</div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>间隔 ms</th><th>状态</th></tr></thead>
+          <tbody id="taskRows"><tr><td colspan="4" style="color:var(--muted)">加载中…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="card span-12">
+        <div class="label">周期变量（task.cycle.*）</div>
+        <table>
+          <thead><tr><th>键</th><th>值</th></tr></thead>
+          <tbody id="cycleRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, fetchJson } = MdkTool;
+
+    async function tick() {
+      try {
+        const [status, tasksData] = await Promise.all([
+          fetchJson("/api/status"),
+          fetchJson("/api/tasks").catch(() => ({ tasks: [] })),
+        ]);
+        const vars = field(status, "vars", "Vars") || {};
+        document.getElementById("opState").textContent = vars["task.operation.state"] ?? "—";
+        document.getElementById("opMsg").textContent = vars["task.operation.message"] ?? "—";
+        document.getElementById("opLamp").textContent = vars["task.operation.lamp"] ?? "—";
+
+        const tasks = field(tasksData, "tasks", "Tasks") || [];
+        const tbody = document.getElementById("taskRows");
+        if (!tasks.length) {
+          tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">无任务</td></tr>';
+        } else {
+          tbody.innerHTML = tasks.map((t) => `<tr>
+            <td>${esc(t.name ?? t.Name)}</td>
+            <td>${esc(t.type ?? t.Type)}</td>
+            <td>${esc(t.intervalMs ?? t.IntervalMs)}</td>
+            <td>${esc(t.state ?? t.State)}</td>
+          </tr>`).join("");
+        }
+
+        const cycleKeys = Object.keys(vars).filter((k) => k.startsWith("task.cycle.")).sort();
+        const cbody = document.getElementById("cycleRows");
+        if (!cycleKeys.length) {
+          cbody.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">无</td></tr>';
+        } else {
+          cbody.innerHTML = cycleKeys.map((k) => {
+            let v = vars[k];
+            if (typeof v === "object") try { v = JSON.stringify(v); } catch { v = String(v); }
+            return `<tr><td>${esc(k)}</td><td style="font-family:monospace;font-size:12px;word-break:break-all">${esc(v)}</td></tr>`;
+          }).join("");
+        }
+      } catch (e) {
+        document.getElementById("taskRows").innerHTML =
+          `<tr><td colspan="4" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>

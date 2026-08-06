@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -6,7 +6,7 @@
   <title>MDKOSS 平台步进示教</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_platform">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
@@ -14,13 +14,6 @@
         <div class="title">平台步进示教</div>
         <div class="sub" id="hdrSubtitle">请选择平台设备</div>
       </div>
-      <nav class="nav">
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/monitor_platform.html">平台监控</a>
-        <a href="/monitor_io.html">IO 监控</a>
-        <a href="/debug_serial.html">串口调试</a>
-        <a href="/debug_db.html">数据库维护</a>
-      </nav>
     </div>
     <div id="warnBar" class="warn-bar hidden">运行时未启动，仍可调试平台。</div>
     <div class="form-row">
@@ -143,5 +136,6 @@
     <p class="footer">API: <code>/api/status</code> · <code>/api/devices/{id}/action</code></p>
   </div>
 <script src="debug_platform.js"></script>
+  <script src="/js/tool_nav.js"></script>
 </body>
 </html>

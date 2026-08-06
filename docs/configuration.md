@@ -210,8 +210,9 @@
 - 启动时 `MdkDataStore.SyncRecipesWithSetting` 将 JSON 中的 recipes 与 SQLite 对齐
 - 退出 `Dispose` 时 `PersistRecipesFromSetting` 写回数据库
 - 排单、示教点仅存 SQLite，不嵌入 setting JSON
+- CEF `man_*` 页通过 `/api/config` 轻量 PATCH 内存中的 `MdkSetting`，`POST /api/config/save` 写回 JSON（`MdkRuntime.SettingPath`）并尝试导出到 SQLite 配置表；**不热替换**已运行驱动/设备，保存后需重启运行时
 
-详见 [data-persistence.md](./data-persistence.md)。
+详见 [data-persistence.md](./data-persistence.md) 与 [monitoring-api.md](./monitoring-api.md)。
 
 ## 验证
 

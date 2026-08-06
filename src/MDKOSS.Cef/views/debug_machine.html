@@ -1,29 +1,99 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>整机手动</title>
+  <title>MDKOSS 整机手动</title>
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body>
+<body data-tool-group="debug" data-tool-page="debug_machine">
+  <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">整机手动 <span class="pill warn">可写</span></div>
-        <div class="sub">整机级手动：联动启停、模块强制、安全互锁提示</div>
+        <div class="sub">启停复位 · 运行摘要 · 快捷跳转</div>
       </div>
-      <nav class="nav">
-        <a href="/">主界面</a>
-        <a href="/monitor_runtime.html">运行监控</a>
-        <a href="/popup_about.html">工具目录</a>
-      </nav>
+      <a class="link-btn" href="/">主界面</a>
     </div>
-    <div class="card span-12">
-      <div class="label">功能规格（骨架）</div>
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin:8px 0 0">聚合常用手动入口；危险操作需二次确认。</p>
-      <p style="margin-top:12px;font-size:12px">详见 <code>/views/README.md</code>。完整实现按优先级迭代。</p>
+    <div class="grid">
+      <div class="card span-4"><div class="label">项目</div><div class="value" id="vProject">—</div></div>
+      <div class="card span-4"><div class="label">运行时</div><div class="value" id="vRun">—</div></div>
+      <div class="card span-4"><div class="label">操作任务</div><div class="value" id="vOp">—</div></div>
+      <div class="card span-12">
+        <h2 class="panel-title">任务操作</h2>
+        <div class="btn-group">
+          <button type="button" class="btn primary" id="btnStart">启动</button>
+          <button type="button" class="btn danger" id="btnStop">停止</button>
+          <button type="button" class="btn" id="btnReset">复位</button>
+        </div>
+        <p id="opMsg" style="margin-top:10px;color:var(--muted);font-size:13px">—</p>
+      </div>
+      <div class="card span-6">
+        <div class="label">故障摘要</div>
+        <div id="faultBox" style="margin-top:8px;font-size:13px;color:var(--muted)">—</div>
+      </div>
+      <div class="card span-6">
+        <div class="label">调试入口</div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:8px">
+          <a class="link-btn" href="/debug_platform.html">平台示教</a>
+          <a class="link-btn" href="/debug_axis.html">轴</a>
+          <a class="link-btn" href="/debug_io.html">IO 强制</a>
+          <a class="link-btn" href="/debug_serial.html">串口</a>
+          <a class="link-btn" href="/debug_camera.html">相机</a>
+          <a class="link-btn" href="/debug_driver.html">驱动</a>
+        </div>
+      </div>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, fetchJson, toast } = MdkTool;
+
+    async function cmd(path, label) {
+      try {
+        const res = await fetch(path, { method: "POST" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) throw new Error(data.error || "fail");
+        toast(label + " 已下发", true);
+        await tick();
+      } catch (e) {
+        toast(e.message || "失败", false);
+      }
+    }
+    document.getElementById("btnStart").onclick = () => cmd("/api/task/start", "启动");
+    document.getElementById("btnStop").onclick = () => cmd("/api/task/stop", "停止");
+    document.getElementById("btnReset").onclick = () => cmd("/api/task/reset", "复位");
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        const vars = field(data, "vars", "Vars") || {};
+        const devices = field(data, "devices", "Devices") || {};
+        document.getElementById("vProject").textContent = field(data, "projectName", "ProjectName") || "—";
+        document.getElementById("vRun").textContent = field(data, "isRunning", "IsRunning") ? "RUNNING" : "STOPPED";
+        document.getElementById("vOp").textContent = vars["task.operation.state"] ?? "—";
+        document.getElementById("opMsg").textContent = vars["task.operation.message"] ?? "—";
+
+        const faults = [];
+        const df = Number(vars["task.cycle.dev.fault"] || 0);
+        const tf = Number(vars["task.cycle.task.fault"] || 0);
+        if (df > 0) faults.push(`设备故障 ${df}`);
+        if (tf > 0) faults.push(`任务故障 ${tf}`);
+        for (const [id, d] of Object.entries(devices)) {
+          const st = String(field(d, "state", "State") || "").toLowerCase();
+          if (st === "fault" || st === "error") faults.push(`设备 ${id}: ${st}`);
+        }
+        document.getElementById("faultBox").innerHTML = faults.length
+          ? faults.map((f) => `<div style="color:var(--danger)">${esc(f)}</div>`).join("")
+          : '<span style="color:var(--ok)">无故障</span>';
+      } catch {
+        document.getElementById("vRun").textContent = "离线";
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
 </body>
 </html>
