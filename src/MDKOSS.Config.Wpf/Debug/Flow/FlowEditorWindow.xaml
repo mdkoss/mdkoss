@@ -23,9 +23,9 @@
         <ComboBox x:Name="TaskCombo" Width="260" SelectionChanged="TaskCombo_SelectionChanged"/>
         <TextBlock Text="IntervalMs" VerticalAlignment="Center" Margin="16,0,6,0" Foreground="{StaticResource MutedBrush}"/>
         <TextBox x:Name="IntervalBox" Width="70" Text="100"/>
-        <TextBlock x:Name="HintText" Margin="16,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="480"
+        <TextBlock x:Name="HintText" Margin="16,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="520"
                    Foreground="{StaticResource MutedBrush}"
-                   Text="Workflow 布局：自上而下居中；点工具箱插入到选中项下方并自动连线；上移/下移调整顺序"/>
+                   Text="复合块：选 if→进入 Then/Else；选 while→进入 Body；工具箱插入到当前插槽；折叠整块"/>
       </StackPanel>
     </DockPanel>
 
@@ -112,10 +112,25 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
             <TextBlock Text="选中节点" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,6"/>
+            <TextBlock Text="{Binding FocusLabel}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
+            <WrapPanel Margin="0,0,0,8">
+              <Button Content="根序列" Click="FocusRoot_Click" Margin="0,0,4,4" Padding="8,2"/>
+              <Button Content="Then" Click="FocusThen_Click" Margin="0,0,4,4" Padding="8,2"
+                      IsEnabled="{Binding SelectedIsIf}"/>
+              <Button Content="Else" Click="FocusElse_Click" Margin="0,0,4,4" Padding="8,2"
+                      IsEnabled="{Binding SelectedIsIf}"/>
+              <Button Content="Body" Click="FocusBody_Click" Margin="0,0,4,4" Padding="8,2"
+                      IsEnabled="{Binding SelectedIsWhile}"/>
+              <Button Content="父级" Click="FocusParent_Click" Margin="0,0,4,4" Padding="8,2"/>
+              <Button Content="折叠/展开" Click="ToggleCollapse_Click" Margin="0,0,4,4" Padding="8,2"
+                      IsEnabled="{Binding SelectedIsComposite}"/>
+            </WrapPanel>
             <TextBlock Text="Id" Foreground="{StaticResource MutedBrush}"/>
             <TextBox Text="{Binding Selected.Id, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,6"/>
             <TextBlock Text="Kind" Foreground="{StaticResource MutedBrush}"/>
             <TextBox Text="{Binding Selected.Kind, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,6"/>
+            <TextBlock Text="Slot" Foreground="{StaticResource MutedBrush}"/>
+            <TextBox Text="{Binding Selected.Slot, Mode=OneWay}" IsReadOnly="True" Margin="0,0,0,6"/>
             <TextBlock Text="Props" FontWeight="SemiBold" Margin="0,4,0,4"/>
             <DataGrid ItemsSource="{Binding Selected.Props}" AutoGenerateColumns="False"
                       CanUserAddRows="True" CanUserDeleteRows="True" Height="160"
@@ -127,8 +142,8 @@
               </DataGrid.Columns>
             </DataGrid>
 
-            <TextBlock Text="连线" FontWeight="SemiBold" Margin="0,12,0,4" Foreground="{StaticResource AccentBrush}"/>
-            <TextBlock Text="顺序节点自动 next 连接；if/while 的 true/false、body/exit 默认接到后续节点。"
+            <TextBlock Text="复合块" FontWeight="SemiBold" Margin="0,12,0,4" Foreground="{StaticResource AccentBrush}"/>
+            <TextBlock Text="if/while 为容器：子节点带 parentId+slot；边由树自动生成。绿色框=当前插入插槽。"
                        TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
 
             <TextBlock Text="变量声明" FontWeight="SemiBold" Margin="0,8,0,4" Foreground="{StaticResource AccentBrush}"/>

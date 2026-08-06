@@ -1,24 +1,12 @@
-/* MDKOSS HMI 主界面风格 — index 及同类子界面 */
+/* MDKOSS HMI layout — index / popup_*
+ * Colors from theme-navy.css (load before this file).
+ */
 
-:root {
-  --bg: #0a0f1a;
-  --panel: #101a2e;
-  --panel2: #0d1528;
-  --text: #e8f0ff;
-  --muted: #8fa3cc;
-  --line: #1e2d4d;
-  --accent: #4e8cff;
-  --ok: #35d08f;
-  --warn: #ffcc66;
-  --danger: #ff5d5d;
-  --top-h: 52px;
-  --bottom-h: 72px;
-}
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; overflow: hidden; }
 body {
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  background: var(--bg);
+  background: radial-gradient(ellipse at top, #122240 0%, var(--bg) 55%);
   color: var(--text);
   display: flex;
   flex-direction: column;
@@ -32,7 +20,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0;
-  background: linear-gradient(180deg, #141e36 0%, #0f1729 100%);
+  background: linear-gradient(180deg, #152a4c 0%, #0c1730 100%);
   border-bottom: 1px solid var(--line);
   position: relative;
   z-index: 50;
@@ -202,7 +190,7 @@ body {
   flex-shrink: 0;
   display: flex;
   align-items: stretch;
-  background: linear-gradient(0deg, #141e36 0%, #0f1729 100%);
+  background: linear-gradient(0deg, #0c1730 0%, #152a4c 100%);
   border-top: 1px solid var(--line);
   gap: 0;
 }
@@ -346,13 +334,13 @@ body {
   min-width: 72px; height: 44px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: #162644;
+  background: var(--btn-bg);
   color: var(--text);
   font-size: 14px; font-weight: 700;
   cursor: pointer;
   transition: background .15s, transform .08s;
 }
-.ctrl-btn:hover { background: #1d3157; }
+.ctrl-btn:hover { background: var(--btn-hover); }
 .ctrl-btn:active { transform: scale(.97); }
 .ctrl-btn.start { border-color: rgba(53,208,143,.5); color: var(--ok); }
 .ctrl-btn.stop { border-color: rgba(255,93,93,.5); color: var(--danger); }

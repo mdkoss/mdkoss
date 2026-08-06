@@ -7,21 +7,25 @@ using MDKOSS.Core.Flow;
 namespace MDKOSS.Config.Wpf.Debug.Flow;
 
 /// <summary>
-/// Workflow-style editor model: top-to-bottom centered sequence with auto-wired edges
-/// (similar to a C# Workflow Foundation Sequence).
+/// Composite-block workflow editor: root sequence + if(then/else) / while(body) trees.
+/// <see cref="FlowNode.ParentId"/> / <see cref="FlowNode.Slot"/> / <see cref="FlowNode.Order"/> are authoritative;
+/// edges are derived via <see cref="FlowComposite.BuildEdges"/>.
 /// </summary>
 public sealed class FlowEditorVm : INotifyPropertyChanged
 {
     public const double LayoutNodeWidth = 200;
     public const double LayoutNodeHeight = 64;
-    public const double LayoutGapY = 48;
+    public const double LayoutGapY = 36;
     public const double LayoutTop = 40;
-    public const double LayoutCenterX = 400; // canvas center line; node left = center - width/2
-    public const double LayoutBranchOffsetX = 220;
+    public const double LayoutCenterX = 480;
+    public const double LayoutBranchOffsetX = 230;
+    public const double LayoutBodyIndentX = 40;
 
     private FlowNodeVm? _selected;
     private string _jsonPreview = string.Empty;
     private string _validationText = string.Empty;
+    private string? _focusParentId;
+    private string? _focusSlot;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -29,6 +33,35 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
     public ObservableCollection<FlowEdgeVm> Edges { get; } = [];
     public ObservableCollection<FlowVarVm> Variables { get; } = [];
     public ObservableCollection<FlowFuncVm> Functions { get; } = [];
+    public ObservableCollection<FlowRegionVm> Regions { get; } = [];
+
+    /// <summary>Insert context: null parent = root spine; else parentId + slot (then/else/body).</summary>
+    public string? FocusParentId
+    {
+        get => _focusParentId;
+        private set { _focusParentId = value; OnPropertyChanged(); OnPropertyChanged(nameof(FocusLabel)); }
+    }
+
+    public string? FocusSlot
+    {
+        get => _focusSlot;
+        private set { _focusSlot = value; OnPropertyChanged(); OnPropertyChanged(nameof(FocusLabel)); }
+    }
+
+    public string FocusLabel
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(FocusParentId))
+            {
+                return "插入位置：根序列";
+            }
+
+            var parent = Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, FocusParentId, StringComparison.OrdinalIgnoreCase));
+            return $"插入位置：{parent?.Kind ?? "?"} [{FocusSlot}]  ({FocusParentId})";
+        }
+    }
 
     public FlowNodeVm? Selected
     {
@@ -38,10 +71,18 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
             _selected = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelection));
+            OnPropertyChanged(nameof(SelectedIsIf));
+            OnPropertyChanged(nameof(SelectedIsWhile));
+            OnPropertyChanged(nameof(SelectedIsComposite));
         }
     }
 
     public bool HasSelection => Selected is not null;
+    public bool SelectedIsIf =>
+        Selected is not null && string.Equals(Selected.Kind, FlowNodeKinds.If, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedIsWhile =>
+        Selected is not null && string.Equals(Selected.Kind, FlowNodeKinds.While, StringComparison.OrdinalIgnoreCase);
+    public bool SelectedIsComposite => SelectedIsIf || SelectedIsWhile;
 
     public string JsonPreview
     {
@@ -61,7 +102,10 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
         Edges.Clear();
         Variables.Clear();
         Functions.Clear();
+        Regions.Clear();
         Selected = null;
+        FocusParentId = null;
+        FocusSlot = null;
 
         foreach (var v in doc.Variables)
         {
@@ -78,9 +122,10 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
             Nodes.Add(FlowNodeVm.FromModel(n));
         }
 
-        foreach (var e in doc.Edges)
+        if (!FlowComposite.HasTreeMetadata(doc.Nodes))
         {
-            Edges.Add(new FlowEdgeVm { From = e.From, To = e.To, Port = e.Port });
+            // Legacy: promote edge spine to root Order; keep orphan nodes as root after end.
+            PromoteLegacySpine(doc);
         }
 
         if (Functions.Count == 0)
@@ -91,240 +136,24 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
         }
 
         EnsureStartEnd();
-        RebuildSequenceFromEdges();
         RelayoutAndAutoWire();
         RefreshPreview();
     }
 
-    public FlowDocument ToDocument()
-    {
-        return new FlowDocument
-        {
-            Version = 1,
-            Variables = Variables.Select(v => new FlowVariable
-            {
-                Name = v.Name.Trim(),
-                Type = string.IsNullOrWhiteSpace(v.Type) ? "number" : v.Type.Trim(),
-                Init = v.Init,
-            }).Where(v => !string.IsNullOrWhiteSpace(v.Name)).ToList(),
-            Functions = Functions.Select(f => new FlowFunction
-            {
-                Name = string.IsNullOrWhiteSpace(f.Name) ? "main" : f.Name.Trim(),
-                EntryNodeId = f.EntryNodeId.Trim(),
-            }).ToList(),
-            Nodes = Nodes.Select(n => n.ToModel()).ToList(),
-            Edges = Edges.Select(e => new FlowEdge
-            {
-                From = e.From,
-                To = e.To,
-                Port = string.IsNullOrWhiteSpace(e.Port) ? FlowPorts.Next : e.Port,
-            }).ToList(),
-        };
-    }
-
-    public void RefreshPreview()
-    {
-        var doc = ToDocument();
-        JsonPreview = doc.ToJson();
-        var errors = doc.Validate();
-        ValidationText = errors.Count == 0
-            ? "校验通过"
-            : string.Join(Environment.NewLine, errors.Select(e => "• " + e));
-    }
-
-    /// <summary>Insert activity after selected (or before end). Auto-wires and relayouts.</summary>
-    public FlowNodeVm InsertNode(string kind)
-    {
-        EnsureStartEnd();
-        var id = "n-" + Guid.NewGuid().ToString("N")[..8];
-        var vm = new FlowNodeVm
-        {
-            Id = id,
-            Kind = kind,
-            Title = kind,
-        };
-        ApplyDefaultProps(vm);
-
-        if (string.Equals(kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
-        {
-            var existingEnd = Nodes.FirstOrDefault(n =>
-                string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
-            if (existingEnd is not null)
-            {
-                Selected = existingEnd;
-                RelayoutAndAutoWire();
-                RefreshPreview();
-                return existingEnd;
-            }
-        }
-
-        if (string.Equals(kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
-        {
-            var existingStart = Nodes.FirstOrDefault(n =>
-                string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
-            if (existingStart is not null)
-            {
-                Selected = existingStart;
-                RelayoutAndAutoWire();
-                RefreshPreview();
-                return existingStart;
-            }
-        }
-
-        // Nodes collection order is the workflow sequence (not edges).
-        var seq = Nodes.ToList();
-        var endIdx = seq.FindIndex(n =>
-            string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
-        var startIdx = seq.FindIndex(n =>
-            string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
-
-        var insertAt = endIdx >= 0 ? endIdx : seq.Count;
-        if (Selected is not null)
-        {
-            var idx = seq.FindIndex(n => string.Equals(n.Id, Selected.Id, StringComparison.OrdinalIgnoreCase));
-            if (idx >= 0)
-            {
-                insertAt = idx + 1;
-            }
-        }
-
-        if (startIdx >= 0 && insertAt <= startIdx)
-        {
-            insertAt = startIdx + 1;
-        }
-
-        // Keep a single end as last
-        if (endIdx >= 0)
-        {
-            // endIdx may shift if we haven't removed end; clamp so we never insert after end
-            if (insertAt > endIdx)
-            {
-                insertAt = endIdx;
-            }
-        }
-
-        if (insertAt < 0)
-        {
-            insertAt = 0;
-        }
-
-        if (insertAt > seq.Count)
-        {
-            insertAt = seq.Count;
-        }
-
-        seq.Insert(insertAt, vm);
-        ApplySequenceOrder(seq);
-        Selected = vm;
-        RelayoutAndAutoWire();
-        RefreshPreview();
-        return vm;
-    }
-
-    public void RemoveSelected()
-    {
-        if (Selected is null)
-        {
-            return;
-        }
-
-        if (string.Equals(Selected.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(Selected.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
-        {
-            return; // keep spine terminals
-        }
-
-        var id = Selected.Id;
-        foreach (var e in Edges.Where(x =>
-                     string.Equals(x.From, id, StringComparison.OrdinalIgnoreCase)
-                     || string.Equals(x.To, id, StringComparison.OrdinalIgnoreCase)).ToList())
-        {
-            Edges.Remove(e);
-        }
-
-        Nodes.Remove(Selected);
-        Selected = null;
-        RelayoutAndAutoWire();
-        RefreshPreview();
-    }
-
-    public bool MoveSelected(int delta)
-    {
-        if (Selected is null || delta == 0)
-        {
-            return false;
-        }
-
-        if (string.Equals(Selected.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(Selected.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var seq = Nodes.ToList();
-        var idx = seq.FindIndex(n => string.Equals(n.Id, Selected.Id, StringComparison.OrdinalIgnoreCase));
-        if (idx < 0)
-        {
-            return false;
-        }
-
-        var target = idx + delta;
-        var startIdx = seq.FindIndex(n =>
-            string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
-        var endIdx = seq.FindIndex(n =>
-            string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
-        var min = startIdx >= 0 ? startIdx + 1 : 0;
-        var max = endIdx >= 0 ? endIdx - 1 : seq.Count - 1;
-        if (target < min || target > max)
-        {
-            return false;
-        }
-
-        (seq[idx], seq[target]) = (seq[target], seq[idx]);
-        ApplySequenceOrder(seq);
-        RelayoutAndAutoWire();
-        RefreshPreview();
-        return true;
-    }
-
-    public void RelayoutAndAutoWire()
-    {
-        EnsureStartEnd();
-        // Editor sequence is Nodes order (Workflow Sequence), edges are derived.
-        var seq = NormalizeSequence(Nodes.ToList());
-        ApplySequenceOrder(seq);
-        LayoutVerticalCentered(seq);
-        AutoWireSequence(seq);
-        SyncMainEntry();
-    }
-
-    /// <summary>
-    /// On load: derive spine from edges once, then keep Nodes order authoritative.
-    /// </summary>
-    private void RebuildSequenceFromEdges()
-    {
-        var seq = WalkSequenceFromEdges();
-        ApplySequenceOrder(NormalizeSequence(seq));
-    }
-
-    /// <summary>Main spine for UI: current Nodes order with start first / end last.</summary>
-    public List<FlowNodeVm> GetMainSequence() => NormalizeSequence(Nodes.ToList());
-
-    private List<FlowNodeVm> WalkSequenceFromEdges()
+    private void PromoteLegacySpine(FlowDocument doc)
     {
         var byId = Nodes.ToDictionary(n => n.Id, StringComparer.OrdinalIgnoreCase);
         var start = Nodes.FirstOrDefault(n =>
             string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
         var ordered = new List<FlowNodeVm>();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
         if (start is not null)
         {
             var cur = start;
             while (cur is not null && seen.Add(cur.Id))
             {
                 ordered.Add(cur);
-                var nextId = Edges.FirstOrDefault(e =>
+                var nextId = doc.Edges.FirstOrDefault(e =>
                     string.Equals(e.From, cur.Id, StringComparison.OrdinalIgnoreCase)
                     && string.Equals(e.Port, FlowPorts.Next, StringComparison.OrdinalIgnoreCase))?.To;
                 if (nextId is null)
@@ -332,13 +161,13 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                     var kind = cur.Kind.Trim().ToLowerInvariant();
                     if (kind == "if")
                     {
-                        nextId = Edges.FirstOrDefault(e =>
+                        nextId = doc.Edges.FirstOrDefault(e =>
                             string.Equals(e.From, cur.Id, StringComparison.OrdinalIgnoreCase)
                             && string.Equals(e.Port, FlowPorts.False, StringComparison.OrdinalIgnoreCase))?.To;
                     }
                     else if (kind == "while")
                     {
-                        nextId = Edges.FirstOrDefault(e =>
+                        nextId = doc.Edges.FirstOrDefault(e =>
                             string.Equals(e.From, cur.Id, StringComparison.OrdinalIgnoreCase)
                             && string.Equals(e.Port, FlowPorts.Exit, StringComparison.OrdinalIgnoreCase))?.To;
                     }
@@ -356,191 +185,546 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
             }
         }
 
-        return ordered;
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].ParentId = null;
+            ordered[i].Slot = null;
+            ordered[i].Order = i;
+        }
     }
 
-    private static List<FlowNodeVm> NormalizeSequence(List<FlowNodeVm> seq)
+    public FlowDocument ToDocument()
     {
-        var start = seq.FirstOrDefault(n =>
-            string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
-        var end = seq.LastOrDefault(n =>
-            string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
-        var mid = seq
-            .Where(n =>
-                !string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        var result = new List<FlowNodeVm>();
-        if (start is not null)
+        var nodes = Nodes.Select(n => n.ToModel()).ToList();
+        FlowComposite.RenumberOrders(nodes);
+        var edges = FlowComposite.BuildEdges(nodes);
+        return new FlowDocument
         {
-            result.Add(start);
-        }
-
-        result.AddRange(mid);
-        if (end is not null)
-        {
-            result.Add(end);
-        }
-
-        // any duplicates / extras
-        foreach (var n in seq)
-        {
-            if (!result.Contains(n))
+            Version = 1,
+            Variables = Variables.Select(v => new FlowVariable
             {
-                // keep before end if possible
-                if (end is not null && result.Count > 0 && ReferenceEquals(result[^1], end))
+                Name = v.Name.Trim(),
+                Type = string.IsNullOrWhiteSpace(v.Type) ? "number" : v.Type.Trim(),
+                Init = v.Init,
+            }).Where(v => !string.IsNullOrWhiteSpace(v.Name)).ToList(),
+            Functions = Functions.Select(f => new FlowFunction
+            {
+                Name = string.IsNullOrWhiteSpace(f.Name) ? "main" : f.Name.Trim(),
+                EntryNodeId = f.EntryNodeId.Trim(),
+            }).ToList(),
+            Nodes = nodes,
+            Edges = edges,
+        };
+    }
+
+    public void RefreshPreview()
+    {
+        var doc = ToDocument();
+        JsonPreview = doc.ToJson();
+        var errors = doc.Validate();
+        ValidationText = errors.Count == 0
+            ? "校验通过"
+            : string.Join(Environment.NewLine, errors.Select(e => "• " + e));
+    }
+
+    public void FocusRoot()
+    {
+        FocusParentId = null;
+        FocusSlot = null;
+    }
+
+    public void AdoptFocusFromNode(FlowNodeVm node)
+    {
+        if (string.IsNullOrWhiteSpace(node.ParentId))
+        {
+            if (FlowComposite.IsCompositeKind(node.Kind))
+            {
+                // keep current slot if already focused on this composite; else default then/body
+                if (!string.Equals(FocusParentId, node.Id, StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Insert(result.Count - 1, n);
+                    FocusParentId = null;
+                    FocusSlot = null;
                 }
-                else
-                {
-                    result.Add(n);
-                }
+            }
+            else
+            {
+                FocusParentId = null;
+                FocusSlot = null;
+            }
+
+            return;
+        }
+
+        FocusParentId = node.ParentId;
+        FocusSlot = node.Slot;
+    }
+
+    public void FocusSlotOfSelected(string slot)
+    {
+        if (Selected is null || !FlowComposite.IsCompositeKind(Selected.Kind))
+        {
+            return;
+        }
+
+        FocusParentId = Selected.Id;
+        FocusSlot = slot;
+    }
+
+    public void FocusParentOfSelected()
+    {
+        if (Selected is null || string.IsNullOrWhiteSpace(Selected.ParentId))
+        {
+            FocusRoot();
+            return;
+        }
+
+        var parent = Nodes.FirstOrDefault(n =>
+            string.Equals(n.Id, Selected.ParentId, StringComparison.OrdinalIgnoreCase));
+        FocusParentId = Selected.ParentId;
+        FocusSlot = Selected.Slot;
+        if (parent is not null)
+        {
+            Selected = parent;
+            foreach (var n in Nodes)
+            {
+                n.IsSelected = ReferenceEquals(n, parent);
+            }
+        }
+    }
+
+    public void ToggleCollapseSelected()
+    {
+        if (Selected is null || !FlowComposite.IsCompositeKind(Selected.Kind))
+        {
+            return;
+        }
+
+        Selected.IsCollapsed = !Selected.IsCollapsed;
+        RelayoutAndAutoWire();
+        RefreshPreview();
+    }
+
+    /// <summary>Insert activity into current focus sequence (after selected sibling when possible).</summary>
+    public FlowNodeVm InsertNode(string kind)
+    {
+        EnsureStartEnd();
+        var id = "n-" + Guid.NewGuid().ToString("N")[..8];
+        var vm = new FlowNodeVm
+        {
+            Id = id,
+            Kind = kind,
+            Title = kind,
+            ParentId = FocusParentId,
+            Slot = string.IsNullOrWhiteSpace(FocusParentId) ? null : FocusSlot,
+        };
+        ApplyDefaultProps(vm);
+
+        if (string.Equals(kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
+        {
+            var existing = Nodes.FirstOrDefault(n =>
+                string.Equals(n.Kind, kind, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                Selected = existing;
+                RelayoutAndAutoWire();
+                RefreshPreview();
+                return existing;
             }
         }
 
-        return result;
-    }
-
-    private void ApplySequenceOrder(List<FlowNodeVm> seq)
-    {
-        var seqIds = new HashSet<string>(seq.Select(n => n.Id), StringComparer.OrdinalIgnoreCase);
-        var extras = Nodes.Where(n => !seqIds.Contains(n.Id)).ToList();
-        Nodes.Clear();
-        foreach (var n in seq)
+        // Resolve insert context from selection when focus empty
+        if (string.IsNullOrWhiteSpace(FocusParentId) && Selected is not null
+            && !string.IsNullOrWhiteSpace(Selected.ParentId))
         {
-            Nodes.Add(n);
+            FocusParentId = Selected.ParentId;
+            FocusSlot = Selected.Slot;
+            vm.ParentId = FocusParentId;
+            vm.Slot = FocusSlot;
+        }
+        else if (Selected is not null && FlowComposite.IsCompositeKind(Selected.Kind)
+                 && string.IsNullOrWhiteSpace(FocusParentId))
+        {
+            // Selecting composite without slot → insert after it in its parent sequence
+            FocusParentId = Selected.ParentId;
+            FocusSlot = Selected.Slot;
+            vm.ParentId = FocusParentId;
+            vm.Slot = string.IsNullOrWhiteSpace(FocusParentId) ? null : FocusSlot;
         }
 
-        foreach (var n in extras)
+        var siblings = GetSiblingVms(vm.ParentId, vm.Slot).ToList();
+        var insertAt = siblings.Count;
+        if (Selected is not null
+            && string.Equals(Selected.ParentId ?? "", vm.ParentId ?? "", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Selected.Slot ?? "", vm.Slot ?? "", StringComparison.OrdinalIgnoreCase))
         {
-            Nodes.Add(n);
+            var idx = siblings.FindIndex(n => string.Equals(n.Id, Selected.Id, StringComparison.OrdinalIgnoreCase));
+            if (idx >= 0)
+            {
+                insertAt = idx + 1;
+            }
+        }
+
+        // Root: never insert before start / after end
+        if (string.IsNullOrWhiteSpace(vm.ParentId))
+        {
+            var startIdx = siblings.FindIndex(n =>
+                string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
+            var endIdx = siblings.FindIndex(n =>
+                string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
+            if (startIdx >= 0 && insertAt <= startIdx)
+            {
+                insertAt = startIdx + 1;
+            }
+
+            if (endIdx >= 0 && insertAt > endIdx)
+            {
+                insertAt = endIdx;
+            }
+
+            if (endIdx >= 0 && insertAt == endIdx + 1)
+            {
+                insertAt = endIdx;
+            }
+        }
+
+        siblings.Insert(Math.Clamp(insertAt, 0, siblings.Count), vm);
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            siblings[i].Order = i;
+            siblings[i].ParentId = vm.ParentId;
+            siblings[i].Slot = vm.Slot;
+        }
+
+        if (!Nodes.Contains(vm))
+        {
+            Nodes.Add(vm);
+        }
+
+        // Composite templates
+        if (string.Equals(kind, FlowNodeKinds.If, StringComparison.OrdinalIgnoreCase))
+        {
+            FocusParentId = vm.Id;
+            FocusSlot = FlowSlots.Then;
+        }
+        else if (string.Equals(kind, FlowNodeKinds.While, StringComparison.OrdinalIgnoreCase))
+        {
+            var body = new FlowNodeVm
+            {
+                Id = "n-" + Guid.NewGuid().ToString("N")[..8],
+                Kind = FlowNodeKinds.Delay,
+                Title = FlowNodeKinds.Delay,
+                ParentId = vm.Id,
+                Slot = FlowSlots.Body,
+                Order = 0,
+            };
+            ApplyDefaultProps(body);
+            body.SetProp("ms", "0");
+            Nodes.Add(body);
+            FocusParentId = vm.Id;
+            FocusSlot = FlowSlots.Body;
+        }
+
+        Selected = vm;
+        RelayoutAndAutoWire();
+        RefreshPreview();
+        return vm;
+    }
+
+    public void RemoveSelected()
+    {
+        if (Selected is null)
+        {
+            return;
+        }
+
+        if (string.Equals(Selected.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Selected.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var models = Nodes.Select(n => n.ToModel()).ToList();
+        var removeIds = FlowComposite.CollectSubtreeIds(models, Selected.Id);
+        foreach (var id in removeIds.ToList())
+        {
+            var vm = Nodes.FirstOrDefault(n => string.Equals(n.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (vm is not null)
+            {
+                Nodes.Remove(vm);
+            }
+        }
+
+        Selected = null;
+        if (!string.IsNullOrWhiteSpace(FocusParentId) && removeIds.Contains(FocusParentId))
+        {
+            FocusRoot();
+        }
+
+        RelayoutAndAutoWire();
+        RefreshPreview();
+    }
+
+    public bool MoveSelected(int delta)
+    {
+        if (Selected is null || delta == 0)
+        {
+            return false;
+        }
+
+        if (string.Equals(Selected.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(Selected.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var siblings = GetSiblingVms(Selected.ParentId, Selected.Slot).ToList();
+        var idx = siblings.FindIndex(n => string.Equals(n.Id, Selected.Id, StringComparison.OrdinalIgnoreCase));
+        if (idx < 0)
+        {
+            return false;
+        }
+
+        var target = idx + delta;
+        var min = 0;
+        var max = siblings.Count - 1;
+        if (string.IsNullOrWhiteSpace(Selected.ParentId))
+        {
+            var startIdx = siblings.FindIndex(n =>
+                string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase));
+            var endIdx = siblings.FindIndex(n =>
+                string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase));
+            min = startIdx >= 0 ? startIdx + 1 : 0;
+            max = endIdx >= 0 ? endIdx - 1 : siblings.Count - 1;
+        }
+
+        if (target < min || target > max)
+        {
+            return false;
+        }
+
+        (siblings[idx], siblings[target]) = (siblings[target], siblings[idx]);
+        for (var i = 0; i < siblings.Count; i++)
+        {
+            siblings[i].Order = i;
+        }
+
+        RelayoutAndAutoWire();
+        RefreshPreview();
+        return true;
+    }
+
+    public void RelayoutAndAutoWire()
+    {
+        EnsureStartEnd();
+        SyncMainEntry();
+        RenumberAllOrders();
+        LayoutTree();
+        SyncEdgesFromTree();
+        RebuildRegions();
+    }
+
+    private void RenumberAllOrders()
+    {
+        var models = Nodes.Select(n => n.ToModel()).ToList();
+        FlowComposite.RenumberOrders(models);
+        foreach (var m in models)
+        {
+            var vm = Nodes.First(n => string.Equals(n.Id, m.Id, StringComparison.OrdinalIgnoreCase));
+            vm.Order = m.Order;
         }
     }
 
-    private void LayoutVerticalCentered(List<FlowNodeVm> seq)
+    private void SyncEdgesFromTree()
     {
-        var left = LayoutCenterX - LayoutNodeWidth / 2;
-        var y = LayoutTop;
-        for (var i = 0; i < seq.Count; i++)
+        var models = Nodes.Select(n => n.ToModel()).ToList();
+        var built = FlowComposite.BuildEdges(models);
+        Edges.Clear();
+        foreach (var e in built)
         {
-            var node = seq[i];
-            var kind = node.Kind.Trim().ToLowerInvariant();
-            node.X = left;
+            Edges.Add(new FlowEdgeVm { From = e.From, To = e.To, Port = e.Port });
+        }
+    }
+
+    private List<FlowNodeVm> GetSiblingVms(string? parentId, string? slot)
+    {
+        var parentKey = string.IsNullOrWhiteSpace(parentId) ? null : parentId.Trim();
+        var slotKey = string.IsNullOrWhiteSpace(slot) ? null : slot.Trim();
+        return Nodes
+            .Where(n =>
+            {
+                var p = string.IsNullOrWhiteSpace(n.ParentId) ? null : n.ParentId.Trim();
+                var s = string.IsNullOrWhiteSpace(n.Slot) ? null : n.Slot.Trim();
+                var parentMatch = string.Equals(p, parentKey, StringComparison.OrdinalIgnoreCase)
+                                  || (p is null && parentKey is null);
+                if (!parentMatch)
+                {
+                    return false;
+                }
+
+                if (parentKey is null)
+                {
+                    return s is null;
+                }
+
+                return string.Equals(s, slotKey, StringComparison.OrdinalIgnoreCase);
+            })
+            .OrderBy(n => n.Order)
+            .ThenBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void LayoutTree()
+    {
+        var root = GetSiblingVms(null, null);
+        LayoutSequence(root, LayoutCenterX, LayoutTop);
+    }
+
+    private double LayoutSequence(IReadOnlyList<FlowNodeVm> seq, double centerX, double startY)
+    {
+        var y = startY;
+        foreach (var node in seq)
+        {
+            node.X = centerX - LayoutNodeWidth / 2;
             node.Y = y;
+            var kind = node.Kind.Trim().ToLowerInvariant();
 
-            // if/while: place branch stubs offset (visual only for targets that are not spine next)
-            if (kind is "if" or "while")
+            if (node.IsCollapsed && FlowComposite.IsCompositeKind(node.Kind))
             {
                 y += LayoutNodeHeight + LayoutGapY;
                 continue;
             }
 
-            y += LayoutNodeHeight + LayoutGapY;
-        }
-
-        // Offset true/body targets slightly left, false/exit slightly right when they are not the spine successor
-        foreach (var node in seq)
-        {
-            var kind = node.Kind.Trim().ToLowerInvariant();
-            if (kind is not ("if" or "while"))
-            {
-                continue;
-            }
-
-            var leftPort = kind == "if" ? FlowPorts.True : FlowPorts.Body;
-            var rightPort = kind == "if" ? FlowPorts.False : FlowPorts.Exit;
-            OffsetBranchTarget(node.Id, leftPort, -LayoutBranchOffsetX);
-            OffsetBranchTarget(node.Id, rightPort, LayoutBranchOffsetX);
-        }
-    }
-
-    private void OffsetBranchTarget(string fromId, string port, double dx)
-    {
-        var edge = Edges.FirstOrDefault(e =>
-            string.Equals(e.From, fromId, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(e.Port, port, StringComparison.OrdinalIgnoreCase));
-        if (edge is null)
-        {
-            return;
-        }
-
-        var target = Nodes.FirstOrDefault(n =>
-            string.Equals(n.Id, edge.To, StringComparison.OrdinalIgnoreCase));
-        if (target is null)
-        {
-            return;
-        }
-
-        // Only offset if target is not also the linear next of a prior node in a simple way —
-        // if true/false both point to same spine node, skip offset to keep centered.
-        var siblingPort = string.Equals(port, FlowPorts.True, StringComparison.OrdinalIgnoreCase)
-                          || string.Equals(port, FlowPorts.Body, StringComparison.OrdinalIgnoreCase)
-            ? (string.Equals(port, FlowPorts.True, StringComparison.OrdinalIgnoreCase) ? FlowPorts.False : FlowPorts.Exit)
-            : (string.Equals(port, FlowPorts.False, StringComparison.OrdinalIgnoreCase) ? FlowPorts.True : FlowPorts.Body);
-        var other = Edges.FirstOrDefault(e =>
-            string.Equals(e.From, fromId, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(e.Port, siblingPort, StringComparison.OrdinalIgnoreCase));
-        if (other is not null && string.Equals(other.To, edge.To, StringComparison.OrdinalIgnoreCase))
-        {
-            return;
-        }
-
-        target.X = LayoutCenterX - LayoutNodeWidth / 2 + dx;
-    }
-
-    private void AutoWireSequence(List<FlowNodeVm> seq)
-    {
-        // Rebuild spine next links; branch ports for if/while default to following spine node.
-        var keepBranches = Edges
-            .Where(e =>
-            {
-                var port = (e.Port ?? "").Trim().ToLowerInvariant();
-                return port is "true" or "false" or "body" or "exit";
-            })
-            .Select(e => new FlowEdgeVm { From = e.From, To = e.To, Port = e.Port })
-            .ToList();
-
-        Edges.Clear();
-
-        for (var i = 0; i < seq.Count - 1; i++)
-        {
-            var from = seq[i];
-            var to = seq[i + 1];
-            var kind = from.Kind.Trim().ToLowerInvariant();
             if (kind == "if")
             {
-                Wire(from.Id, FlowPorts.True, ResolveBranchTarget(keepBranches, from.Id, FlowPorts.True, to.Id));
-                Wire(from.Id, FlowPorts.False, ResolveBranchTarget(keepBranches, from.Id, FlowPorts.False, to.Id));
+                y += LayoutNodeHeight + 12;
+                var thenKids = GetSiblingVms(node.Id, FlowSlots.Then);
+                var elseKids = GetSiblingVms(node.Id, FlowSlots.Else);
+                var yThen = LayoutSequence(thenKids, centerX - LayoutBranchOffsetX, y);
+                var yElse = LayoutSequence(elseKids, centerX + LayoutBranchOffsetX, y);
+                y = Math.Max(yThen, yElse) + LayoutGapY;
             }
             else if (kind == "while")
             {
-                Wire(from.Id, FlowPorts.Body, ResolveBranchTarget(keepBranches, from.Id, FlowPorts.Body, to.Id));
-                Wire(from.Id, FlowPorts.Exit, ResolveBranchTarget(keepBranches, from.Id, FlowPorts.Exit, to.Id));
+                y += LayoutNodeHeight + 12;
+                var body = GetSiblingVms(node.Id, FlowSlots.Body);
+                y = LayoutSequence(body, centerX + LayoutBodyIndentX, y) + LayoutGapY;
             }
-            else if (kind != "end")
+            else
             {
-                Wire(from.Id, FlowPorts.Next, to.Id);
+                y += LayoutNodeHeight + LayoutGapY;
+            }
+        }
+
+        return y;
+    }
+
+    private void RebuildRegions()
+    {
+        Regions.Clear();
+        foreach (var node in Nodes.Where(n => FlowComposite.IsCompositeKind(n.Kind) && !n.IsCollapsed))
+        {
+            var kind = node.Kind.Trim().ToLowerInvariant();
+            if (kind == "if")
+            {
+                AddRegion(node, FlowSlots.Then, "THEN", -LayoutBranchOffsetX);
+                AddRegion(node, FlowSlots.Else, "ELSE", LayoutBranchOffsetX);
+            }
+            else if (kind == "while")
+            {
+                AddRegion(node, FlowSlots.Body, "BODY", LayoutBodyIndentX);
             }
         }
     }
 
-    private static string ResolveBranchTarget(
-        List<FlowEdgeVm> previous,
-        string fromId,
-        string port,
-        string defaultTo)
+    private void AddRegion(FlowNodeVm parent, string slot, string label, double dx)
     {
-        var old = previous.FirstOrDefault(e =>
-            string.Equals(e.From, fromId, StringComparison.OrdinalIgnoreCase)
-            && string.Equals(e.Port, port, StringComparison.OrdinalIgnoreCase));
-        return old?.To ?? defaultTo;
+        var kids = GetSiblingVms(parent.Id, slot);
+        var x = parent.X + dx;
+        var y = parent.Y + LayoutNodeHeight + 4;
+        double w = LayoutNodeWidth + 24;
+        double h = LayoutNodeHeight + 16;
+        if (kids.Count > 0)
+        {
+            var minX = kids.Min(k => k.X) - 12;
+            var maxX = kids.Max(k => k.X + LayoutNodeWidth) + 12;
+            var minY = kids.Min(k => k.Y) - 8;
+            var maxY = kids.Max(k => k.Y + LayoutNodeHeight) + 8;
+            // also include nested descendants roughly via all nodes with ancestor parent
+            foreach (var n in Nodes)
+            {
+                if (IsUnder(n, parent.Id) && string.Equals(GetRootSlot(n, parent.Id), slot, StringComparison.OrdinalIgnoreCase))
+                {
+                    minX = Math.Min(minX, n.X - 12);
+                    maxX = Math.Max(maxX, n.X + LayoutNodeWidth + 12);
+                    minY = Math.Min(minY, n.Y - 8);
+                    maxY = Math.Max(maxY, n.Y + LayoutNodeHeight + 8);
+                }
+            }
+
+            x = minX;
+            y = minY;
+            w = Math.Max(w, maxX - minX);
+            h = Math.Max(h, maxY - minY);
+        }
+
+        var focused = string.Equals(FocusParentId, parent.Id, StringComparison.OrdinalIgnoreCase)
+                      && string.Equals(FocusSlot, slot, StringComparison.OrdinalIgnoreCase);
+        Regions.Add(new FlowRegionVm
+        {
+            ParentId = parent.Id,
+            Slot = slot,
+            Label = label,
+            X = x,
+            Y = y,
+            Width = w,
+            Height = h,
+            IsFocused = focused,
+        });
     }
 
-    private void Wire(string from, string port, string to)
+    private bool IsUnder(FlowNodeVm n, string ancestorId)
     {
-        Edges.Add(new FlowEdgeVm { From = from, To = to, Port = port });
+        var cur = n;
+        var guard = 0;
+        while (!string.IsNullOrWhiteSpace(cur.ParentId) && guard++ < 64)
+        {
+            if (string.Equals(cur.ParentId, ancestorId, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            cur = Nodes.FirstOrDefault(x =>
+                string.Equals(x.Id, cur.ParentId, StringComparison.OrdinalIgnoreCase));
+            if (cur is null)
+            {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    private string? GetRootSlot(FlowNodeVm n, string compositeId)
+    {
+        var cur = n;
+        var guard = 0;
+        while (!string.IsNullOrWhiteSpace(cur.ParentId) && guard++ < 64)
+        {
+            if (string.Equals(cur.ParentId, compositeId, StringComparison.OrdinalIgnoreCase))
+            {
+                return cur.Slot;
+            }
+
+            cur = Nodes.FirstOrDefault(x =>
+                string.Equals(x.Id, cur.ParentId, StringComparison.OrdinalIgnoreCase));
+            if (cur is null)
+            {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     private void EnsureStartEnd()
@@ -552,6 +736,7 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 Id = "n-start",
                 Kind = FlowNodeKinds.Start,
                 Title = FlowNodeKinds.Start,
+                Order = 0,
             });
         }
 
@@ -562,7 +747,16 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 Id = "n-end",
                 Kind = FlowNodeKinds.End,
                 Title = FlowNodeKinds.End,
+                Order = 999,
             });
+        }
+
+        foreach (var n in Nodes.Where(n =>
+                     string.Equals(n.Kind, FlowNodeKinds.Start, StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(n.Kind, FlowNodeKinds.End, StringComparison.OrdinalIgnoreCase)))
+        {
+            n.ParentId = null;
+            n.Slot = null;
         }
 
         SyncMainEntry();
@@ -681,6 +875,18 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 }
 
+public sealed class FlowRegionVm
+{
+    public string ParentId { get; set; } = "";
+    public string Slot { get; set; } = "";
+    public string Label { get; set; } = "";
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Width { get; set; }
+    public double Height { get; set; }
+    public bool IsFocused { get; set; }
+}
+
 public sealed class FlowNodeVm : INotifyPropertyChanged
 {
     private string _id = "";
@@ -689,6 +895,10 @@ public sealed class FlowNodeVm : INotifyPropertyChanged
     private double _x;
     private double _y;
     private bool _isSelected;
+    private bool _isCollapsed;
+    private string? _parentId;
+    private string? _slot;
+    private int _order;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -697,6 +907,16 @@ public sealed class FlowNodeVm : INotifyPropertyChanged
     public string Title { get => _title; set { _title = value; OnPropertyChanged(); } }
     public double X { get => _x; set { _x = value; OnPropertyChanged(); } }
     public double Y { get => _y; set { _y = value; OnPropertyChanged(); } }
+    public string? ParentId { get => _parentId; set { _parentId = value; OnPropertyChanged(); } }
+    public string? Slot { get => _slot; set { _slot = value; OnPropertyChanged(); } }
+    public int Order { get => _order; set { _order = value; OnPropertyChanged(); } }
+
+    public bool IsCollapsed
+    {
+        get => _isCollapsed;
+        set { _isCollapsed = value; OnPropertyChanged(); }
+    }
+
     public bool IsSelected
     {
         get => _isSelected;
@@ -726,6 +946,9 @@ public sealed class FlowNodeVm : INotifyPropertyChanged
             Title = n.Kind,
             X = n.X,
             Y = n.Y,
+            ParentId = string.IsNullOrWhiteSpace(n.ParentId) ? null : n.ParentId,
+            Slot = string.IsNullOrWhiteSpace(n.Slot) ? null : n.Slot,
+            Order = n.Order,
         };
         foreach (var kv in n.Props.OrderBy(k => k.Key, StringComparer.OrdinalIgnoreCase))
         {
@@ -741,6 +964,9 @@ public sealed class FlowNodeVm : INotifyPropertyChanged
         Kind = Kind,
         X = X,
         Y = Y,
+        ParentId = string.IsNullOrWhiteSpace(ParentId) ? null : ParentId,
+        Slot = string.IsNullOrWhiteSpace(Slot) ? null : Slot,
+        Order = Order,
         Props = Props
             .Where(p => !string.IsNullOrWhiteSpace(p.Key))
             .ToDictionary(p => p.Key.Trim(), p => p.Value ?? "", StringComparer.OrdinalIgnoreCase),
@@ -769,14 +995,6 @@ public sealed class FlowEdgeVm : INotifyPropertyChanged
     public string From { get; set; } = "";
     public string To { get; set; } = "";
     public string Port { get; set; } = FlowPorts.Next;
-
-    private PathGeometry? _geometry;
-    public PathGeometry? Geometry
-    {
-        get => _geometry;
-        set { _geometry = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Geometry))); }
-    }
-
     public string Label => Port;
 }
 

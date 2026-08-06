@@ -18,6 +18,16 @@
 
 公共脚本：[`js/tool_common.js`](js/tool_common.js)（fetch/toast）、[`js/man_editor.js`](js/man_editor.js)（配置页 PATCH + save）。
 
+## 主题
+
+| 页面组 | 主题文件 | 风格 |
+|--------|----------|------|
+| `index` / `popup_*` | `css/theme-navy.css` + `css/main.css` | 深色 · 深蓝 |
+| `monitor_*` / `debug_*` | `css/theme-gray.css` + `css/debug.css` | 浅色 · 灰色 |
+| `man_*` | `css/theme-white.css` + `css/debug.css` | 白色 · 白底 |
+
+主题文件只定义 CSS 变量与少量覆盖；控件结构统一在 `debug.css`（工具页）/ `main.css`（HMI）。
+
 ```
 index ──popup_*──► monitor_* ──► debug_*
                  └──────────► man_*

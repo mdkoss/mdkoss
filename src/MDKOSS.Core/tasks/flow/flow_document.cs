@@ -35,8 +35,8 @@ public sealed class FlowDocument
             Functions = [new FlowFunction { Name = "main", EntryNodeId = startId }],
             Nodes =
             [
-                new FlowNode { Id = startId, Kind = FlowNodeKinds.Start, X = left, Y = 40 },
-                new FlowNode { Id = endId, Kind = FlowNodeKinds.End, X = left, Y = 152 },
+                new FlowNode { Id = startId, Kind = FlowNodeKinds.Start, X = left, Y = 40, Order = 0 },
+                new FlowNode { Id = endId, Kind = FlowNodeKinds.End, X = left, Y = 152, Order = 1 },
             ],
             Edges =
             [
@@ -232,7 +232,24 @@ public sealed class FlowDocument
             }
         }
 
+        errors.AddRange(FlowComposite.ValidateTree(Nodes));
         return errors;
+    }
+
+    /// <summary>
+    /// When nodes carry parentId/slot, regenerate <see cref="Edges"/> from the tree
+    /// so runtime and editor stay consistent.
+    /// </summary>
+    public void SyncEdgesFromTree()
+    {
+        if (!FlowComposite.HasTreeMetadata(Nodes) && Edges.Count > 0)
+        {
+            // Legacy flat documents keep explicit edges until edited into a tree.
+            return;
+        }
+
+        FlowComposite.RenumberOrders(Nodes);
+        Edges = FlowComposite.BuildEdges(Nodes);
     }
 }
 
@@ -256,6 +273,17 @@ public sealed class FlowNode
     public double X { get; set; }
     public double Y { get; set; }
     public Dictionary<string, string> Props { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Composite parent node id; null/empty = root spine.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ParentId { get; set; }
+
+    /// <summary>Slot under parent: <see cref="FlowSlots.Then"/> / <see cref="FlowSlots.Else"/> / <see cref="FlowSlots.Body"/>.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Slot { get; set; }
+
+    /// <summary>Order among siblings in the same parent+slot.</summary>
+    public int Order { get; set; }
 }
 
 public sealed class FlowEdge

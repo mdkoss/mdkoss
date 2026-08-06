@@ -1,0 +1,26 @@
+/* 深色主题 · 深蓝风格 — index / popup_* */
+:root {
+  --bg: #070d18;
+  --panel: #0e1830;
+  --panel2: #0a1224;
+  --text: #e8f0ff;
+  --muted: #8fa3cc;
+  --line: #1a2a4e;
+  --accent: #4e8cff;
+  --ok: #35d08f;
+  --warn: #ffcc66;
+  --danger: #ff5d5d;
+  --input-bg: #0a1120;
+  --btn-bg: #162644;
+  --btn-hover: #1d3157;
+  --table-head: #121c30;
+  --log-bg: #080d18;
+  --chrome-bg: rgba(10, 16, 28, 0.92);
+  --chrome-home: #142038;
+  --chrome-home-hover: #1a2a4a;
+  --toast-bg: #1a2844;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --radius: 10px;
+  --top-h: 52px;
+  --bottom-h: 72px;
+}

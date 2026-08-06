@@ -163,13 +163,135 @@ public partial class FlowEditorWindow : Window
     {
         ClearCanvas();
         CenterLayoutOrigin();
+        DrawRegions();
         foreach (var node in _vm.Nodes)
         {
+            if (IsHiddenByCollapse(node))
+            {
+                continue;
+            }
+
             AddNodeVisual(node);
         }
 
         DrawAutoConnectors();
         SizeCanvasToContent();
+    }
+
+    private bool IsHiddenByCollapse(FlowNodeVm node)
+    {
+        if (string.IsNullOrWhiteSpace(node.ParentId))
+        {
+            return false;
+        }
+
+        var cur = node;
+        var guard = 0;
+        while (!string.IsNullOrWhiteSpace(cur.ParentId) && guard++ < 64)
+        {
+            var parent = _vm.Nodes.FirstOrDefault(n =>
+                string.Equals(n.Id, cur.ParentId, StringComparison.OrdinalIgnoreCase));
+            if (parent is null)
+            {
+                return false;
+            }
+
+            if (parent.IsCollapsed)
+            {
+                return true;
+            }
+
+            cur = parent;
+        }
+
+        return false;
+    }
+
+    private void DrawRegions()
+    {
+        foreach (var r in _vm.Regions)
+        {
+            var brush = r.IsFocused
+                ? new SolidColorBrush(Color.FromArgb(0x55, 0x0B, 0x6E, 0x4F))
+                : new SolidColorBrush(Color.FromArgb(0x28, 0x09, 0x6B, 0xDE));
+            var border = new Border
+            {
+                Width = Math.Max(40, r.Width),
+                Height = Math.Max(28, r.Height),
+                Background = brush,
+                BorderBrush = r.IsFocused
+                    ? new SolidColorBrush(Color.FromRgb(0x0B, 0x6E, 0x4F))
+                    : new SolidColorBrush(Color.FromRgb(0x09, 0x6B, 0xDE)),
+                BorderThickness = new Thickness(r.IsFocused ? 2 : 1),
+                CornerRadius = new CornerRadius(8),
+                IsHitTestVisible = true,
+                Cursor = Cursors.Hand,
+                Tag = r,
+            };
+            border.Child = new TextBlock
+            {
+                Text = r.Label,
+                FontSize = 10,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x09, 0x6B, 0xDE)),
+                Margin = new Thickness(8, 4, 0, 0),
+                IsHitTestVisible = false,
+            };
+            border.MouseLeftButtonDown += (_, e) =>
+            {
+                var parent = _vm.Nodes.FirstOrDefault(n =>
+                    string.Equals(n.Id, r.ParentId, StringComparison.OrdinalIgnoreCase));
+                if (parent is not null)
+                {
+                    SelectNode(parent);
+                    _vm.FocusSlotOfSelected(r.Slot);
+                    RefreshCanvas();
+                }
+
+                e.Handled = true;
+            };
+            Canvas.SetLeft(border, r.X);
+            Canvas.SetTop(border, r.Y);
+            Panel.SetZIndex(border, 0);
+            GraphCanvas.Children.Add(border);
+            _edgeVisuals.Add(border);
+        }
+    }
+
+    private void FocusRoot_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.FocusRoot();
+        RefreshCanvas();
+    }
+
+    private void FocusThen_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.FocusSlotOfSelected(FlowSlots.Then);
+        RefreshCanvas();
+    }
+
+    private void FocusElse_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.FocusSlotOfSelected(FlowSlots.Else);
+        RefreshCanvas();
+    }
+
+    private void FocusBody_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.FocusSlotOfSelected(FlowSlots.Body);
+        RefreshCanvas();
+    }
+
+    private void FocusParent_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.FocusParentOfSelected();
+        RefreshCanvas();
+    }
+
+    private void ToggleCollapse_Click(object sender, RoutedEventArgs e)
+    {
+        _vm.ToggleCollapseSelected();
+        RefreshCanvas();
     }
 
     private void CenterLayoutOrigin()
@@ -293,6 +415,7 @@ public partial class FlowEditorWindow : Window
         }
 
         _vm.Selected = node;
+        _vm.AdoptFocusFromNode(node);
     }
 
     private void DrawAutoConnectors()
@@ -303,7 +426,7 @@ public partial class FlowEditorWindow : Window
                 string.Equals(n.Id, edge.From, StringComparison.OrdinalIgnoreCase));
             var to = _vm.Nodes.FirstOrDefault(n =>
                 string.Equals(n.Id, edge.To, StringComparison.OrdinalIgnoreCase));
-            if (from is null || to is null)
+            if (from is null || to is null || IsHiddenByCollapse(from) || IsHiddenByCollapse(to))
             {
                 continue;
             }

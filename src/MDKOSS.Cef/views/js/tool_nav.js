@@ -78,6 +78,7 @@
 
     document.body.setAttribute("data-tool-group", group);
     document.body.setAttribute("data-tool-page", page);
+    document.body.setAttribute("data-theme", group === "man" ? "white" : "gray");
 
     // Remove ad-hoc page navs to avoid duplicates
     document.querySelectorAll(".header nav.nav, .header .nav").forEach((n) => n.remove());
