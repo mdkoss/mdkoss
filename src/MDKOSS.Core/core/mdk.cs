@@ -369,10 +369,11 @@ public sealed class MdkRuntime : IDisposable
         }
     }
 
-    // Instantiate and initialize all enabled devices.
+    // Instantiate and initialize all enabled devices (general + axes + platforms).
     private void BootstrapDevices()
     {
-        foreach (var config in Setting.Devices.Where(d => d.Enabled))
+        Setting.NormalizeSections();
+        foreach (var config in Setting.AllDeviceConfigs.Where(d => d.Enabled))
         {
             var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
             var deviceType = config.Type.ToLowerInvariant();
@@ -434,6 +435,7 @@ public sealed class MdkRuntime : IDisposable
         var letters = kind.AxisLetters();
         var defaultDriverId = config.DriverId ?? string.Empty;
         var axisRefs = new List<PlatformAxisRef>();
+        short ordinal = 0;
         foreach (var letter in letters)
         {
             var driverId = PlatformDeviceParameterSet.ResolveAxisDriverId(config.Parameters, letter, defaultDriverId);
@@ -442,10 +444,12 @@ public sealed class MdkRuntime : IDisposable
                 return null;
             }
 
+            var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(config.Parameters, letter, ordinal);
             var axisId = $"{config.Id}.{letter}";
             var axisName = $"{deviceName} {letter}";
             var axisDevice = new AxisDevice(axisId, axisName, axisDriver, Vars);
-            axisRefs.Add(new PlatformAxisRef(letter, driverId, axisDevice));
+            axisRefs.Add(new PlatformAxisRef(letter, driverId, axisDevice, axisIndex));
+            ordinal++;
         }
 
         return new PlatformDevice(config.Id, deviceName, kind, axisRefs, Vars);
@@ -453,7 +457,13 @@ public sealed class MdkRuntime : IDisposable
 
     private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
     {
+        var defaultDriverId = string.IsNullOrWhiteSpace(config.DriverId) ? null : config.DriverId.Trim();
         var scope = GpioDeviceParameterSet.ParseDriverScopeIds(config.Parameters);
+        if (scope is null && !string.IsNullOrWhiteSpace(defaultDriverId))
+        {
+            scope = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { defaultDriverId };
+        }
+
         IReadOnlyDictionary<string, IDriver> driverMap;
         if (scope is null)
         {
@@ -474,13 +484,13 @@ public sealed class MdkRuntime : IDisposable
             {
                 throw new MdkException(
                     MdkErrorCode.GpioDriverScopeInvalid,
-                    "GPIO driverIds did not match any enabled drivers.");
+                    "GPIO driverIds/driverId did not match any enabled drivers.");
             }
 
             driverMap = filtered;
         }
 
-        var bindings = GpioDeviceParameterSet.ParseBindings(config.Parameters);
+        var bindings = GpioDeviceParameterSet.ParseBindings(config.Parameters, defaultDriverId);
         if (scope is not null)
         {
             foreach (var b in bindings)

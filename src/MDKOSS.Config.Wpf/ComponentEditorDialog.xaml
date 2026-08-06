@@ -31,7 +31,9 @@
         </StackPanel>
         <StackPanel x:Name="TypePanel" Margin="0,0,0,8" Visibility="Collapsed">
           <TextBlock Text="Type" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-          <ComboBox x:Name="TypeCombo" IsEditable="True"/>
+          <ComboBox x:Name="TypeCombo" IsEditable="True"
+                    SelectionChanged="TypeCombo_SelectionChanged"
+                    LostFocus="TypeCombo_LostFocus"/>
         </StackPanel>
         <StackPanel x:Name="DriverPanel" Margin="0,0,0,8" Visibility="Collapsed">
           <TextBlock Text="DriverId" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
@@ -56,6 +58,8 @@
         <StackPanel x:Name="ParamsPanel" Margin="0,8,0,0" Visibility="Collapsed">
           <DockPanel Margin="0,0,0,4">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button Content="按类型填充" Padding="8,2" Margin="0,0,4,0" Click="FillTypeParams_Click"
+                      ToolTip="按当前 Type 重置 Parameters 模板"/>
               <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParamRow_Click"/>
               <Button Content="删行" Padding="8,2" Click="RemoveParamRow_Click"/>
             </StackPanel>

@@ -4,12 +4,18 @@ using MDKOSS.Extensions;
 
 namespace MDKOSS.Extensions.ModServer;
 
-/// <summary>Modbus TCP server extension package (config type <c>devmodserver</c>).</summary>
+/// <summary>
+/// Modbus TCP extension package:
+/// <list type="bullet">
+/// <item><c>devmodserver</c> — local slave/server</item>
+/// <item><c>devmodclient</c> — remote master/client (batch read)</item>
+/// </list>
+/// </summary>
 public sealed class ModServerExtension : IMdkExtension
 {
     public string Id => "modserver";
 
-    public string DisplayName => "Modbus TCP Server";
+    public string DisplayName => "Modbus TCP Server / Client";
 
     public void Register(IExtensionRegistration registration)
     {
@@ -21,12 +27,24 @@ public sealed class ModServerExtension : IMdkExtension
             return new ModServerDevice(cfg.Id, name, parameters, vars);
         });
 
+        registration.Device("devmodclient", (cfg, name, vars, _) =>
+        {
+            var parameters = ModClientDeviceParameters.ParseConfig(cfg.Parameters);
+            return new ModClientDevice(cfg.Id, name, parameters, vars);
+        });
+
         registration.Action(
             device => device is ModServerDevice,
             (device, action, parameters) =>
                 ModServerDeviceActions.Execute((ModServerDevice)device, action, parameters));
 
+        registration.Action(
+            device => device is ModClientDevice,
+            (device, action, parameters) =>
+                ModClientDeviceActions.Execute((ModClientDevice)device, action, parameters));
+
         registration.MonitoringModule(runtime => new ModServerApiModule(runtime));
+        registration.MonitoringModule(runtime => new ModClientApiModule(runtime));
     }
 }
 

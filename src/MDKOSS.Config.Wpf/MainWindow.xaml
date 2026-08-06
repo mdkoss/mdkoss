@@ -47,6 +47,10 @@
         <MenuItem Header="导入当前模块（合并）…" Click="ImportModuleMerge_Click"/>
         <MenuItem Header="导入当前模块（替换）…" Click="ImportModuleReplace_Click"/>
         <Separator/>
+        <MenuItem Header="导出 Excel（IO/Axis/Platform）…" Click="ExportModuleExcel_Click"/>
+        <MenuItem Header="导入 Excel（合并）…" Click="ImportModuleExcelMerge_Click"/>
+        <MenuItem Header="导入 Excel（替换）…" Click="ImportModuleExcelReplace_Click"/>
+        <Separator/>
         <MenuItem Header="定位到 Drivers" Click="NavDrivers_Click"/>
         <MenuItem Header="定位到 Devices" Click="NavDevices_Click"/>
         <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
@@ -106,6 +110,8 @@
               <Button Content="刷新表" Click="RefreshDbTable_Click" Padding="10,3"/>
               <Button Content="导入" Click="ImportModuleMerge_Click" Padding="10,3"/>
               <Button Content="导出" Click="ExportModule_Click" Padding="10,3"/>
+              <Button Content="Excel导入" Click="ImportModuleExcelMerge_Click" Padding="10,3"/>
+              <Button Content="Excel导出" Click="ExportModuleExcel_Click" Padding="10,3"/>
             </StackPanel>
             <TextBlock FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center">
               <Run Text="组件列表 — "/><Run Text="{Binding ModuleTitle, Mode=OneWay}"/>
@@ -239,7 +245,7 @@
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowDescription, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Description" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="Description / Label" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          AcceptsReturn="True" Height="56" TextWrapping="Wrap"
                          IsReadOnly="{Binding IsReadOnly}"/>
@@ -258,6 +264,10 @@
                 <DockPanel Margin="0,0,0,4">
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                               IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}">
+                    <Button Content="补全模板" Padding="8,2" Margin="0,0,4,0" Click="FillParamTemplate_Click"
+                            ToolTip="按当前 Type 补全缺失的默认参数键"/>
+                    <Button Content="重置模板" Padding="8,2" Margin="0,0,4,0" Click="ResetParamTemplate_Click"
+                            ToolTip="按当前 Type 重置为完整默认参数"/>
                     <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParamRow_Click"/>
                     <Button Content="删行" Padding="8,2" Margin="0,0,4,0" Click="RemoveParamRow_Click"/>
                     <Button Content="JSON" Padding="8,2" Click="SyncParamsJson_Click" ToolTip="从表格同步预览 JSON"/>

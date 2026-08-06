@@ -111,19 +111,20 @@ public partial class PlatformDebugWindow : Window
         var kind = PlatformDeviceParameterSet.ParseKindOrDefault(plat.Parameters, fromAlias);
         KindBadge.Text = $"kind={kind.ToConfigToken()}";
 
-        short index = 0;
+        short ordinal = 0;
         foreach (var letter in kind.AxisLetters())
         {
             var driverId = PlatformDeviceParameterSet.ResolveAxisDriverId(
                 plat.Parameters, letter, plat.DriverId ?? "");
-            _axes.Add((letter, index, driverId));
+            var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(plat.Parameters, letter, ordinal);
+            _axes.Add((letter, axisIndex, driverId));
             _rows.Add(new PlatformAxisRow
             {
                 Letter = letter,
-                AxisIndex = index,
+                AxisIndex = axisIndex,
                 DriverId = driverId,
             });
-            index++;
+            ordinal++;
         }
 
         if (_rows.Count > 0)

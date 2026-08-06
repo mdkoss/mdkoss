@@ -45,7 +45,15 @@ public static class VioDeviceParameterSet
             return;
         }
 
-        if (string.Equals(raw.Trim(), "virtual", StringComparison.OrdinalIgnoreCase))
+        var value = raw.Trim();
+        var pipe = value.IndexOf('|');
+        if (pipe >= 0)
+        {
+            value = value[..pipe].Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(value)
+            || string.Equals(value, "virtual", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
@@ -54,11 +62,11 @@ public static class VioDeviceParameterSet
         {
             throw new MdkException(
                 MdkErrorCode.VioBindingInvalid,
-                $"VIO parameter '{parameterKey}' must be empty or 'virtual', not a physical route ({raw}).");
+                $"VIO parameter '{parameterKey}' must be empty or 'virtual' (optional |label), not a physical route ({raw}).");
         }
 
         throw new MdkException(
             MdkErrorCode.VioBindingInvalid,
-            $"VIO parameter '{parameterKey}' has unsupported value '{raw}' (use empty or 'virtual').");
+            $"VIO parameter '{parameterKey}' has unsupported value '{raw}' (use empty, 'virtual', or 'virtual|label').");
     }
 }

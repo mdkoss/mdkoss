@@ -86,8 +86,8 @@ public sealed class MdkConfigStore : IDisposable
             result.Drivers = InsertDrivers(conn, tx, setting.Drivers, now);
             result.Devices = InsertDevices(conn, tx, setting.Devices, now);
             result.Gpios = InsertGpios(conn, tx, setting.Devices, now);
-            result.Axis = InsertAxis(conn, tx, setting.Devices, now);
-            result.Platform = InsertPlatform(conn, tx, setting.Devices, now);
+            result.Axis = InsertAxis(conn, tx, setting.Axes, now);
+            result.Platform = InsertPlatform(conn, tx, setting.Platforms, now);
             result.SysConfigs = InsertSysConfigs(conn, tx, setting, now);
             result.Recipes = UpsertRecipes(conn, tx, setting.Recipes, now);
             result.Positions = MirrorTeachPointsToPositions(conn, tx, now);
@@ -585,7 +585,7 @@ public sealed class MdkConfigStore : IDisposable
                 continue;
             }
 
-            foreach (var binding in GpioDeviceParameterSet.ParseBindings(device.Parameters))
+            foreach (var binding in GpioDeviceParameterSet.ParseBindings(device.Parameters, device.DriverId))
             {
                 var direction = binding.IsOutput ? "out" : "in";
                 var id = $"{device.Id}:{direction}:{binding.Alias}";
@@ -601,7 +601,9 @@ public sealed class MdkConfigStore : IDisposable
                 cmd.Parameters.AddWithValue("$direction", direction);
                 cmd.Parameters.AddWithValue("$driver_id", string.IsNullOrWhiteSpace(binding.DriverId) ? (object)DBNull.Value : binding.DriverId);
                 cmd.Parameters.AddWithValue("$address", string.IsNullOrWhiteSpace(binding.Address) ? (object)DBNull.Value : binding.Address);
-                cmd.Parameters.AddWithValue("$label", binding.Alias);
+                cmd.Parameters.AddWithValue(
+                    "$label",
+                    string.IsNullOrWhiteSpace(binding.Label) ? binding.Alias : binding.Label);
                 cmd.Parameters.AddWithValue("$sort_order", sort++);
                 cmd.Parameters.AddWithValue("$updated_at", now);
                 cmd.ExecuteNonQuery();
@@ -851,15 +853,7 @@ public sealed class MdkConfigStore : IDisposable
         return cmd.ExecuteNonQuery();
     }
 
-    private static string PlatformKindToken(MPlatformKind kind) => kind switch
-    {
-        MPlatformKind.Xy => "xy",
-        MPlatformKind.Xyz => "xyz",
-        MPlatformKind.XyzU => "xyzu",
-        MPlatformKind.XyzUv => "xyzuv",
-        MPlatformKind.XyzUvw => "xyzuvw",
-        _ => kind.ToString().ToLowerInvariant(),
-    };
+    private static string PlatformKindToken(MPlatformKind kind) => kind.ToConfigToken();
 
     private static int SeedLangsIfEmpty(SqliteConnection conn, SqliteTransaction tx, string now)
     {

@@ -645,6 +645,121 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ExportModuleExcel_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_workspace.SupportsExcelModuleExchange)
+        {
+            MessageBox.Show(this, "请先切换到 Gpios / Axis / Platform 模块。", "Excel 导出",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new SaveFileDialog
+        {
+            Filter = "Excel SpreadsheetML (*.xls)|*.xls|CSV (*.csv)|*.csv|All files|*.*",
+            FileName = $"{_workspace.ModuleTitle.ToLowerInvariant()}.xls",
+            Title = $"导出 Excel — {_workspace.ModuleTitle}",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ExportModuleExcel(dlg.FileName);
+            MessageBox.Show(this, $"已导出 Excel:\n{dlg.FileName}", "Excel 导出", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Excel 导出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ImportModuleExcelMerge_Click(object sender, RoutedEventArgs e) => ImportModuleExcel(replace: false);
+
+    private void ImportModuleExcelReplace_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            this,
+            $"替换当前模块「{_workspace.ModuleTitle}」的 Excel 数据？",
+            "确认替换导入",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        ImportModuleExcel(replace: true);
+    }
+
+    private void ImportModuleExcel(bool replace)
+    {
+        if (!_workspace.SupportsExcelModuleExchange)
+        {
+            MessageBox.Show(this, "请先切换到 Gpios / Axis / Platform 模块。", "Excel 导入",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new OpenFileDialog
+        {
+            Filter = "Excel/CSV (*.xls;*.csv;*.tsv)|*.xls;*.csv;*.tsv|All files|*.*",
+            Title = $"导入 Excel — {_workspace.ModuleTitle}",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ImportModuleExcel(dlg.FileName, replace);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(this, $"已导入 Excel:\n{dlg.FileName}", "Excel 导入", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Excel 导入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void FillParamTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _workspace.ApplyTypeDefaultParameters(replaceAll: false);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "补全参数模板", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ResetParamTemplate_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            this,
+            "按当前 Type 重置全部 Parameters？现有键值将被模板覆盖。",
+            "重置参数模板",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ApplyTypeDefaultParameters(replaceAll: true);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "重置参数模板", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ImportModuleMerge_Click(object sender, RoutedEventArgs e) => ImportModule(replace: false);
 
     private void ImportModuleReplace_Click(object sender, RoutedEventArgs e)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MDKOSS.Core;
 
@@ -29,7 +30,14 @@ public sealed class MdkSetting
 
     public List<TaskConfig> Tasks { get; set; } = [];
 
+    /// <summary>General devices (gpio/vio/camera/…); excludes <see cref="Axes"/> and <see cref="Platforms"/>.</summary>
     public List<DeviceConfig> Devices { get; set; } = [];
+
+    /// <summary>Axis devices (<c>type=axis</c>), stored as top-level JSON <c>axes</c>.</summary>
+    public List<DeviceConfig> Axes { get; set; } = [];
+
+    /// <summary>Platform devices (platform / xy / xyz / …), stored as top-level JSON <c>platforms</c>.</summary>
+    public List<DeviceConfig> Platforms { get; set; } = [];
 
     /// <summary>Seed variables loaded at startup.</summary>
     public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -62,23 +70,71 @@ public sealed class MdkSetting
     private static JsonSerializerOptions JsonOptions { get; } = new()
     {
         PropertyNameCaseInsensitive = true,
-        WriteIndented = true
+        WriteIndented = true,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     };
+
+    /// <summary>All device-like configs in bootstrap order: devices → axes → platforms.</summary>
+    [JsonIgnore]
+    public IEnumerable<DeviceConfig> AllDeviceConfigs =>
+        Devices.Concat(Axes).Concat(Platforms);
 
     /// <summary>Loads setting from a JSON file path.</summary>
     public static MdkSetting Load(string path)
     {
         var json = File.ReadAllText(path);
-        var setting = JsonSerializer.Deserialize<MdkSetting>(json, JsonOptions);
-
-        return setting ?? new MdkSetting();
+        var setting = JsonSerializer.Deserialize<MdkSetting>(json, JsonOptions) ?? new MdkSetting();
+        setting.NormalizeSections();
+        return setting;
     }
 
     /// <summary>Persists setting to a JSON file path.</summary>
     public void Save(string path)
     {
+        NormalizeSections();
         var json = JsonSerializer.Serialize(this, JsonOptions);
         File.WriteAllText(path, json);
+    }
+
+    /// <summary>
+    /// Ensures axis/platform entries live under <see cref="Axes"/> / <see cref="Platforms"/>,
+    /// not under <see cref="Devices"/> (migrates legacy JSON that nested them in devices).
+    /// </summary>
+    public void NormalizeSections()
+    {
+        Axes ??= [];
+        Platforms ??= [];
+        Devices ??= [];
+
+        var moveAxis = Devices
+            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        foreach (var d in moveAxis)
+        {
+            Devices.Remove(d);
+            if (!Axes.Any(a => string.Equals(a.Id, d.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                d.Type = "axis";
+                Axes.Add(d);
+            }
+        }
+
+        var movePlat = Devices
+            .Where(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").Trim().ToLowerInvariant()))
+            .ToList();
+        foreach (var d in movePlat)
+        {
+            Devices.Remove(d);
+            if (!Platforms.Any(p => string.Equals(p.Id, d.Id, StringComparison.OrdinalIgnoreCase)))
+            {
+                Platforms.Add(d);
+            }
+        }
+
+        // Drop accidental axis/platform duplicates left inside Devices after merge.
+        Devices.RemoveAll(d =>
+            string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase)
+            || PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").Trim().ToLowerInvariant()));
     }
 
     /// <summary>Driver registration config.</summary>
@@ -100,7 +156,7 @@ public sealed class MdkSetting
         public Dictionary<string, string> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Device registration config.</summary>
+    /// <summary>Device / axis / platform registration config.</summary>
     public sealed class DeviceConfig
     {
         public string Id { get; set; } = string.Empty;

@@ -33,6 +33,8 @@ public enum MDeviceState
 /// <summary>Multi-axis platform layout: each logical axis is a separate <see cref="AxisDevice"/> bound to a <see cref="Drivers.IDriver"/>.</summary>
 public enum MPlatformKind
 {
+    /// <summary>Single-axis platform (e.g. transfer Y).</summary>
+    X,
     Xy,
     Xyz,
     XyzU,
@@ -45,6 +47,7 @@ public static class MPlatformKindExtensions
 {
     public static IReadOnlyList<string> AxisLetters(this MPlatformKind kind) => kind switch
     {
+        MPlatformKind.X => new[] { "X" },
         MPlatformKind.Xy => new[] { "X", "Y" },
         MPlatformKind.Xyz => new[] { "X", "Y", "Z" },
         MPlatformKind.XyzU => new[] { "X", "Y", "Z", "U" },
@@ -55,6 +58,7 @@ public static class MPlatformKindExtensions
 
     public static string ToConfigToken(this MPlatformKind kind) => kind switch
     {
+        MPlatformKind.X => "x",
         MPlatformKind.Xy => "xy",
         MPlatformKind.Xyz => "xyz",
         MPlatformKind.XyzU => "xyzu",
@@ -561,7 +565,7 @@ public sealed class AxisDevice : MDeviceBase
 }
 
 /// <summary>One axis slot on a <see cref="PlatformDevice"/> (letter key, config driver id, runtime axis device).</summary>
-public sealed record PlatformAxisRef(string AxisLetter, string DriverId, AxisDevice Axis);
+public sealed record PlatformAxisRef(string AxisLetter, string DriverId, AxisDevice Axis, short AxisIndex = 0);
 
 /// <summary>
 /// Cartesian platform: <see cref="MPlatformKind"/> selects axis count (XY … XYZUVW). Each axis has its own <see cref="AxisDevice"/> and driver.

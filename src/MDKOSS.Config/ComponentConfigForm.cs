@@ -791,15 +791,22 @@ public sealed class ComponentConfigForm : Form
                 }
 
                 var alias = direction == "in" ? kv.Key[3..] : kv.Key[4..];
-                var driverId = string.Empty;
+                var driverId = device.DriverId ?? string.Empty;
                 var address = kv.Value;
-                if (GpioDeviceParameterSet.TryParsePointRoute(kv.Value, out var parsedDriverId, out var parsedAddress))
+                var description = string.Empty;
+                if (GpioDeviceParameterSet.TryParsePointValue(
+                        kv.Value, device.DriverId, out var parsedDriverId, out var parsedAddress, out var label))
                 {
                     driverId = parsedDriverId;
                     address = parsedAddress;
+                    description = label;
+                }
+                else
+                {
+                    device.Parameters.TryGetValue($"desc.{alias}", out var legacyDesc);
+                    description = legacyDesc ?? string.Empty;
                 }
 
-                device.Parameters.TryGetValue($"desc.{alias}", out var description);
                 rows.Add(new IoLabelRow
                 {
                     DeviceId = device.Id,
@@ -807,7 +814,7 @@ public sealed class ComponentConfigForm : Form
                     Direction = direction,
                     DriverId = driverId,
                     Address = string.Equals(address, "virtual", StringComparison.OrdinalIgnoreCase) ? string.Empty : address,
-                    Description = description ?? string.Empty
+                    Description = description
                 });
             }
         }
@@ -844,21 +851,24 @@ public sealed class ComponentConfigForm : Form
             var key = $"{direction}.{row.Alias.Trim()}";
             if (string.Equals(device.Type, "vio", StringComparison.OrdinalIgnoreCase))
             {
-                device.Parameters[key] = "virtual";
+                device.Parameters[key] = string.IsNullOrWhiteSpace(row.Description)
+                    ? "virtual"
+                    : $"virtual|{row.Description.Trim()}";
             }
             else
             {
-                if (string.IsNullOrWhiteSpace(row.DriverId) || string.IsNullOrWhiteSpace(row.Address))
+                var drv = string.IsNullOrWhiteSpace(row.DriverId) ? device.DriverId : row.DriverId.Trim();
+                if (string.IsNullOrWhiteSpace(drv) || string.IsNullOrWhiteSpace(row.Address))
                 {
                     throw new InvalidOperationException($"GPIO label '{row.Alias}' must include driver id and address.");
                 }
 
-                device.Parameters[key] = $"{row.DriverId.Trim()}:{row.Address.Trim()}";
-            }
-
-            if (!string.IsNullOrWhiteSpace(row.Description))
-            {
-                device.Parameters[$"desc.{row.Alias.Trim()}"] = row.Description.Trim();
+                device.Parameters[key] = GpioDeviceParameterSet.FormatPointValue(
+                    drv, row.Address.Trim(), row.Description, device.DriverId);
+                if (string.IsNullOrWhiteSpace(device.DriverId))
+                {
+                    device.DriverId = drv;
+                }
             }
         }
     }
@@ -1150,12 +1160,13 @@ public sealed class ComponentConfigForm : Form
     {
         return (type ?? string.Empty).Trim().ToLowerInvariant() switch
         {
-            "gpio" => "driverIds=drv-main; in.ready=drv-main:0; out.start=drv-main:0",
-            "vio" => "in.ready=virtual; out.start=virtual",
-            "axis" => "axis=0",
-            "platform" => "kind=xyz; axis.X=axis-x; axis.Y=axis-y; axis.Z=axis-z",
-            "xy" => "axis.X=axis-x; axis.Y=axis-y",
-            "xyz" => "axis.X=axis-x; axis.Y=axis-y; axis.Z=axis-z",
+            "gpio" => "in.startButton=0|启动按钮; in.stopButton=1|停止按钮; out.tower.green=0|绿灯; out.tower.red=1|红灯",
+            "vio" => "in.TestVio=virtual|TestVio; out.TestVio=virtual|TestVio",
+            "axis" => "axis=0; model=Servo_2L_1O; homeVel=10.00; pulsePerUnit=10000; maxVel=150.00; accel=2000.00; negLimit=1; posLimit=1; homeSensor=0",
+            "platform" => "kind=xyz; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0; axis.Y=drv-m1; axisIndex.Y=1; axis.Z=drv-m1; axisIndex.Z=2",
+            "x" => "kind=x; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0",
+            "xy" => "kind=xy; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0; axis.Y=drv-m1; axisIndex.Y=1",
+            "xyz" => "kind=xyz; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0; axis.Y=drv-m1; axisIndex.Y=1; axis.Z=drv-m1; axisIndex.Z=2",
             "serial" => "readTimeoutMs=1000; writeTimeoutMs=1000",
             "tcp" => "endpoint=127.0.0.1:502",
             _ => "key=value"

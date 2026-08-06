@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
 
@@ -47,12 +48,15 @@ public static class ConfigTypeCatalog
     public static IReadOnlyList<string> GpioDirections { get; } =
         ["in", "out"];
 
+    public static IReadOnlyList<string> PlatformTypes { get; } =
+        ["platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"];
+
     public static IReadOnlyList<string> TypesForModule(ConfigModule module) => module switch
     {
         ConfigModule.Drivers => DriverTypes,
         ConfigModule.Devices => DeviceTypes,
         ConfigModule.Axis => ["axis"],
-        ConfigModule.Platform => ["platform", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"],
+        ConfigModule.Platform => PlatformTypes,
         ConfigModule.Tasks => TaskTypes,
         ConfigModule.Gpios => GpioDirections,
         _ => [],
@@ -68,6 +72,17 @@ public static class ConfigTypeCatalog
         ConfigModule.Gpios => "in",
         _ => "",
     };
+
+    /// <summary>Default parameters for the given module + type (empty dict when unknown).</summary>
+    public static Dictionary<string, string> DefaultParameters(ConfigModule module, string? type, string? driverId = null) =>
+        module switch
+        {
+            ConfigModule.Drivers => DeviceParameterPresets.ForDriver(type),
+            ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform =>
+                DeviceParameterPresets.ForDevice(type, driverId),
+            ConfigModule.Tasks => DeviceParameterPresets.ForTask(type),
+            _ => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+        };
 }
 
 public static class KvTableHelper

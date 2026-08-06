@@ -15,25 +15,8 @@ public static class DebugUi
         "configPath", "configFile", "cfgPath", "cfgFile", "cfg", "iniPath", "xmlPath", "dllPath",
     ];
 
-    public static short ParseAxisIndex(IReadOnlyDictionary<string, string>? parameters, short fallback = 0)
-    {
-        if (parameters is null)
-        {
-            return fallback;
-        }
-
-        foreach (var key in new[] { "axis", "axisNo", "axisIndex", "axisId" })
-        {
-            if (parameters.TryGetValue(key, out var raw)
-                && short.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v)
-                && v >= 0)
-            {
-                return v;
-            }
-        }
-
-        return fallback;
-    }
+    public static short ParseAxisIndex(IReadOnlyDictionary<string, string>? parameters, short fallback = 0) =>
+        AxisDeviceParameterSet.ParseAxisIndex(parameters, fallback);
 
     public static string? FindConfigPath(IReadOnlyDictionary<string, string>? parameters)
     {

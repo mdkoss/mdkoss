@@ -1,194 +1,201 @@
 {
-  "projectName": "MDKOSS-Demo",
+  "projectName": "检测上下料机",
   "cycleMs": 20,
+  "monitoringPrefix": "http://127.0.0.1:5080/",
+  "startPage": "index.html",
   "drivers": [
     {
-      "id": "drv-main",
+      "id": "drv-m1",
       "type": "sim",
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5000"
+        "port": "5000",
+        "card": "0",
+        "model": "VirtualCard",
+        "note": "M1 运动卡 VirtualCard"
       }
     },
     {
-      "id": "drv-gpio-aux",
+      "id": "drv-io1",
       "type": "sim",
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5001"
+        "port": "5001",
+        "card": "0",
+        "model": "VirtualCard",
+        "note": "IO1 IO 卡 VirtualCard"
       }
     },
     {
-      "id": "drv-gpio-io2",
+      "id": "drv-vio",
       "type": "sim",
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5002"
+        "port": "5002",
+        "card": "0",
+        "model": "VirtualCard",
+        "note": "VIO 虚拟卡 VirtualCard"
       }
     }
   ],
   "devices": [
     {
-      "id": "gpio-main",
-      "name": "GPIO Main",
+      "id": "gpio-m1",
+      "name": "M1 IO",
       "type": "gpio",
+      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "driverIds": "drv-main,drv-gpio-aux,drv-gpio-io2",
-        "in.startButton": "drv-main:X0",
-        "in.stopButton": "drv-gpio-aux:X1",
-        "in.resetButton": "drv-gpio-io2:X2",
-        "in.safetyDoor": "drv-gpio-io2:X3",
-        "out.tower.red": "drv-main:Y0",
-        "out.tower.yellow": "drv-gpio-aux:Y1",
-        "out.tower.green": "drv-main:Y2",
-        "out.buzzer": "drv-gpio-io2:Y3"
+        "in.DiEstopButton": "0|急停",
+        "in.DiStartButton": "1|启动按钮",
+        "in.DiStopButton": "2|停止按钮",
+        "in.DiResetButton": "3|复位按钮",
+        "in.DiSafeDoor1Button": "4|安全门1",
+        "in.DiSafeDoor2Button": "5|安全门2",
+        "in.DiSafeDoor3Button": "6|安全门3",
+        "in.DiSafeDoor4Button": "7|安全门4",
+        "in.DiSafeDoor5Button": "8|安全门5",
+        "in.DiFrontCy0": "10|前定位气缸原点",
+        "in.DiFrontCy1": "11|前定位气缸动点",
+        "in.DiBackCy0": "12|后定位气缸原点",
+        "in.DiBackCy1": "13|后定位气缸动点",
+        "out.DOButtonGreen": "0|启动按钮灯",
+        "out.DOButtonRed": "1|停止按钮灯",
+        "out.DOButtonYellow": "2|复位按钮灯",
+        "out.DOLightGreen": "3|绿灯",
+        "out.DOLightYellow": "4|黄灯",
+        "out.DOLightRed": "5|红灯",
+        "out.DOBuzzer": "6|蜂鸣器",
+        "out.DOFrontCy": "8|前定位气缸动作",
+        "out.DOBackCy": "9|后定位气缸动作",
+        "out.DOLeftCy": "10|左定位气缸动作",
+        "out.DORightCy": "11|右定位气缸动作"
       }
     },
     {
-      "id": "vio-sim",
-      "name": "Virtual GPIO (SIM)",
+      "id": "gpio-io1",
+      "name": "IO1 IO",
+      "type": "gpio",
+      "driverId": "drv-io1",
+      "enabled": true,
+      "parameters": {
+        "in.DiLeftCy0": "0|lcy0",
+        "in.DiLeftCy1": "1|lcy1",
+        "in.DiRightCy0": "2|rcy0",
+        "in.DiRightCy1": "3|rcy1",
+        "in.DiSensor1": "4|sensor1",
+        "in.DiSensor2": "5|sensor2",
+        "in.DiSensor3": "6|sensor3",
+        "in.DiSafeCurtain": "7|sc",
+        "in.DiAirPressure": "8|ap",
+        "in.DiStart1": "9|Start1",
+        "in.DiStart2": "10|Start2",
+        "in.DiVaccum1": "11|Vaccum1",
+        "in.DiVaccum2": "12|Vaccum2",
+        "out.DOLamp": "0|灯",
+        "out.DOVaccum1": "1|真空1",
+        "out.DOVaccum2": "2|真空2"
+      }
+    },
+    {
+      "id": "vio-main",
+      "name": "虚拟 IO",
       "type": "vio",
-      "driverId": "drv-main",
+      "driverId": "drv-vio",
       "enabled": true,
       "parameters": {
-        "in.vtest.di": "virtual",
-        "out.vtest.do": ""
+        "in.TestVio": "virtual|TestVio",
+        "out.TestVio": "virtual|TestVio"
       }
     },
     {
-      "id": "dev-axis",
-      "name": "Sample Axis",
+      "id": "AxisTransY",
+      "name": "上下料Y轴",
       "type": "axis",
-      "driverId": "drv-main",
+      "driverId": "drv-m1",
       "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-cameradev",
-      "name": "Sample Camera",
-      "type": "cameradev",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-extcamera",
-      "name": "Sample Ext Camera",
-      "type": "extcamera",
-      "enabled": false,
       "parameters": {
-        "backend": "sim",
-        "deviceIndex": "0",
-        "width": "1280",
-        "height": "720",
-        "exposureMs": "10",
-        "noisePx": "0.5"
+        "axis": "0",
+        "model": "Servo_2L_1O",
+        "homeVel": "10.00",
+        "pulsePerUnit": "10000",
+        "maxVel": "150.00",
+        "accel": "2000.00",
+        "negLimit": "1",
+        "posLimit": "1",
+        "homeSensor": "0",
+        "note": "上下料Y轴"
       }
     },
     {
-      "id": "dev-platform-kind-xy",
-      "name": "Platform kind=xy",
-      "type": "platform",
-      "driverId": "drv-main",
+      "id": "AxisX",
+      "name": "检测X轴",
+      "type": "axis",
+      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "kind": "xy"
+        "axis": "1",
+        "model": "Servo_2L_1O",
+        "homeVel": "10.00",
+        "pulsePerUnit": "10000",
+        "maxVel": "150.00",
+        "accel": "2000.00",
+        "negLimit": "1",
+        "posLimit": "1",
+        "homeSensor": "0",
+        "note": "检测X轴"
       }
     },
     {
-      "id": "dev-platform-kind-xyz",
-      "name": "Platform kind=xyz",
-      "type": "platform",
-      "driverId": "drv-main",
+      "id": "AxisZ",
+      "name": "检测Z轴",
+      "type": "axis",
+      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "kind": "xyz"
+        "axis": "2",
+        "model": "Servo_2L_1O",
+        "homeVel": "12.00",
+        "pulsePerUnit": "10000",
+        "maxVel": "50.00",
+        "accel": "2000.00",
+        "negLimit": "0",
+        "posLimit": "1",
+        "homeSensor": "0",
+        "note": "检测Z轴"
       }
     },
     {
-      "id": "dev-platform-kind-xyzu",
-      "name": "Platform kind=xyzu",
-      "type": "platform",
-      "driverId": "drv-main",
+      "id": "plat-trans",
+      "name": "上下料平台",
+      "type": "x",
+      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "kind": "xyzu"
+        "kind": "x",
+        "model": "PlatformXyz",
+        "axis.X": "drv-m1",
+        "axisIndex.X": "0",
+        "note": "Trans / AxisTransY"
       }
     },
     {
-      "id": "dev-platform-kind-xyzuv",
-      "name": "Platform kind=xyzuv",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyzuv"
-      }
-    },
-    {
-      "id": "dev-platform-kind-xyzuvw",
-      "name": "Platform kind=xyzuvw",
-      "type": "platform",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {
-        "kind": "xyzuvw"
-      }
-    },
-    {
-      "id": "dev-type-xy",
-      "name": "Shorthand type xy",
+      "id": "plat-measure",
+      "name": "检测平台",
       "type": "xy",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyz",
-      "name": "Shorthand type xyz",
-      "type": "xyz",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzu",
-      "name": "Shorthand type xyzu",
-      "type": "xyzu",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzuv",
-      "name": "Shorthand type xyzuv",
-      "type": "xyzuv",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-type-xyzuvw",
-      "name": "Shorthand type xyzuvw",
-      "type": "xyzuvw",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
-      "id": "dev-platform-per-axis",
-      "name": "XYZ per-axis drivers",
-      "type": "xyz",
-      "driverId": "",
+      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "axis.X": "drv-main",
-        "axis.Y": "drv-gpio-aux",
-        "axis.Z": "drv-gpio-io2"
+        "kind": "xy",
+        "model": "PlatformXyz",
+        "axis.X": "drv-m1",
+        "axisIndex.X": "1",
+        "axis.Y": "drv-m1",
+        "axisIndex.Y": "2",
+        "note": "Measure / AxisX+AxisZ"
       }
     }
   ],
@@ -197,43 +204,23 @@
       "name": "task-operation",
       "type": "operation",
       "intervalMs": 200,
-      "parameters": {}
-    },
-    {
-      "name": "task-cycle",
-      "type": "cycle",
-      "intervalMs": 1000,
-      "parameters": {}
-    },
-    {
-      "name": "poll-main",
-      "type": "pollDriver",
-      "driverId": "drv-main",
-      "intervalMs": 500,
-      "parameters": {}
-    },
-    {
-      "name": "poll-gpio-aux",
-      "type": "pollDriver",
-      "driverId": "drv-gpio-aux",
-      "intervalMs": 500,
-      "parameters": {}
-    },
-    {
-      "name": "poll-gpio-io2",
-      "type": "pollDriver",
-      "driverId": "drv-gpio-io2",
-      "intervalMs": 500,
-      "parameters": {}
-    },
-    {
-      "name": "task-flow-demo",
-      "type": "flow",
-      "intervalMs": 100,
       "parameters": {
-        "loop": "true",
-        "flowJson": "{\"version\":1,\"variables\":[{\"name\":\"x\",\"type\":\"number\",\"init\":\"0\"}],\"functions\":[{\"name\":\"main\",\"entryNodeId\":\"n-start\"}],\"nodes\":[{\"id\":\"n-start\",\"kind\":\"start\",\"x\":80,\"y\":120,\"props\":{}},{\"id\":\"n-set\",\"kind\":\"setVar\",\"x\":260,\"y\":120,\"props\":{\"name\":\"x\",\"expr\":\"x + 1\"}},{\"id\":\"n-log\",\"kind\":\"op.log\",\"x\":440,\"y\":120,\"props\":{\"message\":\"\\\"tick \\\" + x\"}},{\"id\":\"n-end\",\"kind\":\"end\",\"x\":620,\"y\":120,\"props\":{}}],\"edges\":[{\"from\":\"n-start\",\"to\":\"n-set\",\"port\":\"next\"},{\"from\":\"n-set\",\"to\":\"n-log\",\"port\":\"next\"},{\"from\":\"n-log\",\"to\":\"n-end\",\"port\":\"next\"}]}"
+        "gpioDeviceId": "gpio-m1"
       }
+    },
+    {
+      "name": "poll-m1",
+      "type": "pollDriver",
+      "driverId": "drv-m1",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "poll-io1",
+      "type": "pollDriver",
+      "driverId": "drv-io1",
+      "intervalMs": 500,
+      "parameters": {}
     }
   ],
   "recipeVarKeys": [
@@ -245,28 +232,15 @@
     {
       "id": "default",
       "name": "默认配方",
-      "description": "自动运行，绿灯指示",
+      "description": "自动运行",
       "vars": {
         "machine.mode": "AUTO",
-        "task.operation.command": "lamp:green"
-      }
-    },
-    {
-      "id": "manual",
-      "name": "手动配方",
-      "description": "手动模式，黄灯指示",
-      "vars": {
-        "machine.mode": "MANUAL",
-        "task.operation.command": "lamp:yellow"
+        "task.operation.command": "IDLE"
       }
     }
   ],
   "vars": {
     "machine.mode": "AUTO",
-    "machine.ready": true,
-    "task.operation.alias.red": "tower.red",
-    "task.operation.alias.yellow": "tower.yellow",
-    "task.operation.alias.green": "tower.green",
-    "task.operation.command": "lamp:green"
+    "task.operation.command": "IDLE"
   }
 }

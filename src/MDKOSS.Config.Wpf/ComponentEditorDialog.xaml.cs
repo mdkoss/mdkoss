@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
+using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
 
@@ -88,6 +90,58 @@ public partial class ComponentEditorDialog : Window
         foreach (var row in request.Parameters)
         {
             _paramRows.Add(new KvPairRow { Key = row.Key, Value = row.Value });
+        }
+    }
+
+    private void TypeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded)
+        {
+            return;
+        }
+
+        ApplyTypeParameterTemplate(replaceAll: true);
+    }
+
+    private void TypeCombo_LostFocus(object sender, RoutedEventArgs e) =>
+        ApplyTypeParameterTemplate(replaceAll: false);
+
+    private void FillTypeParams_Click(object sender, RoutedEventArgs e) =>
+        ApplyTypeParameterTemplate(replaceAll: true);
+
+    private void ApplyTypeParameterTemplate(bool replaceAll)
+    {
+        if (_module is not (ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Axis
+            or ConfigModule.Platform or ConfigModule.Tasks))
+        {
+            return;
+        }
+
+        var type = TypeCombo.Text?.Trim() ?? "";
+        var driverId = DriverCombo.Text?.Trim() ?? "";
+        var template = ConfigTypeCatalog.DefaultParameters(_module, type, driverId);
+        if (template.Count == 0)
+        {
+            return;
+        }
+
+        if (replaceAll)
+        {
+            _paramRows.Clear();
+            foreach (var kv in template)
+            {
+                _paramRows.Add(new KvPairRow { Key = kv.Key, Value = kv.Value });
+            }
+
+            return;
+        }
+
+        var existing = KvTableHelper.ToStringDict(_paramRows);
+        var merged = DeviceParameterPresets.ApplyTemplate(existing, template, overwriteEmptyOnly: true);
+        _paramRows.Clear();
+        foreach (var kv in merged.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            _paramRows.Add(new KvPairRow { Key = kv.Key, Value = kv.Value });
         }
     }
 

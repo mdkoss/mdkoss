@@ -1,6 +1,6 @@
 {
-  "name": "devmodserver-demo",
-  "description": "Minimal project demonstrating MDKOSS.Extensions.ModServer (devmodserver)",
+  "name": "devmodclient-demo",
+  "description": "Minimal project demonstrating MDKOSS.Extensions.ModServer (devmodserver + devmodclient batch read)",
   "databasePath": "data/mdk.db",
   "monitoring": {
     "enabled": true,
@@ -37,6 +37,9 @@
         "host": "127.0.0.1",
         "port": "1502",
         "unitId": "1",
+        "connectTimeoutMs": "3000",
+        "readTimeoutMs": "3000",
+        "writeTimeoutMs": "3000",
         "autoConnect": "true"
       }
     }

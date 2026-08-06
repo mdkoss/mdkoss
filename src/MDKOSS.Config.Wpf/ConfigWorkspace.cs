@@ -900,6 +900,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 throw new InvalidOperationException("当前模块不支持新建。");
         }
 
+        // Seed type-matched default parameters so the create dialog shows them.
+        if (_module is ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Axis
+            or ConfigModule.Platform or ConfigModule.Tasks)
+        {
+            req.Parameters = ConfigTypeCatalog.DefaultParameters(_module, req.Type, req.DriverId);
+        }
+
         return req;
     }
 
@@ -965,6 +972,431 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         System.IO.File.WriteAllText(full, json);
         StatusLine = $"已导出模块 {ModuleTitle} → {full}";
+    }
+
+    public bool SupportsExcelModuleExchange =>
+        _module is ConfigModule.Gpios or ConfigModule.Axis or ConfigModule.Platform;
+
+    /// <summary>Export current Gpios / Axis / Platform list as SpreadsheetML (.xls).</summary>
+    public void ExportModuleExcel(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        switch (_module)
+        {
+            case ConfigModule.Gpios:
+                ExportGpiosExcel(full);
+                break;
+            case ConfigModule.Axis:
+                ExportAxisExcel(full);
+                break;
+            case ConfigModule.Platform:
+                ExportPlatformExcel(full);
+                break;
+            default:
+                throw new InvalidOperationException("仅 Gpios / Axis / Platform 支持 Excel 导出。");
+        }
+
+        StatusLine = $"已导出 Excel {ModuleTitle} → {full}";
+    }
+
+    /// <summary>Import Gpios / Axis / Platform list from SpreadsheetML (.xls) or CSV.</summary>
+    public void ImportModuleExcel(string path, bool replace)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        switch (_module)
+        {
+            case ConfigModule.Gpios:
+                ImportGpiosExcel(full, replace);
+                break;
+            case ConfigModule.Axis:
+                ImportAxisExcel(full, replace);
+                break;
+            case ConfigModule.Platform:
+                ImportPlatformExcel(full, replace);
+                break;
+            default:
+                throw new InvalidOperationException("仅 Gpios / Axis / Platform 支持 Excel 导入。");
+        }
+
+        SelectModule(_module, null);
+        StatusLine = $"已导入 Excel {ModuleTitle} ← {full}";
+    }
+
+    private void ExportGpiosExcel(string path)
+    {
+        var headers = new[] { "DeviceId", "Alias", "Direction", "Label", "Route", "Enabled" };
+        var rows = BuildGpioItems().Select(i =>
+        {
+            var g = (GpioEditTarget)i.Source!;
+            return (IReadOnlyList<string>)new[]
+            {
+                g.Device.Id,
+                g.Alias,
+                g.Direction,
+                i.Col3,
+                g.Route,
+                g.Device.Enabled ? "True" : "False",
+            };
+        });
+        ExcelSheetIo.WriteSheet(path, "Gpios", headers, rows);
+    }
+
+    private void ImportGpiosExcel(string path, bool replace)
+    {
+        var (_, rows) = ExcelSheetIo.ReadSheet(path);
+        if (rows.Count == 0)
+        {
+            throw new InvalidOperationException("Excel 中没有 IO 行。");
+        }
+
+        // Group by device; create gpio device if missing.
+        var byDevice = rows
+            .Select(r => new
+            {
+                DeviceId = Cell(r, "DeviceId", "Device", "device"),
+                Alias = Cell(r, "Alias", "alias"),
+                Direction = NormalizeDirection(Cell(r, "Direction", "Dir", "direction")),
+                Label = Cell(r, "Label", "Desc", "label"),
+                Route = Cell(r, "Route", "route"),
+            })
+            .Where(r => !string.IsNullOrWhiteSpace(r.DeviceId) && !string.IsNullOrWhiteSpace(r.Alias))
+            .GroupBy(r => r.DeviceId, StringComparer.OrdinalIgnoreCase);
+
+        if (replace)
+        {
+            foreach (var device in _setting.Devices.Where(d =>
+                         string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(d.Type, "vio", StringComparison.OrdinalIgnoreCase)))
+            {
+                var keys = device.Parameters.Keys
+                    .Where(k => k.StartsWith("in.", StringComparison.OrdinalIgnoreCase)
+                                || k.StartsWith("out.", StringComparison.OrdinalIgnoreCase)
+                                || k.StartsWith("desc.", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                foreach (var k in keys)
+                {
+                    device.Parameters.Remove(k);
+                }
+            }
+        }
+
+        foreach (var group in byDevice)
+        {
+            var device = _setting.Devices.FirstOrDefault(d =>
+                string.Equals(d.Id, group.Key, StringComparison.OrdinalIgnoreCase));
+            if (device is null)
+            {
+                device = new MdkSetting.DeviceConfig
+                {
+                    Id = group.Key,
+                    Name = group.Key,
+                    Type = "gpio",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                };
+                _setting.Devices.Add(device);
+            }
+
+            var drivers = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var row in group)
+            {
+                var isVio = string.Equals(device.Type, "vio", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(row.Route, "virtual", StringComparison.OrdinalIgnoreCase)
+                            || string.IsNullOrWhiteSpace(row.Route);
+                var paramKey = $"{row.Direction}.{row.Alias}";
+                if (isVio)
+                {
+                    device.Parameters[paramKey] = string.IsNullOrWhiteSpace(row.Label)
+                        ? "virtual"
+                        : $"virtual|{row.Label.Trim()}";
+                    continue;
+                }
+
+                var route = row.Route.Trim();
+                if (GpioDeviceParameterSet.TryParsePointValue(
+                        route.Contains('|', StringComparison.Ordinal) ? route : $"{route}|{row.Label}",
+                        device.DriverId,
+                        out var drv,
+                        out var addr,
+                        out var lab)
+                    || GpioDeviceParameterSet.TryParsePointValue(route, device.DriverId, out drv, out addr, out lab))
+                {
+                    if (!string.IsNullOrWhiteSpace(row.Label))
+                    {
+                        lab = row.Label.Trim();
+                    }
+
+                    device.Parameters[paramKey] = GpioDeviceParameterSet.FormatPointValue(
+                        drv, addr, lab, device.DriverId);
+                    if (!string.IsNullOrWhiteSpace(drv))
+                    {
+                        drivers.Add(drv);
+                    }
+                }
+                else if (!string.IsNullOrWhiteSpace(device.DriverId))
+                {
+                    device.Parameters[paramKey] = GpioDeviceParameterSet.FormatPointValue(
+                        device.DriverId, route, row.Label, device.DriverId);
+                    drivers.Add(device.DriverId);
+                }
+                else
+                {
+                    device.Parameters[paramKey] = string.IsNullOrWhiteSpace(row.Label)
+                        ? route
+                        : $"{route}|{row.Label.Trim()}";
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(device.DriverId) && drivers.Count == 1)
+            {
+                device.DriverId = drivers.First();
+            }
+        }
+    }
+
+    private void ExportAxisExcel(string path)
+    {
+        var headers = new[]
+        {
+            "Id", "Name", "Type", "DriverId", "Enabled",
+            "axis", "model", "homeVel", "pulsePerUnit", "maxVel", "accel",
+            "negLimit", "posLimit", "homeSensor", "note",
+        };
+        var axes = _setting.Devices
+            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase));
+        var rows = axes.Select(d =>
+        {
+            var p = d.Parameters;
+            return (IReadOnlyList<string>)new[]
+            {
+                d.Id,
+                d.Name,
+                d.Type,
+                d.DriverId,
+                d.Enabled ? "True" : "False",
+                p.GetValueOrDefault("axis", AxisDeviceParameterSet.ParseAxisIndex(p).ToString()),
+                p.GetValueOrDefault("model", AxisDeviceParameterSet.GetModel(p)),
+                p.GetValueOrDefault("homeVel", ""),
+                p.GetValueOrDefault("pulsePerUnit", ""),
+                p.GetValueOrDefault("maxVel", ""),
+                p.GetValueOrDefault("accel", ""),
+                p.GetValueOrDefault("negLimit", ""),
+                p.GetValueOrDefault("posLimit", ""),
+                p.GetValueOrDefault("homeSensor", ""),
+                p.GetValueOrDefault("note", ""),
+            };
+        });
+        ExcelSheetIo.WriteSheet(path, "Axis", headers, rows);
+    }
+
+    private void ImportAxisExcel(string path, bool replace)
+    {
+        var (_, rows) = ExcelSheetIo.ReadSheet(path);
+        var devices = rows
+            .Select(ParseAxisRow)
+            .Where(d => d is not null)
+            .Cast<MdkSetting.DeviceConfig>()
+            .ToList();
+        if (devices.Count == 0)
+        {
+            throw new InvalidOperationException("Excel 中没有有效的 Axis 行。");
+        }
+
+        MergeDevices(devices, replace, d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static MdkSetting.DeviceConfig? ParseAxisRow(Dictionary<string, string> r)
+    {
+        var id = Cell(r, "Id", "id");
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var defaults = AxisDeviceParameterSet.DefaultParameters();
+        var parameters = new Dictionary<string, string>(defaults, StringComparer.OrdinalIgnoreCase);
+        foreach (var key in new[]
+                 {
+                     "axis", "model", "homeVel", "pulsePerUnit", "maxVel", "accel",
+                     "negLimit", "posLimit", "homeSensor", "note",
+                 })
+        {
+            var v = Cell(r, key);
+            if (!string.IsNullOrWhiteSpace(v))
+            {
+                parameters[key] = v.Trim();
+            }
+        }
+
+        return new MdkSetting.DeviceConfig
+        {
+            Id = id.Trim(),
+            Name = Cell(r, "Name", "name").Trim().Length > 0 ? Cell(r, "Name", "name").Trim() : id.Trim(),
+            Type = "axis",
+            DriverId = Cell(r, "DriverId", "driverId").Trim(),
+            Enabled = ParseBool(Cell(r, "Enabled", "enabled"), true),
+            Parameters = parameters,
+        };
+    }
+
+    private void ExportPlatformExcel(string path)
+    {
+        var headers = new[]
+        {
+            "Id", "Name", "Type", "DriverId", "Enabled", "kind", "model", "note",
+            "axis.X", "axisIndex.X", "axis.Y", "axisIndex.Y", "axis.Z", "axisIndex.Z",
+            "axis.U", "axisIndex.U", "axis.V", "axisIndex.V", "axis.W", "axisIndex.W",
+        };
+        var plats = _setting.Devices.Where(IsPlatformModuleEntry);
+        var rows = plats.Select(d =>
+        {
+            var p = d.Parameters;
+            return (IReadOnlyList<string>)new[]
+            {
+                d.Id,
+                d.Name,
+                d.Type,
+                d.DriverId,
+                d.Enabled ? "True" : "False",
+                p.GetValueOrDefault("kind", d.Type),
+                p.GetValueOrDefault("model", "PlatformXyz"),
+                p.GetValueOrDefault("note", ""),
+                p.GetValueOrDefault("axis.X", ""),
+                p.GetValueOrDefault("axisIndex.X", ""),
+                p.GetValueOrDefault("axis.Y", ""),
+                p.GetValueOrDefault("axisIndex.Y", ""),
+                p.GetValueOrDefault("axis.Z", ""),
+                p.GetValueOrDefault("axisIndex.Z", ""),
+                p.GetValueOrDefault("axis.U", ""),
+                p.GetValueOrDefault("axisIndex.U", ""),
+                p.GetValueOrDefault("axis.V", ""),
+                p.GetValueOrDefault("axisIndex.V", ""),
+                p.GetValueOrDefault("axis.W", ""),
+                p.GetValueOrDefault("axisIndex.W", ""),
+            };
+        });
+        ExcelSheetIo.WriteSheet(path, "Platform", headers, rows);
+    }
+
+    private void ImportPlatformExcel(string path, bool replace)
+    {
+        var (_, rows) = ExcelSheetIo.ReadSheet(path);
+        var devices = rows
+            .Select(ParsePlatformRow)
+            .Where(d => d is not null)
+            .Cast<MdkSetting.DeviceConfig>()
+            .ToList();
+        if (devices.Count == 0)
+        {
+            throw new InvalidOperationException("Excel 中没有有效的 Platform 行。");
+        }
+
+        MergeDevices(devices, replace, IsPlatformModuleEntry);
+    }
+
+    private static MdkSetting.DeviceConfig? ParsePlatformRow(Dictionary<string, string> r)
+    {
+        var id = Cell(r, "Id", "id");
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return null;
+        }
+
+        var type = Cell(r, "Type", "type");
+        if (string.IsNullOrWhiteSpace(type))
+        {
+            type = "xyz";
+        }
+
+        var kind = Cell(r, "kind", "Kind");
+        if (string.IsNullOrWhiteSpace(kind))
+        {
+            kind = type;
+        }
+
+        var driverId = Cell(r, "DriverId", "driverId").Trim();
+        var parameters = PlatformDeviceParameterSet.DefaultParameters(kind, driverId);
+        parameters["kind"] = kind.Trim();
+        var model = Cell(r, "model", "Model");
+        if (!string.IsNullOrWhiteSpace(model))
+        {
+            parameters["model"] = model.Trim();
+        }
+
+        var note = Cell(r, "note", "Note");
+        if (!string.IsNullOrWhiteSpace(note))
+        {
+            parameters["note"] = note.Trim();
+        }
+
+        foreach (var letter in new[] { "X", "Y", "Z", "U", "V", "W" })
+        {
+            var axisDrv = Cell(r, $"axis.{letter}");
+            if (!string.IsNullOrWhiteSpace(axisDrv))
+            {
+                parameters[$"axis.{letter}"] = axisDrv.Trim();
+            }
+
+            var axisIdx = Cell(r, $"axisIndex.{letter}");
+            if (!string.IsNullOrWhiteSpace(axisIdx))
+            {
+                parameters[$"axisIndex.{letter}"] = axisIdx.Trim();
+            }
+        }
+
+        return new MdkSetting.DeviceConfig
+        {
+            Id = id.Trim(),
+            Name = Cell(r, "Name", "name").Trim().Length > 0 ? Cell(r, "Name", "name").Trim() : id.Trim(),
+            Type = type.Trim(),
+            DriverId = driverId,
+            Enabled = ParseBool(Cell(r, "Enabled", "enabled"), true),
+            Parameters = parameters,
+        };
+    }
+
+    private static string Cell(Dictionary<string, string> row, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (row.TryGetValue(name, out var v) && v is not null)
+            {
+                return v;
+            }
+        }
+
+        return "";
+    }
+
+    private static string NormalizeDirection(string raw)
+    {
+        var t = (raw ?? "").Trim().ToLowerInvariant();
+        if (t is "out" or "do" or "output")
+        {
+            return "out";
+        }
+
+        return "in";
+    }
+
+    private static bool ParseBool(string raw, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return fallback;
+        }
+
+        if (bool.TryParse(raw, out var b))
+        {
+            return b;
+        }
+
+        return raw.Trim() switch
+        {
+            "1" or "yes" or "y" or "是" => true,
+            "0" or "no" or "n" or "否" => false,
+            _ => fallback,
+        };
     }
 
     public void ImportModule(string path, bool replace)
@@ -1430,13 +1862,24 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             .Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
         ConfigModule.Axis => _setting.Devices
             .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
-            .Select(d => ToDeviceItem(d, ConfigModule.Axis)).ToList(),
+            .Select(d =>
+            {
+                var item = ToDeviceItem(d, ConfigModule.Axis);
+                var axisNo = AxisDeviceParameterSet.ParseAxisIndex(d.Parameters);
+                var model = AxisDeviceParameterSet.GetModel(d.Parameters);
+                item.Col3 = $"{axisNo} · {model}";
+                item.Col4 = d.DriverId;
+                item.Subtitle = $"{model} · axis={axisNo}";
+                return item;
+            }).ToList(),
         ConfigModule.Platform => _setting.Devices
             .Where(IsPlatformModuleEntry)
             .Select(d =>
             {
                 var item = ToDeviceItem(d, ConfigModule.Platform);
-                item.Col3 = d.Parameters.GetValueOrDefault("kind", d.Type);
+                var kind = d.Parameters.GetValueOrDefault("kind", d.Type);
+                var model = d.Parameters.GetValueOrDefault("model", "PlatformXyz");
+                item.Col3 = $"{kind} · {model}";
                 item.Col4 = d.DriverId;
                 return item;
             }).ToList(),
@@ -1505,27 +1948,74 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 continue;
             }
 
-            foreach (var b in GpioDeviceParameterSet.ParseBindings(device.Parameters))
+            if (type == "vio")
+            {
+                foreach (var b in VioDeviceParameterSet.ParseVirtualBindings(device.Parameters))
+                {
+                    var direction = b.IsOutput ? "out" : "in";
+                    var key = $"{device.Id}:{direction}:{b.Alias}";
+                    var raw = device.Parameters.GetValueOrDefault($"{direction}.{b.Alias}", "virtual");
+                    var label = GpioDeviceParameterSet.ReadLabel(device.Parameters, b.Alias, raw);
+                    list.Add(new ComponentItem
+                    {
+                        Module = ConfigModule.Gpios,
+                        Source = new GpioEditTarget(device, direction, b.Alias, "virtual"),
+                        Key = key,
+                        Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
+                        Subtitle = "virtual",
+                        Col1 = device.Id,
+                        Col2 = b.Alias,
+                        Col3 = label,
+                        Col4 = "virtual",
+                    });
+                }
+
+                continue;
+            }
+
+            foreach (var b in GpioDeviceParameterSet.ParseBindings(device.Parameters, device.DriverId))
             {
                 var direction = b.IsOutput ? "out" : "in";
                 var key = $"{device.Id}:{direction}:{b.Alias}";
-                var route = string.IsNullOrWhiteSpace(b.DriverId) ? b.Address : $"{b.DriverId}:{b.Address}";
+                // Display short address when bound to device.driverId; otherwise driverId:address.
+                var route = GpioDeviceParameterSet.FormatPointValue(
+                    b.DriverId, b.Address, label: null, deviceDriverId: device.DriverId);
+                var label = string.IsNullOrWhiteSpace(b.Label)
+                    ? GpioDeviceParameterSet.ReadLabel(device.Parameters, b.Alias)
+                    : b.Label;
                 list.Add(new ComponentItem
                 {
                     Module = ConfigModule.Gpios,
                     Source = new GpioEditTarget(device, direction, b.Alias, route),
                     Key = key,
-                    Title = $"{device.Id}.{direction}.{b.Alias}",
+                    Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
                     Subtitle = route,
                     Col1 = device.Id,
                     Col2 = b.Alias,
-                    Col3 = direction,
+                    Col3 = label,
                     Col4 = route,
                 });
             }
         }
 
         return list;
+    }
+
+    private static string ReadPointLabel(IReadOnlyDictionary<string, string> parameters, string alias)
+    {
+        foreach (var prefix in new[] { "in.", "out." })
+        {
+            if (parameters.TryGetValue(prefix + alias, out var raw))
+            {
+                var label = GpioDeviceParameterSet.ReadLabel(parameters, alias, raw);
+                if (!string.IsNullOrWhiteSpace(label))
+                {
+                    return label;
+                }
+            }
+        }
+
+        return GpioDeviceParameterSet.ReadLabel(parameters, alias);
     }
 
     private List<ComponentItem> BuildSysItems()
@@ -1611,7 +2101,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Draft.FieldId = d.Id;
                 Draft.FieldType = d.Type;
                 Draft.FieldEnabled = d.Enabled;
-                Draft.LoadStringParameters(d.Parameters);
+                Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Drivers, d.Type, null, d.Parameters));
                 break;
             case ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform
                 when item.Source is MdkSetting.DeviceConfig d:
@@ -1621,7 +2111,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Draft.FieldType = d.Type;
                 Draft.FieldDriverId = d.DriverId;
                 Draft.FieldEnabled = d.Enabled;
-                Draft.LoadStringParameters(d.Parameters);
+                Draft.LoadStringParameters(FillMissingTypeParameters(item.Module, d.Type, d.DriverId, d.Parameters));
                 break;
             case ConfigModule.Tasks when item.Source is MdkSetting.TaskConfig t:
                 SetDraftVisibility(name: true, type: true, driverId: true, interval: true, parameters: true);
@@ -1630,7 +2120,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Draft.FieldType = t.Type;
                 Draft.FieldDriverId = t.DriverId;
                 Draft.FieldInterval = t.IntervalMs.ToString();
-                Draft.LoadStringParameters(t.Parameters);
+                Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Tasks, t.Type, t.DriverId, t.Parameters));
                 break;
             case ConfigModule.Recipes when item.Source is MdkSetting.RecipeConfig r:
                 SetDraftVisibility(id: true, name: true, description: true, parameters: true);
@@ -1655,13 +2145,17 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Draft.ShowId = true;
                 break;
             case ConfigModule.Gpios when item.Source is GpioEditTarget g:
-                SetDraftVisibility(id: true, name: true, type: true, value: true);
+                SetDraftVisibility(id: true, name: true, type: true, description: true, value: true);
                 Draft.ShowEnabled = Draft.ShowParameters = false;
                 Draft.SetTypeOptions(ConfigTypeCatalog.GpioDirections);
                 Draft.FieldId = g.Device.Id;
                 Draft.FieldName = g.Alias;
                 Draft.FieldType = g.Direction;
                 Draft.FieldValue = g.Route;
+                Draft.FieldDescription = GpioDeviceParameterSet.ReadLabel(
+                    g.Device.Parameters,
+                    g.Alias,
+                    g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"));
                 break;
             case ConfigModule.Database:
                 // Selecting a table opens row browser (handled in SelectItem).
@@ -1845,7 +2339,98 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var oldParamKey = $"{target.Direction}.{target.Alias}";
         var newParamKey = $"{direction}.{alias}";
         target.Device.Parameters.Remove(oldParamKey);
-        target.Device.Parameters[newParamKey] = (Draft.FieldValue ?? "").Trim();
+        target.Device.Parameters.Remove($"desc.{target.Alias}");
+        target.Device.Parameters.Remove($"desc.{alias}");
+
+        var routeRaw = (Draft.FieldValue ?? "").Trim();
+        var label = (Draft.FieldDescription ?? "").Trim();
+        var isVio = string.Equals(target.Device.Type, "vio", StringComparison.OrdinalIgnoreCase);
+
+        if (isVio)
+        {
+            target.Device.Parameters[newParamKey] = string.IsNullOrWhiteSpace(label)
+                ? "virtual"
+                : $"virtual|{label}";
+            return;
+        }
+
+        // Resolve address (+ optional driver) from the route box.
+        var defaultDrv = target.Device.DriverId;
+        if (!GpioDeviceParameterSet.TryParsePointValue(
+                routeRaw.Contains('|', StringComparison.Ordinal) ? routeRaw : $"{routeRaw}|{label}",
+                defaultDrv,
+                out var driverId,
+                out var address,
+                out var parsedLabel)
+            && !GpioDeviceParameterSet.TryParsePointValue(routeRaw, defaultDrv, out driverId, out address, out parsedLabel))
+        {
+            // Allow bare address when device has driverId.
+            if (string.IsNullOrWhiteSpace(routeRaw) || string.IsNullOrWhiteSpace(defaultDrv))
+            {
+                throw new InvalidOperationException("Route 须为地址（如 0）或 driverId:address。");
+            }
+
+            driverId = defaultDrv.Trim();
+            address = routeRaw;
+            parsedLabel = label;
+        }
+
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            parsedLabel = label;
+        }
+
+        target.Device.Parameters[newParamKey] = GpioDeviceParameterSet.FormatPointValue(
+            driverId,
+            address,
+            parsedLabel,
+            target.Device.DriverId);
+    }
+
+    /// <summary>
+    /// Replace draft parameters with the template for the current Type (keeps unrelated keys only when merge=true).
+    /// </summary>
+    public void ApplyTypeDefaultParameters(bool replaceAll)
+    {
+        if (Draft.IsReadOnly || !Draft.ShowParameters)
+        {
+            throw new InvalidOperationException("当前选中项不支持参数模板。");
+        }
+
+        var type = Draft.FieldType;
+        var driverId = Draft.FieldDriverId;
+        var template = ConfigTypeCatalog.DefaultParameters(_module, type, driverId);
+        if (template.Count == 0)
+        {
+            throw new InvalidOperationException($"类型 '{type}' 没有预置参数模板。");
+        }
+
+        var existing = Draft.CollectStringParameters();
+        var next = replaceAll
+            ? new Dictionary<string, string>(template, StringComparer.OrdinalIgnoreCase)
+            : DeviceParameterPresets.ApplyTemplate(existing, template, overwriteEmptyOnly: true);
+        Draft.LoadStringParameters(next);
+        StatusLine = replaceAll
+            ? $"已按类型 {type} 重置参数模板"
+            : $"已补全类型 {type} 缺失参数";
+    }
+
+    private static Dictionary<string, string> FillMissingTypeParameters(
+        ConfigModule module,
+        string? type,
+        string? driverId,
+        IReadOnlyDictionary<string, string> existing)
+    {
+        var template = ConfigTypeCatalog.DefaultParameters(module, type, driverId);
+        if (template.Count == 0)
+        {
+            return new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase);
+        }
+
+        return DeviceParameterPresets.ApplyTemplate(
+            new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase),
+            template,
+            overwriteEmptyOnly: true);
     }
 
     private void ValidateBeforeSave()
@@ -1874,13 +2459,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Type"; ColHeader4 = "DriverId";
                 break;
             case ConfigModule.Axis:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Type"; ColHeader4 = "DriverId";
+                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Axis/Model"; ColHeader4 = "DriverId";
                 break;
             case ConfigModule.Platform:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Kind"; ColHeader4 = "DriverId";
+                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Kind/Model"; ColHeader4 = "DriverId";
                 break;
             case ConfigModule.Gpios:
-                ColHeader1 = "Device"; ColHeader2 = "Alias"; ColHeader3 = "Dir"; ColHeader4 = "Route";
+                ColHeader1 = "Device"; ColHeader2 = "Alias"; ColHeader3 = "Label"; ColHeader4 = "Route";
                 break;
             case ConfigModule.Tasks:
                 ColHeader1 = "Name"; ColHeader2 = "Type"; ColHeader3 = "DriverId"; ColHeader4 = "Interval";
@@ -1934,7 +2519,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         if (module == ConfigModule.Platform && !isPlatform)
         {
             throw new InvalidOperationException(
-                "Platform 模块仅支持 platform / xy / xyz / xyzu / xyzuv / xyzuvw。");
+                "Platform 模块仅支持 platform / x / xy / xyz / xyzu / xyzuv / xyzuvw。");
         }
 
         if (module == ConfigModule.Axis && !string.Equals(lower, "axis", StringComparison.OrdinalIgnoreCase))

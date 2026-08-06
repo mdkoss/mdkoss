@@ -3,11 +3,14 @@ namespace MDKOSS.Core;
 /// <summary>Parses multi-axis platform layout from <see cref="MdkSetting.DeviceConfig.Parameters"/> and device <c>type</c>.</summary>
 public static class PlatformDeviceParameterSet
 {
-    /// <summary>Maps shorthand device types (<c>xy</c>, <c>xyz</c>, …) to a fixed <see cref="MPlatformKind"/>.</summary>
+    /// <summary>Maps shorthand device types (<c>x</c>, <c>xy</c>, <c>xyz</c>, …) to a fixed <see cref="MPlatformKind"/>.</summary>
     public static bool TryKindFromDeviceType(string deviceTypeLower, out MPlatformKind kind)
     {
         switch (deviceTypeLower)
         {
+            case "x":
+                kind = MPlatformKind.X;
+                return true;
             case "xy":
                 kind = MPlatformKind.Xy;
                 return true;
@@ -29,7 +32,7 @@ public static class PlatformDeviceParameterSet
         }
     }
 
-    /// <summary>True for <c>platform</c> or axis-count aliases (<c>xy</c>, <c>xyz</c>, …).</summary>
+    /// <summary>True for <c>platform</c> or axis-count aliases (<c>x</c>, <c>xy</c>, <c>xyz</c>, …).</summary>
     public static bool IsPlatformFamilyType(string deviceTypeLower) =>
         string.Equals(deviceTypeLower, "platform", StringComparison.OrdinalIgnoreCase)
         || TryKindFromDeviceType(deviceTypeLower, out _);
@@ -58,7 +61,7 @@ public static class PlatformDeviceParameterSet
 
         throw new MdkException(
             MdkErrorCode.PlatformConfigurationInvalid,
-            $"Unknown platform kind '{raw}'. Use xy, xyz, xyzu, xyzuv, or xyzuvw.");
+            $"Unknown platform kind '{raw}'. Use x, xy, xyz, xyzu, xyzuv, or xyzuvw.");
     }
 
     /// <summary>Resolves per-axis driver id: <c>axis.X</c>, <c>axis.Y</c>, …; falls back to <paramref name="defaultDriverId"/> when unset.</summary>
@@ -86,6 +89,52 @@ public static class PlatformDeviceParameterSet
         throw new MdkException(
             MdkErrorCode.PlatformConfigurationInvalid,
             $"Platform axis '{letter}' has no driver: set device driverId or parameter axis.{letter}.");
+    }
+
+    /// <summary>
+    /// Resolves per-axis card channel: <c>axisIndex.X</c>, <c>axisIndex.Y</c>, …
+    /// Falls back to <paramref name="ordinalFallback"/> (letter order index) when unset.
+    /// </summary>
+    public static short ResolveAxisIndex(
+        IReadOnlyDictionary<string, string> parameters,
+        string axisLetter,
+        short ordinalFallback)
+    {
+        var letter = axisLetter.Trim();
+        foreach (var key in new[] { $"axisIndex.{letter}", $"axisIndex.{letter.ToLowerInvariant()}", $"axisNo.{letter}" })
+        {
+            if (parameters.TryGetValue(key, out var raw)
+                && short.TryParse(raw.Trim(), out var v)
+                && v >= 0)
+            {
+                return v;
+            }
+        }
+
+        return ordinalFallback;
+    }
+
+    /// <summary>Default parameters for a platform kind (driver bindings + optional channel indices).</summary>
+    public static Dictionary<string, string> DefaultParameters(string kindToken, string defaultDriverId)
+    {
+        var drv = string.IsNullOrWhiteSpace(defaultDriverId) ? "drv-m1" : defaultDriverId.Trim();
+        var kind = TryParseKindToken(kindToken, out var k) ? k : MPlatformKind.Xyz;
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["kind"] = kind.ToConfigToken(),
+            ["model"] = "PlatformXyz",
+            ["note"] = "",
+        };
+
+        short i = 0;
+        foreach (var letter in kind.AxisLetters())
+        {
+            dict[$"axis.{letter}"] = drv;
+            dict[$"axisIndex.{letter}"] = i.ToString();
+            i++;
+        }
+
+        return dict;
     }
 
     private static bool TryParseKindToken(string token, out MPlatformKind kind)
