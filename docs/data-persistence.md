@@ -24,10 +24,10 @@ MDKOSS 使用 **Microsoft.Data.Sqlite** 持久化配方同步、生产排单、�
 | 表 | 来源 | 说明 |
 |----|------|------|
 | `drivers` | `setting.drivers` | 驱动 id/type/enabled/parameters |
-| `devices` | `setting.devices` | 全部设备（含 gpio/axis/platform 等） |
+| `devices` | `setting.devices` | 一般设备（gpio/vio/camera/…） |
 | `gpios` | gpio/vio 的 `in.*`/`out.*` | 规范化点位路由 |
-| `axis` | type=`axis` 设备 | 单轴设备投影 |
-| `platform` | platform / xy… 族 | 平台设备 + kind |
+| `axis` | `setting.axes` | 单轴设备 |
+| `platform` | `setting.platforms` | 平台设备 + kind |
 | `positions` | `teach_points` 镜像 | 导出时从示教点复制 |
 | `sysconfigs` | 顶层字段 | projectName/cycleMs/vars/tasks/… |
 | `recipes` | `setting.recipes` | 与运行时配方表共用 |

@@ -31,6 +31,18 @@
       }
     },
     {
+      "id": "cam1",
+      "name": "演示相机",
+      "type": "cameradev",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "role": "demo"
+      }
+    }
+  ],
+  "axes": [
+    {
       "id": "axis-x",
       "name": "X 轴",
       "type": "axis",
@@ -49,7 +61,9 @@
       "parameters": {
         "axis": "1"
       }
-    },
+    }
+  ],
+  "platforms": [
     {
       "id": "platform-xy",
       "name": "XY 平台",
@@ -58,16 +72,6 @@
       "enabled": true,
       "parameters": {
         "note": "步进示教 / 平台监控联调"
-      }
-    },
-    {
-      "id": "cam1",
-      "name": "演示相机",
-      "type": "cameradev",
-      "driverId": "sim1",
-      "enabled": true,
-      "parameters": {
-        "role": "demo"
       }
     }
   ],

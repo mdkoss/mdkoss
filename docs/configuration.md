@@ -12,7 +12,9 @@
 | `cycleMs` | int | 主循环周期提示（毫秒），默认 20 |
 | `databasePath` | string? | SQLite 路径，默认 `data/mdk.db` |
 | `drivers` | array | 驱动列表 |
-| `devices` | array | 设备列表 |
+| `devices` | array | 一般设备（gpio/vio/camera/…）；不含 axis / platform |
+| `axes` | array | 单轴设备列表（`type=axis`） |
+| `platforms` | array | 平台设备列表（`platform` / `x` / `xy` / `xyz` / …） |
 | `tasks` | array | 任务列表 |
 | `vars` | object | 启动时写入变量中心的初始值 |
 | `recipeVarKeys` | string[] | 参与配方管理的 vars 键子集；为空时从所有 recipe 推断 |
@@ -64,20 +66,22 @@
 |------|------|
 | `id` / `name` | 设备 id 与显示名 |
 | `type` | 设备类型（大小写不敏感） |
-| `driverId` | 单驱动设备的默认驱动；平台设备可作为各轴默认驱动 |
+| `driverId` | 单驱动设备的默认驱动 |
 | `enabled` | 为 false 时不实例化 |
 | `parameters` | 类型相关参数块 |
 
+> 兼容：旧配置若把 `axis` / platform 写在 `devices[]` 内，`MdkSetting.Load` / `Save` 会通过 `NormalizeSections()` 迁到 `axes` / `platforms`。
+
 ### 设备类型一览
 
-| type | 所在程序集 | 说明 |
-|------|------------|------|
-| `gpio` | Core | 多驱动物理 IO 路由，`in.*` / `out.*` 映射到 `driverId:address` |
-| `vio` | Core | 虚拟 IO，单驱动，地址形如 `vio.{deviceId}.in\|out.{alias}` |
-| `axis` | Core | 单轴设备 |
-| `platform` | Core | 多轴平台；也支持 `xy` / `xyz` / `xyzu` / `xyzuv` / `xyzuvw` 作为 type 简写 |
-| `cameradev` | Core | 相机类设备占位 |
-| `serialdev` | Extensions.Serial | RS-232C 串口 |
+| type | 所在程序集 | 配置字段 | 说明 |
+|------|------------|----------|------|
+| `gpio` | Core | `devices` | 多驱动物理 IO 路由，`in.*` / `out.*` 映射到 `driverId:address` 或 `address\|label` |
+| `vio` | Core | `devices` | 虚拟 IO，单驱动，地址形如 `vio.{deviceId}.in\|out.{alias}` |
+| `axis` | Core | `axes` | 单轴设备 |
+| `platform` / `x` / `xy` / `xyz` / … | Core | `platforms` | 多轴平台；type 可为 kind 简写 |
+| `cameradev` | Core | `devices` | 相机类设备占位 |
+| `serialdev` | Extensions.Serial | `devices` | RS-232C 串口 |
 | `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
 | `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
 | `devpyscript` | Extensions.PyScript | 外部进程执行 Python 脚本（见 `src/MDKOSS.Extensions.PyScript`） |
@@ -96,13 +100,6 @@
 - 禁止物理 `driverId:address` 路由
 
 解析：`VioDeviceParameterSet`
-
-### platform parameters
-
-- `kind` 或 type 简写：`xy`、`xyz`、`xyzu`、`xyzuv`、`xyzuvw`
-- `axis.X`、`axis.Y` 等：按轴指定驱动 id；未指定时使用顶层 `driverId`
-
-解析：`PlatformDeviceParameterSet`
 
 ### serialdev parameters
 
@@ -149,6 +146,58 @@
 | `autoStart` | 设备 Start 时自动监听 | `true` |
 
 解析：`ModServerDeviceParameters`（`src/MDKOSS.Extensions.ModServer`）。
+
+## axes[]
+
+与 `devices[]` 同结构；`type` 固定为 `axis`。
+
+```json
+{
+  "id": "AxisX",
+  "name": "检测X轴",
+  "type": "axis",
+  "driverId": "drv-m1",
+  "enabled": true,
+  "parameters": {
+    "axis": "1",
+    "model": "Servo_2L_1O",
+    "homeVel": "10.00",
+    "pulsePerUnit": "10000",
+    "maxVel": "150.00",
+    "accel": "2000.00"
+  }
+}
+```
+
+解析：`AxisDeviceParameterSet`
+
+## platforms[]
+
+与 `devices[]` 同结构；`type` 为 `platform` 或 kind 简写（`x` / `xy` / `xyz` / …）。
+
+```json
+{
+  "id": "plat-measure",
+  "name": "检测平台",
+  "type": "xy",
+  "driverId": "drv-m1",
+  "enabled": true,
+  "parameters": {
+    "kind": "xy",
+    "model": "PlatformXyz",
+    "axis.X": "drv-m1",
+    "axisIndex.X": "1",
+    "axis.Y": "drv-m1",
+    "axisIndex.Y": "2"
+  }
+}
+```
+
+- `kind` 或 type 简写：`x`、`xy`、`xyz`、`xyzu`、`xyzuv`、`xyzuvw`
+- `axis.X`、`axis.Y` 等：按轴指定驱动 id；未指定时使用顶层 `driverId`
+- `axisIndex.X` 等：驱动内轴号
+
+解析：`PlatformDeviceParameterSet`
 
 ## tasks[]
 

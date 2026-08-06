@@ -100,9 +100,10 @@ public sealed class WinFormsComponentConfigFormTests
             Assert.Equal("Updated GPIO", device.Name);
             Assert.Equal("drv-updated", device.DriverId);
             Assert.Equal("kept", device.Parameters["custom"]);
-            Assert.Equal("drv-updated:7", device.Parameters["in.ready"]);
-            Assert.Equal("ready signal", device.Parameters["desc.ready"]);
-            Assert.Equal("drv-updated:1", device.Parameters["out.start"]);
+            // Same-driver points prefer short form address|label (no desc.* keys).
+            Assert.Equal("7|ready signal", device.Parameters["in.ready"]);
+            Assert.False(device.Parameters.ContainsKey("desc.ready"));
+            Assert.Equal("1", device.Parameters["out.start"]);
 
             var task = Assert.Single(saved.Tasks);
             Assert.Equal("drv-updated", task.DriverId);

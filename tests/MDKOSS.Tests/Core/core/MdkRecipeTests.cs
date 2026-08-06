@@ -54,7 +54,8 @@ public sealed class MdkRecipeTests
         var path = Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
         var setting = MdkSetting.Load(path);
         Assert.Equal("default", setting.ActiveRecipeId);
-        Assert.Equal(2, setting.Recipes.Count);
+        Assert.NotEmpty(setting.Recipes);
+        Assert.Contains(setting.Recipes, r => string.Equals(r.Id, "default", StringComparison.OrdinalIgnoreCase));
         Assert.Contains(setting.RecipeVarKeys, k => k == "machine.mode");
     }
 

@@ -34,9 +34,11 @@ public sealed class MdkSetting
     public List<DeviceConfig> Devices { get; set; } = [];
 
     /// <summary>Axis devices (<c>type=axis</c>), stored as top-level JSON <c>axes</c>.</summary>
+    [JsonPropertyName("axes")]
     public List<DeviceConfig> Axes { get; set; } = [];
 
     /// <summary>Platform devices (platform / xy / xyz / …), stored as top-level JSON <c>platforms</c>.</summary>
+    [JsonPropertyName("platforms")]
     public List<DeviceConfig> Platforms { get; set; } = [];
 
     /// <summary>Seed variables loaded at startup.</summary>

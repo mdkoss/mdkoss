@@ -27,6 +27,7 @@ public sealed class MdkConfigStoreTests
                     Id = "gpio1",
                     Name = "GPIO",
                     Type = "gpio",
+                    DriverId = "drv1",
                     Enabled = true,
                     Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
@@ -34,6 +35,9 @@ public sealed class MdkConfigStoreTests
                         ["out.lamp"] = "drv1:Y0",
                     },
                 },
+            ],
+            Axes =
+            [
                 new MdkSetting.DeviceConfig
                 {
                     Id = "axis1",
@@ -42,6 +46,9 @@ public sealed class MdkConfigStoreTests
                     DriverId = "drv1",
                     Enabled = true,
                 },
+            ],
+            Platforms =
+            [
                 new MdkSetting.DeviceConfig
                 {
                     Id = "plat1",
@@ -66,7 +73,7 @@ public sealed class MdkConfigStoreTests
         var result = store.ExportSetting(setting, "memory");
 
         Assert.Equal(1, result.Drivers);
-        Assert.Equal(3, result.Devices);
+        Assert.Equal(1, result.Devices);
         Assert.Equal(2, result.Gpios);
         Assert.Equal(1, result.Axis);
         Assert.Equal(1, result.Platform);
@@ -76,7 +83,7 @@ public sealed class MdkConfigStoreTests
 
         var counts = store.CountTables();
         Assert.Equal(1, counts.Drivers);
-        Assert.Equal(3, counts.Devices);
+        Assert.Equal(1, counts.Devices);
         Assert.Equal(2, counts.Gpios);
         Assert.Equal(1, counts.Axis);
         Assert.Equal(1, counts.Platform);
@@ -103,6 +110,10 @@ public sealed class MdkConfigStoreTests
                 },
             ],
             Devices =
+            [
+                new MdkSetting.DeviceConfig { Id = "gpio1", Name = "GPIO", Type = "gpio", DriverId = "sim" },
+            ],
+            Axes =
             [
                 new MdkSetting.DeviceConfig { Id = "d1", Name = "Dev", Type = "axis", DriverId = "sim" },
             ],
@@ -133,7 +144,9 @@ public sealed class MdkConfigStoreTests
         Assert.Equal("sim", loaded.Drivers[0].Id);
         Assert.Equal("1.2.3.4", loaded.Drivers[0].Parameters["ip"]);
         Assert.Single(loaded.Devices);
-        Assert.Equal("axis", loaded.Devices[0].Type);
+        Assert.Equal("gpio", loaded.Devices[0].Type);
+        Assert.Single(loaded.Axes);
+        Assert.Equal("axis", loaded.Axes[0].Type);
         Assert.Single(loaded.Tasks);
         Assert.Equal("poll", loaded.Tasks[0].Name);
         Assert.Single(loaded.Recipes);

@@ -8,7 +8,7 @@
 |------|------|
 | [architecture.md](./architecture.md) | 总体架构：分层、生命周期、数据流、与 mdkruntime 的关系 |
 | [project-layout.md](./project-layout.md) | 解决方案结构、项目拆分、目录与模块职责 |
-| [configuration.md](./configuration.md) | JSON 配置模型（drivers / devices / tasks / vars / recipes） |
+| [configuration.md](./configuration.md) | JSON 配置模型（drivers / devices / axes / platforms / tasks / vars / recipes） |
 | [core-subsystems.md](./core-subsystems.md) | 驱动、设备、任务调度、变量中心、配方管理 |
 | [extensions.md](./extensions.md) | MDKOSS.Extensions 扩展机制与注册表 |
 | [monitoring-api.md](./monitoring-api.md) | HTTP 监控服务、静态 HMI 页面、REST API |

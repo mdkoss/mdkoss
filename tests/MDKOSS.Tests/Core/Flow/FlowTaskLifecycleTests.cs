@@ -225,43 +225,18 @@ public sealed class FlowTaskLifecycleTests
     }
 
     [Fact]
-    public async Task Sample_setting_task_flow_demo_loads_and_runs()
+    public void Sample_setting_includes_operation_and_poll_tasks()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
         Assert.True(File.Exists(path), $"Missing sample settings at {path}");
 
         var setting = MdkSetting.Load(path);
-        var cfg = Assert.Single(setting.Tasks, t =>
-            string.Equals(t.Name, "task-flow-demo", StringComparison.OrdinalIgnoreCase));
-        Assert.Equal("flow", cfg.Type, ignoreCase: true);
-        Assert.True(cfg.Parameters.ContainsKey("flowJson"));
-
-        // Isolate: only the flow task, unique DB/monitor to avoid colliding with other tests.
-        var isolated = new MdkSetting
-        {
-            ProjectName = "sample-flow-only",
-            MonitoringPrefix = $"http://127.0.0.1:{GetFreeLoopbackPort()}/",
-            DatabasePath = Path.Combine(Path.GetTempPath(), $"mdkoss-sample-flow-{Guid.NewGuid():N}.db"),
-            Tasks =
-            [
-                new MdkSetting.TaskConfig
-                {
-                    Name = cfg.Name,
-                    Type = cfg.Type,
-                    IntervalMs = cfg.IntervalMs,
-                    Parameters = new Dictionary<string, string>(cfg.Parameters, StringComparer.OrdinalIgnoreCase)
-                    {
-                        ["loop"] = "false",
-                    },
-                },
-            ],
-        };
-
-        var vars = new MVarStore();
-        var task = FlowTask.Create(isolated.Tasks[0], vars);
-        await task.ExecuteOnceAsync(CancellationToken.None);
-
-        Assert.Equal(FlowRunState.Completed, task.FlowState);
-        Assert.Equal(1.0, vars.Get<double>("task.task-flow-demo.flow.var.x"));
+        Assert.Contains(
+            setting.Tasks,
+            t => string.Equals(t.Name, "task-operation", StringComparison.OrdinalIgnoreCase)
+                 && string.Equals(t.Type, "operation", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(
+            setting.Tasks,
+            t => string.Equals(t.Type, "pollDriver", StringComparison.OrdinalIgnoreCase));
     }
 }

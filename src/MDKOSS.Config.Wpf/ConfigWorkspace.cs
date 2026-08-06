@@ -880,7 +880,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Devices:
             case ConfigModule.Axis:
             case ConfigModule.Platform:
-                req.Id = UniqueId(_setting.Devices.Select(d => d.Id), "dev-new");
+                req.Id = UniqueId(AllDeviceIds(), "dev-new");
                 req.Name = req.Id;
                 req.DriverId = req.DriverOptions.FirstOrDefault() ?? "";
                 break;
@@ -942,10 +942,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             ConfigModule.Drivers => _setting.Drivers,
             ConfigModule.Devices => _setting.Devices.Where(IsDevicesModuleEntry).ToList(),
-            ConfigModule.Axis => _setting.Devices
-                .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase)).ToList(),
-            ConfigModule.Platform => _setting.Devices
-                .Where(IsPlatformModuleEntry).ToList(),
+            ConfigModule.Axis => _setting.Axes.ToList(),
+            ConfigModule.Platform => _setting.Platforms.ToList(),
             ConfigModule.Tasks => _setting.Tasks,
             ConfigModule.Recipes => _setting.Recipes,
             ConfigModule.Vars => _setting.Vars,
@@ -1162,8 +1160,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             "axis", "model", "homeVel", "pulsePerUnit", "maxVel", "accel",
             "negLimit", "posLimit", "homeSensor", "note",
         };
-        var axes = _setting.Devices
-            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase));
+        var axes = _setting.Axes;
         var rows = axes.Select(d =>
         {
             var p = d.Parameters;
@@ -1202,7 +1199,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             throw new InvalidOperationException("Excel 中没有有效的 Axis 行。");
         }
 
-        MergeDevices(devices, replace, d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase));
+        MergeDevices(_setting.Axes, devices, replace);
     }
 
     private static MdkSetting.DeviceConfig? ParseAxisRow(Dictionary<string, string> r)
@@ -1247,7 +1244,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             "axis.X", "axisIndex.X", "axis.Y", "axisIndex.Y", "axis.Z", "axisIndex.Z",
             "axis.U", "axisIndex.U", "axis.V", "axisIndex.V", "axis.W", "axisIndex.W",
         };
-        var plats = _setting.Devices.Where(IsPlatformModuleEntry);
+        var plats = _setting.Platforms;
         var rows = plats.Select(d =>
         {
             var p = d.Parameters;
@@ -1291,7 +1288,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             throw new InvalidOperationException("Excel 中没有有效的 Platform 行。");
         }
 
-        MergeDevices(devices, replace, IsPlatformModuleEntry);
+        MergeDevices(_setting.Platforms, devices, replace, IsPlatformModuleEntry);
     }
 
     private static MdkSetting.DeviceConfig? ParsePlatformRow(Dictionary<string, string> r)
@@ -1439,14 +1436,18 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 var rows = (JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [])
                     .Where(IsDevicesModuleEntry)
                     .ToList();
-                // 替换时只动 Devices 条目，保留 Platform 族
-                MergeDevices(rows, replace, IsDevicesModuleEntry);
+                MergeDevices(_setting.Devices, rows, replace, IsDevicesModuleEntry);
                 break;
             }
             case ConfigModule.Axis:
             {
                 var rows = JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [];
-                MergeDevices(rows, replace, d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase));
+                foreach (var row in rows)
+                {
+                    row.Type = "axis";
+                }
+
+                MergeDevices(_setting.Axes, rows, replace);
                 break;
             }
             case ConfigModule.Platform:
@@ -1454,7 +1455,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 var rows = (JsonSerializer.Deserialize<List<MdkSetting.DeviceConfig>>(json, JsonOptions) ?? [])
                     .Where(IsPlatformModuleEntry)
                     .ToList();
-                MergeDevices(rows, replace, IsPlatformModuleEntry);
+                MergeDevices(_setting.Platforms, rows, replace, IsPlatformModuleEntry);
                 break;
             }
             case ConfigModule.Tasks:
@@ -1507,28 +1508,30 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     }
 
     private void MergeDevices(
+        List<MdkSetting.DeviceConfig> target,
         List<MdkSetting.DeviceConfig> rows,
         bool replace,
-        Func<MdkSetting.DeviceConfig, bool>? filter)
+        Func<MdkSetting.DeviceConfig, bool>? filter = null)
     {
         if (replace && filter is null)
         {
-            _setting.Devices = rows;
+            target.Clear();
+            target.AddRange(rows);
             return;
         }
 
         if (replace && filter is not null)
         {
-            _setting.Devices.RemoveAll(d => filter(d));
+            target.RemoveAll(d => filter(d));
         }
 
         foreach (var row in rows)
         {
-            var existing = _setting.Devices.FirstOrDefault(d =>
+            var existing = target.FirstOrDefault(d =>
                 string.Equals(d.Id, row.Id, StringComparison.OrdinalIgnoreCase));
             if (existing is null)
             {
-                _setting.Devices.Add(row);
+                target.Add(row);
             }
             else
             {
@@ -1585,7 +1588,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     private ComponentItem CommitDevice(CreateComponentRequest req)
     {
-        if (_setting.Devices.Any(d => string.Equals(d.Id, req.Id, StringComparison.OrdinalIgnoreCase)))
+        if (DeviceIdExists(req.Id))
         {
             throw new InvalidOperationException($"设备 Id 已存在: {req.Id}");
         }
@@ -1601,7 +1604,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Enabled = req.Enabled,
             Parameters = new Dictionary<string, string>(req.Parameters, StringComparer.OrdinalIgnoreCase),
         };
-        _setting.Devices.Add(d);
+        DeviceBucket(_module).Add(d);
         return new ComponentItem { Key = d.Id, Source = d, Module = _module, Title = d.Id };
     }
 
@@ -1687,8 +1690,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform
                 when _selected.Source is MdkSetting.DeviceConfig dev:
                 var ndev = CloneDevice(dev);
-                ndev.Id = UniqueId(_setting.Devices.Select(x => x.Id), dev.Id + "_copy");
-                _setting.Devices.Add(ndev);
+                ndev.Id = UniqueId(AllDeviceIds(), dev.Id + "_copy");
+                DeviceBucket(_module).Add(ndev);
                 SelectModule(_module, ndev.Id);
                 break;
             case ConfigModule.Tasks when _selected.Source is MdkSetting.TaskConfig t:
@@ -1727,7 +1730,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform
                 when _selected.Source is MdkSetting.DeviceConfig dev:
-                _setting.Devices.Remove(dev);
+                DeviceBucket(_module).Remove(dev);
                 break;
             case ConfigModule.Tasks when _selected.Source is MdkSetting.TaskConfig t:
                 _setting.Tasks.Remove(t);
@@ -1765,6 +1768,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     _selected.Source as MdkSetting.DeviceConfig,
                     delta,
                     IsDevicesModuleEntry);
+                break;
+            case ConfigModule.Axis:
+                MoveInList(_setting.Axes, _selected.Source as MdkSetting.DeviceConfig, delta);
+                break;
+            case ConfigModule.Platform:
+                MoveInList(_setting.Platforms, _selected.Source as MdkSetting.DeviceConfig, delta);
                 break;
             case ConfigModule.Tasks:
                 MoveInList(_setting.Tasks, _selected.Source as MdkSetting.TaskConfig, delta);
@@ -1856,12 +1865,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Enabled = d.Enabled,
             HasEnabled = true,
         }).ToList(),
-        // Platform 不作为 Devices 子项：仅出现在 Platform 模块树下
+        // Platform / Axis 不作为 Devices 子项：仅出现在各自模块树下
         ConfigModule.Devices => _setting.Devices
             .Where(IsDevicesModuleEntry)
             .Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
-        ConfigModule.Axis => _setting.Devices
-            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
+        ConfigModule.Axis => _setting.Axes
             .Select(d =>
             {
                 var item = ToDeviceItem(d, ConfigModule.Axis);
@@ -1872,8 +1880,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 item.Subtitle = $"{model} · axis={axisNo}";
                 return item;
             }).ToList(),
-        ConfigModule.Platform => _setting.Devices
-            .Where(IsPlatformModuleEntry)
+        ConfigModule.Platform => _setting.Platforms
             .Select(d =>
             {
                 var item = ToDeviceItem(d, ConfigModule.Platform);
@@ -2206,7 +2213,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     {
         var newId = RequireId(Draft.FieldId, "设备 Id");
         if (!string.Equals(newId, d.Id, StringComparison.OrdinalIgnoreCase)
-            && _setting.Devices.Any(x => string.Equals(x.Id, newId, StringComparison.OrdinalIgnoreCase)))
+            && DeviceIdExists(newId))
         {
             throw new InvalidOperationException($"设备 Id 已存在: {newId}");
         }
@@ -2441,10 +2448,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             throw new InvalidOperationException("存在重复的 driver id。");
         }
 
-        var deviceIds = _setting.Devices.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)).ToList();
+        var deviceIds = _setting.AllDeviceConfigs
+            .Select(d => d.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .ToList();
         if (deviceIds.Count != deviceIds.Distinct(StringComparer.OrdinalIgnoreCase).Count())
         {
-            throw new InvalidOperationException("存在重复的 device id。");
+            throw new InvalidOperationException("存在重复的 device / axis / platform id。");
         }
     }
 
@@ -2504,16 +2514,36 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private static bool IsPlatformModuleEntry(MdkSetting.DeviceConfig d) =>
         PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant());
 
-    private static bool IsDevicesModuleEntry(MdkSetting.DeviceConfig d) => !IsPlatformModuleEntry(d);
+    private static bool IsAxisModuleEntry(MdkSetting.DeviceConfig d) =>
+        string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDevicesModuleEntry(MdkSetting.DeviceConfig d) =>
+        !IsAxisModuleEntry(d) && !IsPlatformModuleEntry(d);
+
+    private List<MdkSetting.DeviceConfig> DeviceBucket(ConfigModule module) => module switch
+    {
+        ConfigModule.Axis => _setting.Axes,
+        ConfigModule.Platform => _setting.Platforms,
+        _ => _setting.Devices,
+    };
+
+    private IEnumerable<string> AllDeviceIds() =>
+        _setting.AllDeviceConfigs.Select(d => d.Id);
+
+    private bool DeviceIdExists(string id) =>
+        _setting.AllDeviceConfigs.Any(d => string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
 
     private static void EnsureDeviceTypeForModule(ConfigModule module, string type)
     {
         var lower = (type ?? "").ToLowerInvariant();
         var isPlatform = PlatformDeviceParameterSet.IsPlatformFamilyType(lower);
-        if (module == ConfigModule.Devices && isPlatform)
+        var isAxis = string.Equals(lower, "axis", StringComparison.OrdinalIgnoreCase);
+        if (module == ConfigModule.Devices && (isPlatform || isAxis))
         {
             throw new InvalidOperationException(
-                "Platform 不属于 Devices 模块。请在左侧「Platform」下新建或编辑。");
+                isAxis
+                    ? "Axis 不属于 Devices 模块。请在左侧「Axis」下新建或编辑。"
+                    : "Platform 不属于 Devices 模块。请在左侧「Platform」下新建或编辑。");
         }
 
         if (module == ConfigModule.Platform && !isPlatform)
@@ -2522,7 +2552,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 "Platform 模块仅支持 platform / x / xy / xyz / xyzu / xyzuv / xyzuvw。");
         }
 
-        if (module == ConfigModule.Axis && !string.Equals(lower, "axis", StringComparison.OrdinalIgnoreCase))
+        if (module == ConfigModule.Axis && !isAxis)
         {
             throw new InvalidOperationException("Axis 模块仅支持 type=axis。");
         }

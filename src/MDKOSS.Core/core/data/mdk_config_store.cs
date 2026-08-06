@@ -74,6 +74,8 @@ public sealed class MdkConfigStore : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(setting);
 
+        setting.NormalizeSections();
+
         var now = FormatUtc(DateTime.UtcNow);
         var result = new ConfigExportResult();
 
@@ -121,7 +123,10 @@ public sealed class MdkConfigStore : IDisposable
             LoadSysConfigs(conn, setting);
             setting.Drivers = LoadDrivers(conn);
             setting.Devices = LoadDevices(conn);
+            setting.Axes = LoadAxes(conn);
+            setting.Platforms = LoadPlatforms(conn);
             setting.Recipes = LoadRecipes(conn);
+            setting.NormalizeSections();
 
             AppendLog(
                 conn,
@@ -1003,6 +1008,64 @@ public sealed class MdkConfigStore : IDisposable
                 Id = reader.GetString(0),
                 Name = reader.GetString(1),
                 Type = reader.GetString(2),
+                DriverId = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                Enabled = reader.GetInt64(4) != 0,
+                Parameters = DeserializeOrDefault(
+                    reader.GetString(5),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)),
+            });
+        }
+
+        return list;
+    }
+
+    private static List<MdkSetting.DeviceConfig> LoadAxes(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id, name, driver_id, enabled, parameters_json
+            FROM axis
+            ORDER BY id COLLATE NOCASE
+            """;
+        var list = new List<MdkSetting.DeviceConfig>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(new MdkSetting.DeviceConfig
+            {
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                Type = "axis",
+                DriverId = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
+                Enabled = reader.GetInt64(3) != 0,
+                Parameters = DeserializeOrDefault(
+                    reader.GetString(4),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)),
+            });
+        }
+
+        return list;
+    }
+
+    private static List<MdkSetting.DeviceConfig> LoadPlatforms(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id, name, kind, driver_id, enabled, parameters_json
+            FROM platform
+            ORDER BY id COLLATE NOCASE
+            """;
+        var list = new List<MdkSetting.DeviceConfig>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            var kind = reader.IsDBNull(2) ? string.Empty : reader.GetString(2).Trim();
+            var type = string.IsNullOrWhiteSpace(kind) ? "platform" : kind;
+            list.Add(new MdkSetting.DeviceConfig
+            {
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                Type = type,
                 DriverId = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
                 Enabled = reader.GetInt64(4) != 0,
                 Parameters = DeserializeOrDefault(

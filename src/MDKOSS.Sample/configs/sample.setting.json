@@ -52,16 +52,6 @@
       }
     },
     {
-      "id": "head-bond",
-      "name": "贴装头 XYZU",
-      "type": "xyzu",
-      "driverId": "drv-motion",
-      "enabled": true,
-      "parameters": {
-        "note": "Bond Head：X/Y 平面、Z 升降、U 旋转补偿"
-      }
-    },
-    {
       "id": "cam-downlook",
       "name": "下视相机",
       "type": "cameradev",
@@ -119,6 +109,18 @@
         "safeZ": "0",
         "startIndex": "0",
         "note": "Leadframe / PCB 贴装 nest"
+      }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "head-bond",
+      "name": "贴装头 XYZU",
+      "type": "xyzu",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "note": "Bond Head：X/Y 平面、Z 升降、U 旋转补偿"
       }
     }
   ],

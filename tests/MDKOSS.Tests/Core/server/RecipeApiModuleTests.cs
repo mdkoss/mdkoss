@@ -69,7 +69,9 @@ public sealed class RecipeApiModuleTests
 
         try
         {
-            using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
+            // Bypass system proxy — otherwise loopback can return 502 from a corporate proxy.
+            using var handler = new HttpClientHandler { UseProxy = false };
+            using var client = new HttpClient(handler) { BaseAddress = new Uri($"http://127.0.0.1:{port}") };
 
             var listJson = await client.GetStringAsync("/api/recipe");
             using var listDoc = JsonDocument.Parse(listJson);

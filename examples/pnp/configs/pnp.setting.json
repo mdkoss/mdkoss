@@ -36,14 +36,6 @@
       }
     },
     {
-      "id": "robot-xyz",
-      "name": "PNP Robot XYZU",
-      "type": "xyzu",
-      "driverId": "drv-main",
-      "enabled": true,
-      "parameters": {}
-    },
-    {
       "id": "cam-top",
       "name": "Top Camera",
       "type": "cameradev",
@@ -94,6 +86,16 @@
         "safeZ": "0",
         "startIndex": "0"
       }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "robot-xyz",
+      "name": "PNP Robot XYZU",
+      "type": "xyzu",
+      "driverId": "drv-main",
+      "enabled": true,
+      "parameters": {}
     }
   ],
   "tasks": [

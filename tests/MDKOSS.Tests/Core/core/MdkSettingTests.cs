@@ -11,9 +11,35 @@ public sealed class MdkSettingTests
         var path = Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
         Assert.True(File.Exists(path), $"Missing sample settings at {path}");
         var setting = MdkSetting.Load(path);
-        Assert.Equal("MDKOSS-Demo", setting.ProjectName);
+        Assert.Equal("检测上下料机", setting.ProjectName);
         Assert.NotEmpty(setting.Drivers);
-        Assert.Contains(setting.Drivers, d => string.Equals(d.Id, "drv-main", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(setting.Drivers, d => string.Equals(d.Id, "drv-m1", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEmpty(setting.Devices);
+        Assert.NotEmpty(setting.Axes);
+        Assert.NotEmpty(setting.Platforms);
+    }
+
+    [Fact]
+    public void NormalizeSections_moves_legacy_axis_platform_out_of_devices()
+    {
+        var setting = new MdkSetting
+        {
+            Devices =
+            [
+                new MdkSetting.DeviceConfig { Id = "gpio1", Type = "gpio" },
+                new MdkSetting.DeviceConfig { Id = "ax1", Type = "axis" },
+                new MdkSetting.DeviceConfig { Id = "plat1", Type = "xy" },
+            ],
+        };
+
+        setting.NormalizeSections();
+
+        Assert.Single(setting.Devices);
+        Assert.Equal("gpio1", setting.Devices[0].Id);
+        Assert.Single(setting.Axes);
+        Assert.Equal("ax1", setting.Axes[0].Id);
+        Assert.Single(setting.Platforms);
+        Assert.Equal("plat1", setting.Platforms[0].Id);
     }
 
     [Fact]
