@@ -245,6 +245,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     public ObservableCollection<ComponentItem> Items { get; } = [];
     public ObservableCollection<DbRowItem> DbRows { get; } = [];
+    /// <summary>Column names of the currently browsed SQLite table (middle pane headers).</summary>
+    public ObservableCollection<string> DbColumns { get; } = [];
     public PropertyDraft Draft { get; } = new();
 
     public string ProjectName => _setting.ProjectName;
@@ -653,9 +655,19 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.ShowParameters = true;
         Draft.ParametersAsObject = false;
         Draft.ParameterRows.Clear();
-        foreach (var kv in row.Cells)
+        var columnOrder = DbColumns.Count > 0 ? DbColumns.ToList() : row.Columns.ToList();
+        if (columnOrder.Count == 0)
         {
-            Draft.ParameterRows.Add(new KvPairRow { Key = kv.Key, Value = kv.Value });
+            columnOrder = row.Cells.Keys.ToList();
+        }
+
+        foreach (var col in columnOrder)
+        {
+            Draft.ParameterRows.Add(new KvPairRow
+            {
+                Key = col,
+                Value = row.Cells.TryGetValue(col, out var v) ? v : "",
+            });
         }
 
         Draft.SyncJsonFromRows();
@@ -675,13 +687,19 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         ModuleTitle = $"Database / {snap.TableName}";
         OnPropertyChanged(nameof(DbPrimaryKey));
 
+        DbColumns.Clear();
+        foreach (var col in snap.Columns)
+        {
+            DbColumns.Add(col);
+        }
+
         DbRows.Clear();
         foreach (var row in snap.Rows)
         {
             var key = snap.PrimaryKey is not null && row.TryGetValue(snap.PrimaryKey, out var pk)
                 ? pk
                 : Guid.NewGuid().ToString("N");
-            DbRows.Add(new DbRowItem(key, row));
+            DbRows.Add(new DbRowItem(key, row, snap.Columns));
         }
 
         SelectedDbRow = null;
@@ -753,16 +771,19 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 $"{SelectedDbTable}-new");
         }
 
-        SelectedDbRow = new DbRowItem(blank.GetValueOrDefault(_dbPrimaryKey ?? "", ""), blank);
+        SelectedDbRow = new DbRowItem(
+            blank.GetValueOrDefault(_dbPrimaryKey ?? "", ""),
+            blank,
+            snap.Columns);
         Draft.IsReadOnly = false;
         Draft.Headline = $"DB / {SelectedDbTable} / 新建行";
         Draft.ShowId = Draft.ShowName = Draft.ShowType = Draft.ShowDriverId =
             Draft.ShowInterval = Draft.ShowDescription = Draft.ShowValue = Draft.ShowEnabled = false;
         Draft.ShowParameters = true;
         Draft.ParameterRows.Clear();
-        foreach (var kv in blank)
+        foreach (var col in snap.Columns)
         {
-            Draft.ParameterRows.Add(new KvPairRow { Key = kv.Key, Value = kv.Value });
+            Draft.ParameterRows.Add(new KvPairRow { Key = col, Value = blank.GetValueOrDefault(col, "") });
         }
 
         Draft.SyncJsonFromRows();
@@ -794,6 +815,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         SelectedDbTable = null;
         SelectedDbRow = null;
         _dbPrimaryKey = null;
+        DbColumns.Clear();
         DbRows.Clear();
         OnPropertyChanged(nameof(DbPrimaryKey));
     }
@@ -2080,11 +2102,20 @@ public sealed class DbRowItem : INotifyPropertyChanged
 {
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    public DbRowItem(string rowKey, IReadOnlyDictionary<string, string> cells)
+    public DbRowItem(
+        string rowKey,
+        IReadOnlyDictionary<string, string> cells,
+        IReadOnlyList<string>? columnOrder = null)
     {
         RowKey = rowKey;
         Cells = new Dictionary<string, string>(cells, StringComparer.OrdinalIgnoreCase);
-        var ordered = Cells.ToList();
+        Columns = columnOrder is { Count: > 0 }
+            ? columnOrder.ToList()
+            : Cells.Keys.ToList();
+
+        var ordered = Columns
+            .Select(c => (Key: c, Value: Cells.TryGetValue(c, out var v) ? v : ""))
+            .ToList();
         Col1 = ordered.Count > 0 ? ordered[0].Value : "";
         Col2 = ordered.Count > 1 ? ordered[1].Value : "";
         Col3 = ordered.Count > 2 ? ordered[2].Value : "";
@@ -2094,11 +2125,18 @@ public sealed class DbRowItem : INotifyPropertyChanged
 
     public string RowKey { get; }
     public Dictionary<string, string> Cells { get; }
+    public IReadOnlyList<string> Columns { get; }
     public string Col1 { get; }
     public string Col2 { get; }
     public string Col3 { get; }
     public string Col4 { get; }
     public string Preview { get; }
+
+    /// <summary>Cell value by column name (WPF indexer binding: <c>[{column}]</c>).</summary>
+    public string this[string columnName] =>
+        Cells.TryGetValue(columnName, out var value) ? value : "";
+
+    public string GetCell(string columnName) => this[columnName];
 
     private static string Truncate(string? value, int max)
     {

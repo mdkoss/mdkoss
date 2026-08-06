@@ -73,11 +73,10 @@ public partial class MainWindow : Window
     {
         if (_workspace.IsBrowsingDbTable)
         {
-            EnterDbTableGridMode();
+            SyncDbTableBrowser();
             return;
         }
 
-        ExitDbTableGridMode();
         if (CenterGrid.Columns.Count < 4)
         {
             return;
@@ -91,34 +90,9 @@ public partial class MainWindow : Window
         CenterGrid.Columns[3].Visibility = string.IsNullOrEmpty(_workspace.ColHeader4) ? Visibility.Collapsed : Visibility.Visible;
     }
 
-    private void EnterDbTableGridMode()
+    private void SyncDbTableBrowser()
     {
-        _suppressGridSelection = true;
-        CenterGrid.AutoGenerateColumns = false;
-        CenterGrid.Columns.Clear();
-        CenterGrid.Columns.Add(new DataGridTextColumn { Header = _workspace.DbPrimaryKey ?? "PK", Binding = new Binding(nameof(DbRowItem.RowKey)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col1", Binding = new Binding(nameof(DbRowItem.Col1)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col2", Binding = new Binding(nameof(DbRowItem.Col2)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-        CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Preview", Binding = new Binding(nameof(DbRowItem.Preview)), Width = new DataGridLength(2.2, DataGridLengthUnitType.Star) });
-        CenterGrid.ItemsSource = _workspace.DbRows;
-        CenterGrid.SelectedItem = _workspace.SelectedDbRow;
-        _suppressGridSelection = false;
-    }
-
-    private void ExitDbTableGridMode()
-    {
-        if (ReferenceEquals(CenterGrid.ItemsSource, _workspace.DbRows))
-        {
-            _suppressGridSelection = true;
-            CenterGrid.Columns.Clear();
-            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col1", Binding = new Binding(nameof(ComponentItem.Col1)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col2", Binding = new Binding(nameof(ComponentItem.Col2)), Width = new DataGridLength(1, DataGridLengthUnitType.Star) });
-            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col3", Binding = new Binding(nameof(ComponentItem.Col3)), Width = 90 });
-            CenterGrid.Columns.Add(new DataGridTextColumn { Header = "Col4", Binding = new Binding(nameof(ComponentItem.Col4)), Width = 110 });
-            CenterGrid.ItemsSource = _workspace.Items;
-            CenterGrid.SelectedItem = _workspace.SelectedItem;
-            _suppressGridSelection = false;
-        }
+        DbTableBrowser.SelectRow(_workspace.SelectedDbRow);
     }
 
     private void RebuildNavTree(ConfigModule? selectModule, string? selectKey)
@@ -234,12 +208,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (CenterGrid.SelectedItem is DbRowItem dbRow)
-        {
-            _workspace.SelectDbRow(dbRow);
-            return;
-        }
-
         if (CenterGrid.SelectedItem is ComponentItem item)
         {
             _workspace.SelectItem(item);
@@ -255,15 +223,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void DbTableBrowser_RowSelectionChanged(object? sender, DbRowItem? row)
+    {
+        if (_suppressGridSelection)
+        {
+            return;
+        }
+
+        _workspace.SelectDbRow(row);
+    }
+
     private void SyncDbGridSelection(DbRowItem? row)
     {
         _suppressGridSelection = true;
-        CenterGrid.SelectedItem = row;
-        if (row is not null)
-        {
-            CenterGrid.ScrollIntoView(row);
-        }
-
+        DbTableBrowser.SelectRow(row);
         _suppressGridSelection = false;
     }
 
