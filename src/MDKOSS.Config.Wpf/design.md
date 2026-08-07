@@ -96,6 +96,9 @@
 
 ## 属性编辑策略
 
-- 固定字段按模块类型显示（Driver / Device / Task / Recipe / Var / Sys）。
-- `parameters` / recipe vars 以 JSON 文本编辑；应用时解析失败则提示，不写回。
-- GPIO 点位：编辑 route（`driverId:address`）与 alias；回写所属设备 `parameters`。
+- 固定字段按模块类型显示（Driver / Device / Task / Recipe / Var / Sys / Gpio）。
+- `parameters` / recipe vars 以 Key/Value 表编辑（Key 可下拉模板键）；应用时解析失败则提示，不写回。
+- 右侧改属性后需「应用属性」或 **Ctrl+Enter** 写回内存；**切换组件 / 保存** 时若有未应用修改会提示。
+- Type 变更时自动**补全**该类型缺失参数键（与新建弹窗一致）。
+- GPIO 点位：编辑 route / alias / label；回写所属设备 `parameters`。
+- Gpios / Axis / Platform：支持 Excel 批量导入导出，适合大量点位/轴参数快速改。

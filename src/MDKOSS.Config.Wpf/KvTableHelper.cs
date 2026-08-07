@@ -35,11 +35,11 @@ public static class ConfigTypeCatalog
     public static IReadOnlyList<string> DriverTypes { get; } =
         ["sim", "gts", "dmc"];
 
-    /// <summary>Devices 模块可选类型（不含 platform 族，平台请在 Platform 模块编辑）。</summary>
+    /// <summary>Devices 模块可选类型（不含 axis / platform 族，请在对应模块编辑）。</summary>
     public static IReadOnlyList<string> DeviceTypes { get; } =
     [
-        "gpio", "vio", "axis",
-        "cameradev", "serialdev", "tcpdev", "extcamera", "devpyscript", "tray",
+        "gpio", "vio",
+        "cameradev", "serialdev", "tcpdev", "extcamera", "devpyscript", "devmodserver", "devmodclient", "tray",
     ];
 
     public static IReadOnlyList<string> TaskTypes { get; } =

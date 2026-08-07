@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -118,22 +119,67 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     private bool _showParameters = true;
     private bool _isReadOnly;
     private bool _parametersAsObject;
+    private bool _isDirty;
+    private bool _suppressDirty;
     private string _headline = "未选择组件";
+
+    public PropertyDraft()
+    {
+        ParameterRows.CollectionChanged += OnParameterRowsChanged;
+    }
 
     public ObservableCollection<KvPairRow> ParameterRows { get; } = [];
     public ObservableCollection<string> TypeOptions { get; } = [];
     public ObservableCollection<string> DriverOptions { get; } = [];
+    /// <summary>Suggested parameter keys for the current Type (editable ComboBox source).</summary>
+    public ObservableCollection<string> ParamKeySuggestions { get; } = [];
 
     public string Headline { get => _headline; set { _headline = value; OnPropertyChanged(); } }
-    public string FieldId { get => _fieldId; set { _fieldId = value; OnPropertyChanged(); } }
-    public string FieldName { get => _fieldName; set { _fieldName = value; OnPropertyChanged(); } }
-    public string FieldType { get => _fieldType; set { _fieldType = value; OnPropertyChanged(); } }
-    public string FieldDriverId { get => _fieldDriverId; set { _fieldDriverId = value; OnPropertyChanged(); } }
-    public string FieldInterval { get => _fieldInterval; set { _fieldInterval = value; OnPropertyChanged(); } }
-    public string FieldDescription { get => _fieldDescription; set { _fieldDescription = value; OnPropertyChanged(); } }
-    public string FieldValue { get => _fieldValue; set { _fieldValue = value; OnPropertyChanged(); } }
-    public string FieldParameters { get => _fieldParameters; set { _fieldParameters = value; OnPropertyChanged(); } }
-    public bool FieldEnabled { get => _fieldEnabled; set { _fieldEnabled = value; OnPropertyChanged(); } }
+    public string FieldId
+    {
+        get => _fieldId;
+        set { if (_fieldId == value) return; _fieldId = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldName
+    {
+        get => _fieldName;
+        set { if (_fieldName == value) return; _fieldName = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldType
+    {
+        get => _fieldType;
+        set { if (_fieldType == value) return; _fieldType = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldDriverId
+    {
+        get => _fieldDriverId;
+        set { if (_fieldDriverId == value) return; _fieldDriverId = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldInterval
+    {
+        get => _fieldInterval;
+        set { if (_fieldInterval == value) return; _fieldInterval = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldDescription
+    {
+        get => _fieldDescription;
+        set { if (_fieldDescription == value) return; _fieldDescription = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldValue
+    {
+        get => _fieldValue;
+        set { if (_fieldValue == value) return; _fieldValue = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public string FieldParameters
+    {
+        get => _fieldParameters;
+        set { if (_fieldParameters == value) return; _fieldParameters = value; OnPropertyChanged(); MarkDirty(); }
+    }
+    public bool FieldEnabled
+    {
+        get => _fieldEnabled;
+        set { if (_fieldEnabled == value) return; _fieldEnabled = value; OnPropertyChanged(); MarkDirty(); }
+    }
 
     public bool ShowId { get => _showId; set { _showId = value; OnPropertyChanged(); } }
     public bool ShowName { get => _showName; set { _showName = value; OnPropertyChanged(); } }
@@ -146,20 +192,54 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     public bool ShowParameters { get => _showParameters; set { _showParameters = value; OnPropertyChanged(); } }
     public bool IsReadOnly { get => _isReadOnly; set { _isReadOnly = value; OnPropertyChanged(); } }
     public bool ParametersAsObject { get => _parametersAsObject; set { _parametersAsObject = value; OnPropertyChanged(); } }
+    public bool IsDirty
+    {
+        get => _isDirty;
+        private set
+        {
+            if (_isDirty == value) return;
+            _isDirty = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(DirtyBadge));
+        }
+    }
+
+    public string DirtyBadge => IsDirty && !IsReadOnly ? "已修改（未应用）" : string.Empty;
+
+    public IDisposable SuppressDirtyScope() => new DirtySuppressor(this);
+
+    public void ClearDirty() => IsDirty = false;
+
+    public void MarkDirty()
+    {
+        if (_suppressDirty || IsReadOnly)
+        {
+            return;
+        }
+
+        IsDirty = true;
+    }
 
     public void Clear(string message = "未选择组件")
     {
-        Headline = message;
-        IsReadOnly = true;
-        ShowId = ShowName = ShowType = ShowDriverId = ShowInterval = ShowDescription = ShowValue = ShowEnabled = ShowParameters = false;
-        FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
-        FieldParameters = "{}";
-        FieldInterval = "100";
-        FieldEnabled = true;
-        ParametersAsObject = false;
-        ParameterRows.Clear();
-        TypeOptions.Clear();
-        DriverOptions.Clear();
+        using (SuppressDirtyScope())
+        {
+            Headline = message;
+            IsReadOnly = true;
+            ShowId = ShowName = ShowType = ShowDriverId = ShowInterval = ShowDescription = ShowValue = ShowEnabled = ShowParameters = false;
+            FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
+            FieldParameters = "{}";
+            FieldInterval = "100";
+            FieldEnabled = true;
+            ParametersAsObject = false;
+            DetachAllParamRows();
+            ParameterRows.Clear();
+            TypeOptions.Clear();
+            DriverOptions.Clear();
+            ParamKeySuggestions.Clear();
+        }
+
+        ClearDirty();
     }
 
     public void SetTypeOptions(IEnumerable<string> options)
@@ -177,6 +257,17 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         foreach (var o in options)
         {
             DriverOptions.Add(o);
+        }
+    }
+
+    public void SetParamKeySuggestions(IEnumerable<string> keys)
+    {
+        ParamKeySuggestions.Clear();
+        foreach (var key in keys.Where(k => !string.IsNullOrWhiteSpace(k))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(k => k, StringComparer.OrdinalIgnoreCase))
+        {
+            ParamKeySuggestions.Add(key);
         }
     }
 
@@ -210,8 +301,63 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     public Dictionary<string, object?> CollectObjectParameters() =>
         KvTableHelper.ToObjectDict(ParameterRows);
 
+    private void OnParameterRowsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems is not null)
+        {
+            foreach (KvPairRow row in e.OldItems)
+            {
+                row.PropertyChanged -= OnParamRowPropertyChanged;
+            }
+        }
+
+        if (e.NewItems is not null)
+        {
+            foreach (KvPairRow row in e.NewItems)
+            {
+                row.PropertyChanged += OnParamRowPropertyChanged;
+            }
+        }
+
+        if (e.Action == NotifyCollectionChangedAction.Reset)
+        {
+            foreach (var row in ParameterRows)
+            {
+                row.PropertyChanged -= OnParamRowPropertyChanged;
+                row.PropertyChanged += OnParamRowPropertyChanged;
+            }
+        }
+
+        MarkDirty();
+    }
+
+    private void OnParamRowPropertyChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+
+    private void DetachAllParamRows()
+    {
+        foreach (var row in ParameterRows)
+        {
+            row.PropertyChanged -= OnParamRowPropertyChanged;
+        }
+    }
+
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    private sealed class DirtySuppressor : IDisposable
+    {
+        private readonly PropertyDraft _draft;
+        private readonly bool _previous;
+
+        public DirtySuppressor(PropertyDraft draft)
+        {
+            _draft = draft;
+            _previous = draft._suppressDirty;
+            draft._suppressDirty = true;
+        }
+
+        public void Dispose() => _draft._suppressDirty = _previous;
+    }
 }
 
 public sealed class ConfigWorkspace : INotifyPropertyChanged
@@ -744,6 +890,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         OpenDbTable(SelectedDbTable);
         var row = DbRows.FirstOrDefault(r => string.Equals(r.RowKey, pk, StringComparison.OrdinalIgnoreCase));
         SelectDbRow(row);
+        Draft.ClearDirty();
         StatusLine = $"已保存表 {SelectedDbTable} 行 {pk}";
     }
 
@@ -1835,6 +1982,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             : _module == ConfigModule.Tasks
                 ? Draft.FieldName
                 : Draft.FieldId;
+        Draft.ClearDirty();
         SelectModule(_module, key);
         StatusLine = $"已应用属性 · {key}";
     }
@@ -2096,80 +2244,100 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             return;
         }
 
-        Draft.IsReadOnly = false;
-        Draft.Headline = $"{ModuleDisplayName(item.Module)} / {item.Title}";
-        Draft.SetTypeOptions(ConfigTypeCatalog.TypesForModule(item.Module));
-        Draft.SetDriverOptions(_setting.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
-
-        switch (item.Module)
+        using (Draft.SuppressDirtyScope())
         {
-            case ConfigModule.Drivers when item.Source is MdkSetting.DriverConfig d:
-                SetDraftVisibility(id: true, type: true, enabled: true, parameters: true);
-                Draft.FieldId = d.Id;
-                Draft.FieldType = d.Type;
-                Draft.FieldEnabled = d.Enabled;
-                Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Drivers, d.Type, null, d.Parameters));
-                break;
-            case ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform
-                when item.Source is MdkSetting.DeviceConfig d:
-                SetDraftVisibility(id: true, name: true, type: true, driverId: true, enabled: true, parameters: true);
-                Draft.FieldId = d.Id;
-                Draft.FieldName = d.Name;
-                Draft.FieldType = d.Type;
-                Draft.FieldDriverId = d.DriverId;
-                Draft.FieldEnabled = d.Enabled;
-                Draft.LoadStringParameters(FillMissingTypeParameters(item.Module, d.Type, d.DriverId, d.Parameters));
-                break;
-            case ConfigModule.Tasks when item.Source is MdkSetting.TaskConfig t:
-                SetDraftVisibility(name: true, type: true, driverId: true, interval: true, parameters: true);
-                Draft.ShowId = false;
-                Draft.FieldName = t.Name;
-                Draft.FieldType = t.Type;
-                Draft.FieldDriverId = t.DriverId;
-                Draft.FieldInterval = t.IntervalMs.ToString();
-                Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Tasks, t.Type, t.DriverId, t.Parameters));
-                break;
-            case ConfigModule.Recipes when item.Source is MdkSetting.RecipeConfig r:
-                SetDraftVisibility(id: true, name: true, description: true, parameters: true);
-                Draft.ShowType = false;
-                Draft.ShowEnabled = false;
-                Draft.FieldId = r.Id;
-                Draft.FieldName = r.Name;
-                Draft.FieldDescription = r.Description ?? "";
-                Draft.LoadObjectParameters(r.Vars);
-                break;
-            case ConfigModule.Vars:
-                SetDraftVisibility(id: true, value: true);
-                Draft.ShowType = Draft.ShowEnabled = Draft.ShowParameters = false;
-                Draft.FieldId = item.Key;
-                Draft.FieldValue = item.Col2;
-                break;
-            case ConfigModule.SysConfig:
-                SetDraftVisibility(id: true, value: true);
-                Draft.ShowType = Draft.ShowEnabled = Draft.ShowParameters = false;
-                Draft.FieldId = item.Key;
-                Draft.FieldValue = item.Col2;
-                Draft.ShowId = true;
-                break;
-            case ConfigModule.Gpios when item.Source is GpioEditTarget g:
-                SetDraftVisibility(id: true, name: true, type: true, description: true, value: true);
-                Draft.ShowEnabled = Draft.ShowParameters = false;
-                Draft.SetTypeOptions(ConfigTypeCatalog.GpioDirections);
-                Draft.FieldId = g.Device.Id;
-                Draft.FieldName = g.Alias;
-                Draft.FieldType = g.Direction;
-                Draft.FieldValue = g.Route;
-                Draft.FieldDescription = GpioDeviceParameterSet.ReadLabel(
-                    g.Device.Parameters,
-                    g.Alias,
-                    g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"));
-                break;
-            case ConfigModule.Database:
-                // Selecting a table opens row browser (handled in SelectItem).
-                Draft.Clear($"Database · 选择左侧表节点浏览/编辑行");
-                Draft.IsReadOnly = true;
-                break;
+            Draft.IsReadOnly = false;
+            Draft.Headline = $"{ModuleDisplayName(item.Module)} / {item.Title}";
+            Draft.SetTypeOptions(ConfigTypeCatalog.TypesForModule(item.Module));
+            Draft.SetDriverOptions(_setting.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
+
+            switch (item.Module)
+            {
+                case ConfigModule.Drivers when item.Source is MdkSetting.DriverConfig d:
+                    SetDraftVisibility(id: true, type: true, enabled: true, parameters: true);
+                    Draft.FieldId = d.Id;
+                    Draft.FieldType = d.Type;
+                    Draft.FieldEnabled = d.Enabled;
+                    Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Drivers, d.Type, null, d.Parameters));
+                    RefreshParamKeySuggestions(ConfigModule.Drivers, d.Type, null);
+                    break;
+                case ConfigModule.Devices or ConfigModule.Axis or ConfigModule.Platform
+                    when item.Source is MdkSetting.DeviceConfig d:
+                    SetDraftVisibility(id: true, name: true, type: true, driverId: true, enabled: true, parameters: true);
+                    Draft.FieldId = d.Id;
+                    Draft.FieldName = d.Name;
+                    Draft.FieldType = d.Type;
+                    Draft.FieldDriverId = d.DriverId;
+                    Draft.FieldEnabled = d.Enabled;
+                    Draft.LoadStringParameters(FillMissingTypeParameters(item.Module, d.Type, d.DriverId, d.Parameters));
+                    RefreshParamKeySuggestions(item.Module, d.Type, d.DriverId);
+                    break;
+                case ConfigModule.Tasks when item.Source is MdkSetting.TaskConfig t:
+                    SetDraftVisibility(name: true, type: true, driverId: true, interval: true, parameters: true);
+                    Draft.ShowId = false;
+                    Draft.FieldName = t.Name;
+                    Draft.FieldType = t.Type;
+                    Draft.FieldDriverId = t.DriverId;
+                    Draft.FieldInterval = t.IntervalMs.ToString();
+                    Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Tasks, t.Type, t.DriverId, t.Parameters));
+                    RefreshParamKeySuggestions(ConfigModule.Tasks, t.Type, t.DriverId);
+                    break;
+                case ConfigModule.Recipes when item.Source is MdkSetting.RecipeConfig r:
+                    SetDraftVisibility(id: true, name: true, description: true, parameters: true);
+                    Draft.ShowType = false;
+                    Draft.ShowEnabled = false;
+                    Draft.FieldId = r.Id;
+                    Draft.FieldName = r.Name;
+                    Draft.FieldDescription = r.Description ?? "";
+                    Draft.LoadObjectParameters(r.Vars);
+                    Draft.SetParamKeySuggestions(_setting.RecipeVarKeys);
+                    break;
+                case ConfigModule.Vars:
+                    SetDraftVisibility(id: true, value: true);
+                    Draft.ShowType = Draft.ShowEnabled = Draft.ShowParameters = false;
+                    Draft.FieldId = item.Key;
+                    Draft.FieldValue = item.Col2;
+                    Draft.ParamKeySuggestions.Clear();
+                    break;
+                case ConfigModule.SysConfig:
+                    SetDraftVisibility(id: true, value: true);
+                    Draft.ShowType = Draft.ShowEnabled = Draft.ShowParameters = false;
+                    Draft.FieldId = item.Key;
+                    Draft.FieldValue = item.Col2;
+                    Draft.ShowId = true;
+                    Draft.ParamKeySuggestions.Clear();
+                    break;
+                case ConfigModule.Gpios when item.Source is GpioEditTarget g:
+                    SetDraftVisibility(id: true, name: true, type: true, description: true, value: true);
+                    Draft.ShowEnabled = Draft.ShowParameters = false;
+                    Draft.SetTypeOptions(ConfigTypeCatalog.GpioDirections);
+                    Draft.FieldId = g.Device.Id;
+                    Draft.FieldName = g.Alias;
+                    Draft.FieldType = g.Direction;
+                    Draft.FieldValue = g.Route;
+                    Draft.FieldDescription = GpioDeviceParameterSet.ReadLabel(
+                        g.Device.Parameters,
+                        g.Alias,
+                        g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"));
+                    Draft.ParamKeySuggestions.Clear();
+                    break;
+                case ConfigModule.Database:
+                    // Selecting a table opens row browser (handled in SelectItem).
+                    Draft.Clear($"Database · 选择左侧表节点浏览/编辑行");
+                    Draft.IsReadOnly = true;
+                    break;
+            }
         }
+
+        Draft.ClearDirty();
+    }
+
+    private void RefreshParamKeySuggestions(ConfigModule module, string? type, string? driverId)
+    {
+        var keys = ConfigTypeCatalog.DefaultParameters(module, type, driverId).Keys
+            .Concat(Draft.ParameterRows.Select(r => r.Key))
+            .Where(k => !string.IsNullOrWhiteSpace(k));
+        Draft.SetParamKeySuggestions(keys);
     }
 
     private void SetDraftVisibility(
@@ -2417,6 +2585,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ? new Dictionary<string, string>(template, StringComparer.OrdinalIgnoreCase)
             : DeviceParameterPresets.ApplyTemplate(existing, template, overwriteEmptyOnly: true);
         Draft.LoadStringParameters(next);
+        RefreshParamKeySuggestions(_module, type, driverId);
+        Draft.MarkDirty();
         StatusLine = replaceAll
             ? $"已按类型 {type} 重置参数模板"
             : $"已补全类型 {type} 缺失参数";

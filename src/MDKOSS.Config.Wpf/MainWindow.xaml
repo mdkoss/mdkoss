@@ -15,6 +15,7 @@
     <KeyBinding Key="S" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Save}"/>
     <KeyBinding Key="N" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Add}"/>
     <KeyBinding Key="D" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Duplicate}"/>
+    <KeyBinding Key="Enter" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Apply}"/>
     <KeyBinding Key="Delete" Command="{x:Static local:MainWindowCommands.Delete}"/>
   </Window.InputBindings>
   <DockPanel>
@@ -40,7 +41,7 @@
         <MenuItem Header="上移" Click="MoveUp_Click"/>
         <MenuItem Header="下移" Click="MoveDown_Click"/>
         <Separator/>
-        <MenuItem Header="应用属性" Click="Apply_Click"/>
+        <MenuItem Header="应用属性" Click="Apply_Click" InputGestureText="Ctrl+Enter"/>
       </MenuItem>
       <MenuItem Header="模块(_M)">
         <MenuItem Header="导出当前模块…" Click="ExportModule_Click"/>
@@ -209,7 +210,10 @@
           <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
             <Button DockPanel.Dock="Right" Content="应用属性" Click="Apply_Click"
                     Background="{StaticResource AccentBrush}" Foreground="White" Padding="12,4"
+                    ToolTip="将右侧修改写回当前组件（Ctrl+Enter）"
                     IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"/>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding DirtyBadge}" Margin="0,0,10,0"
+                       VerticalAlignment="Center" Foreground="#C9A227" FontSize="11"/>
             <TextBlock Text="{Binding Headline}" FontWeight="SemiBold" TextWrapping="Wrap"
                        VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}"/>
           </DockPanel>
@@ -227,9 +231,12 @@
               </StackPanel>
               <StackPanel Visibility="{Binding ShowType, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="Type / Direction" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
-                <ComboBox ItemsSource="{Binding TypeOptions}"
+                <ComboBox x:Name="TypeCombo"
+                          ItemsSource="{Binding TypeOptions}"
                           Text="{Binding FieldType, UpdateSourceTrigger=PropertyChanged}"
                           IsEditable="True" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"
+                          SelectionChanged="TypeCombo_SelectionChanged"
+                          LostFocus="TypeCombo_LostFocus"
                           Margin="0,0,0,8"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowDriverId, Converter={StaticResource BoolToVis}}">
@@ -281,14 +288,28 @@
                           CanUserAddRows="True"
                           CanUserDeleteRows="True"
                           HeadersVisibility="Column"
-                          MinHeight="160"
-                          MaxHeight="280"
+                          MinHeight="200"
+                          MaxHeight="420"
                           IsReadOnly="{Binding IsReadOnly}"
                           BorderBrush="{StaticResource BorderBrushKey}"
                           BorderThickness="1"
                           Margin="0,0,0,6">
                   <DataGrid.Columns>
-                    <DataGridTextColumn Header="Key" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                    <DataGridTemplateColumn Header="Key" Width="*">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Key}" VerticalAlignment="Center" Margin="4,0"/>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                      <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                          <ComboBox IsEditable="True"
+                                    ItemsSource="{Binding DataContext.ParamKeySuggestions, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}"
+                                    IsTextSearchEnabled="True"/>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
                   </DataGrid.Columns>
                 </DataGrid>

@@ -17,6 +17,7 @@ public static class MainWindowCommands
     public static readonly RoutedUICommand Add = new("Add", nameof(Add), typeof(MainWindowCommands));
     public static readonly RoutedUICommand Duplicate = new("Duplicate", nameof(Duplicate), typeof(MainWindowCommands));
     public static readonly RoutedUICommand Delete = new("Delete", nameof(Delete), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Apply = new("Apply", nameof(Apply), typeof(MainWindowCommands));
 }
 
 public partial class MainWindow : Window
@@ -35,6 +36,7 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Add, (_, _) => AddComponent()));
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Duplicate, (_, _) => DuplicateComponent()));
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Delete, (_, _) => DeleteComponent()));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Apply, (_, _) => Apply_Click(this, new RoutedEventArgs())));
 
         Loaded += (_, _) =>
         {
@@ -174,6 +176,25 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!TryFlushPendingDraft())
+        {
+            // Revert tree selection to current item.
+            _suppressTreeSelection = true;
+            try
+            {
+                if (_workspace.SelectedItem?.Key is { } key)
+                {
+                    HighlightTreeComponent(_workspace.CurrentModule, key);
+                }
+            }
+            finally
+            {
+                _suppressTreeSelection = false;
+            }
+
+            return;
+        }
+
         switch (tag.Kind)
         {
             case NavKind.Project:
@@ -210,6 +231,14 @@ public partial class MainWindow : Window
 
         if (CenterGrid.SelectedItem is ComponentItem item)
         {
+            if (_workspace.SelectedItem is not null
+                && !ReferenceEquals(_workspace.SelectedItem, item)
+                && !TryFlushPendingDraft())
+            {
+                SyncGridSelection(_workspace.SelectedItem);
+                return;
+            }
+
             _workspace.SelectItem(item);
             if (_workspace.IsBrowsingDbTable)
             {
@@ -227,6 +256,15 @@ public partial class MainWindow : Window
     {
         if (_suppressGridSelection)
         {
+            return;
+        }
+
+        if (_workspace.SelectedDbRow is not null
+            && row is not null
+            && !ReferenceEquals(_workspace.SelectedDbRow, row)
+            && !TryFlushPendingDraft())
+        {
+            SyncDbGridSelection(_workspace.SelectedDbRow);
             return;
         }
 
@@ -312,6 +350,11 @@ public partial class MainWindow : Window
 
     private void OpenSetting()
     {
+        if (!TryFlushPendingDraft())
+        {
+            return;
+        }
+
         var dlg = new OpenFileDialog
         {
             Filter =
@@ -343,6 +386,11 @@ public partial class MainWindow : Window
     {
         try
         {
+            if (!TryFlushPendingDraft(requireApply: true))
+            {
+                return;
+            }
+
             if (_workspace.DocumentKind == ConfigDocumentKind.None)
             {
                 // No primary doc yet — ask user which format to create.
@@ -379,8 +427,112 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// If the property draft is dirty, ask to apply / discard / cancel.
+    /// When <paramref name="requireApply"/> is true (e.g. Save), only Apply or Cancel — no discard.
+    /// </summary>
+    private bool TryFlushPendingDraft(bool requireApply = false)
+    {
+        if (!_workspace.Draft.IsDirty || _workspace.Draft.IsReadOnly)
+        {
+            return true;
+        }
+
+        MessageBoxResult answer;
+        if (requireApply)
+        {
+            answer = MessageBox.Show(
+                this,
+                "属性已修改但尚未应用。\n是 = 应用后继续\n否 = 取消",
+                "未应用的修改",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (answer != MessageBoxResult.Yes)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            answer = MessageBox.Show(
+                this,
+                "属性已修改但尚未应用。\n是 = 应用\n否 = 丢弃\n取消 = 留在当前项",
+                "未应用的修改",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel)
+            {
+                return false;
+            }
+
+            if (answer == MessageBoxResult.No)
+            {
+                // Reload draft from the current selection to discard edits.
+                var keep = _workspace.SelectedItem;
+                _workspace.SelectItem(keep);
+                return true;
+            }
+        }
+
+        try
+        {
+            if (!_workspace.Draft.IsReadOnly && _workspace.Draft.ShowParameters)
+            {
+                _workspace.Draft.SyncJsonFromRows();
+            }
+
+            _workspace.ApplyDraft();
+            RefreshTreeKeepingSelection();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "应用属性失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    private void TypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _workspace.Draft.IsReadOnly || !_workspace.Draft.ShowParameters || !_workspace.Draft.IsDirty)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ApplyTypeDefaultParameters(replaceAll: false);
+        }
+        catch
+        {
+            // Type without template — ignore.
+        }
+    }
+
+    private void TypeCombo_LostFocus(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded || _workspace.Draft.IsReadOnly || !_workspace.Draft.ShowParameters || !_workspace.Draft.IsDirty)
+        {
+            return;
+        }
+
+        try
+        {
+            _workspace.ApplyTypeDefaultParameters(replaceAll: false);
+        }
+        catch
+        {
+            // ignore unknown types
+        }
+    }
+
     private void Reload_Click(object sender, RoutedEventArgs e)
     {
+        if (!TryFlushPendingDraft())
+        {
+            return;
+        }
+
         try
         {
             _workspace.Reload();
@@ -971,12 +1123,14 @@ public partial class MainWindow : Window
         MessageBox.Show(
             this,
             "打开 JSON 或 DB 均可编辑。\n" +
-            "· 保存：写回当前打开的格式（JSON→JSON，DB→原 DB）\n" +
+            "· 保存：写回当前打开的格式；若属性未应用会先提示应用\n" +
             "· 另存为 / 导出：切换或写出另一种格式\n" +
             "· 新建：弹窗快速配置；Type/DriverId 可下拉选择\n" +
-            "· Parameters：右侧 Key/Value 表编辑；模块菜单可导入导出\n" +
-            "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow 独立窗（见 Debug/*.md）\n" +
-            "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」。",
+            "· Parameters：右侧 Key/Value 表；Key 可下拉选模板键；补全/重置模板\n" +
+            "· 切换组件时若有未应用修改，可选择应用 / 丢弃 / 取消\n" +
+            "· Ctrl+Enter 快速应用属性；Gpios/Axis/Platform 支持 Excel 批量导入导出\n" +
+            "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow 独立窗\n" +
+            "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」或 Ctrl+Enter。",
             "界面说明",
             MessageBoxButton.OK,
             MessageBoxImage.Information);
