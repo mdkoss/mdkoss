@@ -154,6 +154,19 @@ public sealed class MdkSetting
             axis.Parameters ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             AxisDeviceParameterSet.SyncKindParameter(axis.Parameters, axis.Type);
         }
+
+        foreach (var device in Devices)
+        {
+            if (!string.Equals(device.Type, "gpio", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            device.Parameters ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            device.Parameters = GpioDeviceParameterSet.NormalizeParameters(
+                device.Parameters,
+                device.DriverId);
+        }
     }
 
     /// <summary>Driver registration config.</summary>

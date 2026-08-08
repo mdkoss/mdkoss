@@ -13,6 +13,7 @@ public sealed class MdkConfigStore : IDisposable
     {
         PropertyNameCaseInsensitive = true,
         WriteIndented = false,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     private static readonly (string Locale, string Key, string Value)[] DefaultLangEntries =

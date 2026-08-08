@@ -79,6 +79,25 @@ public sealed class GpioDeviceParameterSetTests
     }
 
     [Fact]
+    public void NormalizeParameters_expands_short_form_folds_desc_and_orders_keys()
+    {
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["out.lamp"] = "d1:1",
+            ["in.start"] = "0|启动",
+            ["desc.lamp"] = "灯",
+            ["driverIds"] = "d1,d2",
+        };
+
+        var normalized = GpioDeviceParameterSet.NormalizeParameters(parameters, "d1");
+        Assert.Equal(["in.start", "out.lamp", "driverIds"], normalized.Keys.ToArray());
+        Assert.Equal("d1:0|启动", normalized["in.start"]);
+        Assert.Equal("d1:1|灯", normalized["out.lamp"]);
+        Assert.Equal("d1,d2", normalized["driverIds"]);
+        Assert.False(normalized.ContainsKey("desc.lamp"));
+    }
+
+    [Fact]
     public void ParseDriverScopeIds_returns_null_when_missing()
     {
         Assert.Null(GpioDeviceParameterSet.ParseDriverScopeIds(new Dictionary<string, string>()));

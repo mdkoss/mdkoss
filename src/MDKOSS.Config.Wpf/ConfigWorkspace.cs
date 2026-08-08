@@ -3323,6 +3323,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             AxisDeviceParameterSet.SyncKindParameter(parameters, type);
         }
+        else if (_module == ConfigModule.Devices && IsGpioOrVioDeviceType(type))
+        {
+            // Draft only shows device-level keys; keep existing point bindings.
+            parameters = MergePreservingPointParameters(d.Parameters, parameters);
+        }
 
         d.Parameters = parameters;
     }
@@ -3635,6 +3640,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         string? driverId,
         IReadOnlyDictionary<string, string> existing)
     {
+        // GPIO / VIO point templates belong in Gpios / Vios modules — do not inject sample IO
+        // into an existing device draft when opening Devices.
+        if (module == ConfigModule.Devices && IsGpioOrVioDeviceType(type))
+        {
+            return new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase);
+        }
+
         var template = ConfigTypeCatalog.DefaultParameters(module, type, driverId);
         if (template.Count == 0)
         {
@@ -3645,6 +3657,63 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             new Dictionary<string, string>(existing, StringComparer.OrdinalIgnoreCase),
             template,
             overwriteEmptyOnly: true);
+    }
+
+    private static bool IsGpioOrVioDeviceType(string? type) =>
+        IsGpioDeviceType(type) || IsVioDeviceType(type);
+
+    private static bool IsGpioDeviceType(string? type) =>
+        string.Equals((type ?? "").Trim(), "gpio", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsVioDeviceType(string? type) =>
+        string.Equals((type ?? "").Trim(), "vio", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Keep only non-point keys (e.g. driverIds) for gpio/vio device-level editing.</summary>
+    private static Dictionary<string, string> FilterDeviceLevelParameters(
+        IReadOnlyDictionary<string, string> parameters)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in parameters)
+        {
+            if (IsGpioPointParameterKey(kv.Key))
+            {
+                continue;
+            }
+
+            result[kv.Key] = kv.Value;
+        }
+
+        return result;
+    }
+
+    private static Dictionary<string, string> MergePreservingPointParameters(
+        IReadOnlyDictionary<string, string> previous,
+        IReadOnlyDictionary<string, string> editedDeviceLevel)
+    {
+        var merged = new Dictionary<string, string>(editedDeviceLevel, StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in previous)
+        {
+            if (IsGpioPointParameterKey(kv.Key))
+            {
+                merged[kv.Key] = kv.Value;
+            }
+        }
+
+        return merged;
+    }
+
+    private static bool IsGpioPointParameterKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        var k = key.Trim();
+        return k.StartsWith("in.", StringComparison.OrdinalIgnoreCase)
+               || k.StartsWith("out.", StringComparison.OrdinalIgnoreCase)
+               || k.StartsWith("desc.", StringComparison.OrdinalIgnoreCase)
+               || k.StartsWith("vio.", StringComparison.OrdinalIgnoreCase);
     }
 
     private void ValidateBeforeSave()
@@ -3933,7 +4002,8 @@ internal sealed record GpioEditTarget(
     string Direction,
     string Alias,
     string DriverId,
-    string Port);
+    string Port,
+    string Label = "");
 
 /// <summary>Projected VIO point row for the VIOs module.</summary>
 internal sealed record VioEditTarget(

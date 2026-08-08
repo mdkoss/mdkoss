@@ -168,4 +168,84 @@ public static class GpioDeviceParameterSet
 
         return "";
     }
+
+    /// <summary>
+    /// Rewrites <c>in.*</c>/<c>out.*</c> values to canonical <c>driverId:address|label</c>,
+    /// folds legacy <c>desc.{alias}</c> into the <c>|label</c> suffix, and returns keys in a stable order
+    /// (<c>in.*</c> → <c>out.*</c> → other) for readable JSON saves.
+    /// Short <c>address|label</c> forms are expanded when <paramref name="defaultDriverId"/> is set.
+    /// </summary>
+    public static Dictionary<string, string> NormalizeParameters(
+        IReadOnlyDictionary<string, string> parameters,
+        string? defaultDriverId = null)
+    {
+        var source = parameters ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var next = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var kv in source.OrderBy(static x => x.Key, ParameterKeyComparer.Instance))
+        {
+            var key = kv.Key?.Trim() ?? "";
+            if (key.Length == 0)
+            {
+                continue;
+            }
+
+            if (key.StartsWith("desc.", StringComparison.OrdinalIgnoreCase))
+            {
+                // Folded into the matching in./out. value below (or dropped if unused).
+                continue;
+            }
+
+            if (key.StartsWith("in.", StringComparison.OrdinalIgnoreCase)
+                || key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
+            {
+                var alias = key.StartsWith("in.", StringComparison.OrdinalIgnoreCase) ? key[3..] : key[4..];
+                var label = ReadLabel(source, alias, kv.Value);
+                if (TryParsePointValue(kv.Value, defaultDriverId, out var driverId, out var address, out _))
+                {
+                    next[key] = FormatPointValue(driverId, address, label);
+                    continue;
+                }
+            }
+
+            next[key] = kv.Value ?? "";
+        }
+
+        return next;
+    }
+
+    private sealed class ParameterKeyComparer : IComparer<string>
+    {
+        public static ParameterKeyComparer Instance { get; } = new();
+
+        public int Compare(string? x, string? y)
+        {
+            var gx = Group(x);
+            var gy = Group(y);
+            var g = gx.CompareTo(gy);
+            return g != 0
+                ? g
+                : string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int Group(string? key)
+        {
+            if (string.IsNullOrEmpty(key))
+            {
+                return 3;
+            }
+
+            if (key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
+            {
+                return 0;
+            }
+
+            if (key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
+            {
+                return 1;
+            }
+
+            return 2;
+        }
+    }
 }

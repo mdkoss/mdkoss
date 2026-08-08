@@ -35,8 +35,8 @@ public sealed class MdkSettingUtf8SaveTests
             Assert.Contains("上下料Y轴", json, StringComparison.Ordinal);
             Assert.Contains("启动按钮", json, StringComparison.Ordinal);
             Assert.Contains("drv-m1:1|启动按钮", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("\u4E0A", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("\u542F", json, StringComparison.Ordinal);
+            Assert.DoesNotContain(@"\u4E0A", json, StringComparison.Ordinal);
+            Assert.DoesNotContain(@"\u542F", json, StringComparison.Ordinal);
             Assert.Contains("样机", json, StringComparison.Ordinal);
         }
         finally

@@ -255,17 +255,17 @@
                            Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowId, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Name (Id)" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelId}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowName, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Desc (描述)" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelName}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowType, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Type / Direction" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelType}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <ComboBox x:Name="TypeCombo"
                           ItemsSource="{Binding TypeOptions}"
                           Text="{Binding FieldType, UpdateSourceTrigger=PropertyChanged}"
@@ -275,27 +275,27 @@
                           Margin="0,0,0,8"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowDriverId, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="DriverId" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelDriverId}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <ComboBox ItemsSource="{Binding DriverOptions}"
                           Text="{Binding FieldDriverId, UpdateSourceTrigger=PropertyChanged}"
                           IsEditable="True" IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}"
                           Margin="0,0,0,8"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowInterval, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="IntervalMs" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelInterval}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldInterval, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowDescription, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Description / Label" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelDescription}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldDescription, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          AcceptsReturn="True" Height="56" TextWrapping="Wrap"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowValue, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Port / Value" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="{Binding LabelValue}" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
-                         AcceptsReturn="True" MinHeight="40" TextWrapping="Wrap"
+                         AcceptsReturn="True" MinHeight="28" TextWrapping="Wrap"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowEnabled, Converter={StaticResource BoolToVis}}" Orientation="Horizontal" Margin="0,0,0,8">
