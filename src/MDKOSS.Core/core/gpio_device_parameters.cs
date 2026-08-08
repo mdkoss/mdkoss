@@ -12,10 +12,10 @@ public readonly record struct GpioPointBinding(
 public static class GpioDeviceParameterSet
 {
     /// <summary>
-    /// Optional <c>driverIds</c> value: comma-separated runtime driver ids. When set, the GPIO device only receives
-    /// those drivers (instead of the full runtime map). Bindings must reference drivers inside this set.
+    /// Optional <c>driverIds</c> value: comma-separated runtime driver ids.
+    /// When unset, the runtime attaches every enabled non-<c>vio</c> driver to the GPIO device.
     /// </summary>
-    /// <returns><see langword="null"/> when unset or blank — meaning use all runtime drivers.</returns>
+    /// <returns><see langword="null"/> when unset or blank — meaning all non-vio drivers.</returns>
     public static HashSet<string>? ParseDriverScopeIds(IReadOnlyDictionary<string, string> parameters)
     {
         if (!parameters.TryGetValue("driverIds", out var raw) || string.IsNullOrWhiteSpace(raw))
@@ -27,15 +27,14 @@ public static class GpioDeviceParameterSet
         return parts.Length == 0 ? null : new HashSet<string>(parts, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>Driver types that belong to virtual IO and must not be attached to <see cref="GpioDevice"/>.</summary>
+    public static bool IsVioDriverType(string? driverType) =>
+        string.Equals((driverType ?? "").Trim(), "vio", StringComparison.OrdinalIgnoreCase);
+
     /// <summary>
     /// Parses <c>in.alias</c> / <c>out.alias</c> keys.
-    /// Value forms:
-    /// <list type="bullet">
-    /// <item><c>driverId:address</c></item>
-    /// <item><c>driverId:address|label</c></item>
-    /// <item><c>address</c> (requires <paramref name="defaultDriverId"/>)</item>
-    /// <item><c>address|label</c> (requires <paramref name="defaultDriverId"/>)</item>
-    /// </list>
+    /// Preferred value form is <c>driverId:address</c> (optional <c>|label</c>) so multi-card IO is unambiguous.
+    /// Short <c>address</c> / <c>address|label</c> remains accepted when <paramref name="defaultDriverId"/> is set.
     /// </summary>
     public static IReadOnlyList<GpioPointBinding> ParseBindings(
         IReadOnlyDictionary<string, string> parameters,
@@ -72,7 +71,7 @@ public static class GpioDeviceParameterSet
 
     /// <summary>
     /// Parses IO parameter value. Desc may be merged after <c>|</c>:
-    /// <c>0|急停</c>, <c>drv-m1:0|急停</c>, <c>0</c>, <c>drv-m1:0</c>.
+    /// <c>drv-m1:0|急停</c>, <c>drv-m1:0</c>, legacy <c>0|急停</c> / <c>0</c> (needs defaultDriverId).
     /// </summary>
     public static bool TryParsePointValue(
         string? raw,
@@ -122,7 +121,8 @@ public static class GpioDeviceParameterSet
     }
 
     /// <summary>
-    /// Formats a point parameter value. Prefer short <c>address|label</c> when the point uses the device driver.
+    /// Formats a point parameter value as <c>driverId:address</c> (optional <c>|label</c>)
+    /// so the owning driver card is always visible in key-value parameters.
     /// </summary>
     public static string FormatPointValue(
         string driverId,
@@ -130,15 +130,20 @@ public static class GpioDeviceParameterSet
         string? label = null,
         string? deviceDriverId = null)
     {
+        _ = deviceDriverId; // retained for call-site compatibility; short form is no longer written.
         var addr = (address ?? "").Trim();
         var drv = (driverId ?? "").Trim();
-        var deviceDrv = (deviceDriverId ?? "").Trim();
-        var useShort = !string.IsNullOrWhiteSpace(deviceDrv)
-                       && string.Equals(drv, deviceDrv, StringComparison.OrdinalIgnoreCase);
-        var core = useShort || string.IsNullOrWhiteSpace(drv)
-            ? addr
-            : $"{drv}:{addr}";
+        if (string.IsNullOrWhiteSpace(drv))
+        {
+            throw new ArgumentException("GPIO point driverId cannot be empty.", nameof(driverId));
+        }
 
+        if (string.IsNullOrWhiteSpace(addr))
+        {
+            throw new ArgumentException("GPIO point address cannot be empty.", nameof(address));
+        }
+
+        var core = $"{drv}:{addr}";
         var lab = (label ?? "").Trim();
         return string.IsNullOrWhiteSpace(lab) ? core : $"{core}|{lab}";
     }

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using MDKOSS.Core;
 
@@ -33,7 +34,7 @@ public sealed class KvPairRow : INotifyPropertyChanged
 public static class ConfigTypeCatalog
 {
     public static IReadOnlyList<string> DriverTypes { get; } =
-        ["sim", "gts", "dmc"];
+        DriverParameterPresets.KnownTypes;
 
     /// <summary>Devices 模块可选类型（不含 axis / platform 族，请在对应模块编辑）。</summary>
     public static IReadOnlyList<string> DeviceTypes { get; } =
@@ -51,14 +52,19 @@ public static class ConfigTypeCatalog
     public static IReadOnlyList<string> PlatformTypes { get; } =
         ["platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"];
 
+    /// <summary>Axis 模块类型：直线轴 / 旋转轴（兼容旧值 <c>axis</c>）。</summary>
+    public static IReadOnlyList<string> AxisTypes { get; } =
+        ["linear", "rotary", "axis"];
+
     public static IReadOnlyList<string> TypesForModule(ConfigModule module) => module switch
     {
         ConfigModule.Drivers => DriverTypes,
         ConfigModule.Devices => DeviceTypes,
-        ConfigModule.Axis => ["axis"],
+        ConfigModule.Axis => AxisTypes,
         ConfigModule.Platform => PlatformTypes,
         ConfigModule.Tasks => TaskTypes,
         ConfigModule.Gpios => GpioDirections,
+        ConfigModule.Vios => ["vio"],
         _ => [],
     };
 
@@ -66,10 +72,11 @@ public static class ConfigTypeCatalog
     {
         ConfigModule.Drivers => "sim",
         ConfigModule.Devices => "gpio",
-        ConfigModule.Axis => "axis",
+        ConfigModule.Axis => "linear",
         ConfigModule.Platform => "xyz",
         ConfigModule.Tasks => "pollDriver",
         ConfigModule.Gpios => "in",
+        ConfigModule.Vios => "vio",
         _ => "",
     };
 
@@ -91,6 +98,7 @@ public static class KvTableHelper
     {
         WriteIndented = true,
         PropertyNameCaseInsensitive = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public static void LoadStringDict(ObservableCollection<KvPairRow> rows, IReadOnlyDictionary<string, string> dict)

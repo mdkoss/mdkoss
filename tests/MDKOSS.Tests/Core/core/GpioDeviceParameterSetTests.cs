@@ -33,10 +33,18 @@ public sealed class GpioDeviceParameterSetTests
     }
 
     [Fact]
-    public void FormatPointValue_prefers_short_form_for_device_driver()
+    public void FormatPointValue_always_includes_driver_id()
     {
         var v = GpioDeviceParameterSet.FormatPointValue("drv-m1", "3", "复位按钮", "drv-m1");
-        Assert.Equal("3|复位按钮", v);
+        Assert.Equal("drv-m1:3|复位按钮", v);
+    }
+
+    [Fact]
+    public void IsVioDriverType_detects_vio()
+    {
+        Assert.True(GpioDeviceParameterSet.IsVioDriverType("vio"));
+        Assert.True(GpioDeviceParameterSet.IsVioDriverType("VIO"));
+        Assert.False(GpioDeviceParameterSet.IsVioDriverType("sim"));
     }
 
     [Fact]

@@ -77,7 +77,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (CenterGrid.Columns.Count < 5)
+        if (CenterGrid.Columns.Count < 7)
         {
             return;
         }
@@ -87,9 +87,13 @@ public partial class MainWindow : Window
         CenterGrid.Columns[2].Header = string.IsNullOrEmpty(_workspace.ColHeader3) ? " " : _workspace.ColHeader3;
         CenterGrid.Columns[3].Header = string.IsNullOrEmpty(_workspace.ColHeader4) ? " " : _workspace.ColHeader4;
         CenterGrid.Columns[4].Header = string.IsNullOrEmpty(_workspace.ColHeader5) ? " " : _workspace.ColHeader5;
+        CenterGrid.Columns[5].Header = string.IsNullOrEmpty(_workspace.ColHeader6) ? " " : _workspace.ColHeader6;
+        CenterGrid.Columns[6].Header = string.IsNullOrEmpty(_workspace.ColHeader7) ? " " : _workspace.ColHeader7;
         CenterGrid.Columns[2].Visibility = string.IsNullOrEmpty(_workspace.ColHeader3) ? Visibility.Collapsed : Visibility.Visible;
         CenterGrid.Columns[3].Visibility = string.IsNullOrEmpty(_workspace.ColHeader4) ? Visibility.Collapsed : Visibility.Visible;
         CenterGrid.Columns[4].Visibility = string.IsNullOrEmpty(_workspace.ColHeader5) ? Visibility.Collapsed : Visibility.Visible;
+        CenterGrid.Columns[5].Visibility = string.IsNullOrEmpty(_workspace.ColHeader6) ? Visibility.Collapsed : Visibility.Visible;
+        CenterGrid.Columns[6].Visibility = string.IsNullOrEmpty(_workspace.ColHeader7) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void SyncDbTableBrowser()
@@ -115,7 +119,7 @@ public partial class MainWindow : Window
 
         var groups = new (string Title, ConfigModule[] Modules)[]
         {
-            ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios]),
+            ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios, ConfigModule.Vios]),
             ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes]),
             ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
         };
@@ -784,6 +788,36 @@ public partial class MainWindow : Window
         }
     }
 
+    private void QuickAddType_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { Tag: string type } || string.IsNullOrWhiteSpace(type))
+        {
+            return;
+        }
+
+        try
+        {
+            if (!TryFlushPendingDraft())
+            {
+                return;
+            }
+
+            var req = _workspace.PrepareCreateRequest(type);
+            var dlg = new ComponentEditorDialog(_workspace.CurrentModule, req) { Owner = this };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _workspace.CommitCreate(req);
+            RefreshTreeKeepingSelection();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "新建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void AddToolbar_Click(object sender, RoutedEventArgs e) => AddComponent();
 
     private void AddParamRow_Click(object sender, RoutedEventArgs e)
@@ -868,7 +902,7 @@ public partial class MainWindow : Window
     {
         if (!_workspace.SupportsExcelModuleExchange)
         {
-            MessageBox.Show(this, "请先切换到 Gpios / Axis / Platform 模块。", "Excel 导出",
+            MessageBox.Show(this, "请先切换到 Gpios / Vios / Axis / Platform 模块。", "Excel 导出",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -917,7 +951,7 @@ public partial class MainWindow : Window
     {
         if (!_workspace.SupportsExcelModuleExchange)
         {
-            MessageBox.Show(this, "请先切换到 Gpios / Axis / Platform 模块。", "Excel 导入",
+            MessageBox.Show(this, "请先切换到 Gpios / Vios / Axis / Platform 模块。", "Excel 导入",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -953,6 +987,113 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "补全参数模板", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ComposeAxes_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!_workspace.Draft.ShowComposeAxes || _workspace.Draft.IsReadOnly)
+            {
+                return;
+            }
+
+            var (kindToken, letters) = _workspace.GetPlatformComposeSlots();
+            var dlg = new PlatformComposeAxesDialog(
+                kindToken,
+                letters,
+                _workspace.Setting.Axes,
+                _workspace.GetPlatformCurrentAxisBindings())
+            {
+                Owner = this,
+            };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _workspace.ApplyPlatformAxisComposition(dlg.SelectedAxisIds);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "组合轴", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void FillVioDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_workspace.SupportsVioDefaultLoad)
+        {
+            MessageBox.Show(this, "请先切换到 Vios 模块。", "补全默认点位",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        try
+        {
+            if (!TryFlushPendingDraft())
+            {
+                return;
+            }
+
+            var n = _workspace.LoadVioDefaultPoints(replaceAll: false);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(
+                this,
+                $"已为 {n} 个 vio 设备补全缺失点位（模板 vio.b1…vio.b{VioDeviceParameterSet.DefaultBitCount}）。",
+                "补全默认点位",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "补全默认点位", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private void ResetVioDefaults_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_workspace.SupportsVioDefaultLoad)
+        {
+            MessageBox.Show(this, "请先切换到 Vios 模块。", "重置默认点位",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var scope = _workspace.SelectedItem?.Source is VioEditTarget
+            ? "当前选中点位所属 vio 设备"
+            : "全部 vio 设备";
+        var confirm = MessageBox.Show(
+            this,
+            $"用完整默认数量（vio.b1…vio.b{VioDeviceParameterSet.DefaultBitCount}）覆盖{scope}的点位？现有点位键将被替换。",
+            "重置默认点位",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!TryFlushPendingDraft())
+            {
+                return;
+            }
+
+            var n = _workspace.LoadVioDefaultPoints(replaceAll: true);
+            RefreshTreeKeepingSelection();
+            MessageBox.Show(
+                this,
+                $"已重置 {n} 个 vio 设备默认点位（共 {VioDeviceParameterSet.DefaultBitCount} 项）。",
+                "重置默认点位",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "重置默认点位", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -1195,7 +1336,7 @@ public partial class MainWindow : Window
             "· 新建：弹窗快速配置；Type/DriverId 可下拉选择\n" +
             "· Parameters：右侧 Key/Value 表；Key 可下拉选模板键；补全/重置模板\n" +
             "· 切换组件时若有未应用修改，可选择应用 / 丢弃 / 取消\n" +
-            "· Ctrl+Enter 快速应用属性；Gpios/Axis/Platform 支持 Excel 批量导入导出\n" +
+            "· Ctrl+Enter 快速应用属性；Gpios/Vios/Axis/Platform 支持 Excel 批量导入导出\n" +
             "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow 独立窗\n" +
             "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」或 Ctrl+Enter。",
             "界面说明",
@@ -1276,7 +1417,7 @@ public partial class MainWindow : Window
             case ConfigModule.Devices:
             {
                 var type = ResolveDeviceType(item);
-                if (type == "axis")
+                if (AxisDeviceParameterSet.IsAxisFamilyType(type))
                 {
                     OpenDebugWindow(new AxisDebugWindow(_workspace, item.Key));
                     return;
@@ -1296,7 +1437,7 @@ public partial class MainWindow : Window
 
                 MessageBox.Show(
                     this,
-                    $"设备类型「{type}」暂无专用调试窗。\n可用：axis / platform 族 / cameradev / extcamera，或 Drivers / Tasks / Flow。",
+                    $"设备类型「{type}」暂无专用调试窗。\n可用：linear/rotary/axis / platform 族 / cameradev / extcamera，或 Drivers / Tasks / Flow。",
                     "调试",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);

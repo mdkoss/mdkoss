@@ -34,8 +34,7 @@ public partial class AxisDebugWindow : Window
     private void ReloadAxisList()
     {
         AxisCombo.Items.Clear();
-        var axes = _workspace.Setting.Devices
-            .Where(x => string.Equals(x.Type, "axis", StringComparison.OrdinalIgnoreCase))
+        var axes = _workspace.Setting.Axes
             .OrderBy(x => x.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
         foreach (var d in axes)
@@ -58,7 +57,7 @@ public partial class AxisDebugWindow : Window
     {
         if (AxisCombo.SelectedItem is ComboBoxItem { Tag: string id })
         {
-            return _workspace.Setting.Devices.FirstOrDefault(d =>
+            return _workspace.Setting.Axes.FirstOrDefault(d =>
                 string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
         }
 

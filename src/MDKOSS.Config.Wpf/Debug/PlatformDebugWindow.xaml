@@ -98,7 +98,7 @@
             <Button Content="位置移动" Click="PosMove_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
             <Button Content="全部轴停止" Click="StopAll_Click" Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
             <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,10,0,0"
-                       Text="平台按 kind 展开轴字母；每轴可独立 DriverId（parameters.axis.X）。点动/运动 API 与 Axis 调试相同，作用在当前选中轴。"/>
+                       Text="平台按 kind 展开轴字母；axis.X 可为驱动 Id 或 Axis 组件 Id（组合轴）。点动/运动 API 与 Axis 调试相同，作用在当前选中轴。"/>
           </StackPanel>
         </ScrollViewer>
       </Border>

@@ -33,74 +33,63 @@
     {
       "id": "drv-vio",
       "name": "VIO 虚拟卡",
-      "type": "sim",
+      "type": "vio",
       "enabled": true,
       "parameters": {
-        "ip": "127.0.0.1",
-        "port": "5002",
-        "card": "0",
+        "inBits": "128",
+        "outBits": "128",
         "model": "VirtualCard",
-        "note": "VIO 虚拟卡 VirtualCard"
+        "note": "VIO 128bit DI/DO"
       }
     }
   ],
   "devices": [
     {
-      "id": "gpio-m1",
-      "name": "M1 IO",
+      "id": "gpio-main",
+      "name": "整机 GPIO",
       "type": "gpio",
-      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "in.DiEstopButton": "0|急停",
-        "in.DiStartButton": "1|启动按钮",
-        "in.DiStopButton": "2|停止按钮",
-        "in.DiResetButton": "3|复位按钮",
-        "in.DiSafeDoor1Button": "4|安全门1",
-        "in.DiSafeDoor2Button": "5|安全门2",
-        "in.DiSafeDoor3Button": "6|安全门3",
-        "in.DiSafeDoor4Button": "7|安全门4",
-        "in.DiSafeDoor5Button": "8|安全门5",
-        "in.DiFrontCy0": "10|前定位气缸原点",
-        "in.DiFrontCy1": "11|前定位气缸动点",
-        "in.DiBackCy0": "12|后定位气缸原点",
-        "in.DiBackCy1": "13|后定位气缸动点",
-        "out.DOButtonGreen": "0|启动按钮灯",
-        "out.DOButtonRed": "1|停止按钮灯",
-        "out.DOButtonYellow": "2|复位按钮灯",
-        "out.DOLightGreen": "3|绿灯",
-        "out.DOLightYellow": "4|黄灯",
-        "out.DOLightRed": "5|红灯",
-        "out.DOBuzzer": "6|蜂鸣器",
-        "out.DOFrontCy": "8|前定位气缸动作",
-        "out.DOBackCy": "9|后定位气缸动作",
-        "out.DOLeftCy": "10|左定位气缸动作",
-        "out.DORightCy": "11|右定位气缸动作"
-      }
-    },
-    {
-      "id": "gpio-io1",
-      "name": "IO1 IO",
-      "type": "gpio",
-      "driverId": "drv-io1",
-      "enabled": true,
-      "parameters": {
-        "in.DiLeftCy0": "0|lcy0",
-        "in.DiLeftCy1": "1|lcy1",
-        "in.DiRightCy0": "2|rcy0",
-        "in.DiRightCy1": "3|rcy1",
-        "in.DiSensor1": "4|sensor1",
-        "in.DiSensor2": "5|sensor2",
-        "in.DiSensor3": "6|sensor3",
-        "in.DiSafeCurtain": "7|sc",
-        "in.DiAirPressure": "8|ap",
-        "in.DiStart1": "9|Start1",
-        "in.DiStart2": "10|Start2",
-        "in.DiVaccum1": "11|Vaccum1",
-        "in.DiVaccum2": "12|Vaccum2",
-        "out.DOLamp": "0|灯",
-        "out.DOVaccum1": "1|真空1",
-        "out.DOVaccum2": "2|真空2"
+        "in.DiEstopButton": "drv-m1:0|急停",
+        "in.DiStartButton": "drv-m1:1|启动按钮",
+        "in.DiStopButton": "drv-m1:2|停止按钮",
+        "in.DiResetButton": "drv-m1:3|复位按钮",
+        "in.DiSafeDoor1Button": "drv-m1:4|安全门1",
+        "in.DiSafeDoor2Button": "drv-m1:5|安全门2",
+        "in.DiSafeDoor3Button": "drv-m1:6|安全门3",
+        "in.DiSafeDoor4Button": "drv-m1:7|安全门4",
+        "in.DiSafeDoor5Button": "drv-m1:8|安全门5",
+        "in.DiFrontCy0": "drv-m1:10|前定位气缸原点",
+        "in.DiFrontCy1": "drv-m1:11|前定位气缸动点",
+        "in.DiBackCy0": "drv-m1:12|后定位气缸原点",
+        "in.DiBackCy1": "drv-m1:13|后定位气缸动点",
+        "out.DOButtonGreen": "drv-m1:0|启动按钮灯",
+        "out.DOButtonRed": "drv-m1:1|停止按钮灯",
+        "out.DOButtonYellow": "drv-m1:2|复位按钮灯",
+        "out.DOLightGreen": "drv-m1:3|绿灯",
+        "out.DOLightYellow": "drv-m1:4|黄灯",
+        "out.DOLightRed": "drv-m1:5|红灯",
+        "out.DOBuzzer": "drv-m1:6|蜂鸣器",
+        "out.DOFrontCy": "drv-m1:8|前定位气缸动作",
+        "out.DOBackCy": "drv-m1:9|后定位气缸动作",
+        "out.DOLeftCy": "drv-m1:10|左定位气缸动作",
+        "out.DORightCy": "drv-m1:11|右定位气缸动作",
+        "in.DiLeftCy0": "drv-io1:0|lcy0",
+        "in.DiLeftCy1": "drv-io1:1|lcy1",
+        "in.DiRightCy0": "drv-io1:2|rcy0",
+        "in.DiRightCy1": "drv-io1:3|rcy1",
+        "in.DiSensor1": "drv-io1:4|sensor1",
+        "in.DiSensor2": "drv-io1:5|sensor2",
+        "in.DiSensor3": "drv-io1:6|sensor3",
+        "in.DiSafeCurtain": "drv-io1:7|sc",
+        "in.DiAirPressure": "drv-io1:8|ap",
+        "in.DiStart1": "drv-io1:9|Start1",
+        "in.DiStart2": "drv-io1:10|Start2",
+        "in.DiVaccum1": "drv-io1:11|Vaccum1",
+        "in.DiVaccum2": "drv-io1:12|Vaccum2",
+        "out.DOLamp": "drv-io1:0|灯",
+        "out.DOVaccum1": "drv-io1:1|真空1",
+        "out.DOVaccum2": "drv-io1:2|真空2"
       }
     },
     {
@@ -110,8 +99,8 @@
       "driverId": "drv-vio",
       "enabled": true,
       "parameters": {
-        "in.TestVio": "virtual|TestVio",
-        "out.TestVio": "virtual|TestVio"
+        "vio.b1": "virtual|vio.b1",
+        "vio.b2": "virtual|vio.b2"
       }
     }
   ],
@@ -184,9 +173,9 @@
       "parameters": {
         "kind": "x",
         "model": "PlatformXyz",
-        "axis.X": "drv-m1",
+        "axis.X": "AxisTransY",
         "axisIndex.X": "0",
-        "note": "Trans / AxisTransY"
+        "note": "组合轴 AxisTransY"
       }
     },
     {
@@ -198,11 +187,11 @@
       "parameters": {
         "kind": "xy",
         "model": "PlatformXyz",
-        "axis.X": "drv-m1",
+        "axis.X": "AxisX",
         "axisIndex.X": "1",
-        "axis.Y": "drv-m1",
+        "axis.Y": "AxisZ",
         "axisIndex.Y": "2",
-        "note": "Measure / AxisX+AxisZ"
+        "note": "组合轴 AxisX + AxisZ"
       }
     }
   ],
@@ -211,9 +200,7 @@
       "name": "task-operation",
       "type": "operation",
       "intervalMs": 200,
-      "parameters": {
-        "gpioDeviceId": "gpio-m1"
-      }
+      "parameters": {}
     },
     {
       "name": "poll-m1",

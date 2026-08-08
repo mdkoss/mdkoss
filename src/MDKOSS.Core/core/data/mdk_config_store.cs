@@ -649,26 +649,10 @@ public sealed class MdkConfigStore : IDisposable
             // Virtual vio points without driver:address still need rows for aliases
             if (type == "vio")
             {
-                foreach (var kv in device.Parameters)
+                foreach (var binding in VioDeviceParameterSet.ParseVirtualBindings(device.Parameters))
                 {
-                    string? direction = null;
-                    string? alias = null;
-                    if (kv.Key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
-                    {
-                        direction = "in";
-                        alias = kv.Key[3..];
-                    }
-                    else if (kv.Key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
-                    {
-                        direction = "out";
-                        alias = kv.Key[4..];
-                    }
-
-                    if (direction is null || string.IsNullOrWhiteSpace(alias))
-                    {
-                        continue;
-                    }
-
+                    var direction = binding.IsBidirectional ? "vio" : (binding.IsOutput ? "out" : "in");
+                    var alias = binding.Alias;
                     var id = $"{device.Id}:{direction}:{alias}";
                     using var exists = conn.CreateCommand();
                     exists.Transaction = tx;
@@ -710,13 +694,15 @@ public sealed class MdkConfigStore : IDisposable
         string now)
     {
         var n = 0;
-        foreach (var d in devices.Where(x =>
-                     string.Equals(x.Type, "axis", StringComparison.OrdinalIgnoreCase)))
+        foreach (var d in devices.Where(x => AxisDeviceParameterSet.IsAxisFamilyType(x.Type)))
         {
             if (string.IsNullOrWhiteSpace(d.Id))
             {
                 continue;
             }
+
+            d.Parameters ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            AxisDeviceParameterSet.SyncKindParameter(d.Parameters, d.Type);
 
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
@@ -1065,16 +1051,19 @@ public sealed class MdkConfigStore : IDisposable
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
+            var parameters = DeserializeOrDefault(
+                reader.GetString(4),
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
+            var kindToken = AxisDeviceParameterSet.GetKindToken(parameters);
             list.Add(new MdkSetting.DeviceConfig
             {
                 Id = reader.GetString(0),
                 Name = reader.GetString(1),
-                Type = "axis",
+                // Prefer geometry token so UI Type combo shows linear/rotary after DB round-trip.
+                Type = kindToken,
                 DriverId = reader.IsDBNull(2) ? string.Empty : reader.GetString(2),
                 Enabled = reader.GetInt64(3) != 0,
-                Parameters = DeserializeOrDefault(
-                    reader.GetString(4),
-                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)),
+                Parameters = parameters,
             });
         }
 

@@ -412,22 +412,23 @@ public partial class TaskDebugWindow : Window
         var parameters = KvTableHelper.ToStringDict(_paramRows);
         if (typeKey is "operation" or "taskoperation")
         {
-            if (!parameters.TryGetValue("gpioDeviceId", out var gpioId) || string.IsNullOrWhiteSpace(gpioId))
+            if (parameters.TryGetValue("gpioDeviceId", out var gpioId) && !string.IsNullOrWhiteSpace(gpioId))
             {
-                if (parameters.TryGetValue("deviceId", out var legacy) && !string.IsNullOrWhiteSpace(legacy))
+                if (!_workspace.Setting.Devices.Any(d =>
+                        string.Equals(d.Id, gpioId, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase)))
                 {
-                    issues.Add("[警告] 建议使用 parameters.gpioDeviceId（当前为兼容键 deviceId）。");
-                }
-                else
-                {
-                    issues.Add("[警告] operation 建议设置 parameters.gpioDeviceId；否则运行时取第一个 GPIO 设备。");
+                    issues.Add($"[警告] gpioDeviceId「{gpioId}」不是当前 setting 中的 gpio 设备。");
                 }
             }
-            else if (!_workspace.Setting.Devices.Any(d =>
-                         string.Equals(d.Id, gpioId, StringComparison.OrdinalIgnoreCase)
-                         && string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase)))
+            else if (parameters.TryGetValue("deviceId", out var legacy) && !string.IsNullOrWhiteSpace(legacy))
             {
-                issues.Add($"[警告] gpioDeviceId「{gpioId}」不是当前 setting 中的 gpio 设备。");
+                issues.Add("[提示] 可用 parameters.gpioDeviceId；空则使用共享 GpioDevice（第一个 gpio）。");
+            }
+            else if (!_workspace.Setting.Devices.Any(d =>
+                         string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase)))
+            {
+                issues.Add("[警告] 当前 setting 没有 gpio 设备；operation 灯塔 IO 将不可用。");
             }
         }
 
@@ -471,7 +472,7 @@ public partial class TaskDebugWindow : Window
         "polldriver" or "poll" =>
             "pollDriver\n  轮询驱动心跳，写入 vars。\n  必需：DriverId、IntervalMs。\n  可选参数：varPrefix。",
         "operation" or "taskoperation" =>
-            "operation\n  处理 task.operation.command（start/stop/reset/lamp）。\n  建议参数：gpioDeviceId=<gpio设备Id>。\n  DriverId 可空。",
+            "operation\n  处理 task.operation.command（start/stop/reset/lamp）。\n  gpioDeviceId 可空（默认共享 GpioDevice）。\n  DriverId 可空。",
         "cycle" or "taskcycle" =>
             "cycle\n  周期汇总运行时快照 / 任务状态。\n  主要：IntervalMs。DriverId 可空。",
         "motion" or "motiontask" =>
@@ -492,10 +493,7 @@ public partial class TaskDebugWindow : Window
             {
                 ["varPrefix"] = "driver",
             },
-            "operation" or "taskoperation" => new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["gpioDeviceId"] = "gpio-main",
-            },
+            "operation" or "taskoperation" => new(StringComparer.OrdinalIgnoreCase),
             "cycle" or "taskcycle" => new(StringComparer.OrdinalIgnoreCase)
             {
                 ["note"] = "cycle uses IntervalMs; gpio optional",

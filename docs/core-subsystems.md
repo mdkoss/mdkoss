@@ -44,7 +44,7 @@
 
 | 类型 | 类 | 要点 |
 |------|-----|------|
-| GPIO | `GpioDevice` | 别名 → (driverId, address) 绑定，支持 `driverIds` 作用域 |
+| GPIO | `GpioDevice` | 建议单实例；默认挂载全部非 vio 驱动；别名 → `driverId:address` |
 | VIO | `VioDevice` | 虚拟地址，读写走单驱动内存语义 |
 | Axis | `AxisDevice` | 单轴运动与状态 |
 | Platform | `PlatformDevice` | 由多个 `AxisDevice` 组成，`MPlatformKind` 描述轴布局 |

@@ -134,6 +134,70 @@ public sealed class MdkRuntimeIntegrationTests
     }
 
     [Fact]
+    public void Gpio_attaches_all_non_vio_drivers_by_default_even_with_device_driverId()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers =
+            [
+                new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
+                new MdkSetting.DriverConfig { Id = "d2", Type = "sim", Enabled = true },
+                new MdkSetting.DriverConfig { Id = "dv", Type = "vio", Enabled = true },
+            ],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "g1",
+                    Type = "gpio",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["in.a"] = "d1:X0",
+                        ["in.b"] = "d2:X1",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        Assert.True(rt.TryGetDevice("g1", out var raw));
+        var gpio = Assert.IsType<GpioDevice>(raw);
+        Assert.True(gpio.Drivers.ContainsKey("d1"));
+        Assert.True(gpio.Drivers.ContainsKey("d2"));
+        Assert.False(gpio.Drivers.ContainsKey("dv"));
+    }
+
+    [Fact]
+    public void TryWriteDigitalOutput_blank_deviceId_uses_shared_gpio()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "gpio-main",
+                    Type = "gpio",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["out.lamp"] = "d1:Y0",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        Assert.True(rt.TryWriteDigitalOutput("", "lamp", true, out var err), err);
+        Assert.True(rt.TryWriteDigitalOutput("  ", "lamp", false, out err), err);
+    }
+
+    [Fact]
     public async Task Gpio_multi_driver_start_succeeds_when_all_referenced_drivers_online()
     {
         var setting = new MdkSetting
@@ -196,6 +260,41 @@ public sealed class MdkRuntimeIntegrationTests
         Assert.Equal("X", p1.PlatformAxes[0].AxisLetter);
         Assert.Equal("Y", p1.PlatformAxes[1].AxisLetter);
         Assert.All(p1.PlatformAxes, row => Assert.Equal("d1", row.DriverId));
+    }
+
+    [Fact]
+    public void Vio_device_binds_undirected_bit_keys()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "vio1",
+                    Name = "Virtual IO",
+                    Type = "vio",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["vio.b1"] = "virtual|vio.b1",
+                        ["vio.b2"] = "",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        var snap = rt.GetSnapshot();
+        Assert.True(snap.Devices.TryGetValue("vio1", out var vio));
+        Assert.NotNull(vio.GpioIoPoints);
+        Assert.Equal(2, vio.GpioIoPoints!.Count);
+        Assert.Contains(vio.GpioIoPoints, p => p.Alias == "vio.b1" && p.Direction == "vio");
+        Assert.Contains(vio.GpioIoPoints, p => p.Alias == "vio.b2" && p.Direction == "vio");
+        Assert.Contains(vio.GpioIoPoints, p => p.Address == "vio.vio1.vio.b1");
     }
 
     [Fact]

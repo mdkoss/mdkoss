@@ -1,10 +1,18 @@
 using MDKOSS.Core;
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 
 namespace MDKOSS.Gui;
 
 internal static class ConfigFormHelpers
 {
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public static MdkSetting LoadSetting(string settingPath)
     {
         return MdkSetting.Load(settingPath);
@@ -12,8 +20,7 @@ internal static class ConfigFormHelpers
 
     public static void SaveSetting(string settingPath, MdkSetting setting)
     {
-        var json = JsonSerializer.Serialize(setting, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(settingPath, json);
+        setting.Save(settingPath);
     }
 
     public static string ParametersToText(IReadOnlyDictionary<string, string> parameters)
@@ -91,7 +98,7 @@ internal static class ConfigFormHelpers
             return;
         }
 
-        var json = JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(dialog.FileName, json);
+        var json = JsonSerializer.Serialize(value, JsonOptions);
+        File.WriteAllText(dialog.FileName, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 }

@@ -3,7 +3,7 @@ using MDKOSS.Extensions;
 
 namespace MDKOSS.Drivers.Sim;
 
-/// <summary>Simulation motion-card driver plugin (config type <c>sim</c>).</summary>
+/// <summary>Simulation / VIO driver plugin (config types <c>sim</c>, <c>vio</c>).</summary>
 public sealed class SimDriverExtension : IMdkExtension
 {
     public string Id => "driver-sim";
@@ -14,6 +14,8 @@ public sealed class SimDriverExtension : IMdkExtension
     {
         ArgumentNullException.ThrowIfNull(registration);
         registration.Driver("sim", () => new DrvSim());
+        // VIO virtual card: same in-memory backend; defaults to 128-bit DI/DO via parameters.
+        registration.Driver("vio", () => new DrvSim());
     }
 }
 

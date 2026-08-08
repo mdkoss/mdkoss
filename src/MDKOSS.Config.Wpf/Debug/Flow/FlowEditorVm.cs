@@ -804,7 +804,7 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 vm.SetProp("function", "main");
                 break;
             case "op.writeio":
-                vm.SetProp("deviceId", "gpio-main");
+                vm.SetProp("deviceId", "");
                 vm.SetProp("alias", "out.tower.green");
                 vm.SetProp("value", "true");
                 break;
@@ -839,12 +839,12 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 vm.SetProp("position", "0");
                 break;
             case "motion.gpiowrite":
-                vm.SetProp("deviceId", "gpio-main");
+                vm.SetProp("deviceId", "");
                 vm.SetProp("alias", "out.tower.green");
                 vm.SetProp("value", "true");
                 break;
             case "motion.gpioread":
-                vm.SetProp("deviceId", "gpio-main");
+                vm.SetProp("deviceId", "");
                 vm.SetProp("alias", "in.start");
                 vm.SetProp("name", "io");
                 break;

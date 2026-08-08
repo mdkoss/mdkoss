@@ -1,0 +1,30 @@
+<Window x:Class="MDKOSS.Config.Wpf.PlatformComposeAxesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="组合轴 — 从已有 Axis 绑定"
+        Height="420" Width="520"
+        MinHeight="320" MinWidth="440"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI" FontSize="13"
+        ResizeMode="CanResizeWithGrip"
+        ShowInTaskbar="False">
+  <DockPanel Margin="12">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+      <Button Content="确定" Width="88" Margin="0,0,8,0" IsDefault="True" Click="Ok_Click"
+              Background="{StaticResource AccentBrush}" Foreground="White"/>
+      <Button Content="取消" Width="88" IsCancel="True" Click="Cancel_Click"/>
+    </StackPanel>
+
+    <StackPanel>
+      <TextBlock x:Name="HeadlineText" FontWeight="SemiBold" Margin="0,0,0,8"
+                 Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"
+                 Text="为每个轴字母选择已有 Axis 组件（写入 axis.X = 轴 Id，并同步 axisIndex）"/>
+      <TextBlock Margin="0,0,0,10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="12"
+                 Text="运行时会优先复用该 Axis 设备；也可在参数表中直接下拉选择轴 Id 或驱动 Id。"/>
+      <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280">
+        <StackPanel x:Name="SlotsPanel"/>
+      </ScrollViewer>
+    </StackPanel>
+  </DockPanel>
+</Window>

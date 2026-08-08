@@ -1,3 +1,5 @@
+using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -33,7 +35,7 @@ public sealed class MdkSetting
     /// <summary>General devices (gpio/vio/camera/…); excludes <see cref="Axes"/> and <see cref="Platforms"/>.</summary>
     public List<DeviceConfig> Devices { get; set; } = [];
 
-    /// <summary>Axis devices (<c>type=axis</c>), stored as top-level JSON <c>axes</c>.</summary>
+    /// <summary>Axis devices (<c>type=axis</c>/<c>linear</c>/<c>rotary</c>), stored as top-level JSON <c>axes</c>.</summary>
     [JsonPropertyName("axes")]
     public List<DeviceConfig> Axes { get; set; } = [];
 
@@ -74,6 +76,8 @@ public sealed class MdkSetting
         PropertyNameCaseInsensitive = true,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        // Keep CJK / Unicode as literal UTF-8 instead of \uXXXX escapes.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     /// <summary>All device-like configs in bootstrap order: devices → axes → platforms.</summary>
@@ -95,7 +99,7 @@ public sealed class MdkSetting
     {
         NormalizeSections();
         var json = JsonSerializer.Serialize(this, JsonOptions);
-        File.WriteAllText(path, json);
+        File.WriteAllText(path, json, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
     }
 
     /// <summary>
@@ -109,14 +113,21 @@ public sealed class MdkSetting
         Devices ??= [];
 
         var moveAxis = Devices
-            .Where(d => string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
+            .Where(d => AxisDeviceParameterSet.IsAxisFamilyType(d.Type))
             .ToList();
         foreach (var d in moveAxis)
         {
             Devices.Remove(d);
             if (!Axes.Any(a => string.Equals(a.Id, d.Id, StringComparison.OrdinalIgnoreCase)))
             {
-                d.Type = "axis";
+                // Preserve linear/rotary shorthand; only force "axis" when type was bare "axis".
+                if (string.IsNullOrWhiteSpace(d.Type)
+                    || string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase))
+                {
+                    d.Type = "axis";
+                }
+
+                AxisDeviceParameterSet.SyncKindParameter(d.Parameters, d.Type);
                 Axes.Add(d);
             }
         }
@@ -135,8 +146,14 @@ public sealed class MdkSetting
 
         // Drop accidental axis/platform duplicates left inside Devices after merge.
         Devices.RemoveAll(d =>
-            string.Equals(d.Type, "axis", StringComparison.OrdinalIgnoreCase)
+            AxisDeviceParameterSet.IsAxisFamilyType(d.Type)
             || PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").Trim().ToLowerInvariant()));
+
+        foreach (var axis in Axes)
+        {
+            axis.Parameters ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            AxisDeviceParameterSet.SyncKindParameter(axis.Parameters, axis.Type);
+        }
     }
 
     /// <summary>Driver registration config.</summary>

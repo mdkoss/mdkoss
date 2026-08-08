@@ -6,26 +6,7 @@ namespace MDKOSS.Core;
 public static class DeviceParameterPresets
 {
     public static Dictionary<string, string> ForDriver(string? type) =>
-        (type ?? "").Trim().ToLowerInvariant() switch
-        {
-            "sim" => new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["ip"] = "127.0.0.1",
-                ["port"] = "5000",
-                ["note"] = "VirtualCard / SIM",
-            },
-            "gts" => new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["card"] = "0",
-                ["note"] = "GTS motion card",
-            },
-            "dmc" => new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["card"] = "0",
-                ["note"] = "DMC motion card",
-            },
-            _ => new(StringComparer.OrdinalIgnoreCase) { ["key"] = "value" },
-        };
+        DriverParameterPresets.ForType(type);
 
     public static Dictionary<string, string> ForDevice(string? type, string? defaultDriverId = null)
     {
@@ -34,17 +15,17 @@ public static class DeviceParameterPresets
         {
             "gpio" => new(StringComparer.OrdinalIgnoreCase)
             {
-                ["in.startButton"] = "0|启动按钮",
-                ["in.stopButton"] = "1|停止按钮",
-                ["out.tower.green"] = "0|绿灯",
-                ["out.tower.red"] = "1|红灯",
+                ["in.startButton"] = $"{drv}:0|启动按钮",
+                ["in.stopButton"] = $"{drv}:1|停止按钮",
+                ["out.tower.green"] = $"{drv}:0|绿灯",
+                ["out.tower.red"] = $"{drv}:1|红灯",
             },
-            "vio" => new(StringComparer.OrdinalIgnoreCase)
-            {
-                ["in.TestVio"] = "virtual|TestVio",
-                ["out.TestVio"] = "virtual|TestVio",
-            },
-            "axis" => AxisDeviceParameterSet.DefaultParameters(),
+            "vio" => VioDeviceParameterSet.DefaultParameters(),
+            "axis" => AxisDeviceParameterSet.DefaultParameters(MAxisKind.Linear),
+            "linear" or "lin" or "直线" or "直线轴" =>
+                AxisDeviceParameterSet.DefaultParameters(MAxisKind.Linear),
+            "rotary" or "rot" or "rotate" or "旋转" or "旋转轴" =>
+                AxisDeviceParameterSet.DefaultParameters(MAxisKind.Rotary),
             "platform" => PlatformDeviceParameterSet.DefaultParameters("xyz", drv),
             "xy" => PlatformDeviceParameterSet.DefaultParameters("xy", drv),
             "xyz" => PlatformDeviceParameterSet.DefaultParameters("xyz", drv),
@@ -52,7 +33,7 @@ public static class DeviceParameterPresets
             "xyzuv" => PlatformDeviceParameterSet.DefaultParameters("xyzuv", drv),
             "xyzuvw" => PlatformDeviceParameterSet.DefaultParameters("xyzuvw", drv),
             "x" => PlatformDeviceParameterSet.DefaultParameters("x", drv),
-            "cameradev" => new(StringComparer.OrdinalIgnoreCase) { ["role"] = "downlook" },
+            // note: DefaultParameters ignores drv; platforms bind Axis device ids via axis.X …            "cameradev" => new(StringComparer.OrdinalIgnoreCase) { ["role"] = "downlook" },
             "extcamera" => new(StringComparer.OrdinalIgnoreCase)
             {
                 ["backend"] = "sim",
@@ -74,8 +55,9 @@ public static class DeviceParameterPresets
         (type ?? "").Trim().ToLowerInvariant() switch
         {
             "polldriver" => new(StringComparer.OrdinalIgnoreCase) { ["varPrefix"] = "driver" },
-            "operation" => new(StringComparer.OrdinalIgnoreCase) { ["gpioDeviceId"] = "gpio-main" },
-            "cycle" => new(StringComparer.OrdinalIgnoreCase) { ["gpioDeviceId"] = "gpio-main" },
+            // gpioDeviceId optional: blank → runtime uses the first (shared) GpioDevice
+            "operation" => new(StringComparer.OrdinalIgnoreCase),
+            "cycle" => new(StringComparer.OrdinalIgnoreCase),
             "flow" => new(StringComparer.OrdinalIgnoreCase) { ["loop"] = "true", ["flowJson"] = "{}" },
             _ => new(StringComparer.OrdinalIgnoreCase),
         };

@@ -68,8 +68,17 @@ public abstract class MotionTask : MTaskBase
     protected bool TryGetPlatformDevice(string deviceId, out PlatformDevice? device) =>
         TryGetDevice(deviceId, out device);
 
-    protected bool TryGetGpioDevice(string deviceId, out GpioDevice? device) =>
-        TryGetDevice(deviceId, out device);
+    protected bool TryGetGpioDevice(string? deviceId, out GpioDevice? device)
+    {
+        if (!string.IsNullOrWhiteSpace(deviceId) && TryGetDevice(deviceId, out device))
+        {
+            return true;
+        }
+
+        // Single shared GpioDevice: tasks may omit deviceId and use aliases only.
+        device = Devices.Values.OfType<GpioDevice>().FirstOrDefault();
+        return device is not null;
+    }
 
     protected bool TryGetVioDevice(string deviceId, out VioDevice? device) =>
         TryGetDevice(deviceId, out device);
@@ -129,9 +138,12 @@ public abstract class MotionTask : MTaskBase
     }
 
     // -----------------------------
-    // GPIO IO (GpioDevice)
+    // GPIO IO (GpioDevice) — prefer one shared device; aliases carry driver routing.
     // -----------------------------
-    protected bool GpioWriteOutput(string gpioDeviceId, string alias, bool value)
+    protected bool GpioWriteOutput(string alias, bool value) =>
+        GpioWriteOutput(null, alias, value);
+
+    protected bool GpioWriteOutput(string? gpioDeviceId, string alias, bool value)
     {
         if (!TryGetGpioDevice(gpioDeviceId, out var gpio) || gpio is null)
         {
@@ -141,7 +153,10 @@ public abstract class MotionTask : MTaskBase
         return gpio.WriteOutput(alias, value);
     }
 
-    protected bool GpioReadInput(string gpioDeviceId, string alias)
+    protected bool GpioReadInput(string alias) =>
+        GpioReadInput(null, alias);
+
+    protected bool GpioReadInput(string? gpioDeviceId, string alias)
     {
         if (!TryGetGpioDevice(gpioDeviceId, out var gpio) || gpio is null)
         {
@@ -151,7 +166,10 @@ public abstract class MotionTask : MTaskBase
         return gpio.ReadInput(alias);
     }
 
-    protected bool GpioTryReadInput(string gpioDeviceId, string alias, out bool value)
+    protected bool GpioTryReadInput(string alias, out bool value) =>
+        GpioTryReadInput(null, alias, out value);
+
+    protected bool GpioTryReadInput(string? gpioDeviceId, string alias, out bool value)
     {
         value = false;
         if (!TryGetGpioDevice(gpioDeviceId, out var gpio) || gpio is null)

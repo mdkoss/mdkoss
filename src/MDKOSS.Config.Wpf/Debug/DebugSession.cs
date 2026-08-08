@@ -153,20 +153,37 @@ public sealed class IoBitRow
     public bool Value { get; set; }
 }
 
-/// <summary>Builds 32-bit DI/DO rows from a group value.</summary>
+/// <summary>Builds DI/DO bit rows from one or more 32-bit group words.</summary>
 public static class IoBitGrid
 {
-    public static ObservableCollection<IoBitRow> FromWord(short group, int word, string prefix)
+    public const int BitsPerGroup = 32;
+    public const int DefaultBitCount = 32;
+
+    public static ObservableCollection<IoBitRow> FromWord(short group, int word, string prefix) =>
+        FromWords(group, [word], BitsPerGroup, prefix);
+
+    /// <summary>
+    /// Expands consecutive group words into absolute bit rows (e.g. 128 bits → groups base..base+3).
+    /// </summary>
+    public static ObservableCollection<IoBitRow> FromWords(
+        short baseGroup,
+        IReadOnlyList<int> words,
+        int bitCount,
+        string prefix)
     {
         var rows = new ObservableCollection<IoBitRow>();
-        for (short i = 0; i < 32; i++)
+        var total = Math.Max(0, bitCount);
+        for (var abs = 0; abs < total; abs++)
         {
+            var groupOffset = abs / BitsPerGroup;
+            var index = (short)(abs % BitsPerGroup);
+            var word = groupOffset < words.Count ? words[groupOffset] : 0;
             rows.Add(new IoBitRow
             {
-                Group = group,
-                Index = i,
-                Label = $"{prefix}{i}",
-                Value = (word & (1 << i)) != 0,
+                Group = (short)(baseGroup + groupOffset),
+                Index = index,
+                Label = $"{prefix}{abs}",
+                Value = (word & (1 << index)) != 0,
             });
         }
 
@@ -185,6 +202,37 @@ public static class IoBitGrid
         }
 
         return word;
+    }
+
+    /// <summary>Packs rows belonging to <paramref name="group"/> into a 32-bit word.</summary>
+    public static int ToWord(IEnumerable<IoBitRow> rows, short group)
+    {
+        var word = 0;
+        foreach (var row in rows)
+        {
+            if (row.Group == group && row.Value)
+            {
+                word |= 1 << row.Index;
+            }
+        }
+
+        return word;
+    }
+
+    public static int GroupCount(int bitCount) =>
+        Math.Max(1, (Math.Max(1, bitCount) + BitsPerGroup - 1) / BitsPerGroup);
+
+    public static int ResolveBitCount(IReadOnlyDictionary<string, string>? parameters, string key, int fallback = DefaultBitCount)
+    {
+        if (parameters is not null
+            && parameters.TryGetValue(key, out var raw)
+            && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)
+            && n > 0)
+        {
+            return Math.Min(n, 512);
+        }
+
+        return fallback;
     }
 }
 

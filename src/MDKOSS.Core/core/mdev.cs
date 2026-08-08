@@ -158,8 +158,10 @@ public abstract class MDeviceBase : IDisposable
 }
 
 /// <summary>
-/// GPIO device: maps logical aliases to physical IO on one or more <see cref="IDriver"/> instances
-/// (each driver may expose its own addresses). Optional <c>driverIds</c> in config limits the driver set.
+/// GPIO device: maps logical aliases to physical IO on one or more <see cref="IDriver"/> instances.
+/// By default the runtime attaches all non-<c>vio</c> drivers; each <c>in.*</c>/<c>out.*</c> value
+/// must name the target card as <c>driverId:address</c>. Optional <c>driverIds</c> still limits the set.
+/// Prefer a single shared GpioDevice so tasks only need aliases (not per-card devices).
 /// </summary>
 public sealed class GpioDevice : MDeviceBase
 {
@@ -172,7 +174,7 @@ public sealed class GpioDevice : MDeviceBase
         _drivers = drivers;
     }
 
-    /// <summary>Drivers visible to this GPIO instance (full runtime map or a filtered scope).</summary>
+    /// <summary>Drivers attached to this GPIO instance (normally all non-vio cards).</summary>
     public IReadOnlyDictionary<string, IDriver> Drivers => _drivers;
 
     public int PointCount => _points.Count;
@@ -383,19 +385,16 @@ public sealed class VioDevice : MDeviceBase
 
     public int PointCount => _points.Count;
 
-    public void RegisterVirtualInput(string alias)
-    {
-        RegisterPoint(alias, isOutput: false);
-    }
+    public void RegisterVirtualInput(string alias) => RegisterPoint(alias, isOutput: false);
 
-    public void RegisterVirtualOutput(string alias)
-    {
-        RegisterPoint(alias, isOutput: true);
-    }
+    public void RegisterVirtualOutput(string alias) => RegisterPoint(alias, isOutput: true);
+
+    /// <summary>Registers a bidirectional virtual point (no in/out distinction; key = alias).</summary>
+    public void RegisterVirtualPoint(string alias) => RegisterPoint(alias, isOutput: null);
 
     public bool ReadInput(string alias)
     {
-        if (!_points.TryGetValue(alias, out var point) || point.IsOutput)
+        if (!TryGetPoint(alias, preferOutput: false, out var point))
         {
             return false;
         }
@@ -417,7 +416,7 @@ public sealed class VioDevice : MDeviceBase
 
     public bool WriteOutput(string alias, bool value)
     {
-        if (!_points.TryGetValue(alias, out var point) || !point.IsOutput)
+        if (!TryGetPoint(alias, preferOutput: true, out var point))
         {
             return false;
         }
@@ -441,7 +440,9 @@ public sealed class VioDevice : MDeviceBase
     public override DeviceSnapshot GetSnapshot()
     {
         var rows = new List<GpioIoPointSnapshot>();
-        foreach (var point in _points.Values.OrderBy(p => p.Alias, StringComparer.OrdinalIgnoreCase))
+        foreach (var point in _points.Values
+                     .OrderBy(p => DirectionRank(p.IsOutput))
+                     .ThenBy(p => p.Alias, StringComparer.OrdinalIgnoreCase))
         {
             string? value = null;
             var driverOnline = Driver.IsConnected;
@@ -452,7 +453,7 @@ public sealed class VioDevice : MDeviceBase
 
             rows.Add(new GpioIoPointSnapshot(
                 point.Alias,
-                point.IsOutput ? "out" : "in",
+                FormatDirection(point.IsOutput),
                 _driverId,
                 point.Address,
                 driverOnline,
@@ -483,7 +484,34 @@ public sealed class VioDevice : MDeviceBase
         };
     }
 
-    private void RegisterPoint(string alias, bool isOutput)
+    private bool TryGetPoint(string alias, bool preferOutput, out VioPoint point)
+    {
+        if (_points.TryGetValue(alias, out point!))
+        {
+            return true;
+        }
+
+        if (preferOutput && _points.TryGetValue(PointKey(alias, isOutput: true), out point!))
+        {
+            return true;
+        }
+
+        if (!preferOutput && _points.TryGetValue(PointKey(alias, isOutput: false), out point!))
+        {
+            return true;
+        }
+
+        // Fall back to the other direction for legacy callers.
+        if (_points.TryGetValue(PointKey(alias, isOutput: preferOutput ? false : true), out point!))
+        {
+            return true;
+        }
+
+        point = null!;
+        return false;
+    }
+
+    private void RegisterPoint(string alias, bool? isOutput)
     {
         if (string.IsNullOrWhiteSpace(alias))
         {
@@ -491,17 +519,39 @@ public sealed class VioDevice : MDeviceBase
         }
 
         var address = BuildVirtualAddress(alias, isOutput);
-        _points[alias] = new VioPoint(alias, address, isOutput);
+        _points[PointKey(alias, isOutput)] = new VioPoint(alias, address, isOutput);
         Vars.Set(BuildVarKey("pointCount"), _points.Count);
     }
 
-    private string BuildVirtualAddress(string alias, bool isOutput)
+    private static string PointKey(string alias, bool? isOutput) => isOutput switch
     {
-        var dir = isOutput ? "out" : "in";
-        return $"vio.{Id}.{dir}.{alias}";
-    }
+        true => $"out:{alias}",
+        false => $"in:{alias}",
+        null => alias,
+    };
 
-    private sealed record VioPoint(string Alias, string Address, bool IsOutput);
+    private string BuildVirtualAddress(string alias, bool? isOutput) => isOutput switch
+    {
+        true => $"vio.{Id}.out.{alias}",
+        false => $"vio.{Id}.in.{alias}",
+        null => $"vio.{Id}.{alias}",
+    };
+
+    private static string FormatDirection(bool? isOutput) => isOutput switch
+    {
+        true => "out",
+        false => "in",
+        null => "vio",
+    };
+
+    private static int DirectionRank(bool? isOutput) => isOutput switch
+    {
+        false => 0,
+        null => 1,
+        true => 2,
+    };
+
+    private sealed record VioPoint(string Alias, string Address, bool? IsOutput);
 }
 
 /// <summary>Basic motion axis device abstraction.</summary>

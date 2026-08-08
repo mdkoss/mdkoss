@@ -848,15 +848,19 @@ public sealed class ComponentConfigForm : Form
             }
 
             var direction = string.Equals(row.Direction, "out", StringComparison.OrdinalIgnoreCase) ? "out" : "in";
-            var key = $"{direction}.{row.Alias.Trim()}";
             if (string.Equals(device.Type, "vio", StringComparison.OrdinalIgnoreCase))
             {
-                device.Parameters[key] = string.IsNullOrWhiteSpace(row.Description)
+                var vioKey = VioDeviceParameterSet.IsUndirectedBitKey(row.Alias.Trim())
+                             || string.Equals(row.Direction, "vio", StringComparison.OrdinalIgnoreCase)
+                    ? row.Alias.Trim()
+                    : $"{direction}.{row.Alias.Trim()}";
+                device.Parameters[vioKey] = string.IsNullOrWhiteSpace(row.Description)
                     ? "virtual"
                     : $"virtual|{row.Description.Trim()}";
             }
             else
             {
+                var key = $"{direction}.{row.Alias.Trim()}";
                 var drv = string.IsNullOrWhiteSpace(row.DriverId) ? device.DriverId : row.DriverId.Trim();
                 if (string.IsNullOrWhiteSpace(drv) || string.IsNullOrWhiteSpace(row.Address))
                 {
@@ -1146,14 +1150,13 @@ public sealed class ComponentConfigForm : Form
 
     private static string GetDriverParameterPreset(string? type)
     {
-        return (type ?? string.Empty).Trim().ToLowerInvariant() switch
+        var dict = DriverParameterPresets.ForType(type);
+        if (dict.Count == 0)
         {
-            "tcp" => "host=127.0.0.1; port=502",
-            "serial" => "port=COM1; baudRate=115200; parity=None; dataBits=8; stopBits=One",
-            "gts" => "card=0",
-            "sim" => "connect=true",
-            _ => "key=value"
-        };
+            return "key=value";
+        }
+
+        return string.Join("; ", dict.Select(kv => $"{kv.Key}={kv.Value}"));
     }
 
     private static string GetDeviceParameterPreset(string? type)
@@ -1161,8 +1164,14 @@ public sealed class ComponentConfigForm : Form
         return (type ?? string.Empty).Trim().ToLowerInvariant() switch
         {
             "gpio" => "in.startButton=0|启动按钮; in.stopButton=1|停止按钮; out.tower.green=0|绿灯; out.tower.red=1|红灯",
-            "vio" => "in.TestVio=virtual|TestVio; out.TestVio=virtual|TestVio",
-            "axis" => "axis=0; model=Servo_2L_1O; homeVel=10.00; pulsePerUnit=10000; maxVel=150.00; accel=2000.00; negLimit=1; posLimit=1; homeSensor=0",
+            "vio" => string.Join("; ", VioDeviceParameterSet.DefaultParameters()
+                .Select(kv => $"{kv.Key}={kv.Value}")),
+            "axis" or "linear" or "lin" or "直线" or "直线轴" =>
+                string.Join("; ", AxisDeviceParameterSet.DefaultParameters(MAxisKind.Linear)
+                    .Select(kv => $"{kv.Key}={kv.Value}")),
+            "rotary" or "rot" or "rotate" or "旋转" or "旋转轴" =>
+                string.Join("; ", AxisDeviceParameterSet.DefaultParameters(MAxisKind.Rotary)
+                    .Select(kv => $"{kv.Key}={kv.Value}")),
             "platform" => "kind=xyz; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0; axis.Y=drv-m1; axisIndex.Y=1; axis.Z=drv-m1; axisIndex.Z=2",
             "x" => "kind=x; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0",
             "xy" => "kind=xy; model=PlatformXyz; axis.X=drv-m1; axisIndex.X=0; axis.Y=drv-m1; axisIndex.Y=1",
@@ -1349,7 +1358,7 @@ public sealed class ComponentConfigForm : Form
         {
             using var dialog = new RowPropertyDialog("New Driver");
             var id = dialog.AddText("Id", "drv-main");
-            var type = dialog.AddCombo("Type", ["sim", "gts", "tcp", "serial"], "sim");
+            var type = dialog.AddCombo("Type", ["sim", "gts", "dmc", "vio", "tcp", "serial"], "sim");
             var enabled = dialog.AddCheck("Enabled", true);
             var lastPreset = GetDriverParameterPreset(type.Text);
             var parameters = dialog.AddText("Parameters", lastPreset, multiline: true);

@@ -43,6 +43,7 @@
 
 - **新建**：弹窗填写 Id/Name/Type/DriverId/Enabled 与 Parameters 表；Type、DriverId 为可编辑 ComboBox。
 - **右侧属性**：Type / DriverId 下拉；Parameters 以 Key-Value 表编辑（可展开原始 JSON）。
+- **Platform**：参数 Value 可下拉选择 Axis Id / 驱动 Id / kind；「组合轴…」从已有 Axis 批量绑定 `axis.X`。
 - **模块导入导出**：对当前模块行集写出/读入 JSON。
 
 ## 文档模式
@@ -60,16 +61,17 @@
 |----------|----------|--------|
 | `Drivers` | `setting.Drivers` | Id, Type, Enabled |
 | `Devices` | `setting.Devices`（**不含** platform 族） | Id, Name, Type, DriverId, Enabled |
-| `Axis` | type=`axis` 设备 | Id, Name, DriverId, Enabled |
+| `Axis` | type=`linear` / `rotary` / `axis` | Id, Name, Type(kind), DriverId, Enabled |
 | `Platform` | platform 族（`platform` / `xy`…`xyzuvw`），**不挂在 Devices 树下** | Id, Name, Type, Kind, DriverId |
-| `Gpios` | gpio/vio 点位投影 | DeviceId, Alias, Direction, Route |
+| `Gpios` | gpio 点位投影（DriverId+Port） | Id, Name, Type, Desc, Enable, DriverId, Port |
+| `Vios` | vio 点位投影（`vio.b1`–`vio.b128`，不区分 in/out） | Id, Name, Type, Desc, Enable, DeviceId, DriverId |
 | `Tasks` | `setting.Tasks` | Name, Type, DriverId, IntervalMs |
 | `Vars` | `setting.Vars` | Key, Value |
 | `Recipes` | `setting.Recipes` | Id, Name, Description |
 | `SysConfig` | 工程顶层键 | Key, Value |
 | `Database` | 左树选表 → 中部显示该表行（可编辑）→ 右侧列属性 Key/Value；应用写回 SQLite |
 
-树叶子为组件实例；`Gpios` / `Vars` / `SysConfig` / `Database` 以派生行或键值作为“组件”。
+树叶子为组件实例；`Gpios` / `Vios` / `Vars` / `SysConfig` / `Database` 以派生行或键值作为“组件”。
 
 ## 交互链路
 
@@ -101,10 +103,12 @@
 | 列 | 含义 |
 |----|------|
 | **Id** | 行号（1..N） |
-| **Name** | 配置 Id（原 id） |
-| **Type** | 类型 |
-| **Desc** | 显示名 / 描述（原 name） |
+| **Name** | 配置 Id（原 id）；GPIO 为 `deviceId.alias` |
+| **Type** | 类型；GPIO 为 `in` / `out` |
+| **Desc** | 显示名 / 描述（原 name）；GPIO 为点位 label |
 | **Enable** | 启用 |
+| **DriverId** | （Gpios）点位绑定的驱动 Id；（Vios）所属 vio 设备 DriverId |
+| **Port** | （仅 Gpios）端口号 / 地址；Vios 的 Port/Value 显示 DeviceId |
 
 左侧树按 **硬件 / 逻辑 / 系统** 分组。右侧参数区下方有参数预览。
 
@@ -113,4 +117,4 @@
 - 固定字段：`Name(Id)` + `Desc(描述)` + Type / DriverId / Enable …
 - `parameters` 以 Key/Value 表编辑，下方显示预览；应用或 Ctrl+Enter 写回
 - 切换组件 / 保存时若有未应用修改会提示
-- Gpios / Axis / Platform：支持 Excel 批量导入导出
+- Gpios / Vios / Axis / Platform：支持 Excel 批量导入导出

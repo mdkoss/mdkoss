@@ -20,7 +20,6 @@
       "type": "gpio",
       "enabled": true,
       "parameters": {
-        "driverIds": "sim1",
         "in.start": "sim1:X0",
         "in.stop": "sim1:X1",
         "in.reset": "sim1:X2",

@@ -27,7 +27,7 @@
 | Type | DriverId | 常用 Parameters |
 |------|----------|-----------------|
 | `pollDriver` | 必需 | `varPrefix`（可选） |
-| `operation` | 可空 | `gpioDeviceId`（建议；兼容旧键 `deviceId`） |
+| `operation` | 可空 | `gpioDeviceId` 可空（默认共享 GpioDevice；兼容旧键 `deviceId`） |
 | `cycle` | 可空 | 一般仅 IntervalMs |
 | `motion` | 必需 | 自定义键 → `SetParam` |
 | `pnpCycle` / `pnpConveyor` | 视插件 | 扩展参数 |

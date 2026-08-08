@@ -306,9 +306,8 @@ public sealed class MdkRuntime : IDisposable
         {
             value = false;
             error = null;
-            if (!runtime._devices.TryGetValue(gpioDeviceId, out var raw))
+            if (!runtime.TryResolveGpioOrVioDevice(gpioDeviceId, out var raw, out error))
             {
-                error = "device_not_found";
                 return false;
             }
 
@@ -414,7 +413,8 @@ public sealed class MdkRuntime : IDisposable
             {
                 device = deviceType switch
                 {
-                    "axis" => new AxisDevice(config.Id, deviceName, driver, Vars),
+                    _ when AxisDeviceParameterSet.IsAxisFamilyType(deviceType) =>
+                        new AxisDevice(config.Id, deviceName, driver, Vars),
                     "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
                     _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
                 };
@@ -438,69 +438,85 @@ public sealed class MdkRuntime : IDisposable
         short ordinal = 0;
         foreach (var letter in letters)
         {
-            var driverId = PlatformDeviceParameterSet.ResolveAxisDriverId(config.Parameters, letter, defaultDriverId);
-            if (!_drivers.TryGetValue(driverId, out var axisDriver))
+            // Prefer composing from an existing Axis device (axis.X = Axis device id).
+            var binding = PlatformDeviceParameterSet.TryGetAxisBinding(config.Parameters, letter);
+            if (!string.IsNullOrWhiteSpace(binding)
+                && _devices.TryGetValue(binding, out var existing)
+                && existing is AxisDevice existingAxis)
+            {
+                var axisCfg = Setting.Axes.FirstOrDefault(a =>
+                    string.Equals(a.Id, binding, StringComparison.OrdinalIgnoreCase));
+                var driverId = !string.IsNullOrWhiteSpace(axisCfg?.DriverId)
+                    ? axisCfg!.DriverId.Trim()
+                    : FindDriverId(existingAxis.LinkedDriver) ?? defaultDriverId;
+                if (string.IsNullOrWhiteSpace(driverId))
+                {
+                    return null;
+                }
+
+                var fallbackIndex = axisCfg is null
+                    ? ordinal
+                    : AxisDeviceParameterSet.ParseAxisIndex(axisCfg.Parameters, ordinal);
+                var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(
+                    config.Parameters, letter, fallbackIndex);
+                axisRefs.Add(new PlatformAxisRef(letter, driverId, existingAxis, axisIndex));
+                ordinal++;
+                continue;
+            }
+
+            var resolvedDriverId = PlatformDeviceParameterSet.ResolveAxisDriverId(
+                config.Parameters,
+                letter,
+                defaultDriverId,
+                id => Setting.Axes
+                    .FirstOrDefault(a => string.Equals(a.Id, id, StringComparison.OrdinalIgnoreCase))
+                    ?.DriverId);
+            if (!_drivers.TryGetValue(resolvedDriverId, out var axisDriver))
             {
                 return null;
             }
 
-            var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(config.Parameters, letter, ordinal);
+            var axisIndexFromDriver = PlatformDeviceParameterSet.ResolveAxisIndex(
+                config.Parameters, letter, ordinal);
             var axisId = $"{config.Id}.{letter}";
             var axisName = $"{deviceName} {letter}";
             var axisDevice = new AxisDevice(axisId, axisName, axisDriver, Vars);
-            axisRefs.Add(new PlatformAxisRef(letter, driverId, axisDevice, axisIndex));
+            axisRefs.Add(new PlatformAxisRef(letter, resolvedDriverId, axisDevice, axisIndexFromDriver));
             ordinal++;
         }
 
         return new PlatformDevice(config.Id, deviceName, kind, axisRefs, Vars);
     }
 
+    private string? FindDriverId(IDriver driver)
+    {
+        foreach (var kv in _drivers)
+        {
+            if (ReferenceEquals(kv.Value, driver))
+            {
+                return kv.Key;
+            }
+        }
+
+        return null;
+    }
+
     private GpioDevice BuildGpioDevice(MdkSetting.DeviceConfig config, string deviceName)
     {
+        // Prefer one shared GpioDevice: attach every enabled non-vio driver card.
+        // Point values (in.*/out.*) distinguish the card via driverId:address.
         var defaultDriverId = string.IsNullOrWhiteSpace(config.DriverId) ? null : config.DriverId.Trim();
-        var scope = GpioDeviceParameterSet.ParseDriverScopeIds(config.Parameters);
-        if (scope is null && !string.IsNullOrWhiteSpace(defaultDriverId))
-        {
-            scope = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { defaultDriverId };
-        }
+        var driverMap = ResolveGpioDriverMap(config);
 
-        IReadOnlyDictionary<string, IDriver> driverMap;
-        if (scope is null)
+        var bindings = GpioDeviceParameterSet.ParseBindings(config.Parameters, defaultDriverId);
+        foreach (var b in bindings)
         {
-            driverMap = _drivers;
-        }
-        else
-        {
-            var filtered = new Dictionary<string, IDriver>(StringComparer.OrdinalIgnoreCase);
-            foreach (var id in scope)
-            {
-                if (_drivers.TryGetValue(id, out var d))
-                {
-                    filtered[id] = d;
-                }
-            }
-
-            if (filtered.Count == 0)
+            if (!driverMap.ContainsKey(b.DriverId))
             {
                 throw new MdkException(
                     MdkErrorCode.GpioDriverScopeInvalid,
-                    "GPIO driverIds/driverId did not match any enabled drivers.");
-            }
-
-            driverMap = filtered;
-        }
-
-        var bindings = GpioDeviceParameterSet.ParseBindings(config.Parameters, defaultDriverId);
-        if (scope is not null)
-        {
-            foreach (var b in bindings)
-            {
-                if (!driverMap.ContainsKey(b.DriverId))
-                {
-                    throw new MdkException(
-                        MdkErrorCode.GpioDriverScopeInvalid,
-                        $"GPIO point '{b.Alias}' uses driver '{b.DriverId}' which is outside driverIds scope.");
-                }
+                    $"GPIO point '{b.Alias}' uses driver '{b.DriverId}' which is not attached to this GpioDevice " +
+                    "(missing, disabled, vio-typed, or outside optional driverIds).");
             }
         }
 
@@ -520,13 +536,68 @@ public sealed class MdkRuntime : IDisposable
         return gpioDevice;
     }
 
+    /// <summary>
+    /// Builds the driver map for a GPIO device: all enabled non-vio drivers by default,
+    /// or the optional <c>driverIds</c> subset (still excluding vio-typed drivers).
+    /// </summary>
+    private Dictionary<string, IDriver> ResolveGpioDriverMap(MdkSetting.DeviceConfig config)
+    {
+        var vioDriverIds = new HashSet<string>(
+            Setting.Drivers
+                .Where(d => GpioDeviceParameterSet.IsVioDriverType(d.Type))
+                .Select(d => d.Id),
+            StringComparer.OrdinalIgnoreCase);
+
+        var scope = GpioDeviceParameterSet.ParseDriverScopeIds(config.Parameters);
+        var filtered = new Dictionary<string, IDriver>(StringComparer.OrdinalIgnoreCase);
+
+        if (scope is null)
+        {
+            foreach (var kv in _drivers)
+            {
+                if (!vioDriverIds.Contains(kv.Key))
+                {
+                    filtered[kv.Key] = kv.Value;
+                }
+            }
+        }
+        else
+        {
+            foreach (var id in scope)
+            {
+                if (vioDriverIds.Contains(id))
+                {
+                    continue;
+                }
+
+                if (_drivers.TryGetValue(id, out var d))
+                {
+                    filtered[id] = d;
+                }
+            }
+        }
+
+        if (filtered.Count == 0)
+        {
+            throw new MdkException(
+                MdkErrorCode.GpioDriverScopeInvalid,
+                "GPIO device has no attachable drivers (need at least one enabled non-vio driver).");
+        }
+
+        return filtered;
+    }
+
     private VioDevice BuildVioDevice(MdkSetting.DeviceConfig config, string deviceName, IDriver driver)
     {
         var bindings = VioDeviceParameterSet.ParseVirtualBindings(config.Parameters);
         var vio = new VioDevice(config.Id, deviceName, config.DriverId, driver, Vars);
         foreach (var binding in bindings)
         {
-            if (binding.IsOutput)
+            if (binding.IsBidirectional)
+            {
+                vio.RegisterVirtualPoint(binding.Alias);
+            }
+            else if (binding.IsOutput)
             {
                 vio.RegisterVirtualOutput(binding.Alias);
             }
@@ -574,13 +645,13 @@ public sealed class MdkRuntime : IDisposable
 
     /// <summary>
     /// Writes a digital output on a <see cref="GpioDevice"/> or <see cref="VioDevice"/> by logical alias.
+    /// Empty <paramref name="deviceId"/> resolves to the first registered <see cref="GpioDevice"/>.
     /// </summary>
     public bool TryWriteDigitalOutput(string deviceId, string alias, bool value, out string? error)
     {
         error = null;
-        if (!_devices.TryGetValue(deviceId, out var dev))
+        if (!TryResolveGpioOrVioDevice(deviceId, out var dev, out error))
         {
-            error = "device_not_found";
             return false;
         }
 
@@ -606,6 +677,36 @@ public sealed class MdkRuntime : IDisposable
                 error = "device_not_gpio_or_vio";
                 return false;
         }
+    }
+
+    /// <summary>
+    /// Resolves a GPIO/VIO device. Blank id picks the primary (first) <see cref="GpioDevice"/> so tasks
+    /// can operate aliases without naming the device when only one shared GPIO is configured.
+    /// </summary>
+    internal bool TryResolveGpioOrVioDevice(string? deviceId, out MDeviceBase device, out string? error)
+    {
+        device = null!;
+        error = null;
+        if (!string.IsNullOrWhiteSpace(deviceId))
+        {
+            if (!_devices.TryGetValue(deviceId.Trim(), out device!))
+            {
+                error = "device_not_found";
+                return false;
+            }
+
+            return true;
+        }
+
+        var gpio = _devices.Values.OfType<GpioDevice>().FirstOrDefault();
+        if (gpio is null)
+        {
+            error = "gpio_device_not_found";
+            return false;
+        }
+
+        device = gpio;
+        return true;
     }
 
     /// <summary>Executes a device action via unified API.</summary>

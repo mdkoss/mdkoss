@@ -51,8 +51,7 @@ public partial class PlatformDebugWindow : Window
     private void ReloadPlatformList()
     {
         PlatformCombo.Items.Clear();
-        var platforms = _workspace.Setting.Devices
-            .Where(d => PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant()))
+        var platforms = _workspace.Setting.Platforms
             .OrderBy(d => d.Id, StringComparer.OrdinalIgnoreCase)
             .ToList();
         foreach (var d in platforms)
@@ -75,7 +74,7 @@ public partial class PlatformDebugWindow : Window
     {
         if (PlatformCombo.SelectedItem is ComboBoxItem { Tag: string id })
         {
-            return _workspace.Setting.Devices.FirstOrDefault(d =>
+            return _workspace.Setting.Platforms.FirstOrDefault(d =>
                 string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -114,15 +113,31 @@ public partial class PlatformDebugWindow : Window
         short ordinal = 0;
         foreach (var letter in kind.AxisLetters())
         {
+            var binding = PlatformDeviceParameterSet.TryGetAxisBinding(plat.Parameters, letter);
+            var axisCfg = !string.IsNullOrWhiteSpace(binding)
+                ? _workspace.Setting.Axes.FirstOrDefault(a =>
+                    string.Equals(a.Id, binding, StringComparison.OrdinalIgnoreCase))
+                : null;
             var driverId = PlatformDeviceParameterSet.ResolveAxisDriverId(
-                plat.Parameters, letter, plat.DriverId ?? "");
-            var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(plat.Parameters, letter, ordinal);
+                plat.Parameters,
+                letter,
+                plat.DriverId ?? "",
+                id => _workspace.Setting.Axes
+                    .FirstOrDefault(a => string.Equals(a.Id, id, StringComparison.OrdinalIgnoreCase))
+                    ?.DriverId);
+            var fallbackIndex = axisCfg is null
+                ? ordinal
+                : AxisDeviceParameterSet.ParseAxisIndex(axisCfg.Parameters, ordinal);
+            var axisIndex = PlatformDeviceParameterSet.ResolveAxisIndex(plat.Parameters, letter, fallbackIndex);
+            var displayDriver = axisCfg is null
+                ? driverId
+                : $"{axisCfg.Id} → {driverId}";
             _axes.Add((letter, axisIndex, driverId));
             _rows.Add(new PlatformAxisRow
             {
                 Letter = letter,
                 AxisIndex = axisIndex,
-                DriverId = driverId,
+                DriverId = displayDriver,
             });
             ordinal++;
         }

@@ -32,7 +32,6 @@
       "type": "gpio",
       "enabled": true,
       "parameters": {
-        "driverIds": "drv-io",
         "in.startButton": "drv-io:X0",
         "in.stopButton": "drv-io:X1",
         "in.resetButton": "drv-io:X2",

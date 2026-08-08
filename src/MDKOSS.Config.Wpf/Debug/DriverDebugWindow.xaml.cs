@@ -250,6 +250,44 @@ public partial class DriverDebugWindow : Window
         return g;
     }
 
+    private IReadOnlyDictionary<string, string> SessionParameters() =>
+        _session?.Config.Parameters ?? ToParamDict();
+
+    private int DiBitCount() =>
+        IoBitGrid.ResolveBitCount(SessionParameters(), "inBits",
+            string.Equals(SelectedConfig()?.Type, "vio", StringComparison.OrdinalIgnoreCase)
+                ? 128
+                : IoBitGrid.DefaultBitCount);
+
+    private int DoBitCount() =>
+        IoBitGrid.ResolveBitCount(SessionParameters(), "outBits",
+            string.Equals(SelectedConfig()?.Type, "vio", StringComparison.OrdinalIgnoreCase)
+                ? 128
+                : IoBitGrid.DefaultBitCount);
+
+    private static int[] ReadGroups(IDriver drv, short baseGroup, int bitCount, bool di)
+    {
+        var groupCount = IoBitGrid.GroupCount(bitCount);
+        var words = new int[groupCount];
+        for (var i = 0; i < groupCount; i++)
+        {
+            var g = (short)(baseGroup + i);
+            if (di)
+            {
+                if (!drv.TryReadDi(g, out words[i]))
+                {
+                    throw new InvalidOperationException($"TryReadDi({g}) FAIL");
+                }
+            }
+            else if (!drv.TryReadDo(g, out words[i]))
+            {
+                throw new InvalidOperationException($"TryReadDo({g}) FAIL");
+            }
+        }
+
+        return words;
+    }
+
     private IDriver RequireDriver() =>
         _session?.Driver ?? throw new InvalidOperationException("请先连接驱动。");
 
@@ -259,15 +297,12 @@ public partial class DriverDebugWindow : Window
         {
             var drv = RequireDriver();
             var group = IoGroup();
-            if (!drv.TryReadDi(group, out var word))
-            {
-                DebugUi.Log(LogBox, $"TryReadDi({group}) FAIL");
-                return;
-            }
-
-            _diRows = IoBitGrid.FromWord(group, word, "DI");
+            var bitCount = DiBitCount();
+            var words = ReadGroups(drv, group, bitCount, di: true);
+            _diRows = IoBitGrid.FromWords(group, words, bitCount, "DI");
             DiGrid.ItemsSource = _diRows;
-            DebugUi.Log(LogBox, $"TryReadDi({group}) = 0x{word:X8}");
+            DebugUi.Log(LogBox,
+                $"TryReadDi({group}..{group + words.Length - 1}) bits={bitCount} → {string.Join(", ", words.Select(w => $"0x{w:X8}"))}");
         }
         catch (Exception ex)
         {
@@ -281,15 +316,12 @@ public partial class DriverDebugWindow : Window
         {
             var drv = RequireDriver();
             var group = IoGroup();
-            if (!drv.TryReadDo(group, out var word))
-            {
-                DebugUi.Log(LogBox, $"TryReadDo({group}) FAIL");
-                return;
-            }
-
-            _doRows = IoBitGrid.FromWord(group, word, "DO");
+            var bitCount = DoBitCount();
+            var words = ReadGroups(drv, group, bitCount, di: false);
+            _doRows = IoBitGrid.FromWords(group, words, bitCount, "DO");
             DoGrid.ItemsSource = _doRows;
-            DebugUi.Log(LogBox, $"TryReadDo({group}) = 0x{word:X8}");
+            DebugUi.Log(LogBox,
+                $"TryReadDo({group}..{group + words.Length - 1}) bits={bitCount} → {string.Join(", ", words.Select(w => $"0x{w:X8}"))}");
         }
         catch (Exception ex)
         {
@@ -303,15 +335,21 @@ public partial class DriverDebugWindow : Window
         {
             var drv = RequireDriver();
             var group = IoGroup();
+            var bitCount = DoBitCount();
             if (_doRows.Count == 0)
             {
-                _doRows = IoBitGrid.FromWord(group, 0, "DO");
+                _doRows = IoBitGrid.FromWords(group, new int[IoBitGrid.GroupCount(bitCount)], bitCount, "DO");
                 DoGrid.ItemsSource = _doRows;
             }
 
-            var word = IoBitGrid.ToWord(_doRows);
-            var ok = drv.WriteDo(group, word);
-            DebugUi.Log(LogBox, $"WriteDo({group}, 0x{word:X8}) {DebugUi.FormatBool(ok)}");
+            var groupCount = IoBitGrid.GroupCount(bitCount);
+            for (var i = 0; i < groupCount; i++)
+            {
+                var g = (short)(group + i);
+                var word = IoBitGrid.ToWord(_doRows, g);
+                var ok = drv.WriteDo(g, word);
+                DebugUi.Log(LogBox, $"WriteDo({g}, 0x{word:X8}) {DebugUi.FormatBool(ok)}");
+            }
         }
         catch (Exception ex)
         {

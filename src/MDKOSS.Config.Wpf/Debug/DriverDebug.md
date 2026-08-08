@@ -30,9 +30,9 @@
 | UI | 调用 |
 |----|------|
 | 连接 | `DriverFactory.Create(type)` → `IDriver.Initialize(config)` |
-| 读 DI | `TryReadDi(group, out word)` → 展开 32 位 |
-| 读 DO | `TryReadDo(group, out word)` |
-| 写 DO 字 | `WriteDo(group, word)`（由勾选位合成） |
+| 读 DI | `TryReadDi` 连续 group，按 `inBits`（vio 默认 128）展开 |
+| 读 DO | `TryReadDo` 连续 group，按 `outBits`（vio 默认 128）展开 |
+| 写 DO 字 | 按位表分组写回各 group |
 | 写选中位 | `WriteDoBit(group, index, value)` |
 
 配置路径键默认候选：`configPath` / `configFile` / `cfgPath` / `cfgFile` / `cfg` / `iniPath` / `xmlPath` / `dllPath`。

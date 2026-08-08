@@ -52,6 +52,9 @@
         <MenuItem Header="导入 Excel（合并）…" Click="ImportModuleExcelMerge_Click"/>
         <MenuItem Header="导入 Excel（替换）…" Click="ImportModuleExcelReplace_Click"/>
         <Separator/>
+        <MenuItem Header="VIOs 补全默认点位…" Click="FillVioDefaults_Click"/>
+        <MenuItem Header="VIOs 重置默认点位…" Click="ResetVioDefaults_Click"/>
+        <Separator/>
         <MenuItem Header="定位到 Drivers" Click="NavDrivers_Click"/>
         <MenuItem Header="定位到 Devices" Click="NavDevices_Click"/>
         <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
@@ -113,6 +116,12 @@
               <Button Content="导出" Click="ExportModule_Click" Padding="10,3"/>
               <Button Content="Excel导入" Click="ImportModuleExcelMerge_Click" Padding="10,3"/>
               <Button Content="Excel导出" Click="ExportModuleExcel_Click" Padding="10,3"/>
+              <Button Content="补全默认点位" Click="FillVioDefaults_Click" Padding="10,3"
+                      Visibility="{Binding SupportsVioDefaultLoad, Converter={StaticResource BoolToVis}}"
+                      ToolTip="为当前/全部 vio 设备补全缺失的 vio.b1…b128"/>
+              <Button Content="重置默认点位" Click="ResetVioDefaults_Click" Padding="10,3"
+                      Visibility="{Binding SupportsVioDefaultLoad, Converter={StaticResource BoolToVis}}"
+                      ToolTip="用完整默认数量覆盖当前/全部 vio 设备点位"/>
             </StackPanel>
             <TextBlock FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center">
               <Run Text="组件列表 — "/><Run Text="{Binding ModuleTitle, Mode=OneWay}"/>
@@ -161,6 +170,9 @@
                   <MenuItem Header="导出模块…" Click="ExportModule_Click"/>
                   <MenuItem Header="导入模块（合并）…" Click="ImportModuleMerge_Click"/>
                   <Separator/>
+                  <MenuItem Header="补全默认 VIO 点位" Click="FillVioDefaults_Click"/>
+                  <MenuItem Header="重置默认 VIO 点位" Click="ResetVioDefaults_Click"/>
+                  <Separator/>
                   <MenuItem Header="刷新数据库表" Click="RefreshDbTable_Click"/>
                   <MenuItem Header="删除数据库行" Click="DeleteDbRow_Click"/>
                 </ContextMenu>
@@ -168,9 +180,11 @@
               <DataGrid.Columns>
                 <DataGridTextColumn Header="{Binding DataContext.ColHeader1, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col1}" Width="48"/>
                 <DataGridTextColumn Header="{Binding DataContext.ColHeader2, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col2}" Width="*"/>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader3, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col3}" Width="110"/>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader4, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col4}" Width="1.2*"/>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader5, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col5}" Width="64"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader3, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col3}" Width="70"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader4, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col4}" Width="*"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader5, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col5}" Width="56"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader6, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col6}" Width="100"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader7, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col7}" Width="64"/>
               </DataGrid.Columns>
             </DataGrid>
 
@@ -220,6 +234,26 @@
           </DockPanel>
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
+              <StackPanel Visibility="{Binding ShowQuickAddTypes, Converter={StaticResource BoolToVis}}" Margin="0,0,0,8">
+                <TextBlock Text="支持的组件类型" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
+                <ItemsControl ItemsSource="{Binding QuickAddTypes}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Button Content="{Binding}" Tag="{Binding}" Margin="0,0,8,8" Padding="12,6"
+                              MinWidth="72" Click="QuickAddType_Click"
+                              Background="{StaticResource AccentBrush}" Foreground="White"
+                              ToolTip="以此类型快速新建组件"/>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Text="选中左侧/中部组件后可在此编辑属性。"
+                           Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"/>
+              </StackPanel>
               <StackPanel Visibility="{Binding ShowId, Converter={StaticResource BoolToVis}}">
                 <TextBlock Text="Name (Id)" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
@@ -259,7 +293,7 @@
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowValue, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Value / Route" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="Port / Value" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldValue, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          AcceptsReturn="True" MinHeight="40" TextWrapping="Wrap"
                          IsReadOnly="{Binding IsReadOnly}"/>
@@ -272,10 +306,13 @@
                 <DockPanel Margin="0,0,0,4">
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal"
                               IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}">
+                    <Button Content="组合轴…" Padding="8,2" Margin="0,0,4,0" Click="ComposeAxes_Click"
+                            Visibility="{Binding ShowComposeAxes, Converter={StaticResource BoolToVis}}"
+                            ToolTip="从已有 Axis 组件快速绑定 axis.X / axis.Y …（组合轴）"/>
                     <Button Content="补全模板" Padding="8,2" Margin="0,0,4,0" Click="FillParamTemplate_Click"
                             ToolTip="按当前 Type 补全缺失的默认参数键"/>
                     <Button Content="重置模板" Padding="8,2" Margin="0,0,4,0" Click="ResetParamTemplate_Click"
-                            ToolTip="按当前 Type 重置为完整默认参数"/>
+                            ToolTip="按当前 Type 重置为完整默认参数（驱动见 DriverParameterPresets JSON）"/>
                     <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParamRow_Click"/>
                     <Button Content="删行" Padding="8,2" Margin="0,0,4,0" Click="RemoveParamRow_Click"/>
                     <Button Content="JSON" Padding="8,2" Click="SyncParamsJson_Click" ToolTip="从表格同步预览 JSON"/>
@@ -311,7 +348,21 @@
                         </DataTemplate>
                       </DataGridTemplateColumn.CellEditingTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
+                    <DataGridTemplateColumn Header="Value" Width="1.4*">
+                      <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                          <TextBlock Text="{Binding Value}" VerticalAlignment="Center" Margin="4,0"/>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellTemplate>
+                      <DataGridTemplateColumn.CellEditingTemplate>
+                        <DataTemplate>
+                          <ComboBox IsEditable="True"
+                                    ItemsSource="{Binding DataContext.ParamValueSuggestions, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                    IsTextSearchEnabled="True"/>
+                        </DataTemplate>
+                      </DataGridTemplateColumn.CellEditingTemplate>
+                    </DataGridTemplateColumn>
                   </DataGrid.Columns>
                 </DataGrid>
                 <Border Margin="0,0,0,8" Padding="8,6" Background="#F4F7FA"
