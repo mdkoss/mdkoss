@@ -58,6 +58,9 @@
         <StackPanel x:Name="ParamsPanel" Margin="0,8,0,0" Visibility="Collapsed">
           <DockPanel Margin="0,0,0,4">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <Button x:Name="PickVarsButton" Content="从 Vars…" Padding="8,2" Margin="0,0,4,0"
+                      Click="PickVars_Click" Visibility="Collapsed"
+                      ToolTip="从 Vars 与 SysConfig.recipeVarKeys 查询并勾选配方变量键"/>
               <Button Content="按类型填充" Padding="8,2" Margin="0,0,4,0" Click="FillTypeParams_Click"
                       ToolTip="按当前 Type 重置 Parameters 模板"/>
               <Button Content="+ 行" Padding="8,2" Margin="0,0,4,0" Click="AddParamRow_Click"/>

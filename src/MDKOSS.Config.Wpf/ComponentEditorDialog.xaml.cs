@@ -68,6 +68,7 @@ public partial class ComponentEditorDialog : Window
                 Show(NamePanel, true);
                 Show(DescriptionPanel, true);
                 Show(ParamsPanel, true);
+                Show(PickVarsButton, true);
                 break;
             case ConfigModule.Vars:
                 Show(IdPanel, true);
@@ -95,9 +96,75 @@ public partial class ComponentEditorDialog : Window
         ValueBox.Text = request.Value;
         EnabledCheck.IsChecked = request.Enabled;
         _paramRows.Clear();
-        foreach (var row in request.Parameters)
+        if (_module == ConfigModule.Recipes && request.Vars.Count > 0)
         {
-            _paramRows.Add(new KvPairRow { Key = row.Key, Value = row.Value });
+            foreach (var kv in request.Vars.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
+            {
+                _paramRows.Add(new KvPairRow
+                {
+                    Key = kv.Key,
+                    Value = FormatObjectValue(kv.Value),
+                });
+            }
+        }
+        else
+        {
+            foreach (var row in request.Parameters)
+            {
+                _paramRows.Add(new KvPairRow { Key = row.Key, Value = row.Value });
+            }
+        }
+    }
+
+    private static string FormatObjectValue(object? value) => value switch
+    {
+        null => "",
+        System.Text.Json.JsonElement je => je.ValueKind == System.Text.Json.JsonValueKind.String
+            ? je.GetString() ?? ""
+            : je.ToString(),
+        _ => Convert.ToString(value) ?? "",
+    };
+
+    private void PickVars_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var already = _paramRows.Select(r => r.Key).Where(k => !string.IsNullOrWhiteSpace(k));
+            var dlg = new RecipePickVarsDialog(Request.VarCandidates, already)
+            {
+                Owner = this,
+            };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            var existing = new HashSet<string>(
+                _paramRows.Select(r => r.Key).Where(k => !string.IsNullOrWhiteSpace(k)),
+                StringComparer.OrdinalIgnoreCase);
+            var byKey = Request.VarCandidates.ToDictionary(
+                c => c.Key,
+                c => c.ValuePreview,
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var key in dlg.SelectedKeys)
+            {
+                if (existing.Contains(key))
+                {
+                    continue;
+                }
+
+                _paramRows.Add(new KvPairRow
+                {
+                    Key = key,
+                    Value = byKey.TryGetValue(key, out var preview) ? preview : "",
+                });
+                existing.Add(key);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "从 Vars 选择", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -261,4 +328,6 @@ public sealed class CreateComponentRequest
     public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public IReadOnlyList<string> TypeOptions { get; set; } = [];
     public IReadOnlyList<string> DriverOptions { get; set; } = [];
+    public IReadOnlyList<string> KeySuggestions { get; set; } = [];
+    public IReadOnlyList<RecipeVarCandidate> VarCandidates { get; set; } = [];
 }

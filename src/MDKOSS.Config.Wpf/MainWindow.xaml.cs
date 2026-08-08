@@ -1021,6 +1021,35 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PickRecipeVars_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!_workspace.Draft.ShowPickRecipeVars || _workspace.Draft.IsReadOnly)
+            {
+                return;
+            }
+
+            var already = _workspace.Draft.ParameterRows
+                .Select(r => r.Key)
+                .Where(k => !string.IsNullOrWhiteSpace(k));
+            var dlg = new RecipePickVarsDialog(_workspace.GetRecipeVarCandidates(), already)
+            {
+                Owner = this,
+            };
+            if (dlg.ShowDialog() != true)
+            {
+                return;
+            }
+
+            _workspace.ApplyRecipeVarSelection(dlg.SelectedKeys);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "从 Vars 选择", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ParamGrid_PreparingCellForEdit(object sender, DataGridPreparingCellForEditEventArgs e)
     {
         if (e.Row?.Item is not KvPairRow row)

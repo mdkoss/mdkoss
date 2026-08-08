@@ -309,6 +309,9 @@
                     <Button Content="组合轴…" Padding="8,2" Margin="0,0,4,0" Click="ComposeAxes_Click"
                             Visibility="{Binding ShowComposeAxes, Converter={StaticResource BoolToVis}}"
                             ToolTip="从已有 Axis 组件绑定 axis.X / axis.Y …（仅选轴）"/>
+                    <Button Content="从 Vars…" Padding="8,2" Margin="0,0,4,0" Click="PickRecipeVars_Click"
+                            Visibility="{Binding ShowPickRecipeVars, Converter={StaticResource BoolToVis}}"
+                            ToolTip="从 Vars 与 SysConfig.recipeVarKeys 查询并勾选配方变量键"/>
                     <Button Content="补全模板" Padding="8,2" Margin="0,0,4,0" Click="FillParamTemplate_Click"
                             ToolTip="按当前 Type 补全缺失的默认参数键"/>
                     <Button Content="重置模板" Padding="8,2" Margin="0,0,4,0" Click="ResetParamTemplate_Click"

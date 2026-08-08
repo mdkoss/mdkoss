@@ -148,6 +148,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     private bool _suppressDirty;
     private bool _showQuickAddTypes;
     private bool _showComposeAxes;
+    private bool _showPickRecipeVars;
     private string _headline = "未选择组件";
     private string _labelId = "Name (Id)";
     private string _labelName = "Desc (描述)";
@@ -246,6 +247,12 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         get => _showComposeAxes;
         set { if (_showComposeAxes == value) return; _showComposeAxes = value; OnPropertyChanged(); }
     }
+    /// <summary>Show「从 Vars…」button when editing a Recipe component.</summary>
+    public bool ShowPickRecipeVars
+    {
+        get => _showPickRecipeVars;
+        set { if (_showPickRecipeVars == value) return; _showPickRecipeVars = value; OnPropertyChanged(); }
+    }
     public bool IsReadOnly { get => _isReadOnly; set { _isReadOnly = value; OnPropertyChanged(); } }
     public bool ParametersAsObject { get => _parametersAsObject; set { _parametersAsObject = value; OnPropertyChanged(); } }
     public bool IsDirty
@@ -294,6 +301,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
             ShowId = ShowName = ShowType = ShowDriverId = ShowInterval = ShowDescription = ShowValue = ShowEnabled = ShowParameters = false;
             ShowQuickAddTypes = false;
             ShowComposeAxes = false;
+            ShowPickRecipeVars = false;
             ResetFieldLabels();
             FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
             FieldParameters = "{}";
@@ -322,6 +330,26 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         LabelInterval = "IntervalMs";
         LabelDescription = "Description / Label";
         LabelValue = "Port / Value";
+    }
+
+    /// <summary>Field captions for Gpios point editing (Name/Desc/Type/DriverId/Port).</summary>
+    public void ApplyGpioFieldLabels()
+    {
+        LabelId = "Name (Alias)";
+        LabelName = "Desc (描述)";
+        LabelType = "Type / Direction";
+        LabelDriverId = "DriverId";
+        LabelValue = "Port";
+    }
+
+    /// <summary>Field captions for Vios point editing.</summary>
+    public void ApplyVioFieldLabels()
+    {
+        LabelId = "Name (Alias)";
+        LabelName = "Desc (描述)";
+        LabelType = "Type";
+        LabelDriverId = "DriverId";
+        LabelValue = "DeviceId";
     }
 
     public void SetQuickAddTypes(IEnumerable<string> types)
@@ -1173,7 +1201,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     {
         if (!CanEditList)
         {
-            throw new InvalidOperationException("当前模块不支持新建（GPIO 请在 Devices 中编辑 parameters；Database 只读）。");
+            throw new InvalidOperationException("当前模块不支持新建（GPIO 点位请在 GPIOs 模块编辑或 Excel 导入；Database 只读）。");
         }
 
         if (_module == ConfigModule.SysConfig)
@@ -1219,6 +1247,22 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Recipes:
                 req.Id = UniqueId(_setting.Recipes.Select(r => r.Id), "recipe-new");
                 req.Name = req.Id;
+                {
+                    var seed = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+                    if (_setting.RecipeVarKeys.Count > 0)
+                    {
+                        foreach (var key in _setting.RecipeVarKeys.Where(k => !string.IsNullOrWhiteSpace(k)))
+                        {
+                            var k = key.Trim();
+                            seed[k] = _setting.Vars.TryGetValue(k, out var value) ? value : "";
+                        }
+                    }
+
+                    req.Vars = seed;
+                    var candidates = GetRecipeVarCandidates();
+                    req.VarCandidates = candidates;
+                    req.KeySuggestions = candidates.Select(c => c.Key).ToList();
+                }
                 break;
             case ConfigModule.Vars:
                 req.Id = UniqueId(_setting.Vars.Keys, "var.new");
@@ -2626,7 +2670,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 list.Add(new ComponentItem
                 {
                     Module = ConfigModule.Gpios,
-                    Source = new GpioEditTarget(device, direction, b.Alias, b.DriverId, b.Address),
+                    Source = new GpioEditTarget(device, direction, b.Alias, b.DriverId, b.Address, label),
                     Key = key,
                     Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
                     Subtitle = string.IsNullOrWhiteSpace(b.DriverId) ? b.Address : $"{b.DriverId}:{b.Address}",
@@ -2861,7 +2905,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             Draft.IsReadOnly = false;
             Draft.ShowQuickAddTypes = false;
+            Draft.ShowComposeAxes = false;
+            Draft.ShowPickRecipeVars = false;
             Draft.QuickAddTypes.Clear();
+            Draft.ResetFieldLabels();
             Draft.Headline = $"{ModuleDisplayName(item.Module)} / {item.Title}";
             Draft.SetTypeOptions(ConfigTypeCatalog.TypesForModule(item.Module));
             Draft.SetDriverOptions(_setting.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
@@ -2900,6 +2947,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     {
                         loadedParams = PlatformDeviceParameterSet.NormalizeParameters(d.Type, loadedParams);
                     }
+                    else if (item.Module == ConfigModule.Devices && IsGpioOrVioDeviceType(d.Type))
+                    {
+                        // Point bindings belong to Gpios / Vios modules.
+                        loadedParams = FilterDeviceLevelParameters(loadedParams);
+                        Draft.Headline =
+                            $"{ModuleDisplayName(item.Module)} / {item.Title}（点位请到{(IsVioDeviceType(d.Type) ? "VIOs" : "GPIOs")} 编辑）";
+                    }
 
                     Draft.LoadStringParameters(loadedParams);
                     RefreshParamKeySuggestions(item.Module, d.Type, d.DriverId);
@@ -2920,11 +2974,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     SetDraftVisibility(id: true, name: true, description: true, parameters: true);
                     Draft.ShowType = false;
                     Draft.ShowEnabled = false;
+                    Draft.ShowPickRecipeVars = true;
                     Draft.FieldId = r.Id;
                     Draft.FieldName = r.Name;
                     Draft.FieldDescription = r.Description ?? "";
                     Draft.LoadObjectParameters(r.Vars);
-                    Draft.SetParamKeySuggestions(_setting.RecipeVarKeys);
+                    RefreshRecipeParamSuggestions();
                     break;
                 case ConfigModule.Vars:
                     SetDraftVisibility(id: true, value: true);
@@ -2955,7 +3010,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     }
                     break;
                 case ConfigModule.Gpios when item.Source is GpioEditTarget g:
-                    // Name(Id)=alias, Desc=label, Type=in|out, DriverId, Port, Enabled
+                    // Name(Alias), Desc, Type/Direction, DriverId, Port, Enabled
                     SetDraftVisibility(
                         id: true,
                         name: true,
@@ -2964,13 +3019,16 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         value: true,
                         enabled: true);
                     Draft.ShowParameters = false;
+                    Draft.ApplyGpioFieldLabels();
                     Draft.SetTypeOptions(ConfigTypeCatalog.GpioDirections);
                     Draft.Headline = $"{ModuleDisplayName(item.Module)} / {g.Device.Id} / {item.Title}";
                     Draft.FieldId = g.Alias;
-                    Draft.FieldName = GpioDeviceParameterSet.ReadLabel(
-                        g.Device.Parameters,
-                        g.Alias,
-                        g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"));
+                    Draft.FieldName = string.IsNullOrWhiteSpace(g.Label)
+                        ? GpioDeviceParameterSet.ReadLabel(
+                            g.Device.Parameters,
+                            g.Alias,
+                            g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"))
+                        : g.Label;
                     Draft.FieldType = g.Direction;
                     Draft.FieldDriverId = string.IsNullOrWhiteSpace(g.DriverId)
                         ? (g.Device.DriverId ?? "")
@@ -2978,10 +3036,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.FieldValue = g.Port;
                     Draft.FieldEnabled = g.Device.Enabled;
                     Draft.FieldDescription = "";
+                    Draft.LoadStringParameters(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
                     Draft.ParamKeySuggestions.Clear();
                     break;
                 case ConfigModule.Vios when item.Source is VioEditTarget v:
-                    // Name(Id)=vio.bN, Desc=label, Type=vio, DriverId, DeviceId in Value, Enabled
+                    // Name(Alias), Desc, Type=vio, DriverId, DeviceId in Value, Enabled
                     SetDraftVisibility(
                         id: true,
                         name: true,
@@ -2990,6 +3049,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         value: true,
                         enabled: true);
                     Draft.ShowParameters = false;
+                    Draft.ApplyVioFieldLabels();
                     Draft.SetTypeOptions(["vio"]);
                     Draft.Headline = $"{ModuleDisplayName(item.Module)} / {v.Device.Id} / {item.Title}";
                     Draft.FieldId = v.Alias;
@@ -2999,6 +3059,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.FieldValue = v.Device.Id;
                     Draft.FieldEnabled = v.Device.Enabled;
                     Draft.FieldDescription = "";
+                    Draft.LoadStringParameters(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase));
                     Draft.ParamKeySuggestions.Clear();
                     break;
                 case ConfigModule.Database:
@@ -3020,6 +3081,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             // Only template keys (axis.* / note[/kind]); drop obsolete axisIndex/model from suggestions.
             keys = keys.Concat(Draft.ParameterRows.Select(r => r.Key)
                 .Where(k => IsPlatformEditableParamKey(k)));
+        }
+        else if (module == ConfigModule.Devices && IsGpioOrVioDeviceType(type))
+        {
+            // Device-level only (e.g. driverIds); point keys are edited in Gpios / Vios.
+            keys = keys.Concat(Draft.ParameterRows.Select(r => r.Key))
+                .Where(k => !IsGpioPointParameterKey(k))
+                .DefaultIfEmpty("driverIds");
         }
         else
         {
@@ -3062,6 +3130,15 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             Draft.SetParamValueSuggestions(
                 _setting.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
+            return;
+        }
+
+        if (module == ConfigModule.Recipes)
+        {
+            Draft.SetParamValueSuggestions(
+                _setting.Vars.Values
+                    .Select(FormatRecipeVarValue)
+                    .Where(v => !string.IsNullOrWhiteSpace(v)));
             return;
         }
 
@@ -3110,8 +3187,197 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             return;
         }
 
+        if (_module == ConfigModule.Recipes)
+        {
+            RefreshRecipeValueSuggestionsForKey(k);
+            return;
+        }
+
+        if (_module == ConfigModule.SysConfig)
+        {
+            RefreshSysConfigValueSuggestionsForKey(k);
+            return;
+        }
+
         Draft.ParamValueSuggestions.Clear();
     }
+
+    /// <summary>Key suggestions for recipe vars: SysConfig.recipeVarKeys ∪ Vars ∪ other recipes.</summary>
+    public void RefreshRecipeParamSuggestions()
+    {
+        Draft.SetParamKeySuggestions(EnumerateRecipeKeyCandidates().Select(c => c.Key));
+        RefreshParamValueSuggestions(ConfigModule.Recipes);
+    }
+
+    /// <summary>Candidates for the recipe vars picker (Vars + SysConfig.recipeVarKeys + existing recipe keys).</summary>
+    public IReadOnlyList<RecipeVarCandidate> GetRecipeVarCandidates() =>
+        EnumerateRecipeKeyCandidates()
+            .OrderBy(c => c.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    /// <summary>
+    /// Merge selected keys into the current recipe draft.
+    /// Existing keys keep their draft values; new keys take current Vars values when available.
+    /// </summary>
+    public void ApplyRecipeVarSelection(IEnumerable<string> keys)
+    {
+        if (_module != ConfigModule.Recipes || Draft.IsReadOnly || !Draft.ShowParameters)
+        {
+            throw new InvalidOperationException("仅 Recipe 组件支持从 Vars / SysConfig 选择键。");
+        }
+
+        var selected = keys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (selected.Count == 0)
+        {
+            throw new InvalidOperationException("请至少选择一个变量键。");
+        }
+
+        var book = Draft.CollectObjectParameters();
+        foreach (var key in selected)
+        {
+            if (book.ContainsKey(key))
+            {
+                continue;
+            }
+
+            book[key] = _setting.Vars.TryGetValue(key, out var value) ? value : "";
+        }
+
+        Draft.LoadObjectParameters(book);
+        Draft.MarkDirty();
+        RefreshRecipeParamSuggestions();
+        StatusLine = $"已加入 {selected.Count} 个配方变量键";
+    }
+
+    private IEnumerable<RecipeVarCandidate> EnumerateRecipeKeyCandidates()
+    {
+        var sources = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+        void AddSource(string key, string source)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                return;
+            }
+
+            var k = key.Trim();
+            if (!sources.TryGetValue(k, out var set))
+            {
+                set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                sources[k] = set;
+            }
+
+            set.Add(source);
+        }
+
+        foreach (var key in _setting.RecipeVarKeys)
+        {
+            AddSource(key, "sysconfig.recipeVarKeys");
+        }
+
+        foreach (var key in _setting.Vars.Keys)
+        {
+            AddSource(key, "vars");
+        }
+
+        foreach (var recipe in _setting.Recipes)
+        {
+            foreach (var key in recipe.Vars.Keys)
+            {
+                AddSource(key, $"recipe:{recipe.Id}");
+            }
+        }
+
+        foreach (var (key, tags) in sources)
+        {
+            var ordered = tags
+                .OrderBy(t => t.StartsWith("sysconfig", StringComparison.OrdinalIgnoreCase) ? 0
+                    : t.Equals("vars", StringComparison.OrdinalIgnoreCase) ? 1 : 2)
+                .ThenBy(t => t, StringComparer.OrdinalIgnoreCase);
+            yield return new RecipeVarCandidate
+            {
+                Key = key,
+                Source = string.Join(" · ", ordered),
+                ValuePreview = _setting.Vars.TryGetValue(key, out var value)
+                    ? FormatRecipeVarValue(value)
+                    : "",
+            };
+        }
+    }
+
+    private void RefreshRecipeValueSuggestionsForKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            Draft.ParamValueSuggestions.Clear();
+            return;
+        }
+
+        var suggestions = new List<string>();
+        if (_setting.Vars.TryGetValue(key, out var current))
+        {
+            var text = FormatRecipeVarValue(current);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                suggestions.Add(text);
+            }
+        }
+
+        foreach (var recipe in _setting.Recipes)
+        {
+            if (recipe.Vars.TryGetValue(key, out var fromRecipe))
+            {
+                var text = FormatRecipeVarValue(fromRecipe);
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    suggestions.Add(text);
+                }
+            }
+        }
+
+        Draft.SetParamValueSuggestions(suggestions);
+    }
+
+    private void RefreshSysConfigValueSuggestionsForKey(string key)
+    {
+        var entryKey = _selected?.Key ?? "";
+        if (string.IsNullOrWhiteSpace(entryKey))
+        {
+            entryKey = Draft.ParameterRows
+                .FirstOrDefault(r => string.Equals(r.Key, "key", StringComparison.OrdinalIgnoreCase))
+                ?.Value?.Trim() ?? "";
+        }
+
+        if (string.Equals(key, "value", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(entryKey, "activeRecipeId", StringComparison.OrdinalIgnoreCase))
+        {
+            Draft.SetParamValueSuggestions(
+                _setting.Recipes.Select(r => r.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
+            return;
+        }
+
+        if (string.Equals(key, "value", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(entryKey, "recipeVarKeys", StringComparison.OrdinalIgnoreCase))
+        {
+            Draft.SetParamValueSuggestions(_setting.Vars.Keys.Where(k => !string.IsNullOrWhiteSpace(k)));
+            return;
+        }
+
+        Draft.ParamValueSuggestions.Clear();
+    }
+
+    private static string FormatRecipeVarValue(object? value) => value switch
+    {
+        null => "",
+        JsonElement je => je.ValueKind == JsonValueKind.String
+            ? je.GetString() ?? ""
+            : je.ToString(),
+        _ => Convert.ToString(value) ?? "",
+    };
 
     /// <summary>
     /// Apply Axis device selections into draft parameters (<c>axis.X</c> = Axis id only).
@@ -3691,6 +3957,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         IReadOnlyDictionary<string, string> editedDeviceLevel)
     {
         var merged = new Dictionary<string, string>(editedDeviceLevel, StringComparer.OrdinalIgnoreCase);
+        // When draft already contains point keys, trust it; otherwise keep previous points.
+        if (merged.Keys.Any(IsGpioPointParameterKey))
+        {
+            return merged;
+        }
+
         foreach (var kv in previous)
         {
             if (IsGpioPointParameterKey(kv.Key))
