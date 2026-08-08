@@ -1,4 +1,4 @@
-ï»¿using System.Text;
+using System.Text;
 using MDKOSS.Core;
 
 namespace MDKOSS.Tests.Core;
@@ -8,12 +8,23 @@ public sealed class MdkSettingUtf8SaveTests
     [Fact]
     public void Save_writes_cjk_as_utf8_literals_not_unicode_escapes()
     {
-        var setting = new MdkSetting { ProjectName = "æ ·æœº" };
+        var setting = new MdkSetting { ProjectName = "Ñù»ú" };
         setting.Axes.Add(new MdkSetting.DeviceConfig
         {
             Id = "AxisTransY",
-            Name = "ä¸Šä¸‹æ–™Yè½´",
+            Name = "ÉÏÏÂÁÏYÖá",
             Type = "axis",
+        });
+        setting.Devices.Add(new MdkSetting.DeviceConfig
+        {
+            Id = "gpio-main",
+            Name = "Õû»ú GPIO",
+            Type = "gpio",
+            Parameters =
+            {
+                ["in.DiStartButton"] = "drv-m1:1|Æô¶¯°´Å¥",
+                ["in.DiStopButton"] = "drv-m1:2|Í£Ö¹°´Å¥",
+            },
         });
 
         var path = Path.Combine(Path.GetTempPath(), $"mdkoss-utf8-{Guid.NewGuid():N}.json");
@@ -21,9 +32,12 @@ public sealed class MdkSettingUtf8SaveTests
         {
             setting.Save(path);
             var json = File.ReadAllText(path, Encoding.UTF8);
-            Assert.Contains("ä¸Šä¸‹æ–™Yè½´", json, StringComparison.Ordinal);
+            Assert.Contains("ÉÏÏÂÁÏYÖá", json, StringComparison.Ordinal);
+            Assert.Contains("Æô¶¯°´Å¥", json, StringComparison.Ordinal);
+            Assert.Contains("drv-m1:1|Æô¶¯°´Å¥", json, StringComparison.Ordinal);
             Assert.DoesNotContain("\\u4E0A", json, StringComparison.Ordinal);
-            Assert.Contains("æ ·æœº", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\\u542F", json, StringComparison.Ordinal);
+            Assert.Contains("Ñù»ú", json, StringComparison.Ordinal);
         }
         finally
         {
