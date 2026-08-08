@@ -202,24 +202,18 @@
   "id": "plat-measure",
   "name": "检测平台",
   "type": "xy",
-  "driverId": "drv-m1",
   "enabled": true,
   "parameters": {
-    "kind": "xy",
-    "model": "PlatformXyz",
     "axis.X": "AxisX",
-    "axisIndex.X": "1",
     "axis.Y": "AxisZ",
-    "axisIndex.Y": "2"
+    "note": "组合已有轴"
   }
 }
 ```
 
-也可将 `axis.X` 写成驱动 id（旧写法仍兼容）。
-
-- `kind` 或 type 简写：`x`、`xy`、`xyz`、`xyzu`、`xyzuv`、`xyzuvw`
-- `axis.X`、`axis.Y` 等：按轴指定 **Axis 设备 id**（组合已有轴）或 **驱动 id**；未指定时使用顶层 `driverId`
-- `axisIndex.X` 等：驱动内轴号；组合 Axis 设备时可省略（默认取该轴 `parameters.axis`）
+- `type` 简写或 `kind`：`x`、`xy`、`xyz`、`xyzu`、`xyzuv`、`xyzuvw`（type 为简写时可省略 `kind`）
+- `axis.X`、`axis.Y` 等：引用 `axes[]` 中的轴设备 id（驱动与轴号取自该轴）
+- 旧写法仍兼容：`axis.X` 也可写驱动 id，并可附带 `axisIndex.X`
 
 解析：`PlatformDeviceParameterSet`
 

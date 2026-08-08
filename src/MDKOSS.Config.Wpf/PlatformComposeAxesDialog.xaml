@@ -19,9 +19,9 @@
     <StackPanel>
       <TextBlock x:Name="HeadlineText" FontWeight="SemiBold" Margin="0,0,0,8"
                  Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"
-                 Text="为每个轴字母选择已有 Axis 组件（写入 axis.X = 轴 Id，并同步 axisIndex）"/>
+                 Text="为每个轴字母选择已有 Axis 组件（写入 axis.X = 轴 Id；驱动/轴号取自该轴）"/>
       <TextBlock Margin="0,0,0,10" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" FontSize="12"
-                 Text="运行时会优先复用该 Axis 设备；也可在参数表中直接下拉选择轴 Id 或驱动 Id。"/>
+                 Text="平台只需引用 Axis；也可在参数表中对 axis.X / axis.Y … 直接下拉选择轴 Id。"/>
       <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="280">
         <StackPanel x:Name="SlotsPanel"/>
       </ScrollViewer>

@@ -67,9 +67,10 @@
       "id": "platform-xy",
       "name": "XY 平台",
       "type": "xy",
-      "driverId": "sim1",
       "enabled": true,
       "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
         "note": "步进示教 / 平台监控联调"
       }
     }

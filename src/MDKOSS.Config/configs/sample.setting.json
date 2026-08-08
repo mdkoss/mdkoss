@@ -168,13 +168,9 @@
       "id": "plat-trans",
       "name": "上下料平台",
       "type": "x",
-      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "kind": "x",
-        "model": "PlatformXyz",
         "axis.X": "AxisTransY",
-        "axisIndex.X": "0",
         "note": "组合轴 AxisTransY"
       }
     },
@@ -182,15 +178,10 @@
       "id": "plat-measure",
       "name": "检测平台",
       "type": "xy",
-      "driverId": "drv-m1",
       "enabled": true,
       "parameters": {
-        "kind": "xy",
-        "model": "PlatformXyz",
         "axis.X": "AxisX",
-        "axisIndex.X": "1",
         "axis.Y": "AxisZ",
-        "axisIndex.Y": "2",
         "note": "组合轴 AxisX + AxisZ"
       }
     }

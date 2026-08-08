@@ -43,7 +43,7 @@
 
 - **新建**：弹窗填写 Id/Name/Type/DriverId/Enabled 与 Parameters 表；Type、DriverId 为可编辑 ComboBox。
 - **右侧属性**：Type / DriverId 下拉；Parameters 以 Key-Value 表编辑（可展开原始 JSON）。
-- **Platform**：参数 Value 可下拉选择 Axis Id / 驱动 Id / kind；「组合轴…」从已有 Axis 批量绑定 `axis.X`。
+- **Platform**：隐藏 DriverId；参数仅 `axis.X`…（下拉选 Axis Id）与 `note`；「组合轴…」批量绑定。
 - **模块导入导出**：对当前模块行集写出/读入 JSON。
 
 ## 文档模式
