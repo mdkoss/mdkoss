@@ -3300,13 +3300,19 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         d.Id = newId;
         d.Name = Draft.FieldName.Trim();
         d.Type = type;
-        d.DriverId = Draft.FieldDriverId.Trim();
+        d.DriverId = _module == ConfigModule.Platform ? "" : Draft.FieldDriverId.Trim();
         d.Enabled = Draft.FieldEnabled;
-        d.Parameters = Draft.CollectStringParameters();
-        if (_module == ConfigModule.Axis)
+        var parameters = Draft.CollectStringParameters();
+        if (_module == ConfigModule.Platform)
         {
-            AxisDeviceParameterSet.SyncKindParameter(d.Parameters, type);
+            parameters = PlatformDeviceParameterSet.NormalizeParameters(type, parameters);
         }
+        else if (_module == ConfigModule.Axis)
+        {
+            AxisDeviceParameterSet.SyncKindParameter(parameters, type);
+        }
+
+        d.Parameters = parameters;
     }
 
     private void ApplyTask(MdkSetting.TaskConfig t)
