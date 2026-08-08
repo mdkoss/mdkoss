@@ -18,6 +18,7 @@ public enum ConfigDocumentKind
 
 public enum ConfigModule
 {
+    Machine,
     Drivers,
     Devices,
     Axis,
@@ -79,6 +80,13 @@ public sealed class ComponentItem : INotifyPropertyChanged
     {
         get => _col4;
         set { _col4 = value; OnPropertyChanged(); }
+    }
+
+    private string _col5 = string.Empty;
+    public string Col5
+    {
+        get => _col5;
+        set { _col5 = value; OnPropertyChanged(); }
     }
 
     private bool _enabled = true;
@@ -206,6 +214,15 @@ public sealed class PropertyDraft : INotifyPropertyChanged
 
     public string DirtyBadge => IsDirty && !IsReadOnly ? "已修改（未应用）" : string.Empty;
 
+    private string _parameterPreview = "";
+    public string ParameterPreview
+    {
+        get => _parameterPreview;
+        private set { if (_parameterPreview == value) return; _parameterPreview = value; OnPropertyChanged(); }
+    }
+
+    public bool ShowParameterPreview => ShowParameters && !string.IsNullOrWhiteSpace(ParameterPreview);
+
     public IDisposable SuppressDirtyScope() => new DirtySuppressor(this);
 
     public void ClearDirty() => IsDirty = false;
@@ -237,6 +254,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
             TypeOptions.Clear();
             DriverOptions.Clear();
             ParamKeySuggestions.Clear();
+            ParameterPreview = "";
         }
 
         ClearDirty();
@@ -278,6 +296,20 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         SyncJsonFromRows();
     }
 
+    /// <summary>Load parameter rows in caller order (no alphabetical sort).</summary>
+    public void LoadOrderedStringParameters(IEnumerable<(string Key, string Value)> pairs)
+    {
+        ParametersAsObject = false;
+        DetachAllParamRows();
+        ParameterRows.Clear();
+        foreach (var (key, value) in pairs)
+        {
+            ParameterRows.Add(new KvPairRow { Key = key, Value = value ?? "" });
+        }
+
+        SyncJsonFromRows();
+    }
+
     public void LoadObjectParameters(IReadOnlyDictionary<string, object?> dict)
     {
         ParametersAsObject = true;
@@ -288,11 +320,43 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     public void SyncJsonFromRows()
     {
         FieldParameters = KvTableHelper.ToJson(ParameterRows, ParametersAsObject);
+        RefreshParameterPreview();
     }
 
     public void SyncRowsFromJson()
     {
         KvTableHelper.LoadFromJsonObject(ParameterRows, FieldParameters);
+        RefreshParameterPreview();
+    }
+
+    public void RefreshParameterPreview()
+    {
+        var parts = new List<string>();
+        foreach (var row in ParameterRows)
+        {
+            if (string.IsNullOrWhiteSpace(row.Key))
+            {
+                continue;
+            }
+
+            var v = row.Value ?? "";
+            if (v.Length > 28)
+            {
+                v = v[..25] + "…";
+            }
+
+            parts.Add($"{row.Key}={v}");
+            if (parts.Count >= 8)
+            {
+                break;
+            }
+        }
+
+        var extra = ParameterRows.Count(r => !string.IsNullOrWhiteSpace(r.Key)) - parts.Count;
+        ParameterPreview = parts.Count == 0
+            ? "(无参数)"
+            : string.Join(" · ", parts) + (extra > 0 ? $" · +{extra} 项" : "");
+        OnPropertyChanged(nameof(ShowParameterPreview));
     }
 
     public Dictionary<string, string> CollectStringParameters() =>
@@ -329,9 +393,14 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         }
 
         MarkDirty();
+        RefreshParameterPreview();
     }
 
-    private void OnParamRowPropertyChanged(object? sender, PropertyChangedEventArgs e) => MarkDirty();
+    private void OnParamRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        MarkDirty();
+        RefreshParameterPreview();
+    }
 
     private void DetachAllParamRows()
     {
@@ -372,7 +441,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private string _jsonPath = string.Empty;
     private string _dbPath = string.Empty;
     private ConfigDocumentKind _documentKind = ConfigDocumentKind.None;
-    private ConfigModule _module = ConfigModule.Drivers;
+    private ConfigModule _module = ConfigModule.Machine;
     private ComponentItem? _selected;
     private string _statusLine = "未打开配置";
     private string _moduleTitle = "Drivers";
@@ -380,6 +449,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private string _colHeader2 = "Type";
     private string _colHeader3 = "Enabled";
     private string _colHeader4 = "";
+    private string _colHeader5 = "";
     private ConfigTableCounts? _dbCounts;
     private List<ConfigLogRecord> _logs = [];
     private string? _selectedDbTable;
@@ -454,8 +524,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     public string ColHeader2 { get => _colHeader2; private set { _colHeader2 = value; OnPropertyChanged(); } }
     public string ColHeader3 { get => _colHeader3; private set { _colHeader3 = value; OnPropertyChanged(); } }
     public string ColHeader4 { get => _colHeader4; private set { _colHeader4 = value; OnPropertyChanged(); } }
+    public string ColHeader5 { get => _colHeader5; private set { _colHeader5 = value; OnPropertyChanged(); } }
 
-    public bool CanEditList => _module is not (ConfigModule.Database or ConfigModule.Gpios);
+    public bool CanEditList => _module is not (ConfigModule.Machine or ConfigModule.Database or ConfigModule.Gpios or ConfigModule.SysConfig);
 
     public static ConfigDocumentKind DetectKind(string path)
     {
@@ -753,6 +824,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             next = Items.FirstOrDefault(i => string.Equals(i.Key, keepSelectionKey, StringComparison.OrdinalIgnoreCase));
         }
+        else if (module == ConfigModule.Machine)
+        {
+            next = Items.FirstOrDefault();
+        }
 
         SelectItem(next);
         StatusLine = $"{ModuleTitle} · {Items.Count} 项 · [{DocumentKindLabel}] {DocumentPath}";
@@ -1023,6 +1098,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             case ConfigModule.Drivers:
                 req.Id = UniqueId(_setting.Drivers.Select(d => d.Id), "drv-new");
+                req.Name = req.Id;
                 break;
             case ConfigModule.Devices:
             case ConfigModule.Axis:
@@ -1569,6 +1645,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         }
                         else
                         {
+                            existing.Name = row.Name;
                             existing.Type = row.Type;
                             existing.Enabled = row.Enabled;
                             existing.Parameters = row.Parameters;
@@ -1725,6 +1802,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var d = new MdkSetting.DriverConfig
         {
             Id = req.Id,
+            Name = string.IsNullOrWhiteSpace(req.Name) ? req.Id : req.Name,
             Type = string.IsNullOrWhiteSpace(req.Type) ? "sim" : req.Type,
             Enabled = req.Enabled,
             Parameters = new Dictionary<string, string>(req.Parameters, StringComparer.OrdinalIgnoreCase),
@@ -1951,6 +2029,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         switch (_module)
         {
+            case ConfigModule.Machine:
+                ApplyMachine();
+                break;
             case ConfigModule.Drivers when _selected.Source is MdkSetting.DriverConfig d:
                 ApplyDriver(d);
                 break;
@@ -1977,14 +2058,16 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 throw new InvalidOperationException("当前项不可编辑。");
         }
 
-        var key = _module == ConfigModule.Vars || _module == ConfigModule.SysConfig
-            ? Draft.FieldId
-            : _module == ConfigModule.Tasks
-                ? Draft.FieldName
-                : Draft.FieldId;
+        var key = _module == ConfigModule.SysConfig
+            ? (_selected?.Key ?? Draft.CollectStringParameters().GetValueOrDefault("key") ?? Draft.FieldId)
+            : _module == ConfigModule.Vars
+                ? Draft.FieldId
+                : _module == ConfigModule.Tasks
+                    ? Draft.FieldName
+                    : Draft.FieldId;
         Draft.ClearDirty();
-        SelectModule(_module, key);
-        StatusLine = $"已应用属性 · {key}";
+        SelectModule(_module, keepSelectionKey: _module == ConfigModule.Machine ? "machine" : key);
+        StatusLine = $"已应用属性 · {(_module == ConfigModule.Machine ? "machine" : key)}";
     }
 
     // ── private ──────────────────────────────────────────────────────────
@@ -1998,99 +2081,134 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
     }
 
-    private List<ComponentItem> BuildItemsFor(ConfigModule module) => module switch
+    private List<ComponentItem> BuildItemsFor(ConfigModule module)
     {
-        ConfigModule.Drivers => _setting.Drivers.Select(d => new ComponentItem
+        var items = module switch
+        {
+            ConfigModule.Machine =>
+            [
+                new ComponentItem
+                {
+                    Module = ConfigModule.Machine,
+                    Source = _setting,
+                    Key = "machine",
+                    Title = string.IsNullOrWhiteSpace(_setting.ProjectName) ? "Machine" : _setting.ProjectName,
+                    Subtitle = "machine",
+                    Col2 = "machine",
+                    Col3 = "machine",
+                    Col4 = string.IsNullOrWhiteSpace(_setting.ProjectName) ? "整机" : _setting.ProjectName,
+                    Col5 = "是",
+                    Enabled = true,
+                    HasEnabled = true,
+                },
+            ],
+            ConfigModule.Drivers => _setting.Drivers.Select(d => new ComponentItem
+            {
+                Module = module,
+                Source = d,
+                Key = d.Id,
+                Title = string.IsNullOrWhiteSpace(d.Name) ? d.Id : $"{d.Id} · {d.Name}",
+                Subtitle = d.Type,
+                Col2 = d.Id,
+                Col3 = d.Type,
+                Col4 = string.IsNullOrWhiteSpace(d.Name) ? d.Id : d.Name,
+                Col5 = d.Enabled ? "是" : "否",
+                Enabled = d.Enabled,
+                HasEnabled = true,
+            }).ToList(),
+            ConfigModule.Devices => _setting.Devices
+                .Where(IsDevicesModuleEntry)
+                .Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
+            ConfigModule.Axis => _setting.Axes.Select(d => ToDeviceItem(d, ConfigModule.Axis)).ToList(),
+            ConfigModule.Platform => _setting.Platforms.Select(d => ToDeviceItem(d, ConfigModule.Platform)).ToList(),
+            ConfigModule.Gpios => BuildGpioItems(),
+            ConfigModule.Tasks => _setting.Tasks.Select(t =>
+            {
+                var note = t.Parameters.GetValueOrDefault("note", "");
+                var desc = string.IsNullOrWhiteSpace(note)
+                    ? (string.IsNullOrWhiteSpace(t.DriverId) ? $"interval={t.IntervalMs}" : t.DriverId)
+                    : note;
+                return new ComponentItem
+                {
+                    Module = module,
+                    Source = t,
+                    Key = t.Name,
+                    Title = t.Name,
+                    Subtitle = t.Type,
+                    Col2 = t.Name,
+                    Col3 = t.Type,
+                    Col4 = desc,
+                    Col5 = "",
+                };
+            }).ToList(),
+            ConfigModule.Vars => _setting.Vars.Select(kv => new ComponentItem
+            {
+                Module = module,
+                Source = kv,
+                Key = kv.Key,
+                Title = kv.Key,
+                Subtitle = kv.Value?.ToString() ?? "",
+                Col2 = kv.Key,
+                Col3 = "var",
+                Col4 = kv.Value?.ToString() ?? "",
+                Col5 = "",
+            }).ToList(),
+            ConfigModule.Recipes => _setting.Recipes.Select(r => new ComponentItem
+            {
+                Module = module,
+                Source = r,
+                Key = r.Id,
+                Title = string.IsNullOrWhiteSpace(r.Name) ? r.Id : $"{r.Id} · {r.Name}",
+                Subtitle = r.Description ?? "",
+                Col2 = r.Id,
+                Col3 = "recipe",
+                Col4 = string.IsNullOrWhiteSpace(r.Name) ? (r.Description ?? "") : r.Name,
+                Col5 = "",
+            }).ToList(),
+            ConfigModule.SysConfig => BuildSysItems(),
+            ConfigModule.Database => BuildDbItems(),
+            _ => [],
+        };
+
+        return AssignRowNumbers(items);
+    }
+
+    private static List<ComponentItem> AssignRowNumbers(List<ComponentItem> items)
+    {
+        for (var i = 0; i < items.Count; i++)
+        {
+            items[i].Col1 = (i + 1).ToString();
+        }
+
+        return items;
+    }
+
+    private static ComponentItem ToDeviceItem(MdkSetting.DeviceConfig d, ConfigModule module)
+    {
+        var desc = string.IsNullOrWhiteSpace(d.Name) ? d.Id : d.Name;
+        var typeLabel = module switch
+        {
+            ConfigModule.Axis =>
+                $"{d.Type}:{AxisDeviceParameterSet.ParseAxisIndex(d.Parameters)}/{AxisDeviceParameterSet.GetModel(d.Parameters)}",
+            ConfigModule.Platform =>
+                $"{d.Type}/{d.Parameters.GetValueOrDefault("kind", d.Type)}",
+            _ => d.Type,
+        };
+        return new ComponentItem
         {
             Module = module,
             Source = d,
             Key = d.Id,
-            Title = d.Id,
-            Subtitle = d.Type,
-            Col1 = d.Id,
-            Col2 = d.Type,
-            Col3 = d.Enabled ? "是" : "否",
+            Title = string.IsNullOrWhiteSpace(d.Name) ? d.Id : $"{d.Id} · {d.Name}",
+            Subtitle = typeLabel,
+            Col2 = d.Id,
+            Col3 = typeLabel,
+            Col4 = desc,
+            Col5 = d.Enabled ? "是" : "否",
             Enabled = d.Enabled,
             HasEnabled = true,
-        }).ToList(),
-        // Platform / Axis 不作为 Devices 子项：仅出现在各自模块树下
-        ConfigModule.Devices => _setting.Devices
-            .Where(IsDevicesModuleEntry)
-            .Select(d => ToDeviceItem(d, ConfigModule.Devices)).ToList(),
-        ConfigModule.Axis => _setting.Axes
-            .Select(d =>
-            {
-                var item = ToDeviceItem(d, ConfigModule.Axis);
-                var axisNo = AxisDeviceParameterSet.ParseAxisIndex(d.Parameters);
-                var model = AxisDeviceParameterSet.GetModel(d.Parameters);
-                item.Col3 = $"{axisNo} · {model}";
-                item.Col4 = d.DriverId;
-                item.Subtitle = $"{model} · axis={axisNo}";
-                return item;
-            }).ToList(),
-        ConfigModule.Platform => _setting.Platforms
-            .Select(d =>
-            {
-                var item = ToDeviceItem(d, ConfigModule.Platform);
-                var kind = d.Parameters.GetValueOrDefault("kind", d.Type);
-                var model = d.Parameters.GetValueOrDefault("model", "PlatformXyz");
-                item.Col3 = $"{kind} · {model}";
-                item.Col4 = d.DriverId;
-                return item;
-            }).ToList(),
-        ConfigModule.Gpios => BuildGpioItems(),
-        ConfigModule.Tasks => _setting.Tasks.Select(t => new ComponentItem
-        {
-            Module = module,
-            Source = t,
-            Key = t.Name,
-            Title = t.Name,
-            Subtitle = t.Type,
-            Col1 = t.Name,
-            Col2 = t.Type,
-            Col3 = t.DriverId,
-            Col4 = t.IntervalMs.ToString(),
-        }).ToList(),
-        ConfigModule.Vars => _setting.Vars.Select(kv => new ComponentItem
-        {
-            Module = module,
-            Source = kv,
-            Key = kv.Key,
-            Title = kv.Key,
-            Subtitle = kv.Value?.ToString() ?? "",
-            Col1 = kv.Key,
-            Col2 = kv.Value?.ToString() ?? "",
-        }).ToList(),
-        ConfigModule.Recipes => _setting.Recipes.Select(r => new ComponentItem
-        {
-            Module = module,
-            Source = r,
-            Key = r.Id,
-            Title = r.Id,
-            Subtitle = r.Name,
-            Col1 = r.Id,
-            Col2 = r.Name,
-            Col3 = r.Description ?? "",
-        }).ToList(),
-        ConfigModule.SysConfig => BuildSysItems(),
-        ConfigModule.Database => BuildDbItems(),
-        _ => [],
-    };
-
-    private static ComponentItem ToDeviceItem(MdkSetting.DeviceConfig d, ConfigModule module) => new()
-    {
-        Module = module,
-        Source = d,
-        Key = d.Id,
-        Title = d.Id,
-        Subtitle = $"{d.Type} · {d.Name}",
-        Col1 = d.Id,
-        Col2 = d.Name,
-        Col3 = d.Type,
-        Col4 = d.DriverId,
-        Enabled = d.Enabled,
-        HasEnabled = true,
-    };
+        };
+    }
 
     private List<ComponentItem> BuildGpioItems()
     {
@@ -2118,10 +2236,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         Key = key,
                         Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
                         Subtitle = "virtual",
-                        Col1 = device.Id,
-                        Col2 = b.Alias,
-                        Col3 = label,
-                        Col4 = "virtual",
+                        Col2 = $"{device.Id}.{b.Alias}",
+                        Col3 = direction,
+                        Col4 = string.IsNullOrWhiteSpace(label) ? "virtual" : label,
+                        Col5 = "",
                     });
                 }
 
@@ -2145,10 +2263,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Key = key,
                     Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
                     Subtitle = route,
-                    Col1 = device.Id,
-                    Col2 = b.Alias,
-                    Col3 = label,
-                    Col4 = route,
+                    Col2 = $"{device.Id}.{b.Alias}",
+                    Col3 = direction,
+                    Col4 = string.IsNullOrWhiteSpace(label) ? route : label,
+                    Col5 = "",
                 });
             }
         }
@@ -2175,27 +2293,88 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     private List<ComponentItem> BuildSysItems()
     {
-        (string Key, string Value)[] rows =
-        [
-            ("projectName", _setting.ProjectName),
-            ("cycleMs", _setting.CycleMs.ToString()),
-            ("monitoringPrefix", _setting.MonitoringPrefix ?? ""),
-            ("startPage", _setting.StartPage ?? ""),
-            ("databasePath", _setting.DatabasePath ?? ""),
-            ("activeRecipeId", _setting.ActiveRecipeId ?? ""),
-            ("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys, JsonOptions)),
-        ];
-
-        return rows.Select(r => new ComponentItem
+        return BuildSysConfigEntries().Select(r => new ComponentItem
         {
             Module = ConfigModule.SysConfig,
-            Source = r.Key,
+            Source = r,
             Key = r.Key,
             Title = r.Key,
-            Subtitle = r.Value,
-            Col1 = r.Key,
-            Col2 = r.Value,
+            Subtitle = string.IsNullOrWhiteSpace(r.Remark) ? r.Value : $"{r.Remark} · {r.Value}",
+            Col2 = r.Key,
+            Col3 = r.Value,
+            Col4 = r.Group,
+            Col5 = r.Remark,
         }).ToList();
+    }
+
+    private List<SysConfigEntry> BuildSysConfigEntries()
+    {
+        if (_documentKind == ConfigDocumentKind.Database && !string.IsNullOrWhiteSpace(_dbPath))
+        {
+            try
+            {
+                using var store = new MdkConfigStore(_dbPath);
+                var snap = store.QueryTable("sysconfigs");
+                if (snap.Rows.Count > 0)
+                {
+                    return snap.Rows.Select(row => new SysConfigEntry
+                    {
+                        Key = SysCell(row, "key"),
+                        Value = SysCell(row, "value"),
+                        Group = SysCell(row, "group"),
+                        Remark = SysCell(row, "remark"),
+                        CreateTime = SysCell(row, "createtime"),
+                        UpdateTime = SysCell(row, "updatetime"),
+                    }).Where(e => !string.IsNullOrWhiteSpace(e.Key)).ToList();
+                }
+            }
+            catch
+            {
+                // fall through to setting-derived rows
+            }
+        }
+
+        return
+        [
+            SysEntry("projectName", _setting.ProjectName, "general", "工程名称"),
+            SysEntry("cycleMs", _setting.CycleMs.ToString(), "general", "主循环周期(ms)"),
+            SysEntry("monitoringPrefix", _setting.MonitoringPrefix ?? "", "general", "监控 API 前缀"),
+            SysEntry("startPage", _setting.StartPage ?? "", "general", "启动页面"),
+            SysEntry("databasePath", _setting.DatabasePath ?? "", "general", "数据库路径"),
+            SysEntry("activeRecipeId", _setting.ActiveRecipeId ?? "", "recipe", "当前配方 Id"),
+            SysEntry("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys, JsonOptions), "recipe", "配方变量键列表"),
+        ];
+    }
+
+    private static SysConfigEntry SysEntry(string key, string value, string group, string remark) => new()
+    {
+        Key = key,
+        Value = value,
+        Group = group,
+        Remark = remark,
+    };
+
+    private static string SysCell(IReadOnlyDictionary<string, string> row, string name) =>
+        row.TryGetValue(name, out var v) ? v ?? "" : "";
+
+    private sealed class SysConfigEntry
+    {
+        public string Key { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string Group { get; set; } = "general";
+        public string Remark { get; set; } = "";
+        public string CreateTime { get; set; } = "";
+        public string UpdateTime { get; set; } = "";
+
+        public Dictionary<string, string> ToParameterBook() => new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["key"] = Key,
+            ["value"] = Value,
+            ["group"] = Group,
+            ["remark"] = Remark,
+            ["createtime"] = CreateTime,
+            ["updatetime"] = UpdateTime,
+        };
     }
 
     private List<ComponentItem> BuildDbItems()
@@ -2229,9 +2408,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Source = table,
                 Key = table,
                 Title = table,
-                Col1 = table,
-                Col2 = counts is null ? "?" : count.ToString(),
-                Col3 = MdkConfigStore.GetPrimaryKeyColumn(table) ?? "",
+                Col2 = table,
+                Col3 = "table",
+                Col4 = counts is null ? "?" : $"{count} 行",
+                Col5 = MdkConfigStore.GetPrimaryKeyColumn(table) ?? "",
             };
         }).ToList();
     }
@@ -2253,9 +2433,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
             switch (item.Module)
             {
+                case ConfigModule.Machine:
+                    LoadMachineDraft();
+                    break;
                 case ConfigModule.Drivers when item.Source is MdkSetting.DriverConfig d:
-                    SetDraftVisibility(id: true, type: true, enabled: true, parameters: true);
+                    SetDraftVisibility(id: true, name: true, type: true, enabled: true, parameters: true);
                     Draft.FieldId = d.Id;
+                    Draft.FieldName = string.IsNullOrWhiteSpace(d.Name) ? d.Id : d.Name;
                     Draft.FieldType = d.Type;
                     Draft.FieldEnabled = d.Enabled;
                     Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Drivers, d.Type, null, d.Parameters));
@@ -2300,12 +2484,17 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.ParamKeySuggestions.Clear();
                     break;
                 case ConfigModule.SysConfig:
-                    SetDraftVisibility(id: true, value: true);
-                    Draft.ShowType = Draft.ShowEnabled = Draft.ShowParameters = false;
-                    Draft.FieldId = item.Key;
-                    Draft.FieldValue = item.Col2;
-                    Draft.ShowId = true;
-                    Draft.ParamKeySuggestions.Clear();
+                    SetDraftVisibility(parameters: true);
+                    Draft.ShowId = Draft.ShowValue = Draft.ShowType = Draft.ShowEnabled = false;
+                    {
+                        var entry = item.Source as SysConfigEntry
+                            ?? new SysConfigEntry { Key = item.Key, Value = item.Col3, Group = item.Col4, Remark = item.Col5 };
+                        LoadSysConfigParameterBook(entry);
+                        Draft.SetParamKeySuggestions(
+                        [
+                            "key", "value", "group", "remark", "createtime", "updatetime",
+                        ]);
+                    }
                     break;
                 case ConfigModule.Gpios when item.Source is GpioEditTarget g:
                     SetDraftVisibility(id: true, name: true, type: true, description: true, value: true);
@@ -2362,6 +2551,80 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.ShowParameters = parameters;
     }
 
+    private void LoadMachineDraft()
+    {
+        SetDraftVisibility(id: false, name: true, type: false, enabled: false, parameters: true);
+        Draft.FieldId = "machine";
+        Draft.FieldName = string.IsNullOrWhiteSpace(_setting.ProjectName) ? "Machine" : _setting.ProjectName;
+        Draft.FieldType = "machine";
+        Draft.FieldEnabled = true;
+        Draft.LoadOrderedStringParameters(
+        [
+            ("projectName", _setting.ProjectName ?? ""),
+            ("cycleMs", _setting.CycleMs.ToString()),
+            ("monitoringPrefix", _setting.MonitoringPrefix ?? ""),
+            ("startPage", _setting.StartPage ?? ""),
+            ("databasePath", _setting.DatabasePath ?? ""),
+            ("activeRecipeId", _setting.ActiveRecipeId ?? ""),
+            ("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys ?? [], JsonOptions)),
+        ]);
+        Draft.SetParamKeySuggestions(
+        [
+            "projectName", "cycleMs", "monitoringPrefix", "startPage",
+            "databasePath", "activeRecipeId", "recipeVarKeys",
+        ]);
+    }
+
+    private void ApplyMachine()
+    {
+        var book = Draft.CollectStringParameters();
+        var projectName = book.GetValueOrDefault("projectName", Draft.FieldName)?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            projectName = string.IsNullOrWhiteSpace(Draft.FieldName) ? "MDKOSS" : Draft.FieldName.Trim();
+        }
+
+        _setting.ProjectName = projectName;
+        OnPropertyChanged(nameof(ProjectName));
+
+        var cycleRaw = book.GetValueOrDefault("cycleMs", _setting.CycleMs.ToString()) ?? "20";
+        if (!int.TryParse(cycleRaw, out var cycle) || cycle <= 0)
+        {
+            throw new InvalidOperationException("cycleMs 必须为正整数。");
+        }
+
+        _setting.CycleMs = cycle;
+
+        var monitoring = book.GetValueOrDefault("monitoringPrefix", "") ?? "";
+        _setting.MonitoringPrefix = string.IsNullOrWhiteSpace(monitoring) ? null : monitoring.Trim();
+
+        var startPage = book.GetValueOrDefault("startPage", "") ?? "";
+        _setting.StartPage = string.IsNullOrWhiteSpace(startPage) ? null : startPage.Trim().TrimStart('/');
+
+        var databasePath = book.GetValueOrDefault("databasePath", "") ?? "";
+        _setting.DatabasePath = string.IsNullOrWhiteSpace(databasePath) ? null : databasePath.Trim();
+
+        var activeRecipe = book.GetValueOrDefault("activeRecipeId", "") ?? "";
+        _setting.ActiveRecipeId = string.IsNullOrWhiteSpace(activeRecipe) ? null : activeRecipe.Trim();
+
+        var recipeKeysRaw = book.GetValueOrDefault("recipeVarKeys", "[]") ?? "[]";
+        try
+        {
+            _setting.RecipeVarKeys = JsonSerializer.Deserialize<List<string>>(recipeKeysRaw, JsonOptions) ?? [];
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"recipeVarKeys JSON 无效: {ex.Message}");
+        }
+
+        // Keep Desc field in sync with projectName for list display.
+        if (_selected is not null)
+        {
+            _selected.Title = projectName;
+            _selected.Col4 = projectName;
+        }
+    }
+
     private void ApplyDriver(MdkSetting.DriverConfig d)
     {
         var newId = RequireId(Draft.FieldId, "驱动 Id");
@@ -2372,6 +2635,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
 
         d.Id = newId;
+        d.Name = string.IsNullOrWhiteSpace(Draft.FieldName) ? newId : Draft.FieldName.Trim();
         d.Type = string.IsNullOrWhiteSpace(Draft.FieldType) ? "sim" : Draft.FieldType.Trim();
         d.Enabled = Draft.FieldEnabled;
         d.Parameters = Draft.CollectStringParameters();
@@ -2465,10 +2729,37 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         _setting.Vars[newKey] = value;
     }
 
+    private void LoadSysConfigParameterBook(SysConfigEntry entry)
+    {
+        Draft.LoadOrderedStringParameters(
+        [
+            ("key", entry.Key),
+            ("value", entry.Value),
+            ("group", entry.Group),
+            ("remark", entry.Remark),
+            ("createtime", entry.CreateTime),
+            ("updatetime", entry.UpdateTime),
+        ]);
+    }
+
     private void ApplySysConfig(string key)
     {
-        var value = Draft.FieldValue ?? "";
-        switch (key)
+        var book = Draft.CollectStringParameters();
+        var selectedKey = string.IsNullOrWhiteSpace(key) ? "" : key.Trim();
+        var bookKey = book.GetValueOrDefault("key", selectedKey)?.Trim() ?? selectedKey;
+        if (!string.IsNullOrWhiteSpace(bookKey)
+            && !string.Equals(bookKey, selectedKey, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("系统配置 key 不可更改，请直接编辑现有项。");
+        }
+
+        var value = book.GetValueOrDefault("value", Draft.FieldValue) ?? "";
+        var group = book.GetValueOrDefault("group", "general") ?? "general";
+        var remark = book.GetValueOrDefault("remark", "") ?? "";
+        var createTime = book.GetValueOrDefault("createtime", "") ?? "";
+        var updateTime = book.GetValueOrDefault("updatetime", "") ?? "";
+
+        switch (selectedKey)
         {
             case "projectName":
                 _setting.ProjectName = value;
@@ -2497,8 +2788,34 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case "recipeVarKeys":
                 _setting.RecipeVarKeys = JsonSerializer.Deserialize<List<string>>(value, JsonOptions) ?? [];
                 break;
+            case "vars":
+            case "tasks":
+                // Persisted only in sysconfigs table / export blob; keep DB row editable.
+                break;
             default:
-                throw new InvalidOperationException($"未知系统配置键: {key}");
+                throw new InvalidOperationException($"未知系统配置键: {selectedKey}");
+        }
+
+        if (_documentKind == ConfigDocumentKind.Database && !string.IsNullOrWhiteSpace(_dbPath))
+        {
+            EnsureDbPathAvailable();
+            using var store = new MdkConfigStore(_dbPath);
+            if (string.IsNullOrWhiteSpace(createTime))
+            {
+                createTime = DateTime.UtcNow.ToString("O");
+            }
+
+            store.UpsertTableRow("sysconfigs", new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["key"] = selectedKey,
+                ["value"] = value,
+                ["group"] = string.IsNullOrWhiteSpace(group) ? "general" : group,
+                ["remark"] = remark,
+                ["createtime"] = createTime,
+                ["updatetime"] = string.IsNullOrWhiteSpace(updateTime)
+                    ? DateTime.UtcNow.ToString("O")
+                    : updateTime,
+            });
         }
     }
 
@@ -2630,43 +2947,39 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     private void SetColumnHeaders(ConfigModule module)
     {
+        // Unified: Id# / Name(原配置Id) / Type / Desc(描述名) / Enable
+        ColHeader1 = "Id";
+        ColHeader2 = "Name";
+        ColHeader3 = "Type";
+        ColHeader4 = "Desc";
+        ColHeader5 = "Enable";
+
         switch (module)
         {
-            case ConfigModule.Drivers:
-                ColHeader1 = "Id"; ColHeader2 = "Type"; ColHeader3 = "Enabled"; ColHeader4 = "";
-                break;
-            case ConfigModule.Devices:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Type"; ColHeader4 = "DriverId";
-                break;
-            case ConfigModule.Axis:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Axis/Model"; ColHeader4 = "DriverId";
-                break;
-            case ConfigModule.Platform:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Kind/Model"; ColHeader4 = "DriverId";
-                break;
-            case ConfigModule.Gpios:
-                ColHeader1 = "Device"; ColHeader2 = "Alias"; ColHeader3 = "Label"; ColHeader4 = "Route";
-                break;
-            case ConfigModule.Tasks:
-                ColHeader1 = "Name"; ColHeader2 = "Type"; ColHeader3 = "DriverId"; ColHeader4 = "Interval";
-                break;
-            case ConfigModule.Vars:
-                ColHeader1 = "Key"; ColHeader2 = "Value"; ColHeader3 = ""; ColHeader4 = "";
-                break;
-            case ConfigModule.Recipes:
-                ColHeader1 = "Id"; ColHeader2 = "Name"; ColHeader3 = "Description"; ColHeader4 = "";
+            case ConfigModule.Machine:
+                ColHeader5 = "Enable";
                 break;
             case ConfigModule.SysConfig:
-                ColHeader1 = "Key"; ColHeader2 = "Value"; ColHeader3 = ""; ColHeader4 = "";
+                ColHeader3 = "Group";
+                ColHeader5 = "";
                 break;
             case ConfigModule.Database:
-                ColHeader1 = "Table"; ColHeader2 = "Count"; ColHeader3 = "PK"; ColHeader4 = "";
+                ColHeader2 = "Table";
+                ColHeader4 = "Count";
+                ColHeader5 = "PK";
+                break;
+            case ConfigModule.Gpios:
+            case ConfigModule.Vars:
+            case ConfigModule.Recipes:
+            case ConfigModule.Tasks:
+                ColHeader5 = "";
                 break;
         }
     }
 
     public static string ModuleDisplayName(ConfigModule m) => m switch
     {
+        ConfigModule.Machine => "Machine",
         ConfigModule.Drivers => "Drivers",
         ConfigModule.Devices => "Devices",
         ConfigModule.Axis => "Axis",
@@ -2840,6 +3153,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private static MdkSetting.DriverConfig CloneDriver(MdkSetting.DriverConfig d) => new()
     {
         Id = d.Id,
+        Name = d.Name,
         Type = d.Type,
         Enabled = d.Enabled,
         Parameters = new Dictionary<string, string>(d.Parameters, StringComparer.OrdinalIgnoreCase),

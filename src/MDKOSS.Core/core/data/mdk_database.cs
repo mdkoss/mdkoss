@@ -157,6 +157,7 @@ public sealed class MdkDatabase : IDisposable
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS drivers (
                 id TEXT PRIMARY KEY,
+                name TEXT NOT NULL DEFAULT '',
                 type TEXT NOT NULL,
                 enabled INTEGER NOT NULL DEFAULT 1,
                 parameters_json TEXT NOT NULL DEFAULT '{}',
@@ -220,8 +221,10 @@ public sealed class MdkDatabase : IDisposable
             CREATE TABLE IF NOT EXISTS sysconfigs (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
-                category TEXT NOT NULL DEFAULT 'general',
-                updated_at TEXT NOT NULL
+                "group" TEXT NOT NULL DEFAULT 'general',
+                remark TEXT NOT NULL DEFAULT '',
+                createtime TEXT NOT NULL DEFAULT '',
+                updatetime TEXT NOT NULL DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS logs (
@@ -246,6 +249,100 @@ public sealed class MdkDatabase : IDisposable
             CREATE INDEX IF NOT EXISTS idx_positions_platform ON positions(platform_id);
             CREATE INDEX IF NOT EXISTS idx_logs_created ON logs(created_at);
             CREATE INDEX IF NOT EXISTS idx_langs_locale ON langs(locale);
+            """;
+        cmd.ExecuteNonQuery();
+
+        EnsureColumn(conn, "drivers", "name", "TEXT NOT NULL DEFAULT ''");
+        MigrateSysConfigsSchema(conn);
+    }
+
+    private static void EnsureColumn(SqliteConnection conn, string table, string column, string ddlType)
+    {
+        using var check = conn.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({table})";
+        using var reader = check.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        reader.Close();
+        using var alter = conn.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {ddlType}";
+        alter.ExecuteNonQuery();
+    }
+
+    /// <summary>
+    /// Migrates legacy <c>sysconfigs(category, updated_at)</c> to
+    /// <c>key, value, group, remark, createtime, updatetime</c>.
+    /// </summary>
+    private static void MigrateSysConfigsSchema(SqliteConnection conn)
+    {
+        var cols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var check = conn.CreateCommand())
+        {
+            check.CommandText = "PRAGMA table_info(sysconfigs)";
+            using var reader = check.ExecuteReader();
+            while (reader.Read())
+            {
+                cols.Add(reader.GetString(1));
+            }
+        }
+
+        if (cols.Count == 0)
+        {
+            return;
+        }
+
+        var hasLegacy = cols.Contains("category") || cols.Contains("updated_at");
+        var hasTarget = cols.Contains("group") && cols.Contains("remark")
+            && cols.Contains("createtime") && cols.Contains("updatetime");
+        if (hasTarget && !hasLegacy)
+        {
+            return;
+        }
+
+        var groupExpr = cols.Contains("group") && cols.Contains("category")
+            ? """COALESCE(NULLIF("group", ''), NULLIF(category, ''), 'general')"""
+            : cols.Contains("group")
+                ? """COALESCE(NULLIF("group", ''), 'general')"""
+                : cols.Contains("category")
+                    ? "COALESCE(NULLIF(category, ''), 'general')"
+                    : "'general'";
+        var remarkExpr = cols.Contains("remark") ? "COALESCE(remark, '')" : "''";
+        var createExpr = cols.Contains("createtime")
+            ? cols.Contains("updated_at")
+                ? "COALESCE(NULLIF(createtime, ''), NULLIF(updated_at, ''), '')"
+                : "COALESCE(createtime, '')"
+            : cols.Contains("updated_at")
+                ? "COALESCE(updated_at, '')"
+                : "''";
+        var updateExpr = cols.Contains("updatetime")
+            ? cols.Contains("updated_at")
+                ? "COALESCE(NULLIF(updatetime, ''), NULLIF(updated_at, ''), '')"
+                : "COALESCE(updatetime, '')"
+            : cols.Contains("updated_at")
+                ? "COALESCE(updated_at, '')"
+                : "''";
+
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = $"""
+            CREATE TABLE sysconfigs__new (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                "group" TEXT NOT NULL DEFAULT 'general',
+                remark TEXT NOT NULL DEFAULT '',
+                createtime TEXT NOT NULL DEFAULT '',
+                updatetime TEXT NOT NULL DEFAULT ''
+            );
+            INSERT INTO sysconfigs__new (key, value, "group", remark, createtime, updatetime)
+            SELECT key, value, {groupExpr}, {remarkExpr}, {createExpr}, {updateExpr}
+            FROM sysconfigs;
+            DROP TABLE sysconfigs;
+            ALTER TABLE sysconfigs__new RENAME TO sysconfigs;
             """;
         cmd.ExecuteNonQuery();
     }

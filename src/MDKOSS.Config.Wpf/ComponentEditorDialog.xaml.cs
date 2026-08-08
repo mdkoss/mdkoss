@@ -33,6 +33,7 @@ public partial class ComponentEditorDialog : Window
         {
             case ConfigModule.Drivers:
                 Show(IdPanel, true);
+                Show(NamePanel, true);
                 Show(TypePanel, true);
                 Show(EnabledPanel, true);
                 Show(ParamsPanel, true);

@@ -143,6 +143,8 @@ public sealed class MdkSetting
     public sealed class DriverConfig
     {
         public string Id { get; set; } = string.Empty;
+        /// <summary>Display name / description (optional; falls back to <see cref="Id"/>).</summary>
+        public string Name { get; set; } = string.Empty;
         public string Type { get; set; } = "gts";
         public bool Enabled { get; set; } = true;
         public Dictionary<string, string> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);

@@ -271,7 +271,7 @@ public sealed class MdkConfigStore : IDisposable
 
         return _db.Execute(conn =>
         {
-            var columns = ReadColumnNames(conn, table);
+            var columns = PreferColumnOrder(table, ReadColumnNames(conn, table));
             using var cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT * FROM \"{table}\" LIMIT $limit;";
             cmd.Parameters.AddWithValue("$limit", limit);
@@ -390,7 +390,8 @@ public sealed class MdkConfigStore : IDisposable
                     foreach (var c in setCols)
                     {
                         values.TryGetValue(c, out var v);
-                        if (string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase))
+                        if (string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(c, "updatetime", StringComparison.OrdinalIgnoreCase))
                         {
                             v = DateTime.UtcNow.ToString("O");
                         }
@@ -412,12 +413,16 @@ public sealed class MdkConfigStore : IDisposable
                 foreach (var c in cols)
                 {
                     values.TryGetValue(c, out var v);
-                    if (string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    if ((string.Equals(c, "updated_at", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(c, "updatetime", StringComparison.OrdinalIgnoreCase))
+                        && string.IsNullOrWhiteSpace(v))
                     {
                         v = DateTime.UtcNow.ToString("O");
                     }
 
-                    if (string.Equals(c, "created_at", StringComparison.OrdinalIgnoreCase) && string.IsNullOrWhiteSpace(v))
+                    if ((string.Equals(c, "created_at", StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(c, "createtime", StringComparison.OrdinalIgnoreCase))
+                        && string.IsNullOrWhiteSpace(v))
                     {
                         v = DateTime.UtcNow.ToString("O");
                     }
@@ -477,6 +482,31 @@ public sealed class MdkConfigStore : IDisposable
         return list;
     }
 
+    private static IReadOnlyList<string> PreferColumnOrder(string table, IReadOnlyList<string> columns)
+    {
+        if (!string.Equals(table, "sysconfigs", StringComparison.OrdinalIgnoreCase))
+        {
+            return columns;
+        }
+
+        string[] preferred = ["key", "value", "group", "remark", "createtime", "updatetime"];
+        var remaining = columns
+            .Where(c => !preferred.Contains(c, StringComparer.OrdinalIgnoreCase))
+            .ToList();
+        var ordered = new List<string>(preferred.Length + remaining.Count);
+        foreach (var name in preferred)
+        {
+            var match = columns.FirstOrDefault(c => string.Equals(c, name, StringComparison.OrdinalIgnoreCase));
+            if (match is not null)
+            {
+                ordered.Add(match);
+            }
+        }
+
+        ordered.AddRange(remaining);
+        return ordered;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -522,10 +552,11 @@ public sealed class MdkConfigStore : IDisposable
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = """
-                INSERT INTO drivers (id, type, enabled, parameters_json, sort_order, updated_at)
-                VALUES ($id, $type, $enabled, $parameters_json, $sort_order, $updated_at)
+                INSERT INTO drivers (id, name, type, enabled, parameters_json, sort_order, updated_at)
+                VALUES ($id, $name, $type, $enabled, $parameters_json, $sort_order, $updated_at)
                 """;
             cmd.Parameters.AddWithValue("$id", d.Id.Trim());
+            cmd.Parameters.AddWithValue("$name", d.Name ?? string.Empty);
             cmd.Parameters.AddWithValue("$type", string.IsNullOrWhiteSpace(d.Type) ? "sim" : d.Type.Trim());
             cmd.Parameters.AddWithValue("$enabled", d.Enabled ? 1 : 0);
             cmd.Parameters.AddWithValue("$parameters_json", JsonSerializer.Serialize(d.Parameters, JsonOptions));
@@ -768,31 +799,33 @@ public sealed class MdkConfigStore : IDisposable
         MdkSetting setting,
         string now)
     {
-        var entries = new (string Key, string Value, string Category)[]
+        var entries = new (string Key, string Value, string Group, string Remark)[]
         {
-            ("projectName", setting.ProjectName ?? string.Empty, "general"),
-            ("cycleMs", setting.CycleMs.ToString(), "general"),
-            ("monitoringPrefix", setting.MonitoringPrefix ?? string.Empty, "general"),
-            ("startPage", setting.StartPage ?? string.Empty, "general"),
-            ("databasePath", setting.DatabasePath ?? string.Empty, "general"),
-            ("activeRecipeId", setting.ActiveRecipeId ?? string.Empty, "recipe"),
-            ("recipeVarKeys", JsonSerializer.Serialize(setting.RecipeVarKeys, JsonOptions), "recipe"),
-            ("vars", JsonSerializer.Serialize(setting.Vars, JsonOptions), "vars"),
-            ("tasks", JsonSerializer.Serialize(setting.Tasks, JsonOptions), "tasks"),
+            ("projectName", setting.ProjectName ?? string.Empty, "general", "工程名称"),
+            ("cycleMs", setting.CycleMs.ToString(), "general", "主循环周期(ms)"),
+            ("monitoringPrefix", setting.MonitoringPrefix ?? string.Empty, "general", "监控 API 前缀"),
+            ("startPage", setting.StartPage ?? string.Empty, "general", "启动页面"),
+            ("databasePath", setting.DatabasePath ?? string.Empty, "general", "数据库路径"),
+            ("activeRecipeId", setting.ActiveRecipeId ?? string.Empty, "recipe", "当前配方 Id"),
+            ("recipeVarKeys", JsonSerializer.Serialize(setting.RecipeVarKeys, JsonOptions), "recipe", "配方变量键列表"),
+            ("vars", JsonSerializer.Serialize(setting.Vars, JsonOptions), "vars", "全局变量 JSON"),
+            ("tasks", JsonSerializer.Serialize(setting.Tasks, JsonOptions), "tasks", "任务列表 JSON"),
         };
 
-        foreach (var (key, value, category) in entries)
+        foreach (var (key, value, group, remark) in entries)
         {
             using var cmd = conn.CreateCommand();
             cmd.Transaction = tx;
             cmd.CommandText = """
-                INSERT INTO sysconfigs (key, value, category, updated_at)
-                VALUES ($key, $value, $category, $updated_at)
+                INSERT INTO sysconfigs (key, value, "group", remark, createtime, updatetime)
+                VALUES ($key, $value, $group, $remark, $createtime, $updatetime)
                 """;
             cmd.Parameters.AddWithValue("$key", key);
             cmd.Parameters.AddWithValue("$value", value);
-            cmd.Parameters.AddWithValue("$category", category);
-            cmd.Parameters.AddWithValue("$updated_at", now);
+            cmd.Parameters.AddWithValue("$group", group);
+            cmd.Parameters.AddWithValue("$remark", remark);
+            cmd.Parameters.AddWithValue("$createtime", now);
+            cmd.Parameters.AddWithValue("$updatetime", now);
             cmd.ExecuteNonQuery();
         }
 
@@ -969,7 +1002,7 @@ public sealed class MdkConfigStore : IDisposable
     {
         using var cmd = conn.CreateCommand();
         cmd.CommandText = """
-            SELECT id, type, enabled, parameters_json
+            SELECT id, name, type, enabled, parameters_json
             FROM drivers
             ORDER BY sort_order, id COLLATE NOCASE
             """;
@@ -980,10 +1013,11 @@ public sealed class MdkConfigStore : IDisposable
             list.Add(new MdkSetting.DriverConfig
             {
                 Id = reader.GetString(0),
-                Type = reader.GetString(1),
-                Enabled = reader.GetInt64(2) != 0,
+                Name = reader.IsDBNull(1) ? string.Empty : reader.GetString(1),
+                Type = reader.GetString(2),
+                Enabled = reader.GetInt64(3) != 0,
                 Parameters = DeserializeOrDefault(
-                    reader.GetString(3),
+                    reader.GetString(4),
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)),
             });
         }

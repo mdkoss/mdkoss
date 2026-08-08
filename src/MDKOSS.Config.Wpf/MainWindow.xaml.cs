@@ -51,13 +51,11 @@ public partial class MainWindow : Window
                     MessageBox.Show(this, ex.Message, "打开失败", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
-            else
-            {
-                _workspace.SelectModule(ConfigModule.Drivers, null);
-            }
 
-            RebuildNavTree(selectModule: ConfigModule.Drivers, selectKey: null);
+            _workspace.SelectModule(ConfigModule.Machine, "machine");
+            RebuildNavTree(selectModule: ConfigModule.Machine, selectKey: "machine");
             UpdateGridHeaders();
+            SyncGridSelection(_workspace.SelectedItem);
             SyncTitle();
         };
     }
@@ -79,7 +77,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (CenterGrid.Columns.Count < 4)
+        if (CenterGrid.Columns.Count < 5)
         {
             return;
         }
@@ -88,8 +86,10 @@ public partial class MainWindow : Window
         CenterGrid.Columns[1].Header = _workspace.ColHeader2;
         CenterGrid.Columns[2].Header = string.IsNullOrEmpty(_workspace.ColHeader3) ? " " : _workspace.ColHeader3;
         CenterGrid.Columns[3].Header = string.IsNullOrEmpty(_workspace.ColHeader4) ? " " : _workspace.ColHeader4;
+        CenterGrid.Columns[4].Header = string.IsNullOrEmpty(_workspace.ColHeader5) ? " " : _workspace.ColHeader5;
         CenterGrid.Columns[2].Visibility = string.IsNullOrEmpty(_workspace.ColHeader3) ? Visibility.Collapsed : Visibility.Visible;
         CenterGrid.Columns[3].Visibility = string.IsNullOrEmpty(_workspace.ColHeader4) ? Visibility.Collapsed : Visibility.Visible;
+        CenterGrid.Columns[4].Visibility = string.IsNullOrEmpty(_workspace.ColHeader5) ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void SyncDbTableBrowser()
@@ -102,41 +102,74 @@ public partial class MainWindow : Window
         _suppressTreeSelection = true;
         NavTree.Items.Clear();
 
-        var project = new TreeViewItem
+        var machineTitle = string.IsNullOrWhiteSpace(_workspace.ProjectName)
+            ? "Machine"
+            : $"Machine · {_workspace.ProjectName}";
+        var machine = new TreeViewItem
         {
-            Header = string.IsNullOrWhiteSpace(_workspace.ProjectName) ? "Project" : _workspace.ProjectName,
+            Header = machineTitle,
             IsExpanded = true,
-            Tag = new NavTag(NavKind.Project, null, null),
+            Tag = new NavTag(NavKind.Project, ConfigModule.Machine, "machine"),
         };
-        NavTree.Items.Add(project);
+        NavTree.Items.Add(machine);
 
-        TreeViewItem? toSelect = null;
-        foreach (var (module, title, components) in BuildModuleEntries())
+        var groups = new (string Title, ConfigModule[] Modules)[]
         {
-            var moduleNode = new TreeViewItem
+            ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios]),
+            ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes]),
+            ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
+        };
+
+        var entries = BuildModuleEntries().ToDictionary(e => e.Module, e => e);
+        TreeViewItem? toSelect = null;
+
+        if (selectModule is ConfigModule.Machine || selectModule is null)
+        {
+            toSelect = machine;
+        }
+
+        foreach (var (groupTitle, modules) in groups)
+        {
+            var groupNode = new TreeViewItem
             {
-                Header = $"{title} ({components.Count})",
-                IsExpanded = module is ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Tasks or ConfigModule.Database,
-                Tag = new NavTag(NavKind.Module, module, null),
+                Header = groupTitle,
+                IsExpanded = true,
+                Tag = new NavTag(NavKind.Group, null, null),
             };
-            project.Items.Add(moduleNode);
+            machine.Items.Add(groupNode);
 
-            if (selectModule == module && string.IsNullOrEmpty(selectKey))
+            foreach (var module in modules)
             {
-                toSelect = moduleNode;
-            }
-
-            foreach (var (key, compTitle) in components)
-            {
-                var leaf = new TreeViewItem
+                if (!entries.TryGetValue(module, out var entry))
                 {
-                    Header = compTitle,
-                    Tag = new NavTag(NavKind.Component, module, key),
+                    continue;
+                }
+
+                var moduleNode = new TreeViewItem
+                {
+                    Header = $"{entry.Title} ({entry.Components.Count})",
+                    IsExpanded = module is ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Tasks or ConfigModule.Database,
+                    Tag = new NavTag(NavKind.Module, module, null),
                 };
-                moduleNode.Items.Add(leaf);
-                if (selectModule == module && string.Equals(selectKey, key, StringComparison.OrdinalIgnoreCase))
+                groupNode.Items.Add(moduleNode);
+
+                if (selectModule == module && string.IsNullOrEmpty(selectKey))
                 {
-                    toSelect = leaf;
+                    toSelect = moduleNode;
+                }
+
+                foreach (var (key, compTitle) in entry.Components)
+                {
+                    var leaf = new TreeViewItem
+                    {
+                        Header = compTitle,
+                        Tag = new NavTag(NavKind.Component, module, key),
+                    };
+                    moduleNode.Items.Add(leaf);
+                    if (selectModule == module && string.Equals(selectKey, key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        toSelect = leaf;
+                    }
                 }
             }
         }
@@ -198,6 +231,11 @@ public partial class MainWindow : Window
         switch (tag.Kind)
         {
             case NavKind.Project:
+                _workspace.SelectModule(ConfigModule.Machine, "machine");
+                UpdateGridHeaders();
+                SyncGridSelection(_workspace.SelectedItem);
+                break;
+            case NavKind.Group:
                 break;
             case NavKind.Module when tag.Module is { } module:
                 _workspace.SelectModule(module, null);
@@ -302,30 +340,57 @@ public partial class MainWindow : Window
     private void HighlightTreeComponent(ConfigModule module, string key)
     {
         _suppressTreeSelection = true;
-        foreach (TreeViewItem project in NavTree.Items)
+        try
         {
-            foreach (TreeViewItem moduleNode in project.Items)
+            if (module == ConfigModule.Machine)
             {
-                if (moduleNode.Tag is not NavTag { Kind: NavKind.Module } mt || mt.Module != module)
+                foreach (TreeViewItem root in NavTree.Items)
                 {
-                    continue;
+                    if (root.Tag is NavTag { Kind: NavKind.Project })
+                    {
+                        root.IsSelected = true;
+                        root.BringIntoView();
+                        return;
+                    }
                 }
 
-                foreach (TreeViewItem leaf in moduleNode.Items)
+                return;
+            }
+
+            foreach (TreeViewItem project in NavTree.Items)
+            {
+                foreach (TreeViewItem groupOrModule in project.Items)
                 {
-                    if (leaf.Tag is NavTag { Kind: NavKind.Component } ct
-                        && string.Equals(ct.Key, key, StringComparison.OrdinalIgnoreCase))
+                    IEnumerable<TreeViewItem> moduleNodes =
+                        groupOrModule.Tag is NavTag { Kind: NavKind.Group }
+                            ? groupOrModule.Items.OfType<TreeViewItem>()
+                            : [groupOrModule];
+
+                    foreach (var moduleNode in moduleNodes)
                     {
-                        leaf.IsSelected = true;
-                        leaf.BringIntoView();
-                        _suppressTreeSelection = false;
-                        return;
+                        if (moduleNode.Tag is not NavTag { Kind: NavKind.Module } mt || mt.Module != module)
+                        {
+                            continue;
+                        }
+
+                        foreach (TreeViewItem leaf in moduleNode.Items)
+                        {
+                            if (leaf.Tag is NavTag { Kind: NavKind.Component } ct
+                                && string.Equals(ct.Key, key, StringComparison.OrdinalIgnoreCase))
+                            {
+                                leaf.IsSelected = true;
+                                leaf.BringIntoView();
+                                return;
+                            }
+                        }
                     }
                 }
             }
         }
-
-        _suppressTreeSelection = false;
+        finally
+        {
+            _suppressTreeSelection = false;
+        }
     }
 
     private void RefreshTreeKeepingSelection()
@@ -372,8 +437,10 @@ public partial class MainWindow : Window
         try
         {
             _workspace.Open(dlg.FileName);
-            RebuildNavTree(ConfigModule.Drivers, null);
+            _workspace.SelectModule(ConfigModule.Machine, "machine");
+            RebuildNavTree(ConfigModule.Machine, "machine");
             UpdateGridHeaders();
+            SyncGridSelection(_workspace.SelectedItem);
             SyncTitle();
         }
         catch (Exception ex)
@@ -1273,6 +1340,7 @@ public partial class MainWindow : Window
 internal enum NavKind
 {
     Project,
+    Group,
     Module,
     Component,
 }

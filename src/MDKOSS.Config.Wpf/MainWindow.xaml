@@ -166,10 +166,11 @@
                 </ContextMenu>
               </DataGrid.ContextMenu>
               <DataGrid.Columns>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader1, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col1}" Width="*"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader1, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col1}" Width="48"/>
                 <DataGridTextColumn Header="{Binding DataContext.ColHeader2, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col2}" Width="*"/>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader3, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col3}" Width="90"/>
-                <DataGridTextColumn Header="{Binding DataContext.ColHeader4, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col4}" Width="110"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader3, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col3}" Width="110"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader4, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col4}" Width="1.2*"/>
+                <DataGridTextColumn Header="{Binding DataContext.ColHeader5, RelativeSource={RelativeSource AncestorType=Window}}" Binding="{Binding Col5}" Width="64"/>
               </DataGrid.Columns>
             </DataGrid>
 
@@ -220,12 +221,12 @@
           <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
               <StackPanel Visibility="{Binding ShowId, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Id / Key" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="Name (Id)" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldId, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
               <StackPanel Visibility="{Binding ShowName, Converter={StaticResource BoolToVis}}">
-                <TextBlock Text="Name / Alias" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
+                <TextBlock Text="Desc (描述)" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,2"/>
                 <TextBox Text="{Binding FieldName, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,8"
                          IsReadOnly="{Binding IsReadOnly}"/>
               </StackPanel>
@@ -313,6 +314,16 @@
                     <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
                   </DataGrid.Columns>
                 </DataGrid>
+                <Border Margin="0,0,0,8" Padding="8,6" Background="#F4F7FA"
+                        BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1"
+                        Visibility="{Binding ShowParameterPreview, Converter={StaticResource BoolToVis}}">
+                  <StackPanel>
+                    <TextBlock Text="参数预览" FontWeight="SemiBold" FontSize="11"
+                               Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+                    <TextBlock Text="{Binding ParameterPreview}" TextWrapping="Wrap" FontSize="11"
+                               Foreground="{StaticResource MutedBrush}"/>
+                  </StackPanel>
+                </Border>
                 <Expander Header="原始 JSON 预览" IsExpanded="False">
                   <TextBox Text="{Binding FieldParameters, UpdateSourceTrigger=PropertyChanged}"
                            AcceptsReturn="True" TextWrapping="Wrap" MinHeight="80"

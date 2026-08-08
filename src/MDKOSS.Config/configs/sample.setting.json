@@ -6,6 +6,7 @@
   "drivers": [
     {
       "id": "drv-m1",
+      "name": "M1 运动卡",
       "type": "sim",
       "enabled": true,
       "parameters": {
@@ -18,6 +19,7 @@
     },
     {
       "id": "drv-io1",
+      "name": "IO1 卡",
       "type": "sim",
       "enabled": true,
       "parameters": {
@@ -30,6 +32,7 @@
     },
     {
       "id": "drv-vio",
+      "name": "VIO 虚拟卡",
       "type": "sim",
       "enabled": true,
       "parameters": {

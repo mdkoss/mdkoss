@@ -94,11 +94,23 @@
 
 共享逻辑：`Debug/DebugSession.cs`。启动时 `MdkExtensionHost.DiscoverAndRegister` 加载 `plugins/`。
 
+## 列表列约定
+
+各模块统一：
+
+| 列 | 含义 |
+|----|------|
+| **Id** | 行号（1..N） |
+| **Name** | 配置 Id（原 id） |
+| **Type** | 类型 |
+| **Desc** | 显示名 / 描述（原 name） |
+| **Enable** | 启用 |
+
+左侧树按 **硬件 / 逻辑 / 系统** 分组。右侧参数区下方有参数预览。
+
 ## 属性编辑策略
 
-- 固定字段按模块类型显示（Driver / Device / Task / Recipe / Var / Sys / Gpio）。
-- `parameters` / recipe vars 以 Key/Value 表编辑（Key 可下拉模板键）；应用时解析失败则提示，不写回。
-- 右侧改属性后需「应用属性」或 **Ctrl+Enter** 写回内存；**切换组件 / 保存** 时若有未应用修改会提示。
-- Type 变更时自动**补全**该类型缺失参数键（与新建弹窗一致）。
-- GPIO 点位：编辑 route / alias / label；回写所属设备 `parameters`。
-- Gpios / Axis / Platform：支持 Excel 批量导入导出，适合大量点位/轴参数快速改。
+- 固定字段：`Name(Id)` + `Desc(描述)` + Type / DriverId / Enable …
+- `parameters` 以 Key/Value 表编辑，下方显示预览；应用或 Ctrl+Enter 写回
+- 切换组件 / 保存时若有未应用修改会提示
+- Gpios / Axis / Platform：支持 Excel 批量导入导出
