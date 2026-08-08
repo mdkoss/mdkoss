@@ -308,7 +308,7 @@
                               IsEnabled="{Binding IsReadOnly, Converter={StaticResource InvertBoolConverter}}">
                     <Button Content="组合轴…" Padding="8,2" Margin="0,0,4,0" Click="ComposeAxes_Click"
                             Visibility="{Binding ShowComposeAxes, Converter={StaticResource BoolToVis}}"
-                            ToolTip="从已有 Axis 组件快速绑定 axis.X / axis.Y …（组合轴）"/>
+                            ToolTip="从已有 Axis 组件绑定 axis.X / axis.Y …（仅选轴）"/>
                     <Button Content="补全模板" Padding="8,2" Margin="0,0,4,0" Click="FillParamTemplate_Click"
                             ToolTip="按当前 Type 补全缺失的默认参数键"/>
                     <Button Content="重置模板" Padding="8,2" Margin="0,0,4,0" Click="ResetParamTemplate_Click"
@@ -331,7 +331,8 @@
                           IsReadOnly="{Binding IsReadOnly}"
                           BorderBrush="{StaticResource BorderBrushKey}"
                           BorderThickness="1"
-                          Margin="0,0,0,6">
+                          Margin="0,0,0,6"
+                          PreparingCellForEdit="ParamGrid_PreparingCellForEdit">
                   <DataGrid.Columns>
                     <DataGridTemplateColumn Header="Key" Width="*">
                       <DataGridTemplateColumn.CellTemplate>

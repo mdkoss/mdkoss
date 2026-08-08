@@ -8,22 +8,22 @@ public sealed class MdkSettingUtf8SaveTests
     [Fact]
     public void Save_writes_cjk_as_utf8_literals_not_unicode_escapes()
     {
-        var setting = new MdkSetting { ProjectName = "Ñù»ú" };
+        var setting = new MdkSetting { ProjectName = "æ ·æœº" };
         setting.Axes.Add(new MdkSetting.DeviceConfig
         {
             Id = "AxisTransY",
-            Name = "ÉÏÏÂÁÏYÖá",
+            Name = "ä¸Šä¸‹æ–™Yè½´",
             Type = "axis",
         });
         setting.Devices.Add(new MdkSetting.DeviceConfig
         {
             Id = "gpio-main",
-            Name = "Õû»ú GPIO",
+            Name = "æ•´æœº GPIO",
             Type = "gpio",
             Parameters =
             {
-                ["in.DiStartButton"] = "drv-m1:1|Æô¶¯°´Å¥",
-                ["in.DiStopButton"] = "drv-m1:2|Í£Ö¹°´Å¥",
+                ["in.DiStartButton"] = "drv-m1:1|å¯åŠ¨æŒ‰é’®",
+                ["in.DiStopButton"] = "drv-m1:2|åœæ­¢æŒ‰é’®",
             },
         });
 
@@ -32,12 +32,12 @@ public sealed class MdkSettingUtf8SaveTests
         {
             setting.Save(path);
             var json = File.ReadAllText(path, Encoding.UTF8);
-            Assert.Contains("ÉÏÏÂÁÏYÖá", json, StringComparison.Ordinal);
-            Assert.Contains("Æô¶¯°´Å¥", json, StringComparison.Ordinal);
-            Assert.Contains("drv-m1:1|Æô¶¯°´Å¥", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("\\u4E0A", json, StringComparison.Ordinal);
-            Assert.DoesNotContain("\\u542F", json, StringComparison.Ordinal);
-            Assert.Contains("Ñù»ú", json, StringComparison.Ordinal);
+            Assert.Contains("ä¸Šä¸‹æ–™Yè½´", json, StringComparison.Ordinal);
+            Assert.Contains("å¯åŠ¨æŒ‰é’®", json, StringComparison.Ordinal);
+            Assert.Contains("drv-m1:1|å¯åŠ¨æŒ‰é’®", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\u4E0A", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("\u542F", json, StringComparison.Ordinal);
+            Assert.Contains("æ ·æœº", json, StringComparison.Ordinal);
         }
         finally
         {

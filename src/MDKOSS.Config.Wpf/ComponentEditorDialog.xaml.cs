@@ -40,11 +40,18 @@ public partial class ComponentEditorDialog : Window
                 break;
             case ConfigModule.Devices:
             case ConfigModule.Axis:
-            case ConfigModule.Platform:
                 Show(IdPanel, true);
                 Show(NamePanel, true);
                 Show(TypePanel, true);
                 Show(DriverPanel, true);
+                Show(EnabledPanel, true);
+                Show(ParamsPanel, true);
+                break;
+            case ConfigModule.Platform:
+                Show(IdPanel, true);
+                Show(NamePanel, true);
+                Show(TypePanel, true);
+                Show(DriverPanel, false);
                 Show(EnabledPanel, true);
                 Show(ParamsPanel, true);
                 break;
@@ -129,7 +136,13 @@ public partial class ComponentEditorDialog : Window
         if (replaceAll)
         {
             _paramRows.Clear();
-            foreach (var kv in template)
+            var rows = template;
+            if (_module == ConfigModule.Platform)
+            {
+                rows = PlatformDeviceParameterSet.NormalizeParameters(type, template);
+            }
+
+            foreach (var kv in rows)
             {
                 _paramRows.Add(new KvPairRow { Key = kv.Key, Value = kv.Value });
             }
@@ -139,6 +152,11 @@ public partial class ComponentEditorDialog : Window
 
         var existing = KvTableHelper.ToStringDict(_paramRows);
         var merged = DeviceParameterPresets.ApplyTemplate(existing, template, overwriteEmptyOnly: true);
+        if (_module == ConfigModule.Platform)
+        {
+            merged = PlatformDeviceParameterSet.NormalizeParameters(type, merged);
+        }
+
         _paramRows.Clear();
         foreach (var kv in merged.OrderBy(x => x.Key, StringComparer.OrdinalIgnoreCase))
         {

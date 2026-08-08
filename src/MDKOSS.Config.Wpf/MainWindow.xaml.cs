@@ -1021,6 +1021,20 @@ public partial class MainWindow : Window
         }
     }
 
+    private void ParamGrid_PreparingCellForEdit(object sender, DataGridPreparingCellForEditEventArgs e)
+    {
+        if (e.Row?.Item is not KvPairRow row)
+        {
+            return;
+        }
+
+        // Value column (index 1): suggestions depend on the Key being edited.
+        if (e.Column?.DisplayIndex == 1 || string.Equals(e.Column?.Header as string, "Value", StringComparison.OrdinalIgnoreCase))
+        {
+            _workspace.RefreshParamValueSuggestionsForKey(row.Key);
+        }
+    }
+
     private void FillVioDefaults_Click(object sender, RoutedEventArgs e)
     {
         if (!_workspace.SupportsVioDefaultLoad)

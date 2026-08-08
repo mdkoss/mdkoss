@@ -149,6 +149,13 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     private bool _showQuickAddTypes;
     private bool _showComposeAxes;
     private string _headline = "未选择组件";
+    private string _labelId = "Name (Id)";
+    private string _labelName = "Desc (描述)";
+    private string _labelType = "Type";
+    private string _labelDriverId = "DriverId";
+    private string _labelInterval = "IntervalMs";
+    private string _labelDescription = "Description / Label";
+    private string _labelValue = "Port / Value";
 
     public PropertyDraft()
     {
@@ -166,6 +173,13 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     public ObservableCollection<string> QuickAddTypes { get; } = [];
 
     public string Headline { get => _headline; set { _headline = value; OnPropertyChanged(); } }
+    public string LabelId { get => _labelId; set { if (_labelId == value) return; _labelId = value; OnPropertyChanged(); } }
+    public string LabelName { get => _labelName; set { if (_labelName == value) return; _labelName = value; OnPropertyChanged(); } }
+    public string LabelType { get => _labelType; set { if (_labelType == value) return; _labelType = value; OnPropertyChanged(); } }
+    public string LabelDriverId { get => _labelDriverId; set { if (_labelDriverId == value) return; _labelDriverId = value; OnPropertyChanged(); } }
+    public string LabelInterval { get => _labelInterval; set { if (_labelInterval == value) return; _labelInterval = value; OnPropertyChanged(); } }
+    public string LabelDescription { get => _labelDescription; set { if (_labelDescription == value) return; _labelDescription = value; OnPropertyChanged(); } }
+    public string LabelValue { get => _labelValue; set { if (_labelValue == value) return; _labelValue = value; OnPropertyChanged(); } }
     public string FieldId
     {
         get => _fieldId;
@@ -280,6 +294,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
             ShowId = ShowName = ShowType = ShowDriverId = ShowInterval = ShowDescription = ShowValue = ShowEnabled = ShowParameters = false;
             ShowQuickAddTypes = false;
             ShowComposeAxes = false;
+            ResetFieldLabels();
             FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
             FieldParameters = "{}";
             FieldInterval = "100";
@@ -296,6 +311,17 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         }
 
         ClearDirty();
+    }
+
+    public void ResetFieldLabels()
+    {
+        LabelId = "Name (Id)";
+        LabelName = "Desc (描述)";
+        LabelType = "Type";
+        LabelDriverId = "DriverId";
+        LabelInterval = "IntervalMs";
+        LabelDescription = "Description / Label";
+        LabelValue = "Port / Value";
     }
 
     public void SetQuickAddTypes(IEnumerable<string> types)
@@ -1177,10 +1203,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Devices:
             case ConfigModule.Axis:
-            case ConfigModule.Platform:
                 req.Id = UniqueId(AllDeviceIds(), "dev-new");
                 req.Name = req.Id;
                 req.DriverId = req.DriverOptions.FirstOrDefault() ?? "";
+                break;
+            case ConfigModule.Platform:
+                req.Id = UniqueId(AllDeviceIds(), "plat-new");
+                req.Name = req.Id;
+                req.DriverId = "";
                 break;
             case ConfigModule.Tasks:
                 req.Name = UniqueId(_setting.Tasks.Select(t => t.Name), "task-new");
@@ -2164,7 +2194,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var type = string.IsNullOrWhiteSpace(req.Type) ? ConfigTypeCatalog.DefaultType(_module) : req.Type;
         EnsureDeviceTypeForModule(_module, type);
         var parameters = new Dictionary<string, string>(req.Parameters, StringComparer.OrdinalIgnoreCase);
-        if (_module == ConfigModule.Axis)
+        if (_module == ConfigModule.Platform)
+        {
+            parameters = PlatformDeviceParameterSet.NormalizeParameters(type, parameters);
+        }
+        else if (_module == ConfigModule.Axis)
         {
             AxisDeviceParameterSet.SyncKindParameter(parameters, type);
         }
@@ -2174,7 +2208,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Id = req.Id,
             Name = string.IsNullOrWhiteSpace(req.Name) ? req.Id : req.Name,
             Type = type,
-            DriverId = req.DriverId,
+            DriverId = _module == ConfigModule.Platform ? "" : req.DriverId,
             Enabled = req.Enabled,
             Parameters = parameters,
         };
