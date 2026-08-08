@@ -1818,36 +1818,26 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     {
         var headers = new[]
         {
-            "Id", "Name", "Type", "DriverId", "Enabled", "kind", "model", "note",
-            "axis.X", "axisIndex.X", "axis.Y", "axisIndex.Y", "axis.Z", "axisIndex.Z",
-            "axis.U", "axisIndex.U", "axis.V", "axisIndex.V", "axis.W", "axisIndex.W",
+            "Id", "Name", "Type", "Enabled", "note",
+            "axis.X", "axis.Y", "axis.Z", "axis.U", "axis.V", "axis.W",
         };
         var plats = _setting.Platforms;
         var rows = plats.Select(d =>
         {
-            var p = d.Parameters;
+            var p = PlatformDeviceParameterSet.NormalizeParameters(d.Type, d.Parameters);
             return (IReadOnlyList<string>)new[]
             {
                 d.Id,
                 d.Name,
                 d.Type,
-                d.DriverId,
                 d.Enabled ? "True" : "False",
-                p.GetValueOrDefault("kind", d.Type),
-                p.GetValueOrDefault("model", "PlatformXyz"),
                 p.GetValueOrDefault("note", ""),
                 p.GetValueOrDefault("axis.X", ""),
-                p.GetValueOrDefault("axisIndex.X", ""),
                 p.GetValueOrDefault("axis.Y", ""),
-                p.GetValueOrDefault("axisIndex.Y", ""),
                 p.GetValueOrDefault("axis.Z", ""),
-                p.GetValueOrDefault("axisIndex.Z", ""),
                 p.GetValueOrDefault("axis.U", ""),
-                p.GetValueOrDefault("axisIndex.U", ""),
                 p.GetValueOrDefault("axis.V", ""),
-                p.GetValueOrDefault("axisIndex.V", ""),
                 p.GetValueOrDefault("axis.W", ""),
-                p.GetValueOrDefault("axisIndex.W", ""),
             };
         });
         ExcelSheetIo.WriteSheet(path, "Platform", headers, rows);
@@ -1889,15 +1879,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             kind = type;
         }
 
-        var driverId = Cell(r, "DriverId", "driverId").Trim();
-        var parameters = PlatformDeviceParameterSet.DefaultParameters(kind, driverId);
-        parameters["kind"] = kind.Trim();
-        var model = Cell(r, "model", "Model");
-        if (!string.IsNullOrWhiteSpace(model))
-        {
-            parameters["model"] = model.Trim();
-        }
-
+        var parameters = PlatformDeviceParameterSet.DefaultParameters(kind);
         var note = Cell(r, "note", "Note");
         if (!string.IsNullOrWhiteSpace(note))
         {
@@ -1906,25 +1888,21 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         foreach (var letter in new[] { "X", "Y", "Z", "U", "V", "W" })
         {
-            var axisDrv = Cell(r, $"axis.{letter}");
-            if (!string.IsNullOrWhiteSpace(axisDrv))
+            var axisId = Cell(r, $"axis.{letter}");
+            if (!string.IsNullOrWhiteSpace(axisId))
             {
-                parameters[$"axis.{letter}"] = axisDrv.Trim();
-            }
-
-            var axisIdx = Cell(r, $"axisIndex.{letter}");
-            if (!string.IsNullOrWhiteSpace(axisIdx))
-            {
-                parameters[$"axisIndex.{letter}"] = axisIdx.Trim();
+                parameters[$"axis.{letter}"] = axisId.Trim();
             }
         }
+
+        parameters = PlatformDeviceParameterSet.NormalizeParameters(type, parameters);
 
         return new MdkSetting.DeviceConfig
         {
             Id = id.Trim(),
             Name = Cell(r, "Name", "name").Trim().Length > 0 ? Cell(r, "Name", "name").Trim() : id.Trim(),
             Type = type.Trim(),
-            DriverId = driverId,
+            DriverId = "",
             Enabled = ParseBool(Cell(r, "Enabled", "enabled"), true),
             Parameters = parameters,
         };
@@ -3603,6 +3581,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var next = replaceAll
             ? new Dictionary<string, string>(template, StringComparer.OrdinalIgnoreCase)
             : DeviceParameterPresets.ApplyTemplate(existing, template, overwriteEmptyOnly: true);
+        if (_module == ConfigModule.Platform)
+        {
+            next = PlatformDeviceParameterSet.NormalizeParameters(type ?? "", next);
+        }
+
         Draft.LoadStringParameters(next);
         RefreshParamKeySuggestions(_module, type, driverId);
         RefreshParamValueSuggestions(_module);
