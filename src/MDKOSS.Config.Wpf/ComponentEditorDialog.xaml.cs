@@ -70,6 +70,12 @@ public partial class ComponentEditorDialog : Window
                 Show(ParamsPanel, true);
                 Show(PickVarsButton, true);
                 break;
+            case ConfigModule.Visions:
+                Show(IdPanel, true);
+                Show(NamePanel, true);
+                Show(DescriptionPanel, true);
+                Show(ParamsPanel, true);
+                break;
             case ConfigModule.Vars:
                 Show(IdPanel, true);
                 Show(ValuePanel, true);
@@ -295,6 +301,7 @@ public partial class ComponentEditorDialog : Window
             case ConfigModule.Axis:
             case ConfigModule.Platform:
             case ConfigModule.Recipes:
+            case ConfigModule.Visions:
             case ConfigModule.Vars:
                 if (string.IsNullOrWhiteSpace(Request.Id))
                 {

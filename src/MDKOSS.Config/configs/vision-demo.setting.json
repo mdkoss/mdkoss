@@ -1,0 +1,80 @@
+{
+  "projectName": "VisionCaptureDemo",
+  "cycleMs": 50,
+  "monitoringPrefix": "http://127.0.0.1:5080/",
+  "startPage": "index.html",
+  "drivers": [
+    {
+      "id": "drv-sim",
+      "name": "Sim Driver",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "model": "VirtualCard",
+        "note": "Vision demo sim driver"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "cam-top",
+      "name": "Top Camera",
+      "type": "cameradev",
+      "driverId": "drv-sim",
+      "enabled": true,
+      "parameters": {
+        "role": "downlook"
+      }
+    },
+    {
+      "id": "vision-top",
+      "name": "Top Vision",
+      "type": "visiondev",
+      "enabled": true,
+      "parameters": {
+        "visionId": "vision-inspect",
+        "cameraDeviceId": "cam-top",
+        "resultPrefix": "vision",
+        "generateTestImage": "true"
+      }
+    }
+  ],
+  "visions": [
+    {
+      "id": "vision-inspect",
+      "name": "基础斑点检测",
+      "description": "采集/加载图像 → 灰度/模糊/阈值 → findContours → outputPose",
+      "cameraDeviceId": "cam-top",
+      "pipelineJson": "{\n  \"version\": 1,\n  \"nodes\": [\n    { \"id\": \"n-start\", \"kind\": \"start\", \"x\": 300, \"y\": 40, \"order\": 0, \"props\": {} },\n    { \"id\": \"n-load\", \"kind\": \"vision.loadImage\", \"x\": 300, \"y\": 120, \"order\": 1, \"props\": { \"path\": \"\" } },\n    { \"id\": \"n-gray\", \"kind\": \"vision.toGray\", \"x\": 300, \"y\": 200, \"order\": 2, \"props\": {} },\n    { \"id\": \"n-blur\", \"kind\": \"vision.blur\", \"x\": 300, \"y\": 280, \"order\": 3, \"props\": { \"kind\": \"gaussian\", \"ksize\": \"5\" } },\n    { \"id\": \"n-th\", \"kind\": \"vision.threshold\", \"x\": 300, \"y\": 360, \"order\": 4, \"props\": { \"mode\": \"binary\", \"thresh\": \"80\", \"maxVal\": \"255\" } },\n    { \"id\": \"n-blob\", \"kind\": \"vision.findContours\", \"x\": 300, \"y\": 440, \"order\": 5, \"props\": { \"thresh\": \"80\", \"minArea\": \"200\" } },\n    { \"id\": \"n-out\", \"kind\": \"vision.outputPose\", \"x\": 300, \"y\": 520, \"order\": 6, \"props\": { \"prefix\": \"vision\", \"requireOk\": \"false\" } },\n    { \"id\": \"n-end\", \"kind\": \"end\", \"x\": 300, \"y\": 600, \"order\": 7, \"props\": {} }\n  ],\n  \"edges\": [\n    { \"from\": \"n-start\", \"to\": \"n-load\", \"port\": \"next\" },\n    { \"from\": \"n-load\", \"to\": \"n-gray\", \"port\": \"next\" },\n    { \"from\": \"n-gray\", \"to\": \"n-blur\", \"port\": \"next\" },\n    { \"from\": \"n-blur\", \"to\": \"n-th\", \"port\": \"next\" },\n    { \"from\": \"n-th\", \"to\": \"n-blob\", \"port\": \"next\" },\n    { \"from\": \"n-blob\", \"to\": \"n-out\", \"port\": \"next\" },\n    { \"from\": \"n-out\", \"to\": \"n-end\", \"port\": \"next\" }\n  ]\n}"
+    }
+  ],
+  "activeVisionId": "vision-inspect",
+  "tasks": [
+    {
+      "name": "poll-sim",
+      "type": "pollDriver",
+      "driverId": "drv-sim",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "task-vision-test",
+      "type": "flow",
+      "intervalMs": 1000,
+      "parameters": {
+        "loop": "false",
+        "note": "相机触发 → VisionDevice.captureAndRun → 写检测结果变量",
+        "flowJson": "{\n  \"version\": 1,\n  \"variables\": [\n    { \"name\": \"ok\", \"type\": \"bool\", \"init\": \"false\" },\n    { \"name\": \"x\", \"type\": \"number\", \"init\": \"0\" },\n    { \"name\": \"y\", \"type\": \"number\", \"init\": \"0\" },\n    { \"name\": \"score\", \"type\": \"number\", \"init\": \"0\" }\n  ],\n  \"functions\": [\n    { \"name\": \"main\", \"entryNodeId\": \"n-start\" }\n  ],\n  \"nodes\": [\n    { \"id\": \"n-start\", \"kind\": \"start\", \"x\": 300, \"y\": 40, \"order\": 0, \"props\": {} },\n    {\n      \"id\": \"n-capture\",\n      \"kind\": \"op.deviceAction\",\n      \"x\": 300,\n      \"y\": 140,\n      \"order\": 1,\n      \"props\": {\n        \"deviceId\": \"vision-top\",\n        \"action\": \"captureAndRun\",\n        \"parametersJson\": \"{}\"\n      }\n    },\n    {\n      \"id\": \"n-set-ok\",\n      \"kind\": \"setVar\",\n      \"x\": 300,\n      \"y\": 240,\n      \"order\": 2,\n      \"props\": { \"name\": \"ok\", \"expr\": \"vision.ok\" }\n    },\n    {\n      \"id\": \"n-set-x\",\n      \"kind\": \"setVar\",\n      \"x\": 300,\n      \"y\": 320,\n      \"order\": 3,\n      \"props\": { \"name\": \"x\", \"expr\": \"vision.x\" }\n    },\n    {\n      \"id\": \"n-set-y\",\n      \"kind\": \"setVar\",\n      \"x\": 300,\n      \"y\": 400,\n      \"order\": 4,\n      \"props\": { \"name\": \"y\", \"expr\": \"vision.y\" }\n    },\n    {\n      \"id\": \"n-set-score\",\n      \"kind\": \"setVar\",\n      \"x\": 300,\n      \"y\": 480,\n      \"order\": 5,\n      \"props\": { \"name\": \"score\", \"expr\": \"vision.score\" }\n    },\n    {\n      \"id\": \"n-log\",\n      \"kind\": \"op.log\",\n      \"x\": 300,\n      \"y\": 560,\n      \"order\": 6,\n      \"props\": {\n        \"message\": \"\\\"vision ok=\\\" + ok + \\\" x=\\\" + x + \\\" y=\\\" + y + \\\" score=\\\" + score\"\n      }\n    },\n    { \"id\": \"n-end\", \"kind\": \"end\", \"x\": 300, \"y\": 640, \"order\": 7, \"props\": {} }\n  ],\n  \"edges\": [\n    { \"from\": \"n-start\", \"to\": \"n-capture\", \"port\": \"next\" },\n    { \"from\": \"n-capture\", \"to\": \"n-set-ok\", \"port\": \"next\" },\n    { \"from\": \"n-set-ok\", \"to\": \"n-set-x\", \"port\": \"next\" },\n    { \"from\": \"n-set-x\", \"to\": \"n-set-y\", \"port\": \"next\" },\n    { \"from\": \"n-set-y\", \"to\": \"n-set-score\", \"port\": \"next\" },\n    { \"from\": \"n-set-score\", \"to\": \"n-log\", \"port\": \"next\" },\n    { \"from\": \"n-log\", \"to\": \"n-end\", \"port\": \"next\" }\n  ]\n}"
+      }
+    }
+  ],
+  "vars": {
+    "vision.ok": false,
+    "vision.x": 0,
+    "vision.y": 0,
+    "vision.angle": 0,
+    "vision.score": 0
+  },
+  "recipes": [],
+  "recipeVarKeys": []
+}

@@ -59,6 +59,7 @@
         <MenuItem Header="定位到 Devices" Click="NavDevices_Click"/>
         <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
         <MenuItem Header="定位到 Recipes" Click="NavRecipes_Click"/>
+        <MenuItem Header="定位到 Visions" Click="NavVisions_Click"/>
       </MenuItem>
       <MenuItem Header="调试(_D)">
         <MenuItem Header="Driver 调试…" Click="DebugDriver_Click"/>
@@ -67,6 +68,7 @@
         <MenuItem Header="CameraDev 调试…" Click="DebugCamera_Click"/>
         <MenuItem Header="Task 编辑…" Click="DebugTask_Click"/>
         <MenuItem Header="Flow 流程编辑…" Click="DebugFlow_Click"/>
+        <MenuItem Header="Vision 视觉流程编辑…" Click="DebugVision_Click"/>
         <Separator/>
         <MenuItem Header="打开当前选中组件调试…" Click="DebugSelected_Click"/>
       </MenuItem>
@@ -311,7 +313,10 @@
                             ToolTip="从已有 Axis 组件绑定 axis.X / axis.Y …（仅选轴）"/>
                     <Button Content="从 Vars…" Padding="8,2" Margin="0,0,4,0" Click="PickRecipeVars_Click"
                             Visibility="{Binding ShowPickRecipeVars, Converter={StaticResource BoolToVis}}"
-                            ToolTip="从 Vars 与 SysConfig.recipeVarKeys 查询并勾选配方变量键"/>
+                            ToolTip="从全部 Vars 与全部 SysConfig 配置参数中勾选写入配方"/>
+                    <Button Content="编辑视觉流程…" Padding="8,2" Margin="0,0,4,0" Click="EditVisionPipeline_Click"
+                            Visibility="{Binding ShowEditVisionPipeline, Converter={StaticResource BoolToVis}}"
+                            ToolTip="打开视觉流程编辑器，编辑 pipelineJson"/>
                     <Button Content="补全模板" Padding="8,2" Margin="0,0,4,0" Click="FillParamTemplate_Click"
                             ToolTip="按当前 Type 补全缺失的默认参数键"/>
                     <Button Content="重置模板" Padding="8,2" Margin="0,0,4,0" Click="ResetParamTemplate_Click"

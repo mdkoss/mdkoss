@@ -6,7 +6,7 @@ using System.Windows.Data;
 
 namespace MDKOSS.Config.Wpf;
 
-/// <summary>Multi-select recipe var keys from Vars and SysConfig.recipeVarKeys.</summary>
+/// <summary>Multi-select recipe var keys from all Vars and all SysConfig parameters.</summary>
 public partial class RecipePickVarsDialog : Window
 {
     private readonly ObservableCollection<RecipeVarCandidateRow> _rows;

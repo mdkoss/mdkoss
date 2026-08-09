@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Microsoft.Win32;
 using MDKOSS.Config.Wpf.Debug;
 using MDKOSS.Config.Wpf.Debug.Flow;
+using MDKOSS.Config.Wpf.Debug.Vision;
 using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
@@ -120,7 +121,7 @@ public partial class MainWindow : Window
         var groups = new (string Title, ConfigModule[] Modules)[]
         {
             ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios, ConfigModule.Vios]),
-            ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes]),
+            ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes, ConfigModule.Visions]),
             ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
         };
 
@@ -1361,6 +1362,7 @@ public partial class MainWindow : Window
     private void NavDevices_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Devices);
     private void NavTasks_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Tasks);
     private void NavRecipes_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Recipes);
+    private void NavVisions_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Visions);
 
     private void JumpTo(ConfigModule module)
     {
@@ -1380,7 +1382,7 @@ public partial class MainWindow : Window
             "· Parameters：右侧 Key/Value 表；Key 可下拉选模板键；补全/重置模板\n" +
             "· 切换组件时若有未应用修改，可选择应用 / 丢弃 / 取消\n" +
             "· Ctrl+Enter 快速应用属性；Gpios/Vios/Axis/Platform 支持 Excel 批量导入导出\n" +
-            "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow 独立窗\n" +
+            "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow / Vision 独立窗\n" +
             "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」或 Ctrl+Enter。",
             "界面说明",
             MessageBoxButton.OK,
@@ -1423,6 +1425,32 @@ public partial class MainWindow : Window
             PreferKeyIfModule(ConfigModule.Tasks),
             RefreshTreeKeepingSelection));
 
+    private void DebugVision_Click(object sender, RoutedEventArgs e) =>
+        OpenDebugWindow(new VisionEditorWindow(
+            _workspace,
+            PreferKeyIfModule(ConfigModule.Visions),
+            RefreshTreeKeepingSelection));
+
+    private void EditVisionPipeline_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_workspace.Draft.ShowEditVisionPipeline || _workspace.Draft.IsReadOnly)
+        {
+            return;
+        }
+
+        OpenDebugWindow(new VisionEditorWindow(
+            _workspace,
+            PreferKeyIfModule(ConfigModule.Visions) ?? _workspace.SelectedItem?.Key,
+            () =>
+            {
+                RefreshTreeKeepingSelection();
+                if (_workspace.SelectedItem is not null)
+                {
+                    _workspace.SelectItem(_workspace.SelectedItem);
+                }
+            }));
+    }
+
     private void DebugSelected_Click(object sender, RoutedEventArgs e)
     {
         var item = _workspace.SelectedItem;
@@ -1457,6 +1485,9 @@ public partial class MainWindow : Window
 
                 return;
             }
+            case ConfigModule.Visions:
+                OpenDebugWindow(new VisionEditorWindow(_workspace, item.Key, RefreshTreeKeepingSelection));
+                return;
             case ConfigModule.Devices:
             {
                 var type = ResolveDeviceType(item);

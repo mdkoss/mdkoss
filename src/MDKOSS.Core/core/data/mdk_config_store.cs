@@ -5,7 +5,7 @@ namespace MDKOSS.Core.Data;
 
 /// <summary>
 /// Exports / imports <see cref="MdkSetting"/> JSON into normalized SQLite config tables
-/// (drivers, devices, gpios, axis, platform, positions, sysconfigs, recipes, logs, langs).
+/// (drivers, devices, gpios, axis, platform, positions, sysconfigs, recipes, visions, logs, langs).
 /// </summary>
 public sealed class MdkConfigStore : IDisposable
 {
@@ -29,6 +29,7 @@ public sealed class MdkConfigStore : IDisposable
         ("zh-CN", "nav.platform", "平台"),
         ("zh-CN", "nav.positions", "点位"),
         ("zh-CN", "nav.recipes", "配方"),
+        ("zh-CN", "nav.visions", "视觉流程"),
         ("zh-CN", "nav.sysconfigs", "系统配置"),
         ("zh-CN", "nav.logs", "日志"),
         ("zh-CN", "nav.langs", "语言"),
@@ -43,6 +44,7 @@ public sealed class MdkConfigStore : IDisposable
         ("en-US", "nav.platform", "Platform"),
         ("en-US", "nav.positions", "Positions"),
         ("en-US", "nav.recipes", "Recipes"),
+        ("en-US", "nav.visions", "Visions"),
         ("en-US", "nav.sysconfigs", "System"),
         ("en-US", "nav.logs", "Logs"),
         ("en-US", "nav.langs", "Languages"),
@@ -93,6 +95,7 @@ public sealed class MdkConfigStore : IDisposable
             result.Platform = InsertPlatform(conn, tx, setting.Platforms, now);
             result.SysConfigs = InsertSysConfigs(conn, tx, setting, now);
             result.Recipes = UpsertRecipes(conn, tx, setting.Recipes, now);
+            result.Visions = UpsertVisions(conn, tx, setting.Visions, now);
             result.Positions = MirrorTeachPointsToPositions(conn, tx, now);
             result.Langs = SeedLangsIfEmpty(conn, tx, now);
             AppendLog(
@@ -127,6 +130,7 @@ public sealed class MdkConfigStore : IDisposable
             setting.Axes = LoadAxes(conn);
             setting.Platforms = LoadPlatforms(conn);
             setting.Recipes = LoadRecipes(conn);
+            setting.Visions = LoadVisions(conn);
             setting.NormalizeSections();
 
             AppendLog(
@@ -235,6 +239,7 @@ public sealed class MdkConfigStore : IDisposable
                 Positions = Count(conn, "positions"),
                 SysConfigs = Count(conn, "sysconfigs"),
                 Recipes = Count(conn, "recipes"),
+                Visions = Count(conn, "visions"),
                 Logs = Count(conn, "logs"),
                 Langs = Count(conn, "langs"),
             };
@@ -245,7 +250,7 @@ public sealed class MdkConfigStore : IDisposable
     public static IReadOnlyList<string> EditableTableNames { get; } =
     [
         "drivers", "devices", "gpios", "axis", "platform", "positions",
-        "sysconfigs", "recipes", "logs", "langs",
+        "sysconfigs", "recipes", "visions", "logs", "langs",
         "production_orders", "teach_point_files", "teach_points",
     ];
 
@@ -255,7 +260,7 @@ public sealed class MdkConfigStore : IDisposable
     public static string? GetPrimaryKeyColumn(string table) => table.ToLowerInvariant() switch
     {
         "drivers" or "devices" or "gpios" or "axis" or "platform" or "positions"
-            or "recipes" or "langs" or "production_orders" or "teach_point_files" or "teach_points"
+            or "recipes" or "visions" or "langs" or "production_orders" or "teach_point_files" or "teach_points"
             => "id",
         "sysconfigs" => "key",
         "logs" => "id",
@@ -795,6 +800,7 @@ public sealed class MdkConfigStore : IDisposable
             ("databasePath", setting.DatabasePath ?? string.Empty, "general", "数据库路径"),
             ("activeRecipeId", setting.ActiveRecipeId ?? string.Empty, "recipe", "当前配方 Id"),
             ("recipeVarKeys", JsonSerializer.Serialize(setting.RecipeVarKeys, JsonOptions), "recipe", "配方变量键列表"),
+            ("activeVisionId", setting.ActiveVisionId ?? string.Empty, "vision", "当前视觉流程 Id"),
             ("vars", JsonSerializer.Serialize(setting.Vars, JsonOptions), "vars", "全局变量 JSON"),
             ("tasks", JsonSerializer.Serialize(setting.Tasks, JsonOptions), "tasks", "任务列表 JSON"),
         };
@@ -848,6 +854,50 @@ public sealed class MdkConfigStore : IDisposable
             cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(r.Name) ? r.Id.Trim() : r.Name.Trim());
             cmd.Parameters.AddWithValue("$description", (object?)r.Description ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$vars_json", JsonSerializer.Serialize(r.Vars, JsonOptions));
+            cmd.Parameters.AddWithValue("$created_at", now);
+            cmd.Parameters.AddWithValue("$updated_at", now);
+            cmd.ExecuteNonQuery();
+            n++;
+        }
+
+        return n;
+    }
+
+    private static int UpsertVisions(
+        SqliteConnection conn,
+        SqliteTransaction tx,
+        IReadOnlyList<MdkSetting.VisionConfig> visions,
+        string now)
+    {
+        var n = 0;
+        foreach (var v in visions)
+        {
+            if (string.IsNullOrWhiteSpace(v.Id))
+            {
+                continue;
+            }
+
+            using var cmd = conn.CreateCommand();
+            cmd.Transaction = tx;
+            cmd.CommandText = """
+                INSERT INTO visions (id, name, description, camera_device_id, pipeline_json, created_at, updated_at)
+                VALUES ($id, $name, $description, $camera_device_id, $pipeline_json, $created_at, $updated_at)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    description = excluded.description,
+                    camera_device_id = excluded.camera_device_id,
+                    pipeline_json = excluded.pipeline_json,
+                    updated_at = excluded.updated_at
+                """;
+            cmd.Parameters.AddWithValue("$id", v.Id.Trim());
+            cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(v.Name) ? v.Id.Trim() : v.Name.Trim());
+            cmd.Parameters.AddWithValue("$description", (object?)v.Description ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("$camera_device_id", v.CameraDeviceId ?? string.Empty);
+            cmd.Parameters.AddWithValue(
+                "$pipeline_json",
+                string.IsNullOrWhiteSpace(v.PipelineJson)
+                    ? Vision.VisionDocument.CreateBasicInspectPipeline().ToJson()
+                    : v.PipelineJson);
             cmd.Parameters.AddWithValue("$created_at", now);
             cmd.Parameters.AddWithValue("$updated_at", now);
             cmd.ExecuteNonQuery();
@@ -971,6 +1021,9 @@ public sealed class MdkConfigStore : IDisposable
                     break;
                 case "activeRecipeId":
                     setting.ActiveRecipeId = string.IsNullOrWhiteSpace(value) ? null : value;
+                    break;
+                case "activeVisionId":
+                    setting.ActiveVisionId = string.IsNullOrWhiteSpace(value) ? null : value;
                     break;
                 case "recipeVarKeys":
                     setting.RecipeVarKeys = DeserializeOrDefault(value, new List<string>());
@@ -1127,6 +1180,31 @@ public sealed class MdkConfigStore : IDisposable
         return list;
     }
 
+    private static List<MdkSetting.VisionConfig> LoadVisions(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            SELECT id, name, description, camera_device_id, pipeline_json
+            FROM visions
+            ORDER BY name COLLATE NOCASE
+            """;
+        var list = new List<MdkSetting.VisionConfig>();
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            list.Add(new MdkSetting.VisionConfig
+            {
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                Description = reader.IsDBNull(2) ? null : reader.GetString(2),
+                CameraDeviceId = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
+                PipelineJson = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+            });
+        }
+
+        return list;
+    }
+
     private static T DeserializeOrDefault<T>(string json, T fallback)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -1166,11 +1244,12 @@ public sealed class ConfigExportResult
     public int Positions { get; set; }
     public int SysConfigs { get; set; }
     public int Recipes { get; set; }
+    public int Visions { get; set; }
     public int Langs { get; set; }
 
     public override string ToString() =>
         $"drivers={Drivers}, devices={Devices}, gpios={Gpios}, axis={Axis}, platform={Platform}, " +
-        $"positions={Positions}, sysconfigs={SysConfigs}, recipes={Recipes}, langs={Langs}";
+        $"positions={Positions}, sysconfigs={SysConfigs}, recipes={Recipes}, visions={Visions}, langs={Langs}";
 }
 
 public sealed class ConfigTableCounts
@@ -1183,6 +1262,7 @@ public sealed class ConfigTableCounts
     public long Positions { get; set; }
     public long SysConfigs { get; set; }
     public long Recipes { get; set; }
+    public long Visions { get; set; }
     public long Logs { get; set; }
     public long Langs { get; set; }
 }

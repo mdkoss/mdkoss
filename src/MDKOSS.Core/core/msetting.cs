@@ -58,6 +58,13 @@ public sealed class MdkSetting
     /// <summary>Named presets for <see cref="RecipeVarKeys"/>.</summary>
     public List<RecipeConfig> Recipes { get; set; } = [];
 
+    /// <summary>Named industrial vision pipelines (see <see cref="Vision.VisionDocument"/>).</summary>
+    [JsonPropertyName("visions")]
+    public List<VisionConfig> Visions { get; set; } = [];
+
+    /// <summary>Optional default vision id applied by hosts.</summary>
+    public string? ActiveVisionId { get; set; }
+
     /// <summary>
     /// SQLite database path. When unset, defaults to <c>data/mdk.db</c> under
     /// <see cref="AppContext.BaseDirectory"/>.
@@ -208,5 +215,19 @@ public sealed class MdkSetting
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Named vision pipeline definition.</summary>
+    public sealed class VisionConfig
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? Description { get; set; }
+
+        /// <summary>Optional camera device id (cameradev / extcamera).</summary>
+        public string CameraDeviceId { get; set; } = string.Empty;
+
+        /// <summary>Serialized <c>MDKOSS.Core.Vision.VisionDocument</c> JSON.</summary>
+        public string PipelineJson { get; set; } = string.Empty;
     }
 }

@@ -5,7 +5,7 @@ namespace MDKOSS.Core.Data;
 /// <summary>SQLite connection holder and schema bootstrap.</summary>
 public sealed class MdkDatabase : IDisposable
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     private readonly string _connectionString;
     private readonly object _gate = new();
@@ -90,6 +90,16 @@ public sealed class MdkDatabase : IDisposable
                     name TEXT NOT NULL,
                     description TEXT,
                     vars_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS visions (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    camera_device_id TEXT NOT NULL DEFAULT '',
+                    pipeline_json TEXT NOT NULL DEFAULT '',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -249,6 +259,16 @@ public sealed class MdkDatabase : IDisposable
             CREATE INDEX IF NOT EXISTS idx_positions_platform ON positions(platform_id);
             CREATE INDEX IF NOT EXISTS idx_logs_created ON logs(created_at);
             CREATE INDEX IF NOT EXISTS idx_langs_locale ON langs(locale);
+
+            CREATE TABLE IF NOT EXISTS visions (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                camera_device_id TEXT NOT NULL DEFAULT '',
+                pipeline_json TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
             """;
         cmd.ExecuteNonQuery();
 

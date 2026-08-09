@@ -33,13 +33,21 @@ public static class DeviceParameterPresets
             "xyzuv" => PlatformDeviceParameterSet.DefaultParameters("xyzuv", drv),
             "xyzuvw" => PlatformDeviceParameterSet.DefaultParameters("xyzuvw", drv),
             "x" => PlatformDeviceParameterSet.DefaultParameters("x", drv),
-            // note: DefaultParameters ignores drv; platforms bind Axis device ids via axis.X …            "cameradev" => new(StringComparer.OrdinalIgnoreCase) { ["role"] = "downlook" },
+            // Platforms bind Axis device ids via axis.X …; DefaultParameters ignores drv for cameradev.
+            "cameradev" => new(StringComparer.OrdinalIgnoreCase) { ["role"] = "downlook" },
             "extcamera" => new(StringComparer.OrdinalIgnoreCase)
             {
                 ["backend"] = "sim",
                 ["deviceIndex"] = "0",
                 ["width"] = "1280",
                 ["height"] = "720",
+            },
+            "visiondev" or "vision" => new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["visionId"] = "vision-inspect",
+                ["cameraDeviceId"] = "cam-top",
+                ["resultPrefix"] = "vision",
+                ["generateTestImage"] = "true",
             },
             "tray" => new(StringComparer.OrdinalIgnoreCase)
             {

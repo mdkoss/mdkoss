@@ -40,7 +40,7 @@ public static class ConfigTypeCatalog
     public static IReadOnlyList<string> DeviceTypes { get; } =
     [
         "gpio", "vio",
-        "cameradev", "serialdev", "tcpdev", "extcamera", "devpyscript", "devmodserver", "devmodclient", "tray",
+        "cameradev", "visiondev", "serialdev", "tcpdev", "extcamera", "devpyscript", "devmodserver", "devmodclient", "tray",
     ];
 
     public static IReadOnlyList<string> TaskTypes { get; } =

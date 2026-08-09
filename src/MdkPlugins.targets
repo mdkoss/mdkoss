@@ -35,7 +35,7 @@
        file and would otherwise nested-MSBuild ~9 plugins in parallel per host → OOM. -->
   <Target Name="BuildAndCopyMdkPlugins"
           AfterTargets="Build"
-          Condition="'$(DesignTimeBuild)' != 'true' AND '$(BuildingProject)' == 'true'">
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(BuildingProject)' == 'true' AND '$(SkipMdkPlugins)' != 'true'">
     <PropertyGroup>
       <_HostOutDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(OutputPath)'))</_HostOutDir>
       <MdkPluginsOutputDir>$(_HostOutDir)plugins\</MdkPluginsOutputDir>

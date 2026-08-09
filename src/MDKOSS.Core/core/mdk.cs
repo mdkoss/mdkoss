@@ -405,6 +405,11 @@ public sealed class MdkRuntime : IDisposable
             {
                 device = extensionDevice!;
             }
+            else if (string.Equals(deviceType, "visiondev", StringComparison.OrdinalIgnoreCase)
+                     || string.Equals(deviceType, "vision", StringComparison.OrdinalIgnoreCase))
+            {
+                device = BuildVisionDevice(config, deviceName);
+            }
             else if (!_drivers.TryGetValue(config.DriverId, out var driver))
             {
                 continue;
@@ -423,6 +428,39 @@ public sealed class MdkRuntime : IDisposable
             device.Initialize();
             _devices[config.Id] = device;
         }
+    }
+
+    private VisionDevice BuildVisionDevice(MdkSetting.DeviceConfig config, string deviceName)
+    {
+        var parameters = VisionDeviceParameters.Parse(config.Parameters);
+        // Prefer camera from vision config when device param blank.
+        if (string.IsNullOrWhiteSpace(parameters.CameraDeviceId)
+            && !string.IsNullOrWhiteSpace(parameters.VisionId))
+        {
+            var vision = Setting.Visions.FirstOrDefault(v =>
+                string.Equals(v.Id, parameters.VisionId, StringComparison.OrdinalIgnoreCase));
+            if (vision is not null && !string.IsNullOrWhiteSpace(vision.CameraDeviceId))
+            {
+                parameters = new VisionDeviceParameters
+                {
+                    VisionId = parameters.VisionId,
+                    CameraDeviceId = vision.CameraDeviceId,
+                    ImagePath = parameters.ImagePath,
+                    ResultPrefix = parameters.ResultPrefix,
+                    DebugImagePath = parameters.DebugImagePath,
+                    GenerateTestImageWhenMissing = parameters.GenerateTestImageWhenMissing,
+                };
+            }
+        }
+
+        return new VisionDevice(
+            config.Id,
+            deviceName,
+            parameters,
+            Vars,
+            visionId => Setting.Visions.FirstOrDefault(v =>
+                string.Equals(v.Id, visionId, StringComparison.OrdinalIgnoreCase)),
+            deviceId => _devices.TryGetValue(deviceId, out var d) ? d : null);
     }
 
     private PlatformDevice? BuildPlatformDevice(MdkSetting.DeviceConfig config, string deviceName, string deviceTypeLower)
@@ -730,6 +768,8 @@ public sealed class MdkRuntime : IDisposable
                 VioDevice vio => ExecuteVioAction(vio, action, parameters),
                 AxisDevice axis => ExecuteAxisAction(axis, action, parameters),
                 PlatformDevice platform => ExecutePlatformAction(platform, action, parameters),
+                VisionDevice vision => VisionDeviceActions.Execute(vision, action, parameters),
+                CameraDevDevice camera => ExecuteCameraDevAction(camera, action, parameters),
                 _ => DeviceActionResult.Fail("unsupported_device_type")
             };
         }
@@ -878,6 +918,30 @@ public sealed class MdkRuntime : IDisposable
             return entry.Axis.MoveTo(position)
                 ? DeviceActionResult.Ok()
                 : DeviceActionResult.Fail("move_failed");
+        }
+
+        return DeviceActionResult.Fail("unknown_action");
+    }
+
+    private static DeviceActionResult ExecuteCameraDevAction(
+        CameraDevDevice camera,
+        string action,
+        Dictionary<string, JsonElement>? parameters)
+    {
+        if (action.Equals("trigger", StringComparison.OrdinalIgnoreCase)
+            || action.Equals("capture", StringComparison.OrdinalIgnoreCase))
+        {
+            var recipe = "default";
+            if (parameters is not null
+                && parameters.TryGetValue("recipe", out var recipeEl)
+                && recipeEl.ValueKind == JsonValueKind.String)
+            {
+                recipe = recipeEl.GetString() ?? "default";
+            }
+
+            return camera.TriggerCapture(recipe)
+                ? DeviceActionResult.Ok(new { recipe })
+                : DeviceActionResult.Fail("capture_failed");
         }
 
         return DeviceActionResult.Fail("unknown_action");

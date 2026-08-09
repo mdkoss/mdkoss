@@ -30,6 +30,7 @@ public enum ConfigModule
     Tasks,
     Vars,
     Recipes,
+    Visions,
     SysConfig,
     Database,
 }
@@ -149,6 +150,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     private bool _showQuickAddTypes;
     private bool _showComposeAxes;
     private bool _showPickRecipeVars;
+    private bool _showEditVisionPipeline;
     private string _headline = "未选择组件";
     private string _labelId = "Name (Id)";
     private string _labelName = "Desc (描述)";
@@ -253,6 +255,12 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         get => _showPickRecipeVars;
         set { if (_showPickRecipeVars == value) return; _showPickRecipeVars = value; OnPropertyChanged(); }
     }
+    /// <summary>Show「编辑视觉流程…」button when editing a Vision component.</summary>
+    public bool ShowEditVisionPipeline
+    {
+        get => _showEditVisionPipeline;
+        set { if (_showEditVisionPipeline == value) return; _showEditVisionPipeline = value; OnPropertyChanged(); }
+    }
     public bool IsReadOnly { get => _isReadOnly; set { _isReadOnly = value; OnPropertyChanged(); } }
     public bool ParametersAsObject { get => _parametersAsObject; set { _parametersAsObject = value; OnPropertyChanged(); } }
     public bool IsDirty
@@ -302,6 +310,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
             ShowQuickAddTypes = false;
             ShowComposeAxes = false;
             ShowPickRecipeVars = false;
+            ShowEditVisionPipeline = false;
             ResetFieldLabels();
             FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
             FieldParameters = "{}";
@@ -326,7 +335,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         LabelId = "Name (Id)";
         LabelName = "Desc (描述)";
         LabelType = "Type";
-        LabelDriverId = "DriverId";
+        LabelDriverId = "驱动";
         LabelInterval = "IntervalMs";
         LabelDescription = "Description / Label";
         LabelValue = "Port / Value";
@@ -338,7 +347,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         LabelId = "Name (Alias)";
         LabelName = "Desc (描述)";
         LabelType = "Type / Direction";
-        LabelDriverId = "DriverId";
+        LabelDriverId = "驱动";
         LabelValue = "Port";
     }
 
@@ -348,7 +357,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         LabelId = "Name (Alias)";
         LabelName = "Desc (描述)";
         LabelType = "Type";
-        LabelDriverId = "DriverId";
+        LabelDriverId = "驱动";
         LabelValue = "DeviceId";
     }
 
@@ -1264,6 +1273,15 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     req.KeySuggestions = candidates.Select(c => c.Key).ToList();
                 }
                 break;
+            case ConfigModule.Visions:
+                req.Id = UniqueId(_setting.Visions.Select(v => v.Id), "vision-new");
+                req.Name = req.Id;
+                req.Description = "";
+                req.Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["cameraDeviceId"] = "",
+                };
+                break;
             case ConfigModule.Vars:
                 req.Id = UniqueId(_setting.Vars.Keys, "var.new");
                 req.Value = "";
@@ -1291,6 +1309,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Tasks => CommitTask(req),
             ConfigModule.Vars => CommitVar(req),
             ConfigModule.Recipes => CommitRecipe(req),
+            ConfigModule.Visions => CommitVision(req),
             _ => throw new InvalidOperationException("当前模块不支持新建。"),
         };
 
@@ -1318,6 +1337,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Platform => _setting.Platforms.ToList(),
             ConfigModule.Tasks => _setting.Tasks,
             ConfigModule.Recipes => _setting.Recipes,
+            ConfigModule.Visions => _setting.Visions,
             ConfigModule.Vars => _setting.Vars,
             ConfigModule.SysConfig => new Dictionary<string, object?>
             {
@@ -1328,6 +1348,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 ["databasePath"] = _setting.DatabasePath,
                 ["activeRecipeId"] = _setting.ActiveRecipeId,
                 ["recipeVarKeys"] = _setting.RecipeVarKeys,
+                ["activeVisionId"] = _setting.ActiveVisionId,
             },
             ConfigModule.Gpios => BuildGpioItems().Select(i =>
             {
@@ -1339,7 +1360,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Type = i.Col3,
                     Desc = i.Col4,
                     Enabled = i.Col5,
-                    DriverId = i.Col6,
+                    DriverId = g.DriverId,
                     Port = i.Col7,
                     DeviceId = g.Device.Id,
                     Alias = g.Alias,
@@ -1356,7 +1377,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Desc = i.Col4,
                     Enabled = i.Col5,
                     DeviceId = i.Col6,
-                    DriverId = i.Col7,
+                    DriverId = v.Device.DriverId ?? "",
                     Alias = v.Alias,
                 };
             }).ToList(),
@@ -2122,6 +2143,18 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 });
                 break;
             }
+            case ConfigModule.Visions:
+            {
+                var rows = JsonSerializer.Deserialize<List<MdkSetting.VisionConfig>>(json, JsonOptions) ?? [];
+                _setting.Visions = replace ? rows : MergeByKey(_setting.Visions, rows, v => v.Id, (a, b) =>
+                {
+                    a.Name = b.Name;
+                    a.Description = b.Description;
+                    a.CameraDeviceId = b.CameraDeviceId;
+                    a.PipelineJson = b.PipelineJson;
+                });
+                break;
+            }
             case ConfigModule.Vars:
             {
                 var rows = JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOptions)
@@ -2324,6 +2357,26 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         return new ComponentItem { Key = r.Id, Source = r, Module = ConfigModule.Recipes, Title = r.Id };
     }
 
+    private ComponentItem CommitVision(CreateComponentRequest req)
+    {
+        if (_setting.Visions.Any(v => string.Equals(v.Id, req.Id, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"视觉流程 Id 已存在: {req.Id}");
+        }
+
+        var cameraId = req.Parameters.GetValueOrDefault("cameraDeviceId", "") ?? "";
+        var v = new MdkSetting.VisionConfig
+        {
+            Id = req.Id,
+            Name = string.IsNullOrWhiteSpace(req.Name) ? req.Id : req.Name,
+            Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description,
+            CameraDeviceId = cameraId,
+            PipelineJson = MDKOSS.Core.Vision.VisionDocument.CreateBasicInspectPipeline().ToJson(),
+        };
+        _setting.Visions.Add(v);
+        return new ComponentItem { Key = v.Id, Source = v, Module = ConfigModule.Visions, Title = v.Id };
+    }
+
     public void DuplicateSelected()
     {
         if (_selected is null)
@@ -2358,6 +2411,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 _setting.Recipes.Add(nr);
                 SelectModule(_module, nr.Id);
                 break;
+            case ConfigModule.Visions when _selected.Source is MdkSetting.VisionConfig v:
+                var nv = CloneVision(v);
+                nv.Id = UniqueId(_setting.Visions.Select(x => x.Id), v.Id + "_copy");
+                _setting.Visions.Add(nv);
+                SelectModule(_module, nv.Id);
+                break;
             case ConfigModule.Vars when _selected.Source is KeyValuePair<string, object?> kv:
                 var newKey = UniqueId(_setting.Vars.Keys, kv.Key + "_copy");
                 _setting.Vars[newKey] = kv.Value;
@@ -2389,6 +2448,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Recipes when _selected.Source is MdkSetting.RecipeConfig r:
                 _setting.Recipes.Remove(r);
+                break;
+            case ConfigModule.Visions when _selected.Source is MdkSetting.VisionConfig v:
+                _setting.Visions.Remove(v);
                 break;
             case ConfigModule.Vars:
                 _setting.Vars.Remove(_selected.Key);
@@ -2433,6 +2495,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Recipes:
                 MoveInList(_setting.Recipes, _selected.Source as MdkSetting.RecipeConfig, delta);
                 break;
+            case ConfigModule.Visions:
+                MoveInList(_setting.Visions, _selected.Source as MdkSetting.VisionConfig, delta);
+                break;
             default:
                 throw new InvalidOperationException("当前模块不支持排序。");
         }
@@ -2471,6 +2536,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Recipes when _selected.Source is MdkSetting.RecipeConfig r:
                 ApplyRecipe(r);
+                break;
+            case ConfigModule.Visions when _selected.Source is MdkSetting.VisionConfig v:
+                ApplyVision(v);
                 break;
             case ConfigModule.Vars:
                 ApplyVar(_selected.Key);
@@ -2604,6 +2672,18 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Col4 = string.IsNullOrWhiteSpace(r.Name) ? (r.Description ?? "") : r.Name,
                 Col5 = "",
             }).ToList(),
+            ConfigModule.Visions => _setting.Visions.Select(v => new ComponentItem
+            {
+                Module = module,
+                Source = v,
+                Key = v.Id,
+                Title = string.IsNullOrWhiteSpace(v.Name) ? v.Id : $"{v.Id} · {v.Name}",
+                Subtitle = v.Description ?? "",
+                Col2 = v.Id,
+                Col3 = "vision",
+                Col4 = string.IsNullOrWhiteSpace(v.Name) ? (v.Description ?? "") : v.Name,
+                Col5 = string.IsNullOrWhiteSpace(v.CameraDeviceId) ? "" : v.CameraDeviceId,
+            }).ToList(),
             ConfigModule.SysConfig => BuildSysItems(),
             ConfigModule.Database => BuildDbItems(),
             _ => [],
@@ -2678,7 +2758,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Col3 = direction,
                     Col4 = string.IsNullOrWhiteSpace(label) ? "" : label,
                     Col5 = device.Enabled ? "是" : "否",
-                    Col6 = b.DriverId,
+                    Col6 = FormatDriverDisplayName(b.DriverId),
                     Col7 = b.Address,
                     Enabled = device.Enabled,
                     HasEnabled = true,
@@ -2687,6 +2767,39 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
 
         return list;
+    }
+
+    /// <summary>Table/combo caption: <c>id · name</c> when driver has a display name; otherwise id.</summary>
+    private string FormatDriverDisplayName(string? driverId)
+    {
+        var id = (driverId ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return "";
+        }
+
+        var driver = _setting.Drivers.FirstOrDefault(d =>
+            string.Equals(d.Id, id, StringComparison.OrdinalIgnoreCase));
+        if (driver is null || string.IsNullOrWhiteSpace(driver.Name)
+            || string.Equals(driver.Name, id, StringComparison.OrdinalIgnoreCase))
+        {
+            return id;
+        }
+
+        return $"{id} · {driver.Name.Trim()}";
+    }
+
+    /// <summary>Accepts raw id or <c>id · name</c> from the driver combo / table.</summary>
+    private static string NormalizeDriverId(string? raw)
+    {
+        var s = (raw ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(s))
+        {
+            return "";
+        }
+
+        var sep = s.IndexOf(" · ", StringComparison.Ordinal);
+        return sep > 0 ? s[..sep].Trim() : s;
     }
 
     private List<ComponentItem> BuildVioItems()
@@ -2718,7 +2831,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Col4 = string.IsNullOrWhiteSpace(label) ? "" : label,
                     Col5 = device.Enabled ? "是" : "否",
                     Col6 = device.Id,
-                    Col7 = device.DriverId ?? "",
+                    Col7 = FormatDriverDisplayName(device.DriverId),
                     Enabled = device.Enabled,
                     HasEnabled = true,
                 });
@@ -2801,6 +2914,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             SysEntry("databasePath", _setting.DatabasePath ?? "", "general", "数据库路径"),
             SysEntry("activeRecipeId", _setting.ActiveRecipeId ?? "", "recipe", "当前配方 Id"),
             SysEntry("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys, JsonOptions), "recipe", "配方变量键列表"),
+            SysEntry("activeVisionId", _setting.ActiveVisionId ?? "", "vision", "当前视觉流程 Id"),
         ];
     }
 
@@ -2907,11 +3021,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Draft.ShowQuickAddTypes = false;
             Draft.ShowComposeAxes = false;
             Draft.ShowPickRecipeVars = false;
+            Draft.ShowEditVisionPipeline = false;
             Draft.QuickAddTypes.Clear();
             Draft.ResetFieldLabels();
             Draft.Headline = $"{ModuleDisplayName(item.Module)} / {item.Title}";
             Draft.SetTypeOptions(ConfigTypeCatalog.TypesForModule(item.Module));
-            Draft.SetDriverOptions(_setting.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)));
+            Draft.SetDriverOptions(_setting.Drivers
+                .Where(d => !string.IsNullOrWhiteSpace(d.Id))
+                .Select(d => FormatDriverDisplayName(d.Id)));
 
             switch (item.Module)
             {
@@ -2940,7 +3057,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.FieldId = d.Id;
                     Draft.FieldName = d.Name;
                     Draft.FieldType = d.Type;
-                    Draft.FieldDriverId = d.DriverId;
+                    Draft.FieldDriverId = FormatDriverDisplayName(d.DriverId);
                     Draft.FieldEnabled = d.Enabled;
                     var loadedParams = FillMissingTypeParameters(item.Module, d.Type, d.DriverId, d.Parameters);
                     if (item.Module == ConfigModule.Platform)
@@ -2965,7 +3082,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.ShowId = false;
                     Draft.FieldName = t.Name;
                     Draft.FieldType = t.Type;
-                    Draft.FieldDriverId = t.DriverId;
+                    Draft.FieldDriverId = FormatDriverDisplayName(t.DriverId);
                     Draft.FieldInterval = t.IntervalMs.ToString();
                     Draft.LoadStringParameters(FillMissingTypeParameters(ConfigModule.Tasks, t.Type, t.DriverId, t.Parameters));
                     RefreshParamKeySuggestions(ConfigModule.Tasks, t.Type, t.DriverId);
@@ -2980,6 +3097,23 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.FieldDescription = r.Description ?? "";
                     Draft.LoadObjectParameters(r.Vars);
                     RefreshRecipeParamSuggestions();
+                    break;
+                case ConfigModule.Visions when item.Source is MdkSetting.VisionConfig v:
+                    SetDraftVisibility(id: true, name: true, description: true, parameters: true);
+                    Draft.ShowType = false;
+                    Draft.ShowEnabled = false;
+                    Draft.ShowEditVisionPipeline = true;
+                    Draft.FieldId = v.Id;
+                    Draft.FieldName = v.Name;
+                    Draft.FieldDescription = v.Description ?? "";
+                    Draft.LoadStringParameters(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["cameraDeviceId"] = v.CameraDeviceId ?? "",
+                        ["pipelineJson"] = string.IsNullOrWhiteSpace(v.PipelineJson)
+                            ? "(empty — 用「编辑视觉流程…」)"
+                            : $"(nodes={CountVisionNodes(v.PipelineJson)})",
+                    });
+                    Draft.SetParamKeySuggestions(["cameraDeviceId"]);
                     break;
                 case ConfigModule.Vars:
                     SetDraftVisibility(id: true, value: true);
@@ -3030,9 +3164,10 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                             g.Device.Parameters.GetValueOrDefault($"{g.Direction}.{g.Alias}"))
                         : g.Label;
                     Draft.FieldType = g.Direction;
-                    Draft.FieldDriverId = string.IsNullOrWhiteSpace(g.DriverId)
-                        ? (g.Device.DriverId ?? "")
-                        : g.DriverId;
+                    Draft.FieldDriverId = FormatDriverDisplayName(
+                        string.IsNullOrWhiteSpace(g.DriverId)
+                            ? (g.Device.DriverId ?? "")
+                            : g.DriverId);
                     Draft.FieldValue = g.Port;
                     Draft.FieldEnabled = g.Device.Enabled;
                     Draft.FieldDescription = "";
@@ -3055,7 +3190,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.FieldId = v.Alias;
                     Draft.FieldName = v.Label;
                     Draft.FieldType = "vio";
-                    Draft.FieldDriverId = v.Device.DriverId ?? "";
+                    Draft.FieldDriverId = FormatDriverDisplayName(v.Device.DriverId ?? "");
                     Draft.FieldValue = v.Device.Id;
                     Draft.FieldEnabled = v.Device.Enabled;
                     Draft.FieldDescription = "";
@@ -3202,14 +3337,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.ParamValueSuggestions.Clear();
     }
 
-    /// <summary>Key suggestions for recipe vars: SysConfig.recipeVarKeys ∪ Vars ∪ other recipes.</summary>
+    /// <summary>Key suggestions for recipe vars: all Vars ∪ all SysConfig ∪ other recipes.</summary>
     public void RefreshRecipeParamSuggestions()
     {
         Draft.SetParamKeySuggestions(EnumerateRecipeKeyCandidates().Select(c => c.Key));
         RefreshParamValueSuggestions(ConfigModule.Recipes);
     }
 
-    /// <summary>Candidates for the recipe vars picker (Vars + SysConfig.recipeVarKeys + existing recipe keys).</summary>
+    /// <summary>Candidates for the recipe vars picker (all Vars + all SysConfig entries + existing recipe keys).</summary>
     public IReadOnlyList<RecipeVarCandidate> GetRecipeVarCandidates() =>
         EnumerateRecipeKeyCandidates()
             .OrderBy(c => c.Key, StringComparer.OrdinalIgnoreCase)
@@ -3217,7 +3352,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     /// <summary>
     /// Merge selected keys into the current recipe draft.
-    /// Existing keys keep their draft values; new keys take current Vars values when available.
+    /// Existing keys keep their draft values; new keys take Vars / SysConfig current values when available.
     /// </summary>
     public void ApplyRecipeVarSelection(IEnumerable<string> keys)
     {
@@ -3236,6 +3371,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             throw new InvalidOperationException("请至少选择一个变量键。");
         }
 
+        var sysValues = BuildSysConfigEntries()
+            .Where(e => !string.IsNullOrWhiteSpace(e.Key))
+            .GroupBy(e => e.Key.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().Value ?? "", StringComparer.OrdinalIgnoreCase);
+
         var book = Draft.CollectObjectParameters();
         foreach (var key in selected)
         {
@@ -3244,7 +3384,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 continue;
             }
 
-            book[key] = _setting.Vars.TryGetValue(key, out var value) ? value : "";
+            book[key] = ResolveRecipeFillValue(key, sysValues);
         }
 
         Draft.LoadObjectParameters(book);
@@ -3256,8 +3396,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private IEnumerable<RecipeVarCandidate> EnumerateRecipeKeyCandidates()
     {
         var sources = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        void AddSource(string key, string source)
+        void AddSource(string key, string source, string? valuePreview = null)
         {
             if (string.IsNullOrWhiteSpace(key))
             {
@@ -3272,41 +3413,72 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             }
 
             set.Add(source);
+            if (valuePreview is not null
+                && !string.IsNullOrWhiteSpace(valuePreview)
+                && !values.ContainsKey(k))
+            {
+                values[k] = valuePreview;
+            }
         }
 
+        // All Vars entries.
+        foreach (var kv in _setting.Vars)
+        {
+            AddSource(kv.Key, "vars", FormatRecipeVarValue(kv.Value));
+        }
+
+        // All SysConfig parameters (not only recipeVarKeys).
+        foreach (var entry in BuildSysConfigEntries())
+        {
+            var tag = string.IsNullOrWhiteSpace(entry.Group)
+                ? "sysconfig"
+                : $"sysconfig.{entry.Group.Trim()}";
+            AddSource(entry.Key, tag, entry.Value);
+        }
+
+        // Named keys listed in recipeVarKeys (may not yet exist in Vars).
         foreach (var key in _setting.RecipeVarKeys)
         {
             AddSource(key, "sysconfig.recipeVarKeys");
         }
 
-        foreach (var key in _setting.Vars.Keys)
-        {
-            AddSource(key, "vars");
-        }
-
+        // Keys already used by other recipes.
         foreach (var recipe in _setting.Recipes)
         {
-            foreach (var key in recipe.Vars.Keys)
+            foreach (var kv in recipe.Vars)
             {
-                AddSource(key, $"recipe:{recipe.Id}");
+                AddSource(kv.Key, $"recipe:{recipe.Id}", FormatRecipeVarValue(kv.Value));
             }
         }
 
         foreach (var (key, tags) in sources)
         {
             var ordered = tags
-                .OrderBy(t => t.StartsWith("sysconfig", StringComparison.OrdinalIgnoreCase) ? 0
-                    : t.Equals("vars", StringComparison.OrdinalIgnoreCase) ? 1 : 2)
+                .OrderBy(t => t.Equals("vars", StringComparison.OrdinalIgnoreCase) ? 0
+                    : t.StartsWith("sysconfig", StringComparison.OrdinalIgnoreCase) ? 1 : 2)
                 .ThenBy(t => t, StringComparer.OrdinalIgnoreCase);
             yield return new RecipeVarCandidate
             {
                 Key = key,
                 Source = string.Join(" · ", ordered),
-                ValuePreview = _setting.Vars.TryGetValue(key, out var value)
-                    ? FormatRecipeVarValue(value)
-                    : "",
+                ValuePreview = values.TryGetValue(key, out var preview) ? preview : "",
             };
         }
+    }
+
+    private object? ResolveRecipeFillValue(string key, IReadOnlyDictionary<string, string> sysValues)
+    {
+        if (_setting.Vars.TryGetValue(key, out var fromVars))
+        {
+            return fromVars;
+        }
+
+        if (sysValues.TryGetValue(key, out var fromSys))
+        {
+            return fromSys;
+        }
+
+        return "";
     }
 
     private void RefreshRecipeValueSuggestionsForKey(string key)
@@ -3324,6 +3496,15 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             if (!string.IsNullOrWhiteSpace(text))
             {
                 suggestions.Add(text);
+            }
+        }
+
+        foreach (var entry in BuildSysConfigEntries())
+        {
+            if (string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(entry.Value))
+            {
+                suggestions.Add(entry.Value);
             }
         }
 
@@ -3487,11 +3668,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ("databasePath", _setting.DatabasePath ?? ""),
             ("activeRecipeId", _setting.ActiveRecipeId ?? ""),
             ("recipeVarKeys", JsonSerializer.Serialize(_setting.RecipeVarKeys ?? [], JsonOptions)),
+            ("activeVisionId", _setting.ActiveVisionId ?? ""),
         ]);
         Draft.SetParamKeySuggestions(
         [
             "projectName", "cycleMs", "monitoringPrefix", "startPage",
-            "databasePath", "activeRecipeId", "recipeVarKeys",
+            "databasePath", "activeRecipeId", "recipeVarKeys", "activeVisionId",
         ]);
     }
 
@@ -3526,6 +3708,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         var activeRecipe = book.GetValueOrDefault("activeRecipeId", "") ?? "";
         _setting.ActiveRecipeId = string.IsNullOrWhiteSpace(activeRecipe) ? null : activeRecipe.Trim();
+
+        var activeVision = book.GetValueOrDefault("activeVisionId", "") ?? "";
+        _setting.ActiveVisionId = string.IsNullOrWhiteSpace(activeVision) ? null : activeVision.Trim();
 
         var recipeKeysRaw = book.GetValueOrDefault("recipeVarKeys", "[]") ?? "[]";
         try
@@ -3578,7 +3763,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         d.Id = newId;
         d.Name = Draft.FieldName.Trim();
         d.Type = type;
-        d.DriverId = _module == ConfigModule.Platform ? "" : Draft.FieldDriverId.Trim();
+        d.DriverId = _module == ConfigModule.Platform ? "" : NormalizeDriverId(Draft.FieldDriverId);
         d.Enabled = Draft.FieldEnabled;
         var parameters = Draft.CollectStringParameters();
         if (_module == ConfigModule.Platform)
@@ -3614,7 +3799,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         t.Name = newName;
         t.Type = string.IsNullOrWhiteSpace(Draft.FieldType) ? "pollDriver" : Draft.FieldType.Trim();
-        t.DriverId = Draft.FieldDriverId.Trim();
+        t.DriverId = NormalizeDriverId(Draft.FieldDriverId);
         t.IntervalMs = interval;
         t.Parameters = Draft.CollectStringParameters();
     }
@@ -3632,6 +3817,27 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         r.Name = string.IsNullOrWhiteSpace(Draft.FieldName) ? newId : Draft.FieldName.Trim();
         r.Description = string.IsNullOrWhiteSpace(Draft.FieldDescription) ? null : Draft.FieldDescription.Trim();
         r.Vars = Draft.CollectObjectParameters();
+    }
+
+    private void ApplyVision(MdkSetting.VisionConfig v)
+    {
+        var newId = RequireId(Draft.FieldId, "视觉流程 Id");
+        if (!string.Equals(newId, v.Id, StringComparison.OrdinalIgnoreCase)
+            && _setting.Visions.Any(x => string.Equals(x.Id, newId, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"视觉流程 Id 已存在: {newId}");
+        }
+
+        var ps = Draft.CollectStringParameters();
+        v.Id = newId;
+        v.Name = string.IsNullOrWhiteSpace(Draft.FieldName) ? newId : Draft.FieldName.Trim();
+        v.Description = string.IsNullOrWhiteSpace(Draft.FieldDescription) ? null : Draft.FieldDescription.Trim();
+        if (ps.TryGetValue("cameraDeviceId", out var cam))
+        {
+            v.CameraDeviceId = cam?.Trim() ?? "";
+        }
+
+        // pipelineJson is edited via VisionEditorWindow; ignore placeholder display rows.
     }
 
     private void ApplyVar(string oldKey)
@@ -3720,6 +3926,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case "activeRecipeId":
                 _setting.ActiveRecipeId = string.IsNullOrWhiteSpace(value) ? null : value;
                 break;
+            case "activeVisionId":
+                _setting.ActiveVisionId = string.IsNullOrWhiteSpace(value) ? null : value;
+                break;
             case "recipeVarKeys":
                 _setting.RecipeVarKeys = JsonSerializer.Deserialize<List<string>>(value, JsonOptions) ?? [];
                 break;
@@ -3773,7 +3982,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var portRaw = (Draft.FieldValue ?? "").Trim();
         var label = (Draft.FieldName ?? "").Trim();
 
-        var driverId = (Draft.FieldDriverId ?? "").Trim();
+        var driverId = NormalizeDriverId(Draft.FieldDriverId);
         if (string.IsNullOrWhiteSpace(driverId))
         {
             driverId = (target.Device.DriverId ?? "").Trim();
@@ -3790,7 +3999,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             if (!string.IsNullOrWhiteSpace(parsedDriver))
             {
-                driverId = parsedDriver;
+                driverId = NormalizeDriverId(parsedDriver);
             }
         }
         else
@@ -3844,7 +4053,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
 
         target.Device.Enabled = Draft.FieldEnabled;
-        var driverId = (Draft.FieldDriverId ?? "").Trim();
+        var driverId = NormalizeDriverId(Draft.FieldDriverId);
         if (!string.IsNullOrWhiteSpace(driverId))
         {
             target.Device.DriverId = driverId;
@@ -4038,16 +4247,17 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Gpios:
                 ColHeader5 = "Enable";
-                ColHeader6 = "DriverId";
+                ColHeader6 = "驱动";
                 ColHeader7 = "Port";
                 break;
             case ConfigModule.Vios:
                 ColHeader5 = "Enable";
                 ColHeader6 = "DeviceId";
-                ColHeader7 = "DriverId";
+                ColHeader7 = "驱动";
                 break;
             case ConfigModule.Vars:
             case ConfigModule.Recipes:
+            case ConfigModule.Visions:
             case ConfigModule.Tasks:
                 ColHeader5 = "";
                 break;
@@ -4066,6 +4276,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         ConfigModule.Tasks => "Tasks",
         ConfigModule.Vars => "Vars",
         ConfigModule.Recipes => "Recipes",
+        ConfigModule.Visions => "Visions",
         ConfigModule.SysConfig => "SysConfig",
         ConfigModule.Database => "Database",
         _ => m.ToString(),
@@ -4264,6 +4475,28 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Description = r.Description,
         Vars = new Dictionary<string, object?>(r.Vars, StringComparer.OrdinalIgnoreCase),
     };
+
+    private static MdkSetting.VisionConfig CloneVision(MdkSetting.VisionConfig v) => new()
+    {
+        Id = v.Id,
+        Name = v.Name,
+        Description = v.Description,
+        CameraDeviceId = v.CameraDeviceId,
+        PipelineJson = v.PipelineJson,
+    };
+
+    private static int CountVisionNodes(string? pipelineJson)
+    {
+        if (!MDKOSS.Core.Vision.VisionDocument.TryParse(pipelineJson, out var doc, out _))
+        {
+            return 0;
+        }
+
+        return doc.Nodes.Count;
+    }
+
+    /// <summary>Status hint after an external editor (Flow / Vision) mutates the setting.</summary>
+    public void NotifyExternalEdit(string message) => StatusLine = message;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));

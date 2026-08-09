@@ -14,3 +14,7 @@ _build_verify/
 # Local scratch logs
 /pnp-home-err.txt
 /pnp-home-out.txt
+
+# Local NuGet cache / offline packages
+/.nuget-local/
+/.nuget-packages/
