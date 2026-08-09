@@ -90,7 +90,7 @@ public static partial class VioDeviceParameterSet
         }
 
         var value = raw.Trim();
-        var pipe = value.IndexOf('|');
+        var pipe = value.IndexOfAny([GpioDeviceParameterSet.LabelSeparator, '｜']);
         if (pipe >= 0)
         {
             value = value[..pipe].Trim();

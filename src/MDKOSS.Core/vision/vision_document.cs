@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace MDKOSS.Core.Vision;
 
-/// <summary>Serialized vision pipeline stored in <see cref="MdkSetting.VisionConfig.PipelineJson"/>.</summary>
+/// <summary>Serialized vision pipeline stored in <see cref="MdkSetting.VisionConfig.Pipeline"/>.</summary>
 public sealed class VisionDocument
 {
     public int Version { get; set; } = 1;
@@ -16,6 +16,7 @@ public sealed class VisionDocument
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,

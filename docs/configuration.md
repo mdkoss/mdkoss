@@ -68,8 +68,8 @@
   "type": "gpio",
   "enabled": true,
   "parameters": {
-    "in.startButton": "drv-m1:0|启动",
-    "out.tower.green": "drv-io1:0|绿灯"
+    "in.startButton": "drv-m1|0|启动",
+    "out.tower.green": "drv-io1|0|绿灯"
   }
 }
 ```
@@ -88,7 +88,7 @@
 
 | type | 所在程序集 | 配置字段 | 说明 |
 |------|------------|----------|------|
-| `gpio` | Core | `devices` | **建议只建一个**：自动挂载全部非 `vio` 驱动卡；`in.*` / `out.*` 用 `driverId:address\|label` 区分卡 |
+| `gpio` | Core | `devices` | **建议只建一个**：自动挂载全部非 `vio` 驱动卡；`in.*` / `out.*` 用 `driverId|address|label` 区分卡 |
 | `vio` | Core | `devices` | 虚拟 IO，单驱动，地址形如 `vio.{deviceId}.in\|out.{alias}` |
 | `axis` / `linear` / `rotary` | Core | `axes` | 单轴设备（直线轴 / 旋转轴） |
 | `platform` / `x` / `xy` / `xyz` / … | Core | `platforms` | 多轴平台；type 可为 kind 简写 |
@@ -102,9 +102,9 @@
 ### gpio parameters
 
 - 建议整机只配置 **一个** `type=gpio` 设备；运行时默认挂载全部启用的非 `vio` 驱动卡
-- `in.{alias}` / `out.{alias}`：值须为 `driverId:address`（可选 `|label`），在参数里标明所属驱动卡
+- `in.{alias}` / `out.{alias}`：值须为 `driverId|address`（可选 `|label`），在参数里标明所属驱动卡
 - 可选 `driverIds`：逗号分隔，进一步限定可见驱动子集（默认不必填）
-- `driverId` 字段可选，仅作为旧式短地址（`0|标签`）的默认卡；新配置请写全 `driverId:address`
+- `driverId` 字段可选，仅作为旧式短地址（`0|标签`）的默认卡；新配置请写全 `driverId|address|label`（读取仍兼容旧式 `driverId:address|label`）
 - Task / Flow：`gpioDeviceId` 可空，空则使用第一个（共享）GpioDevice，IO 只写 alias
 
 解析：`GpioDeviceParameterSet`（`gpio_device_parameters.cs`）

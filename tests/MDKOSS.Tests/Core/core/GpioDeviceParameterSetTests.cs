@@ -5,9 +5,13 @@ namespace MDKOSS.Tests.Core;
 public sealed class GpioDeviceParameterSetTests
 {
     [Fact]
-    public void TryParsePointRoute_accepts_driver_colon_address()
+    public void TryParsePointRoute_accepts_unified_pipe_and_legacy_colon()
     {
-        Assert.True(GpioDeviceParameterSet.TryParsePointRoute("drv-main:X0", out var d, out var a));
+        Assert.True(GpioDeviceParameterSet.TryParsePointRoute("drv-main|X0", out var d, out var a));
+        Assert.Equal("drv-main", d);
+        Assert.Equal("X0", a);
+
+        Assert.True(GpioDeviceParameterSet.TryParsePointRoute("drv-main:X0", out d, out a));
         Assert.Equal("drv-main", d);
         Assert.Equal("X0", a);
     }
@@ -23,7 +27,17 @@ public sealed class GpioDeviceParameterSetTests
     }
 
     [Fact]
-    public void TryParsePointValue_accepts_driver_address_with_label()
+    public void TryParsePointValue_accepts_unified_driver_address_label()
+    {
+        Assert.True(GpioDeviceParameterSet.TryParsePointValue(
+            "drv-io1|12|Vaccum2", null, out var d, out var a, out var label));
+        Assert.Equal("drv-io1", d);
+        Assert.Equal("12", a);
+        Assert.Equal("Vaccum2", label);
+    }
+
+    [Fact]
+    public void TryParsePointValue_accepts_legacy_colon_form()
     {
         Assert.True(GpioDeviceParameterSet.TryParsePointValue(
             "drv-io1:12|Vaccum2", null, out var d, out var a, out var label));
@@ -33,10 +47,34 @@ public sealed class GpioDeviceParameterSetTests
     }
 
     [Fact]
-    public void FormatPointValue_always_includes_driver_id()
+    public void FormatPointValue_uses_only_pipe_separators()
     {
         var v = GpioDeviceParameterSet.FormatPointValue("drv-m1", "3", "复位按钮", "drv-m1");
-        Assert.Equal("drv-m1:3|复位按钮", v);
+        Assert.Equal("drv-m1|3|复位按钮", v);
+        Assert.DoesNotContain(':', v);
+        Assert.Equal(2, v.Count(c => c == GpioDeviceParameterSet.LabelSeparator));
+    }
+
+    [Fact]
+    public void NormalizeParameters_unifies_legacy_colon_to_pipe()
+    {
+        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["in.DiEstopButton"] = "drv-m1:0｜急停",
+            ["in.DiAirPressure"] = "drv-io1:8|ap",
+            ["out.lamp"] = "d1:1",
+            ["desc.lamp"] = "灯",
+            ["driverIds"] = "d1,d2",
+        };
+
+        var normalized = GpioDeviceParameterSet.NormalizeParameters(parameters, "d1");
+        Assert.Equal("drv-m1|0|急停", normalized["in.DiEstopButton"]);
+        Assert.Equal("drv-io1|8|ap", normalized["in.DiAirPressure"]);
+        Assert.Equal("d1|1|灯", normalized["out.lamp"]);
+        Assert.Equal("d1,d2", normalized["driverIds"]);
+        Assert.False(normalized.ContainsKey("desc.lamp"));
+        Assert.All(normalized.Where(kv => kv.Key.StartsWith("in.") || kv.Key.StartsWith("out.")),
+            kv => Assert.DoesNotContain(':', kv.Value));
     }
 
     [Fact]
@@ -52,8 +90,8 @@ public sealed class GpioDeviceParameterSetTests
     {
         var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["in.start"] = "d1:I0",
-            ["out.lamp"] = "d1:O1|灯",
+            ["in.start"] = "d1|I0",
+            ["out.lamp"] = "d1|O1|灯",
             ["ignored"] = "x",
         };
 
@@ -76,25 +114,6 @@ public sealed class GpioDeviceParameterSetTests
         Assert.Equal("drv-m1", bindings[0].DriverId);
         Assert.Equal("1", bindings[0].Address);
         Assert.Equal("启动按钮", bindings[0].Label);
-    }
-
-    [Fact]
-    public void NormalizeParameters_expands_short_form_folds_desc_and_orders_keys()
-    {
-        var parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            ["out.lamp"] = "d1:1",
-            ["in.start"] = "0|启动",
-            ["desc.lamp"] = "灯",
-            ["driverIds"] = "d1,d2",
-        };
-
-        var normalized = GpioDeviceParameterSet.NormalizeParameters(parameters, "d1");
-        Assert.Equal(["in.start", "out.lamp", "driverIds"], normalized.Keys.ToArray());
-        Assert.Equal("d1:0|启动", normalized["in.start"]);
-        Assert.Equal("d1:1|灯", normalized["out.lamp"]);
-        Assert.Equal("d1,d2", normalized["driverIds"]);
-        Assert.False(normalized.ContainsKey("desc.lamp"));
     }
 
     [Fact]

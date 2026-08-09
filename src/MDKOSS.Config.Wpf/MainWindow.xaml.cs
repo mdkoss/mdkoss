@@ -19,6 +19,7 @@ public static class MainWindowCommands
     public static readonly RoutedUICommand Duplicate = new("Duplicate", nameof(Duplicate), typeof(MainWindowCommands));
     public static readonly RoutedUICommand Delete = new("Delete", nameof(Delete), typeof(MainWindowCommands));
     public static readonly RoutedUICommand Apply = new("Apply", nameof(Apply), typeof(MainWindowCommands));
+    public static readonly RoutedUICommand Find = new("Find", nameof(Find), typeof(MainWindowCommands));
 }
 
 public partial class MainWindow : Window
@@ -38,6 +39,7 @@ public partial class MainWindow : Window
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Duplicate, (_, _) => DuplicateComponent()));
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Delete, (_, _) => DeleteComponent()));
         CommandBindings.Add(new CommandBinding(MainWindowCommands.Apply, (_, _) => Apply_Click(this, new RoutedEventArgs())));
+        CommandBindings.Add(new CommandBinding(MainWindowCommands.Find, (_, _) => FocusListFilter_Click(this, new RoutedEventArgs())));
 
         Loaded += (_, _) =>
         {
@@ -60,6 +62,15 @@ public partial class MainWindow : Window
             SyncTitle();
         };
     }
+
+    private void FocusListFilter_Click(object sender, RoutedEventArgs e)
+    {
+        ListFilterBox.Focus();
+        ListFilterBox.SelectAll();
+    }
+
+    private void ClearListFilter_Click(object sender, RoutedEventArgs e) =>
+        _workspace.ClearListFilter();
 
     private void SyncTitle()
     {
@@ -1381,7 +1392,8 @@ public partial class MainWindow : Window
             "· 新建：弹窗快速配置；Type/DriverId 可下拉选择\n" +
             "· Parameters：右侧 Key/Value 表；Key 可下拉选模板键；补全/重置模板\n" +
             "· 切换组件时若有未应用修改，可选择应用 / 丢弃 / 取消\n" +
-            "· Ctrl+Enter 快速应用属性；Gpios/Vios/Axis/Platform 支持 Excel 批量导入导出\n" +
+            "· Ctrl+Enter 快速应用属性；Ctrl+F 查找列表（Name/Desc/驱动/Port）\n" +
+            "· Gpios/Vios/Axis/Platform 支持 Excel 批量导入导出\n" +
             "· 调试：Driver / Axis / Platform / CameraDev / Task / Flow / Vision 独立窗\n" +
             "左树选模块/组件；中部列表右键编辑；右侧改属性后点「应用属性」或 Ctrl+Enter。",
             "界面说明",

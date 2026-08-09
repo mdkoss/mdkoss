@@ -893,11 +893,8 @@ public sealed class MdkConfigStore : IDisposable
             cmd.Parameters.AddWithValue("$name", string.IsNullOrWhiteSpace(v.Name) ? v.Id.Trim() : v.Name.Trim());
             cmd.Parameters.AddWithValue("$description", (object?)v.Description ?? DBNull.Value);
             cmd.Parameters.AddWithValue("$camera_device_id", v.CameraDeviceId ?? string.Empty);
-            cmd.Parameters.AddWithValue(
-                "$pipeline_json",
-                string.IsNullOrWhiteSpace(v.PipelineJson)
-                    ? Vision.VisionDocument.CreateBasicInspectPipeline().ToJson()
-                    : v.PipelineJson);
+            var pipeline = v.Pipeline ?? Vision.VisionDocument.CreateBasicInspectPipeline();
+            cmd.Parameters.AddWithValue("$pipeline_json", pipeline.ToJson());
             cmd.Parameters.AddWithValue("$created_at", now);
             cmd.Parameters.AddWithValue("$updated_at", now);
             cmd.ExecuteNonQuery();
@@ -1192,13 +1189,21 @@ public sealed class MdkConfigStore : IDisposable
         using var reader = cmd.ExecuteReader();
         while (reader.Read())
         {
+            var pipelineRaw = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
+            Vision.VisionDocument? pipeline = null;
+            if (!string.IsNullOrWhiteSpace(pipelineRaw)
+                && Vision.VisionDocument.TryParse(pipelineRaw, out var parsed, out _))
+            {
+                pipeline = parsed;
+            }
+
             list.Add(new MdkSetting.VisionConfig
             {
                 Id = reader.GetString(0),
                 Name = reader.GetString(1),
                 Description = reader.IsDBNull(2) ? null : reader.GetString(2),
                 CameraDeviceId = reader.IsDBNull(3) ? string.Empty : reader.GetString(3),
-                PipelineJson = reader.IsDBNull(4) ? string.Empty : reader.GetString(4),
+                Pipeline = pipeline ?? Vision.VisionDocument.CreateEmpty(),
             });
         }
 

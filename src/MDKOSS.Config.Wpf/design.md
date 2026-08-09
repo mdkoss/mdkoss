@@ -103,12 +103,14 @@
 | 列 | 含义 |
 |----|------|
 | **Id** | 行号（1..N） |
-| **Name** | 配置 Id（原 id）；GPIO 为 `deviceId.alias` |
+| **Name** | 配置 Id（原 id）；GPIO 为点位 `alias`（不以驱动 Id 开头；驱动见「驱动」列） |
 | **Type** | 类型；GPIO 为 `in` / `out` |
 | **Desc** | 显示名 / 描述（原 name）；GPIO 为点位 label |
 | **Enable** | 启用 |
-| **DriverId** | （Gpios）点位绑定的驱动 Id；（Vios）所属 vio 设备 DriverId |
+| **驱动** | （Gpios）点位绑定驱动 `id · 名称`；（Vios）所属 vio 设备 Driver |
 | **Port** | （仅 Gpios）端口号 / 地址；Vios 的 Port/Value 显示 DeviceId |
+
+中部列表支持 **查找**（Ctrl+F）：按 Name / Desc / 驱动 / Port / Alias 等即时筛选；切换模块时清空筛选。
 
 左侧树按 **硬件 / 逻辑 / 系统** 分组。右侧参数区下方有参数预览。
 

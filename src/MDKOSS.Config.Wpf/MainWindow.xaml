@@ -16,6 +16,7 @@
     <KeyBinding Key="N" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Add}"/>
     <KeyBinding Key="D" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Duplicate}"/>
     <KeyBinding Key="Enter" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Apply}"/>
+    <KeyBinding Key="F" Modifiers="Control" Command="{x:Static local:MainWindowCommands.Find}"/>
     <KeyBinding Key="Delete" Command="{x:Static local:MainWindowCommands.Delete}"/>
   </Window.InputBindings>
   <DockPanel>
@@ -42,6 +43,8 @@
         <MenuItem Header="下移" Click="MoveDown_Click"/>
         <Separator/>
         <MenuItem Header="应用属性" Click="Apply_Click" InputGestureText="Ctrl+Enter"/>
+        <Separator/>
+        <MenuItem Header="查找列表…(_F)" Click="FocusListFilter_Click" InputGestureText="Ctrl+F"/>
       </MenuItem>
       <MenuItem Header="模块(_M)">
         <MenuItem Header="导出当前模块…" Click="ExportModule_Click"/>
@@ -129,9 +132,20 @@
               <Run Text="组件列表 — "/><Run Text="{Binding ModuleTitle, Mode=OneWay}"/>
             </TextBlock>
           </DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Button DockPanel.Dock="Right" Content="清除" Padding="10,3" Margin="8,0,0,0"
+                    Click="ClearListFilter_Click" ToolTip="清除列表筛选"/>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding ListFilterHint}" Margin="8,0,0,0"
+                       VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+            <TextBlock DockPanel.Dock="Left" Text="查找" VerticalAlignment="Center"
+                       Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0"/>
+            <TextBox x:Name="ListFilterBox"
+                     Text="{Binding ListFilter, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="按 Name / Desc / 驱动 / Port / Alias 等即时筛选（Ctrl+F）"/>
+          </DockPanel>
           <Grid>
             <DataGrid x:Name="CenterGrid"
-                      ItemsSource="{Binding Items}"
+                      ItemsSource="{Binding ItemsView}"
                       SelectedItem="{Binding SelectedItem, Mode=OneWay}"
                       AutoGenerateColumns="False"
                       CanUserAddRows="False"

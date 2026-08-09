@@ -160,9 +160,11 @@ public sealed class VisionDevice : MDeviceBase
                 return FailLocked($"vision_not_found:{visionId}");
             }
 
-            var pipelineJson = string.IsNullOrWhiteSpace(cfg.PipelineJson)
-                ? VisionDocument.CreateBasicInspectPipeline().ToJson()
-                : cfg.PipelineJson;
+            var doc = cfg.Pipeline ?? VisionDocument.CreateBasicInspectPipeline();
+            if (doc.Nodes.Count == 0)
+            {
+                doc = VisionDocument.CreateBasicInspectPipeline();
+            }
 
             var input = string.IsNullOrWhiteSpace(imagePath)
                 ? ResolveImagePath(null)
@@ -176,7 +178,7 @@ public sealed class VisionDevice : MDeviceBase
                 ? Path.Combine(Path.GetTempPath(), $"mdkoss-vision-{Id}-debug.png")
                 : Parameters.DebugImagePath;
 
-            var result = _executor.RunJson(pipelineJson, input, debugPath);
+            var result = _executor.Run(doc, input, debugPath);
             _lastImagePath = input;
             _lastResult = result;
             _runCount++;

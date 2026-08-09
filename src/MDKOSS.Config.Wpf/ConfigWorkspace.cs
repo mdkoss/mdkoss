@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Windows.Data;
 using MDKOSS.Core;
 using MDKOSS.Core.Data;
 
@@ -585,14 +586,69 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     private bool _isBrowsingDbTable;
     private string? _dbPrimaryKey;
     private DbRowItem? _selectedDbRow;
+    private string _listFilter = "";
+    private ICollectionView? _itemsView;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public ObservableCollection<ComponentItem> Items { get; } = [];
+    /// <summary>Filtered view of <see cref="Items"/> (center grid binds here).</summary>
+    public ICollectionView ItemsView
+    {
+        get
+        {
+            if (_itemsView is null)
+            {
+                _itemsView = CollectionViewSource.GetDefaultView(Items);
+                _itemsView.Filter = MatchesListFilter;
+            }
+
+            return _itemsView;
+        }
+    }
+
     public ObservableCollection<DbRowItem> DbRows { get; } = [];
     /// <summary>Column names of the currently browsed SQLite table (middle pane headers).</summary>
     public ObservableCollection<string> DbColumns { get; } = [];
     public PropertyDraft Draft { get; } = new();
+
+    /// <summary>Center-list text filter (Name / Desc / Driver / Port / …). Empty = show all.</summary>
+    public string ListFilter
+    {
+        get => _listFilter;
+        set
+        {
+            var next = value ?? "";
+            if (_listFilter == next)
+            {
+                return;
+            }
+
+            _listFilter = next;
+            OnPropertyChanged();
+            RefreshListFilter();
+        }
+    }
+
+    /// <summary>Hint under the filter box, e.g. 「筛选 · 显示 3/42」.</summary>
+    public string ListFilterHint
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_listFilter))
+            {
+                return Items.Count == 0 ? "" : $"共 {Items.Count} 项";
+            }
+
+            var visible = 0;
+            foreach (var _ in ItemsView)
+            {
+                visible++;
+            }
+
+            return $"筛选 «{_listFilter.Trim()}» · 显示 {visible}/{Items.Count}";
+        }
+    }
 
     public string ProjectName => _setting.ProjectName;
     public MdkSetting Setting => _setting;
@@ -931,6 +987,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     public void SelectModule(ConfigModule module, string? keepSelectionKey)
     {
+        var moduleChanged = _module != module;
         _module = module;
         OnPropertyChanged(nameof(CurrentModule));
         OnPropertyChanged(nameof(CanEditList));
@@ -938,6 +995,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         OnPropertyChanged(nameof(SupportsExcelModuleExchange));
         SetColumnHeaders(module);
         ModuleTitle = ModuleDisplayName(module);
+        if (moduleChanged && !string.IsNullOrEmpty(_listFilter))
+        {
+            _listFilter = "";
+            OnPropertyChanged(nameof(ListFilter));
+        }
 
         if (module == ConfigModule.Database && !string.IsNullOrWhiteSpace(keepSelectionKey)
             && !string.Equals(keepSelectionKey, "hint", StringComparison.OrdinalIgnoreCase)
@@ -963,8 +1025,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         }
 
         SelectItem(next);
-        StatusLine = $"{ModuleTitle} · {Items.Count} 项 · [{DocumentKindLabel}] {DocumentPath}";
+        StatusLine = $"{ModuleTitle} · {VisibleItemCount()}/{Items.Count} 项 · [{DocumentKindLabel}] {DocumentPath}";
     }
+
+    /// <summary>Clear the center-list filter box.</summary>
+    public void ClearListFilter() => ListFilter = "";
 
     public void SelectItem(ComponentItem? item)
     {
@@ -1555,14 +1620,50 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             {
                 var name = Cell(r, "Name", "Alias", "alias");
                 var deviceId = Cell(r, "DeviceId", "Device", "device");
-                if (string.IsNullOrWhiteSpace(deviceId) && name.Contains('.', StringComparison.Ordinal))
+                var driverId = Cell(r, "DriverId", "driverId", "driver");
+                // Name may be deviceId.alias (legacy) or driverId.alias (list display).
+                if (name.Contains('.', StringComparison.Ordinal))
                 {
                     var dot = name.IndexOf('.');
-                    deviceId = name[..dot];
-                    name = name[(dot + 1)..];
+                    var prefix = name[..dot].Trim();
+                    var suffix = name[(dot + 1)..].Trim();
+                    if (!string.IsNullOrWhiteSpace(prefix) && !string.IsNullOrWhiteSpace(suffix))
+                    {
+                        var prefixIsDriver = _setting.Drivers.Any(d =>
+                            string.Equals(d.Id, prefix, StringComparison.OrdinalIgnoreCase));
+                        var prefixIsGpioDevice = _setting.Devices.Any(d =>
+                            string.Equals(d.Id, prefix, StringComparison.OrdinalIgnoreCase)
+                            && string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase));
+                        if (string.IsNullOrWhiteSpace(deviceId) && prefixIsGpioDevice)
+                        {
+                            deviceId = prefix;
+                            name = suffix;
+                        }
+                        else if (prefixIsDriver)
+                        {
+                            if (string.IsNullOrWhiteSpace(driverId))
+                            {
+                                driverId = prefix;
+                            }
+
+                            name = suffix;
+                        }
+                        else if (string.IsNullOrWhiteSpace(deviceId))
+                        {
+                            deviceId = prefix;
+                            name = suffix;
+                        }
+                    }
                 }
 
-                var driverId = Cell(r, "DriverId", "driverId", "driver");
+                if (string.IsNullOrWhiteSpace(deviceId))
+                {
+                    deviceId = _setting.Devices
+                        .FirstOrDefault(d => string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase))
+                        ?.Id
+                        ?? "gpio-main";
+                }
+
                 var port = Cell(r, "Port", "Address", "address", "port");
                 var route = Cell(r, "Route", "route");
                 if (string.IsNullOrWhiteSpace(port) && !string.IsNullOrWhiteSpace(route))
@@ -2151,7 +2252,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     a.Name = b.Name;
                     a.Description = b.Description;
                     a.CameraDeviceId = b.CameraDeviceId;
-                    a.PipelineJson = b.PipelineJson;
+                    a.Pipeline = b.Pipeline;
                 });
                 break;
             }
@@ -2371,7 +2472,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Name = string.IsNullOrWhiteSpace(req.Name) ? req.Id : req.Name,
             Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description,
             CameraDeviceId = cameraId,
-            PipelineJson = MDKOSS.Core.Vision.VisionDocument.CreateBasicInspectPipeline().ToJson(),
+            Pipeline = MDKOSS.Core.Vision.VisionDocument.CreateBasicInspectPipeline(),
         };
         _setting.Visions.Add(v);
         return new ComponentItem { Key = v.Id, Source = v, Module = ConfigModule.Visions, Title = v.Id };
@@ -2585,7 +2686,76 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             Items.Add(item);
         }
+
+        RefreshListFilter();
     }
+
+    private void RefreshListFilter()
+    {
+        ItemsView.Refresh();
+        OnPropertyChanged(nameof(ListFilterHint));
+    }
+
+    private int VisibleItemCount()
+    {
+        var n = 0;
+        foreach (var _ in ItemsView)
+        {
+            n++;
+        }
+
+        return n;
+    }
+
+    private bool MatchesListFilter(object obj)
+    {
+        if (obj is not ComponentItem item)
+        {
+            return false;
+        }
+
+        var q = _listFilter.Trim();
+        if (q.Length == 0)
+        {
+            return true;
+        }
+
+        if (ContainsIgnoreCase(item.Key, q)
+            || ContainsIgnoreCase(item.Title, q)
+            || ContainsIgnoreCase(item.Subtitle, q)
+            || ContainsIgnoreCase(item.Col1, q)
+            || ContainsIgnoreCase(item.Col2, q)
+            || ContainsIgnoreCase(item.Col3, q)
+            || ContainsIgnoreCase(item.Col4, q)
+            || ContainsIgnoreCase(item.Col5, q)
+            || ContainsIgnoreCase(item.Col6, q)
+            || ContainsIgnoreCase(item.Col7, q))
+        {
+            return true;
+        }
+
+        return item.Source switch
+        {
+            GpioEditTarget g =>
+                ContainsIgnoreCase(g.Alias, q)
+                || ContainsIgnoreCase(g.DriverId, q)
+                || ContainsIgnoreCase(g.Port, q)
+                || ContainsIgnoreCase(g.Label, q)
+                || ContainsIgnoreCase(g.Direction, q)
+                || ContainsIgnoreCase(g.Device.Id, q)
+                || ContainsIgnoreCase(g.Device.Name, q),
+            VioEditTarget v =>
+                ContainsIgnoreCase(v.Alias, q)
+                || ContainsIgnoreCase(v.Label, q)
+                || ContainsIgnoreCase(v.Device.Id, q)
+                || ContainsIgnoreCase(v.Device.DriverId, q),
+            _ => false,
+        };
+    }
+
+    private static bool ContainsIgnoreCase(string? haystack, string needle) =>
+        !string.IsNullOrEmpty(haystack)
+        && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
 
     private List<ComponentItem> BuildItemsFor(ConfigModule module)
     {
@@ -2747,14 +2917,16 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 var label = string.IsNullOrWhiteSpace(b.Label)
                     ? GpioDeviceParameterSet.ReadLabel(device.Parameters, b.Alias)
                     : b.Label;
+                // Name / tree title: point alias (not driverId.*). Driver is Col6.
+                var name = b.Alias;
                 list.Add(new ComponentItem
                 {
                     Module = ConfigModule.Gpios,
                     Source = new GpioEditTarget(device, direction, b.Alias, b.DriverId, b.Address, label),
                     Key = key,
-                    Title = string.IsNullOrWhiteSpace(label) ? b.Alias : $"{b.Alias} · {label}",
+                    Title = string.IsNullOrWhiteSpace(label) ? name : $"{name} · {label}",
                     Subtitle = string.IsNullOrWhiteSpace(b.DriverId) ? b.Address : $"{b.DriverId}:{b.Address}",
-                    Col2 = $"{device.Id}.{b.Alias}",
+                    Col2 = name,
                     Col3 = direction,
                     Col4 = string.IsNullOrWhiteSpace(label) ? "" : label,
                     Col5 = device.Enabled ? "是" : "否",
@@ -3064,13 +3236,6 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     {
                         loadedParams = PlatformDeviceParameterSet.NormalizeParameters(d.Type, loadedParams);
                     }
-                    else if (item.Module == ConfigModule.Devices && IsGpioOrVioDeviceType(d.Type))
-                    {
-                        // Point bindings belong to Gpios / Vios modules.
-                        loadedParams = FilterDeviceLevelParameters(loadedParams);
-                        Draft.Headline =
-                            $"{ModuleDisplayName(item.Module)} / {item.Title}（点位请到{(IsVioDeviceType(d.Type) ? "VIOs" : "GPIOs")} 编辑）";
-                    }
 
                     Draft.LoadStringParameters(loadedParams);
                     RefreshParamKeySuggestions(item.Module, d.Type, d.DriverId);
@@ -3216,13 +3381,6 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             // Only template keys (axis.* / note[/kind]); drop obsolete axisIndex/model from suggestions.
             keys = keys.Concat(Draft.ParameterRows.Select(r => r.Key)
                 .Where(k => IsPlatformEditableParamKey(k)));
-        }
-        else if (module == ConfigModule.Devices && IsGpioOrVioDeviceType(type))
-        {
-            // Device-level only (e.g. driverIds); point keys are edited in Gpios / Vios.
-            keys = keys.Concat(Draft.ParameterRows.Select(r => r.Key))
-                .Where(k => !IsGpioPointParameterKey(k))
-                .DefaultIfEmpty("driverIds");
         }
         else
         {
@@ -3774,11 +3932,6 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             AxisDeviceParameterSet.SyncKindParameter(parameters, type);
         }
-        else if (_module == ConfigModule.Devices && IsGpioOrVioDeviceType(type))
-        {
-            // Draft only shows device-level keys; keep existing point bindings.
-            parameters = MergePreservingPointParameters(d.Parameters, parameters);
-        }
 
         d.Parameters = parameters;
     }
@@ -3988,9 +4141,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             driverId = (target.Device.DriverId ?? "").Trim();
         }
 
-        // Port may still accept legacy "driverId:address" or "address|label" paste.
+        // Port may still accept legacy "driverId:address", unified "driverId|address", or "address|label" paste.
         if (GpioDeviceParameterSet.TryParsePointValue(
-                portRaw.Contains('|', StringComparison.Ordinal) ? portRaw : $"{portRaw}|{label}",
+                portRaw.IndexOfAny([GpioDeviceParameterSet.LabelSeparator, '｜']) >= 0
+                    ? portRaw
+                    : $"{portRaw}{GpioDeviceParameterSet.LabelSeparator}{label}",
                 driverId,
                 out var parsedDriver,
                 out var address,
@@ -4142,60 +4297,6 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     private static bool IsVioDeviceType(string? type) =>
         string.Equals((type ?? "").Trim(), "vio", StringComparison.OrdinalIgnoreCase);
-
-    /// <summary>Keep only non-point keys (e.g. driverIds) for gpio/vio device-level editing.</summary>
-    private static Dictionary<string, string> FilterDeviceLevelParameters(
-        IReadOnlyDictionary<string, string> parameters)
-    {
-        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var kv in parameters)
-        {
-            if (IsGpioPointParameterKey(kv.Key))
-            {
-                continue;
-            }
-
-            result[kv.Key] = kv.Value;
-        }
-
-        return result;
-    }
-
-    private static Dictionary<string, string> MergePreservingPointParameters(
-        IReadOnlyDictionary<string, string> previous,
-        IReadOnlyDictionary<string, string> editedDeviceLevel)
-    {
-        var merged = new Dictionary<string, string>(editedDeviceLevel, StringComparer.OrdinalIgnoreCase);
-        // When draft already contains point keys, trust it; otherwise keep previous points.
-        if (merged.Keys.Any(IsGpioPointParameterKey))
-        {
-            return merged;
-        }
-
-        foreach (var kv in previous)
-        {
-            if (IsGpioPointParameterKey(kv.Key))
-            {
-                merged[kv.Key] = kv.Value;
-            }
-        }
-
-        return merged;
-    }
-
-    private static bool IsGpioPointParameterKey(string? key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return false;
-        }
-
-        var k = key.Trim();
-        return k.StartsWith("in.", StringComparison.OrdinalIgnoreCase)
-               || k.StartsWith("out.", StringComparison.OrdinalIgnoreCase)
-               || k.StartsWith("desc.", StringComparison.OrdinalIgnoreCase)
-               || k.StartsWith("vio.", StringComparison.OrdinalIgnoreCase);
-    }
 
     private void ValidateBeforeSave()
     {

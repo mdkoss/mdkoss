@@ -15,10 +15,10 @@ public static class DeviceParameterPresets
         {
             "gpio" => new(StringComparer.OrdinalIgnoreCase)
             {
-                ["in.startButton"] = $"{drv}:0|启动按钮",
-                ["in.stopButton"] = $"{drv}:1|停止按钮",
-                ["out.tower.green"] = $"{drv}:0|绿灯",
-                ["out.tower.red"] = $"{drv}:1|红灯",
+                ["in.startButton"] = $"{drv}|0|启动按钮",
+                ["in.stopButton"] = $"{drv}|1|停止按钮",
+                ["out.tower.green"] = $"{drv}|0|绿灯",
+                ["out.tower.red"] = $"{drv}|1|红灯",
             },
             "vio" => VioDeviceParameterSet.DefaultParameters(),
             "axis" => AxisDeviceParameterSet.DefaultParameters(MAxisKind.Linear),

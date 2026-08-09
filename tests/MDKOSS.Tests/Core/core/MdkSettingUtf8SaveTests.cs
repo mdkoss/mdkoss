@@ -34,10 +34,12 @@ public sealed class MdkSettingUtf8SaveTests
             var json = File.ReadAllText(path, Encoding.UTF8);
             Assert.Contains("上下料Y轴", json, StringComparison.Ordinal);
             Assert.Contains("启动按钮", json, StringComparison.Ordinal);
-            Assert.Contains("drv-m1:1|启动按钮", json, StringComparison.Ordinal);
+            // Save normalizes to unified pipe form driverId|address|label
+            Assert.Contains("drv-m1|1|启动按钮", json, StringComparison.Ordinal);
             Assert.DoesNotContain(@"\u4E0A", json, StringComparison.Ordinal);
             Assert.DoesNotContain(@"\u542F", json, StringComparison.Ordinal);
             Assert.Contains("样机", json, StringComparison.Ordinal);
+            Assert.Contains("\"parameters\"", json, StringComparison.Ordinal);
         }
         finally
         {

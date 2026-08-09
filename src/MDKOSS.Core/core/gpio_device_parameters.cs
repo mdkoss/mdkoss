@@ -12,6 +12,15 @@ public readonly record struct GpioPointBinding(
 public static class GpioDeviceParameterSet
 {
     /// <summary>
+    /// Unified field separator for GPIO point values when saving JSON.
+    /// Canonical form: <c>driverId|address|label</c> (label optional).
+    /// </summary>
+    public const char LabelSeparator = '|';
+
+    /// <summary>Accepted field separators when reading (ASCII <c>|</c> and fullwidth <c>｜</c>).</summary>
+    private static readonly char[] FieldSeparators = [LabelSeparator, '｜'];
+
+    /// <summary>
     /// Optional <c>driverIds</c> value: comma-separated runtime driver ids.
     /// When unset, the runtime attaches every enabled non-<c>vio</c> driver to the GPIO device.
     /// </summary>
@@ -33,8 +42,8 @@ public static class GpioDeviceParameterSet
 
     /// <summary>
     /// Parses <c>in.alias</c> / <c>out.alias</c> keys.
-    /// Preferred value form is <c>driverId:address</c> (optional <c>|label</c>) so multi-card IO is unambiguous.
-    /// Short <c>address</c> / <c>address|label</c> remains accepted when <paramref name="defaultDriverId"/> is set.
+    /// Preferred value form is <c>driverId|address</c> (optional <c>|label</c>).
+    /// Legacy <c>driverId:address|label</c> and short <c>address|label</c> remain accepted when reading.
     /// </summary>
     public static IReadOnlyList<GpioPointBinding> ParseBindings(
         IReadOnlyDictionary<string, string> parameters,
@@ -65,13 +74,13 @@ public static class GpioDeviceParameterSet
         return list;
     }
 
-    /// <summary>Parses <c>driverId:address</c> route syntax (legacy; label not supported).</summary>
+    /// <summary>Parses <c>driverId|address</c> or legacy <c>driverId:address</c> route syntax.</summary>
     public static bool TryParsePointRoute(string? raw, out string driverId, out string address) =>
         TryParsePointValue(raw, defaultDriverId: null, out driverId, out address, out _);
 
     /// <summary>
-    /// Parses IO parameter value. Desc may be merged after <c>|</c>:
-    /// <c>drv-m1:0|急停</c>, <c>drv-m1:0</c>, legacy <c>0|急停</c> / <c>0</c> (needs defaultDriverId).
+    /// Parses IO parameter value. Preferred: <c>drv-m1|0|急停</c>.
+    /// Also accepts legacy <c>drv-m1:0|急停</c>, <c>drv-m1|0</c>, <c>0|急停</c> / <c>0</c> (needs defaultDriverId).
     /// </summary>
     public static bool TryParsePointValue(
         string? raw,
@@ -88,32 +97,73 @@ public static class GpioDeviceParameterSet
             return false;
         }
 
-        var value = raw.Trim();
-        var pipe = value.IndexOf('|');
-        if (pipe >= 0)
-        {
-            label = value[(pipe + 1)..].Trim();
-            value = value[..pipe].Trim();
-        }
-
-        if (string.IsNullOrWhiteSpace(value))
+        var parts = SplitFields(raw.Trim());
+        if (parts.Count == 0)
         {
             return false;
         }
 
-        var splitIndex = value.IndexOf(':');
-        if (splitIndex > 0 && splitIndex < value.Length - 1)
+        if (parts.Count >= 3)
         {
-            driverId = value[..splitIndex].Trim();
-            address = value[(splitIndex + 1)..].Trim();
+            // driverId|address|label...
+            driverId = parts[0];
+            address = parts[1];
+            label = string.Join(LabelSeparator, parts.Skip(2)).Trim();
             return !string.IsNullOrWhiteSpace(driverId) && !string.IsNullOrWhiteSpace(address);
         }
 
-        // Short form: address only — bind to device.driverId / defaultDriverId.
+        if (parts.Count == 2)
+        {
+            var first = parts[0];
+            var second = parts[1];
+
+            // Legacy: driverId:address|label
+            if (TrySplitDriverColonAddress(first, out driverId, out address))
+            {
+                label = second;
+                return true;
+            }
+
+            // Preferred without label: driverId|address
+            // (second token looks like an address; first is the driver id)
+            if (LooksLikeIoAddress(second) && first.Any(static c => char.IsLetter(c)))
+            {
+                driverId = first;
+                address = second;
+                return true;
+            }
+
+            // Short: address|label
+            if (!string.IsNullOrWhiteSpace(defaultDriverId))
+            {
+                driverId = defaultDriverId.Trim();
+                address = first;
+                label = second;
+                return !string.IsNullOrWhiteSpace(address);
+            }
+
+            // driverId|address when address is non-standard (e.g. symbolic)
+            if (first.Any(static c => char.IsLetter(c)) && !LooksLikeIoAddress(first))
+            {
+                driverId = first;
+                address = second;
+                return !string.IsNullOrWhiteSpace(address);
+            }
+
+            return false;
+        }
+
+        // Single token: driverId:address (legacy) or bare address.
+        var only = parts[0];
+        if (TrySplitDriverColonAddress(only, out driverId, out address))
+        {
+            return true;
+        }
+
         if (!string.IsNullOrWhiteSpace(defaultDriverId))
         {
             driverId = defaultDriverId.Trim();
-            address = value;
+            address = only;
             return true;
         }
 
@@ -121,8 +171,7 @@ public static class GpioDeviceParameterSet
     }
 
     /// <summary>
-    /// Formats a point parameter value as <c>driverId:address</c> (optional <c>|label</c>)
-    /// so the owning driver card is always visible in key-value parameters.
+    /// Formats a point parameter value as unified <c>driverId|address</c> (optional <c>|label</c>).
     /// </summary>
     public static string FormatPointValue(
         string driverId,
@@ -143,12 +192,12 @@ public static class GpioDeviceParameterSet
             throw new ArgumentException("GPIO point address cannot be empty.", nameof(address));
         }
 
-        var core = $"{drv}:{addr}";
+        var core = $"{drv}{LabelSeparator}{addr}";
         var lab = (label ?? "").Trim();
-        return string.IsNullOrWhiteSpace(lab) ? core : $"{core}|{lab}";
+        return string.IsNullOrWhiteSpace(lab) ? core : $"{core}{LabelSeparator}{lab}";
     }
 
-    /// <summary>Reads label from a point value (<c>|</c> suffix) or legacy <c>desc.{alias}</c>.</summary>
+    /// <summary>Reads label from a point value (<c>|</c> fields) or legacy <c>desc.{alias}</c>.</summary>
     public static string ReadLabel(
         IReadOnlyDictionary<string, string> parameters,
         string alias,
@@ -170,10 +219,9 @@ public static class GpioDeviceParameterSet
     }
 
     /// <summary>
-    /// Rewrites <c>in.*</c>/<c>out.*</c> values to canonical <c>driverId:address|label</c>,
-    /// folds legacy <c>desc.{alias}</c> into the <c>|label</c> suffix, and returns keys in a stable order
-    /// (<c>in.*</c> → <c>out.*</c> → other) for readable JSON saves.
-    /// Short <c>address|label</c> forms are expanded when <paramref name="defaultDriverId"/> is set.
+    /// Rewrites <c>in.*</c>/<c>out.*</c> values to canonical <c>driverId|address|label</c>,
+    /// folds legacy <c>desc.{alias}</c> into the label field,
+    /// and preserves existing key order for stable JSON diffs.
     /// </summary>
     public static Dictionary<string, string> NormalizeParameters(
         IReadOnlyDictionary<string, string> parameters,
@@ -182,7 +230,7 @@ public static class GpioDeviceParameterSet
         var source = parameters ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var next = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var kv in source.OrderBy(static x => x.Key, ParameterKeyComparer.Instance))
+        foreach (var kv in source)
         {
             var key = kv.Key?.Trim() ?? "";
             if (key.Length == 0)
@@ -192,7 +240,6 @@ public static class GpioDeviceParameterSet
 
             if (key.StartsWith("desc.", StringComparison.OrdinalIgnoreCase))
             {
-                // Folded into the matching in./out. value below (or dropped if unused).
                 continue;
             }
 
@@ -214,38 +261,69 @@ public static class GpioDeviceParameterSet
         return next;
     }
 
-    private sealed class ParameterKeyComparer : IComparer<string>
+    private static List<string> SplitFields(string value)
     {
-        public static ParameterKeyComparer Instance { get; } = new();
-
-        public int Compare(string? x, string? y)
+        var parts = new List<string>();
+        var start = 0;
+        for (var i = 0; i < value.Length; i++)
         {
-            var gx = Group(x);
-            var gy = Group(y);
-            var g = gx.CompareTo(gy);
-            return g != 0
-                ? g
-                : string.Compare(x, y, StringComparison.OrdinalIgnoreCase);
+            if (value[i] is LabelSeparator or '｜')
+            {
+                parts.Add(value[start..i].Trim());
+                start = i + 1;
+            }
         }
 
-        private static int Group(string? key)
+        parts.Add(value[start..].Trim());
+        return parts.Where(static p => p.Length > 0).ToList();
+    }
+
+    private static bool TrySplitDriverColonAddress(string value, out string driverId, out string address)
+    {
+        driverId = string.Empty;
+        address = string.Empty;
+        var splitIndex = value.IndexOf(':');
+        if (splitIndex <= 0 || splitIndex >= value.Length - 1)
         {
-            if (string.IsNullOrEmpty(key))
-            {
-                return 3;
-            }
-
-            if (key.StartsWith("in.", StringComparison.OrdinalIgnoreCase))
-            {
-                return 0;
-            }
-
-            if (key.StartsWith("out.", StringComparison.OrdinalIgnoreCase))
-            {
-                return 1;
-            }
-
-            return 2;
+            return false;
         }
+
+        driverId = value[..splitIndex].Trim();
+        address = value[(splitIndex + 1)..].Trim();
+        return !string.IsNullOrWhiteSpace(driverId) && !string.IsNullOrWhiteSpace(address);
+    }
+
+    /// <summary>True when token looks like an IO address (e.g. <c>0</c>, <c>12</c>, <c>X0</c>, <c>DI1</c>).</summary>
+    private static bool LooksLikeIoAddress(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        if (long.TryParse(token, out _))
+        {
+            return true;
+        }
+
+        var letters = 0;
+        var digits = 0;
+        foreach (var c in token)
+        {
+            if (char.IsLetter(c))
+            {
+                letters++;
+            }
+            else if (char.IsDigit(c))
+            {
+                digits++;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        return letters is >= 1 and <= 3 && digits >= 1;
     }
 }

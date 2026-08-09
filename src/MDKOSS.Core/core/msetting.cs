@@ -81,6 +81,7 @@ public sealed class MdkSetting
     private static JsonSerializerOptions JsonOptions { get; } = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
         // Keep CJK / Unicode as literal UTF-8 instead of \uXXXX escapes.
@@ -218,7 +219,7 @@ public sealed class MdkSetting
     }
 
     /// <summary>Named vision pipeline definition.</summary>
-    public sealed class VisionConfig
+    public sealed class VisionConfig : System.Text.Json.Serialization.IJsonOnDeserialized
     {
         public string Id { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
@@ -227,7 +228,41 @@ public sealed class MdkSetting
         /// <summary>Optional camera device id (cameradev / extcamera).</summary>
         public string CameraDeviceId { get; set; } = string.Empty;
 
-        /// <summary>Serialized <c>MDKOSS.Core.Vision.VisionDocument</c> JSON.</summary>
-        public string PipelineJson { get; set; } = string.Empty;
+        /// <summary>Vision pipeline graph stored as a nested JSON object.</summary>
+        [JsonPropertyName("pipeline")]
+        public Vision.VisionDocument? Pipeline { get; set; }
+
+        /// <summary>
+        /// Legacy escaped-string form (<c>pipelineJson</c>). Accepted on load only; never written back.
+        /// </summary>
+        [JsonPropertyName("pipelineJson")]
+        public string? PipelineJson
+        {
+            get => null;
+            set => _legacyPipelineJson = value;
+        }
+
+        [JsonIgnore]
+        private string? _legacyPipelineJson;
+
+        /// <summary>Effective pipeline (object, migrated legacy string, or empty graph).</summary>
+        [JsonIgnore]
+        public Vision.VisionDocument EffectivePipeline =>
+            Pipeline
+            ?? (Vision.VisionDocument.TryParse(_legacyPipelineJson, out var legacy, out _)
+                ? legacy
+                : Vision.VisionDocument.CreateEmpty());
+
+        void System.Text.Json.Serialization.IJsonOnDeserialized.OnDeserialized()
+        {
+            if (Pipeline is null && !string.IsNullOrWhiteSpace(_legacyPipelineJson)
+                && Vision.VisionDocument.TryParse(_legacyPipelineJson, out var doc, out _))
+            {
+                Pipeline = doc;
+            }
+
+            _legacyPipelineJson = null;
+            Pipeline ??= Vision.VisionDocument.CreateEmpty();
+        }
     }
 }
