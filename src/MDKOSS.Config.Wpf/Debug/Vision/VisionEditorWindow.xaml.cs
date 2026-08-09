@@ -121,17 +121,10 @@ public partial class VisionEditorWindow : Window
         }
 
         _preferredVisionId = vision.Id;
-        VisionDocument doc;
-        if (vision.Pipeline is not null && vision.Pipeline.Nodes.Count > 0)
-        {
-            doc = vision.Pipeline;
-        }
-        else if (!string.IsNullOrWhiteSpace(vision.PipelineJson)
-            && VisionDocument.TryParse(vision.PipelineJson, out var parsed, out _))
-        {
-            doc = parsed;
-        }
-        else
+        var doc = vision.Pipeline is { Nodes.Count: > 0 }
+            ? vision.Pipeline
+            : vision.EffectivePipeline;
+        if (doc.Nodes.Count == 0)
         {
             doc = VisionDocument.CreateEmpty();
         }
