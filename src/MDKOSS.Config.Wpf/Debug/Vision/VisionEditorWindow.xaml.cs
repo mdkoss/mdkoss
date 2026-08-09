@@ -407,7 +407,7 @@ public partial class VisionEditorWindow : Window
         }
 
         vision.CameraDeviceId = _vm.CameraDeviceId?.Trim() ?? "";
-        vision.PipelineJson = _vm.ToDocument().ToJson();
+        vision.Pipeline = _vm.ToDocument();
         _workspace.NotifyExternalEdit($"视觉流程已更新 · {vision.Id}");
         _onApplied?.Invoke();
         MessageBox.Show(this, $"已写入工作区：{vision.Id}\n请在主窗口「文件 → 保存」落盘。", "应用", MessageBoxButton.OK, MessageBoxImage.Information);
