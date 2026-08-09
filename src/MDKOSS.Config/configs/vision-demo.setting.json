@@ -45,7 +45,28 @@
       "name": "基础斑点检测",
       "description": "采集/加载图像 → 灰度/模糊/阈值 → findContours → outputPose",
       "cameraDeviceId": "cam-top",
-      "pipelineJson": "{\n  \"version\": 1,\n  \"nodes\": [\n    { \"id\": \"n-start\", \"kind\": \"start\", \"x\": 300, \"y\": 40, \"order\": 0, \"props\": {} },\n    { \"id\": \"n-load\", \"kind\": \"vision.loadImage\", \"x\": 300, \"y\": 120, \"order\": 1, \"props\": { \"path\": \"\" } },\n    { \"id\": \"n-gray\", \"kind\": \"vision.toGray\", \"x\": 300, \"y\": 200, \"order\": 2, \"props\": {} },\n    { \"id\": \"n-blur\", \"kind\": \"vision.blur\", \"x\": 300, \"y\": 280, \"order\": 3, \"props\": { \"kind\": \"gaussian\", \"ksize\": \"5\" } },\n    { \"id\": \"n-th\", \"kind\": \"vision.threshold\", \"x\": 300, \"y\": 360, \"order\": 4, \"props\": { \"mode\": \"binary\", \"thresh\": \"80\", \"maxVal\": \"255\" } },\n    { \"id\": \"n-blob\", \"kind\": \"vision.findContours\", \"x\": 300, \"y\": 440, \"order\": 5, \"props\": { \"thresh\": \"80\", \"minArea\": \"200\" } },\n    { \"id\": \"n-out\", \"kind\": \"vision.outputPose\", \"x\": 300, \"y\": 520, \"order\": 6, \"props\": { \"prefix\": \"vision\", \"requireOk\": \"false\" } },\n    { \"id\": \"n-end\", \"kind\": \"end\", \"x\": 300, \"y\": 600, \"order\": 7, \"props\": {} }\n  ],\n  \"edges\": [\n    { \"from\": \"n-start\", \"to\": \"n-load\", \"port\": \"next\" },\n    { \"from\": \"n-load\", \"to\": \"n-gray\", \"port\": \"next\" },\n    { \"from\": \"n-gray\", \"to\": \"n-blur\", \"port\": \"next\" },\n    { \"from\": \"n-blur\", \"to\": \"n-th\", \"port\": \"next\" },\n    { \"from\": \"n-th\", \"to\": \"n-blob\", \"port\": \"next\" },\n    { \"from\": \"n-blob\", \"to\": \"n-out\", \"port\": \"next\" },\n    { \"from\": \"n-out\", \"to\": \"n-end\", \"port\": \"next\" }\n  ]\n}"
+      "pipeline": {
+        "version": 1,
+        "nodes": [
+          { "id": "n-start", "kind": "start", "x": 300, "y": 40, "order": 0, "props": {} },
+          { "id": "n-load", "kind": "vision.loadImage", "x": 300, "y": 120, "order": 1, "props": { "path": "" } },
+          { "id": "n-gray", "kind": "vision.toGray", "x": 300, "y": 200, "order": 2, "props": {} },
+          { "id": "n-blur", "kind": "vision.blur", "x": 300, "y": 280, "order": 3, "props": { "kind": "gaussian", "ksize": "5" } },
+          { "id": "n-th", "kind": "vision.threshold", "x": 300, "y": 360, "order": 4, "props": { "mode": "binary", "thresh": "80", "maxVal": "255" } },
+          { "id": "n-blob", "kind": "vision.findContours", "x": 300, "y": 440, "order": 5, "props": { "thresh": "80", "minArea": "200" } },
+          { "id": "n-out", "kind": "vision.outputPose", "x": 300, "y": 520, "order": 6, "props": { "prefix": "vision", "requireOk": "false" } },
+          { "id": "n-end", "kind": "end", "x": 300, "y": 600, "order": 7, "props": {} }
+        ],
+        "edges": [
+          { "from": "n-start", "to": "n-load", "port": "next" },
+          { "from": "n-load", "to": "n-gray", "port": "next" },
+          { "from": "n-gray", "to": "n-blur", "port": "next" },
+          { "from": "n-blur", "to": "n-th", "port": "next" },
+          { "from": "n-th", "to": "n-blob", "port": "next" },
+          { "from": "n-blob", "to": "n-out", "port": "next" },
+          { "from": "n-out", "to": "n-end", "port": "next" }
+        ]
+      }
     }
   ],
   "activeVisionId": "vision-inspect",
