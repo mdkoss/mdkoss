@@ -3274,9 +3274,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     Draft.LoadStringParameters(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
                         ["cameraDeviceId"] = v.CameraDeviceId ?? "",
-                        ["pipelineJson"] = string.IsNullOrWhiteSpace(v.PipelineJson)
-                            ? "(empty — 用「编辑视觉流程…」)"
-                            : $"(nodes={CountVisionNodes(v.PipelineJson)})",
+                        ["pipeline"] = $"(nodes={v.Pipeline?.Nodes.Count ?? 0})",
                     });
                     Draft.SetParamKeySuggestions(["cameraDeviceId"]);
                     break;
@@ -3990,7 +3988,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             v.CameraDeviceId = cam?.Trim() ?? "";
         }
 
-        // pipelineJson is edited via VisionEditorWindow; ignore placeholder display rows.
+        // pipeline is edited via VisionEditorWindow; ignore placeholder display rows.
     }
 
     private void ApplyVar(string oldKey)
@@ -4583,17 +4581,19 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Name = v.Name,
         Description = v.Description,
         CameraDeviceId = v.CameraDeviceId,
-        PipelineJson = v.PipelineJson,
+        Pipeline = CloneVisionPipeline(v.Pipeline),
     };
 
-    private static int CountVisionNodes(string? pipelineJson)
+    private static MDKOSS.Core.Vision.VisionDocument? CloneVisionPipeline(MDKOSS.Core.Vision.VisionDocument? src)
     {
-        if (!MDKOSS.Core.Vision.VisionDocument.TryParse(pipelineJson, out var doc, out _))
+        if (src is null)
         {
-            return 0;
+            return null;
         }
 
-        return doc.Nodes.Count;
+        return MDKOSS.Core.Vision.VisionDocument.TryParse(src.ToJson(), out var copy, out _)
+            ? copy
+            : MDKOSS.Core.Vision.VisionDocument.CreateEmpty();
     }
 
     /// <summary>Status hint after an external editor (Flow / Vision) mutates the setting.</summary>
