@@ -2,13 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": ".NET Core Launch (Config / WinForms)",
+            "name": ".NET Core Launch (Config.Wpf)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/MDKOSS.Config/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.Config.dll",
+            "program": "${workspaceFolder}/src/MDKOSS.Config.Wpf/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.Config.Wpf.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/MDKOSS.Config/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
+            "cwd": "${workspaceFolder}/src/MDKOSS.Config.Wpf/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
             "console": "internalConsole",
             "stopAtEntry": false
         },

@@ -1,6 +1,6 @@
 # MDKOSS.Config.Wpf 界面设计
 
-离线配置主界面。WinForms 在线壳仍见 [MDKOSS.Config/design.md](../MDKOSS.Config/design.md)。
+离线配置主界面（WPF）。
 
 ## 布局（四区 + 菜单）
 

@@ -16,7 +16,7 @@ src/
 ├── MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Sample/
-└── MDKOSS.Config/
+└── MDKOSS.Config.Wpf/
 ```
 
 依赖：Drivers.* / Extensions.* → Extensions → Core。

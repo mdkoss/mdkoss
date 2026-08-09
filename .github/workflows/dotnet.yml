@@ -28,7 +28,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           dotnet publish src/MDKOSS.Cef/MDKOSS.Cef.csproj -c Release -o publish/cef
-          dotnet publish src/MDKOSS.Config/MDKOSS.Config.csproj -c Release -o publish/config
+          dotnet publish src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -c Release -o publish/config
       - name: Zip publish output
         if: startsWith(github.ref, 'refs/tags/v')
         run: tar -a -c -f "MDKOSS-${{ github.ref_name }}-win-x64.zip" publish

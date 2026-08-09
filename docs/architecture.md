@@ -76,7 +76,7 @@ flowchart TB
 MDKOSS.sln
 ├── src/MDKOSS.Sample/         # Demo / console 可执行入口（嵌入 CEF）
 ├── src/MDKOSS.Cef/            # CefSharp 界面库 + views
-├── src/MDKOSS.Config/         # WinForms 配置界面可执行入口
+├── src/MDKOSS.Config.Wpf/     # WPF 配置界面可执行入口
 ├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）
 ├── src/MDKOSS.Extensions/           # 扩展接入接口（IMdkExtension / Host）
 ├── src/MDKOSS.Drivers.Sim/          # sim 驱动插件
@@ -158,7 +158,7 @@ flowchart LR
 
 | 项目 / 参数 | 说明 |
 |-------------|------|
-| `MDKOSS.Config` | `MainForm` 托管运行时，提供配置管理与监控工具 |
+| `MDKOSS.Config.Wpf` | WPF 离线配置编辑（JSON / SQLite） |
 | `MDKOSS.Sample` | Demo / PNP 宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
 | `MDKOSS.Cef` | CefSharp 界面库（`CefMainForm` / `views`），由 Sample 引用 |
 

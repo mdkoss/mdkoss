@@ -97,8 +97,8 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setti
 # CEF HMI（读取配置 startPage → indexPnp.html）
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs/pnp.setting.json
 
-# WinForms 配置 / 监控
-dotnet run --project src/MDKOSS.Config/MDKOSS.Config.csproj -- --setting configs/pnp.setting.json
+# WPF 配置
+dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --setting configs/pnp.setting.json
 ```
 
 或根目录脚本：`run-pnp-cef.bat` / `run-pnp-console.bat`。

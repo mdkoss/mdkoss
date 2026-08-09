@@ -17,11 +17,10 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\MDKOSS.Config\MDKOSS.Config.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Config.Wpf\MDKOSS.Config.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\MDKOSS.Config\configs\sample.setting.json" Link="configs\sample.setting.json">
+    <None Include="..\..\src\MDKOSS.Config.Wpf\configs\sample.setting.json" Link="configs\sample.setting.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

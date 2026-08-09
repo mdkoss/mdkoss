@@ -146,7 +146,8 @@ public sealed class MdkConfigStoreTests
         Assert.Single(loaded.Devices);
         Assert.Equal("gpio", loaded.Devices[0].Type);
         Assert.Single(loaded.Axes);
-        Assert.Equal("axis", loaded.Axes[0].Type);
+        // axis family round-trips as geometry token (linear/rotary), not bare "axis".
+        Assert.Equal("linear", loaded.Axes[0].Type);
         Assert.Single(loaded.Tasks);
         Assert.Equal("poll", loaded.Tasks[0].Name);
         Assert.Single(loaded.Recipes);

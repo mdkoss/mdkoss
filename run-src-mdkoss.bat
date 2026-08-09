@@ -1,9 +1,9 @@
 @echo off
 setlocal
 
-set "PROJECT=src\MDKOSS.Config\MDKOSS.Config.csproj"
+set "PROJECT=src\MDKOSS.Config.Wpf\MDKOSS.Config.Wpf.csproj"
 
-echo [INFO] Running %PROJECT% (WinForms config UI)
+echo [INFO] Running %PROJECT% (WPF config UI)
 dotnet run --project "%PROJECT%"
 set "EXIT_CODE=%ERRORLEVEL%"
 
