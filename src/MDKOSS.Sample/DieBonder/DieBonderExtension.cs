@@ -41,7 +41,7 @@ public sealed class DieBonderExtension : IMdkExtension
         }
 
         var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskTypeKey : config.Name;
-        return new BondCycleTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters);
+        return new BondCycleTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters, ctx.AlarmManager);
     }
 
     private static MTaskBase? CreateMaterialConveyor(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
@@ -52,7 +52,7 @@ public sealed class DieBonderExtension : IMdkExtension
         }
 
         var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskTypeKey : config.Name;
-        return new MaterialConveyorTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters);
+        return new MaterialConveyorTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters, ctx.AlarmManager);
     }
 
     private static bool TryResolveDriver(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, out IDriver? driver)

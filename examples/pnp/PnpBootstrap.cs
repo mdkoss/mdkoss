@@ -57,7 +57,7 @@ public sealed class PnpExtension : IMdkExtension
         }
 
         var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskTypeKey : config.Name;
-        return new PnpCycleTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters);
+        return new PnpCycleTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters, ctx.AlarmManager);
     }
 
     private static MTaskBase? CreatePnpConveyor(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
@@ -72,7 +72,7 @@ public sealed class PnpExtension : IMdkExtension
         }
 
         var taskName = string.IsNullOrWhiteSpace(config.Name) ? taskTypeKey : config.Name;
-        return new PnpConveyorTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters);
+        return new PnpConveyorTask(taskName, config.IntervalMs, driver, ctx.Vars, ctx.Devices, config.Parameters, ctx.AlarmManager);
     }
 
     private static DeviceActionResult ExecuteTrayAction(

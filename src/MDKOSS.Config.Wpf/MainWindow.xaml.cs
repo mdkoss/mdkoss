@@ -132,7 +132,7 @@ public partial class MainWindow : Window
         var groups = new (string Title, ConfigModule[] Modules)[]
         {
             ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios, ConfigModule.Vios]),
-            ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes, ConfigModule.Visions]),
+            ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes, ConfigModule.Visions, ConfigModule.Alarms]),
             ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
         };
 
@@ -1374,6 +1374,7 @@ public partial class MainWindow : Window
     private void NavTasks_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Tasks);
     private void NavRecipes_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Recipes);
     private void NavVisions_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Visions);
+    private void NavAlarms_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Alarms);
 
     private void JumpTo(ConfigModule module)
     {

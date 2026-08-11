@@ -31,6 +31,29 @@
         const vars = data.vars || data.Vars || {};
         const devices = data.devices || data.Devices || {};
         const alarms = [];
+
+        // Catalog/runtime alarms published by MdkAlarmManager
+        let activeRaw = vars["alarms.active"] ?? vars["alarms.Active"];
+        if (typeof activeRaw === "string" && activeRaw.trim()) {
+          try {
+            const list = JSON.parse(activeRaw);
+            if (Array.isArray(list)) {
+              for (const a of list) {
+                if (a && a.display === false) continue;
+                const key = a.key || "";
+                const code = a.code ? `[${a.code}] ` : "";
+                const msg = a.msg || key || "报警";
+                const mod = a.module ? ` · ${a.module}` : "";
+                const time = a.triggertime || a.triggerTime || "";
+                alarms.push({
+                  bad: true,
+                  text: `${code}${msg}${mod}${time ? " @ " + time : ""}`,
+                });
+              }
+            }
+          } catch { /* ignore bad json */ }
+        }
+
         const op = vs(vars,"task.operation.state","");
         if (op==="fault"||op==="stopped") alarms.push({bad:op==="fault", text:`操作任务: ${op} — ${vs(vars,"task.operation.message","")}`});
         const df=vn(vars,"task.cycle.dev.fault",0); if(df>0) alarms.push({bad:true,text:`设备故障 ${df} 台`});

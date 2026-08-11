@@ -63,6 +63,7 @@
         <MenuItem Header="定位到 Tasks" Click="NavTasks_Click"/>
         <MenuItem Header="定位到 Recipes" Click="NavRecipes_Click"/>
         <MenuItem Header="定位到 Visions" Click="NavVisions_Click"/>
+        <MenuItem Header="定位到 Alarms" Click="NavAlarms_Click"/>
       </MenuItem>
       <MenuItem Header="调试(_D)">
         <MenuItem Header="Driver 调试…" Click="DebugDriver_Click"/>

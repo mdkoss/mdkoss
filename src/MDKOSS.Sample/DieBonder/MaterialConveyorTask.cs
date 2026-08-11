@@ -37,8 +37,9 @@ public sealed class MaterialConveyorTask : MotionTask
         IDriver driver,
         MVarStore vars,
         IReadOnlyDictionary<string, MDeviceBase> devices,
-        IReadOnlyDictionary<string, string>? parameters = null)
-        : base(name, intervalMs, driver, vars, devices)
+        IReadOnlyDictionary<string, string>? parameters = null,
+        MdkAlarmManager? alarms = null)
+        : base(name, intervalMs, driver, vars, devices, alarms)
     {
         parameters ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         _gpioId = Read(parameters, "gpioDeviceId", "gpio-machine");

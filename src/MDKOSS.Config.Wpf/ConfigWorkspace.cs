@@ -33,6 +33,7 @@ public enum ConfigModule
     Vars,
     Recipes,
     Visions,
+    Alarms,
     SysConfig,
     Database,
 }
@@ -361,6 +362,17 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         LabelType = "Type";
         LabelDriverId = "驱动";
         LabelValue = "DeviceId";
+    }
+
+    /// <summary>Field captions for Alarm editing (key/msg/code/solution/…).</summary>
+    public void ApplyAlarmFieldLabels()
+    {
+        LabelId = "key";
+        LabelName = "msg";
+        LabelType = "code";
+        LabelDescription = "solution";
+        LabelValue = "module";
+        LabelInterval = "triggertime";
     }
 
     public void SetQuickAddTypes(IEnumerable<string> types)
@@ -1350,6 +1362,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     ["cameraDeviceId"] = "",
                 };
                 break;
+            case ConfigModule.Alarms:
+                req.Id = UniqueId(_setting.Alarms.Select(a => a.Key), "alarm-new");
+                req.Name = "";
+                req.Type = "";
+                req.Description = "";
+                req.Value = "";
+                req.Enabled = true;
+                break;
             case ConfigModule.Vars:
                 req.Id = UniqueId(_setting.Vars.Keys, "var.new");
                 req.Value = "";
@@ -1378,6 +1398,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Vars => CommitVar(req),
             ConfigModule.Recipes => CommitRecipe(req),
             ConfigModule.Visions => CommitVision(req),
+            ConfigModule.Alarms => CommitAlarm(req),
             _ => throw new InvalidOperationException("当前模块不支持新建。"),
         };
 
@@ -1406,6 +1427,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Tasks => _setting.Tasks,
             ConfigModule.Recipes => _setting.Recipes,
             ConfigModule.Visions => _setting.Visions,
+            ConfigModule.Alarms => _setting.Alarms,
             ConfigModule.Vars => _setting.Vars,
             ConfigModule.SysConfig => new Dictionary<string, object?>
             {
@@ -2259,6 +2281,20 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 });
                 break;
             }
+            case ConfigModule.Alarms:
+            {
+                var rows = JsonSerializer.Deserialize<List<MdkSetting.AlarmConfig>>(json, JsonOptions) ?? [];
+                _setting.Alarms = replace ? rows : MergeByKey(_setting.Alarms, rows, a => a.Key, (a, b) =>
+                {
+                    a.Msg = b.Msg;
+                    a.Code = b.Code;
+                    a.Solution = b.Solution;
+                    a.TriggerTime = b.TriggerTime;
+                    a.Module = b.Module;
+                    a.Display = b.Display;
+                });
+                break;
+            }
             case ConfigModule.Vars:
             {
                 var rows = JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOptions)
@@ -2481,6 +2517,27 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         return new ComponentItem { Key = v.Id, Source = v, Module = ConfigModule.Visions, Title = v.Id };
     }
 
+    private ComponentItem CommitAlarm(CreateComponentRequest req)
+    {
+        if (_setting.Alarms.Any(a => string.Equals(a.Key, req.Id, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"报警 Key 已存在: {req.Id}");
+        }
+
+        var a = new MdkSetting.AlarmConfig
+        {
+            Key = req.Id,
+            Msg = req.Name ?? "",
+            Code = req.Type ?? "",
+            Solution = req.Description ?? "",
+            TriggerTime = "",
+            Module = req.Value ?? "",
+            Display = req.Enabled,
+        };
+        _setting.Alarms.Add(a);
+        return new ComponentItem { Key = a.Key, Source = a, Module = ConfigModule.Alarms, Title = a.Key };
+    }
+
     public void DuplicateSelected()
     {
         if (_selected is null)
@@ -2521,6 +2578,13 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 _setting.Visions.Add(nv);
                 SelectModule(_module, nv.Id);
                 break;
+            case ConfigModule.Alarms when _selected.Source is MdkSetting.AlarmConfig alarm:
+                var na = CloneAlarm(alarm);
+                na.Key = UniqueId(_setting.Alarms.Select(x => x.Key), alarm.Key + "_copy");
+                na.TriggerTime = "";
+                _setting.Alarms.Add(na);
+                SelectModule(_module, na.Key);
+                break;
             case ConfigModule.Vars when _selected.Source is KeyValuePair<string, object?> kv:
                 var newKey = UniqueId(_setting.Vars.Keys, kv.Key + "_copy");
                 _setting.Vars[newKey] = kv.Value;
@@ -2555,6 +2619,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Visions when _selected.Source is MdkSetting.VisionConfig v:
                 _setting.Visions.Remove(v);
+                break;
+            case ConfigModule.Alarms when _selected.Source is MdkSetting.AlarmConfig alarm:
+                _setting.Alarms.Remove(alarm);
                 break;
             case ConfigModule.Vars:
                 _setting.Vars.Remove(_selected.Key);
@@ -2602,6 +2669,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Visions:
                 MoveInList(_setting.Visions, _selected.Source as MdkSetting.VisionConfig, delta);
                 break;
+            case ConfigModule.Alarms:
+                MoveInList(_setting.Alarms, _selected.Source as MdkSetting.AlarmConfig, delta);
+                break;
             default:
                 throw new InvalidOperationException("当前模块不支持排序。");
         }
@@ -2643,6 +2713,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Visions when _selected.Source is MdkSetting.VisionConfig v:
                 ApplyVision(v);
+                break;
+            case ConfigModule.Alarms when _selected.Source is MdkSetting.AlarmConfig alarm:
+                ApplyAlarm(alarm);
                 break;
             case ConfigModule.Vars:
                 ApplyVar(_selected.Key);
@@ -2856,6 +2929,20 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Col3 = "vision",
                 Col4 = string.IsNullOrWhiteSpace(v.Name) ? (v.Description ?? "") : v.Name,
                 Col5 = string.IsNullOrWhiteSpace(v.CameraDeviceId) ? "" : v.CameraDeviceId,
+            }).ToList(),
+            ConfigModule.Alarms => _setting.Alarms.Select(a => new ComponentItem
+            {
+                Module = module,
+                Source = a,
+                Key = a.Key,
+                Title = string.IsNullOrWhiteSpace(a.Msg) ? a.Key : $"{a.Key} · {a.Msg}",
+                Subtitle = a.Code ?? "",
+                Col2 = a.Key,
+                Col3 = a.Code ?? "",
+                Col4 = a.Msg ?? "",
+                Col5 = a.Display ? "是" : "否",
+                Col6 = a.Module ?? "",
+                Col7 = a.TriggerTime ?? "",
             }).ToList(),
             ConfigModule.SysConfig => BuildSysItems(),
             ConfigModule.Database => BuildDbItems(),
@@ -3280,6 +3367,26 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         ["pipeline"] = $"(nodes={v.Pipeline?.Nodes.Count ?? 0})",
                     });
                     Draft.SetParamKeySuggestions(["cameraDeviceId"]);
+                    break;
+                case ConfigModule.Alarms when item.Source is MdkSetting.AlarmConfig alarm:
+                    SetDraftVisibility(
+                        id: true,
+                        name: true,
+                        type: true,
+                        description: true,
+                        value: true,
+                        interval: true,
+                        enabled: true);
+                    Draft.ShowParameters = false;
+                    Draft.ApplyAlarmFieldLabels();
+                    Draft.FieldId = alarm.Key;
+                    Draft.FieldName = alarm.Msg ?? "";
+                    Draft.FieldType = alarm.Code ?? "";
+                    Draft.FieldDescription = alarm.Solution ?? "";
+                    Draft.FieldValue = alarm.Module ?? "";
+                    Draft.FieldInterval = alarm.TriggerTime ?? "";
+                    Draft.FieldEnabled = alarm.Display;
+                    Draft.ParamKeySuggestions.Clear();
                     break;
                 case ConfigModule.Vars:
                     SetDraftVisibility(id: true, value: true);
@@ -3994,6 +4101,24 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         // pipeline is edited via VisionEditorWindow; ignore placeholder display rows.
     }
 
+    private void ApplyAlarm(MdkSetting.AlarmConfig alarm)
+    {
+        var newKey = RequireId(Draft.FieldId, "报警 Key");
+        if (!string.Equals(newKey, alarm.Key, StringComparison.OrdinalIgnoreCase)
+            && _setting.Alarms.Any(x => string.Equals(x.Key, newKey, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"报警 Key 已存在: {newKey}");
+        }
+
+        alarm.Key = newKey;
+        alarm.Msg = Draft.FieldName?.Trim() ?? "";
+        alarm.Code = Draft.FieldType?.Trim() ?? "";
+        alarm.Solution = Draft.FieldDescription?.Trim() ?? "";
+        alarm.Module = Draft.FieldValue?.Trim() ?? "";
+        alarm.TriggerTime = Draft.FieldInterval?.Trim() ?? "";
+        alarm.Display = Draft.FieldEnabled;
+    }
+
     private void ApplyVar(string oldKey)
     {
         var newKey = RequireId(Draft.FieldId, "变量 Key");
@@ -4360,9 +4485,20 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Vars:
             case ConfigModule.Recipes:
             case ConfigModule.Visions:
+            case ConfigModule.Alarms:
             case ConfigModule.Tasks:
                 ColHeader5 = "";
                 break;
+        }
+
+        if (module == ConfigModule.Alarms)
+        {
+            ColHeader2 = "key";
+            ColHeader3 = "code";
+            ColHeader4 = "msg";
+            ColHeader5 = "display";
+            ColHeader6 = "module";
+            ColHeader7 = "triggertime";
         }
     }
 
@@ -4379,6 +4515,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         ConfigModule.Vars => "Vars",
         ConfigModule.Recipes => "Recipes",
         ConfigModule.Visions => "Visions",
+        ConfigModule.Alarms => "Alarms",
         ConfigModule.SysConfig => "SysConfig",
         ConfigModule.Database => "Database",
         _ => m.ToString(),
@@ -4585,6 +4722,17 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Description = v.Description,
         CameraDeviceId = v.CameraDeviceId,
         Pipeline = CloneVisionPipeline(v.Pipeline),
+    };
+
+    private static MdkSetting.AlarmConfig CloneAlarm(MdkSetting.AlarmConfig a) => new()
+    {
+        Key = a.Key,
+        Msg = a.Msg,
+        Code = a.Code,
+        Solution = a.Solution,
+        TriggerTime = a.TriggerTime,
+        Module = a.Module,
+        Display = a.Display,
     };
 
     private static MDKOSS.Core.Vision.VisionDocument? CloneVisionPipeline(MDKOSS.Core.Vision.VisionDocument? src)

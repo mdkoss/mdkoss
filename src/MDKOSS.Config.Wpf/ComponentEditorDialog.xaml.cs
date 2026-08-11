@@ -21,6 +21,42 @@ public partial class ComponentEditorDialog : Window
         BindOptions(request);
         Prefill(request);
         ParamGrid.ItemsSource = _paramRows;
+
+        if (_module == ConfigModule.Alarms)
+        {
+            ApplyAlarmCreateLabels();
+        }
+    }
+
+    private void ApplyAlarmCreateLabels()
+    {
+        // XAML panels: Id / Name / Type / Description / Value / Enabled
+        if (IdPanel.Children[0] is System.Windows.Controls.TextBlock idLabel)
+        {
+            idLabel.Text = "key";
+        }
+
+        if (NamePanel.Children[0] is System.Windows.Controls.TextBlock nameLabel)
+        {
+            nameLabel.Text = "msg";
+        }
+
+        if (TypePanel.Children[0] is System.Windows.Controls.TextBlock typeLabel)
+        {
+            typeLabel.Text = "code";
+        }
+
+        if (DescriptionPanel.Children[0] is System.Windows.Controls.TextBlock descLabel)
+        {
+            descLabel.Text = "solution";
+        }
+
+        if (ValuePanel.Children[0] is System.Windows.Controls.TextBlock valueLabel)
+        {
+            valueLabel.Text = "module";
+        }
+
+        EnabledCheck.Content = "display";
     }
 
     public CreateComponentRequest Request { get; }
@@ -75,6 +111,14 @@ public partial class ComponentEditorDialog : Window
                 Show(NamePanel, true);
                 Show(DescriptionPanel, true);
                 Show(ParamsPanel, true);
+                break;
+            case ConfigModule.Alarms:
+                Show(IdPanel, true);
+                Show(NamePanel, true);
+                Show(TypePanel, true);
+                Show(DescriptionPanel, true);
+                Show(ValuePanel, true);
+                Show(EnabledPanel, true);
                 break;
             case ConfigModule.Vars:
                 Show(IdPanel, true);
@@ -302,6 +346,7 @@ public partial class ComponentEditorDialog : Window
             case ConfigModule.Platform:
             case ConfigModule.Recipes:
             case ConfigModule.Visions:
+            case ConfigModule.Alarms:
             case ConfigModule.Vars:
                 if (string.IsNullOrWhiteSpace(Request.Id))
                 {

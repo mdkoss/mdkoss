@@ -18,12 +18,14 @@ public abstract class MotionTask : MTaskBase
         int intervalMs,
         IDriver driver,
         MVarStore vars,
-        IReadOnlyDictionary<string, MDeviceBase> devices)
+        IReadOnlyDictionary<string, MDeviceBase> devices,
+        MdkAlarmManager? alarms = null)
         : base(name, intervalMs)
     {
         Driver = driver;
         Vars = vars;
         Devices = devices;
+        Alarms = alarms;
     }
 
     protected IDriver Driver { get; }
@@ -31,6 +33,9 @@ public abstract class MotionTask : MTaskBase
     protected MVarStore Vars { get; }
 
     protected IReadOnlyDictionary<string, MDeviceBase> Devices { get; }
+
+    /// <summary>Shared runtime alarm manager (null when constructed without one).</summary>
+    protected MdkAlarmManager? Alarms { get; }
 
     // -----------------------------
     // Device lookup
@@ -197,6 +202,50 @@ public abstract class MotionTask : MTaskBase
     }
 
     // -----------------------------
+    // Alarms
+    // -----------------------------
+
+    /// <summary>
+    /// Triggers a catalog alarm by key. Sets <c>triggertime</c> and publishes to
+    /// <see cref="MdkAlarmManager.ActiveVarKey"/>. Returns false when manager missing or key unknown.
+    /// </summary>
+    protected bool TriggerAlarm(string key) =>
+        Alarms is not null && Alarms.Trigger(key, out _);
+
+    /// <summary>
+    /// Triggers a catalog alarm with optional field overrides (msg / code / solution / module / display).
+    /// </summary>
+    protected bool TriggerAlarm(
+        string key,
+        string? msg = null,
+        string? code = null,
+        string? solution = null,
+        string? module = null,
+        bool? display = null)
+    {
+        if (Alarms is null)
+        {
+            return false;
+        }
+
+        return Alarms.Trigger(
+            key,
+            out _,
+            msgOverride: msg,
+            codeOverride: code,
+            solutionOverride: solution,
+            moduleOverride: module,
+            displayOverride: display);
+    }
+
+    /// <summary>Clears an active alarm by key.</summary>
+    protected bool ClearAlarm(string key) =>
+        Alarms is not null && Alarms.Clear(key, out _);
+
+    /// <summary>Clears all active alarms.</summary>
+    protected void ClearAllAlarms() => Alarms?.ClearAll();
+
+    // -----------------------------
     // Task parameter APIs (thread-safe)
     // -----------------------------
     protected void SetParam<T>(string key, T value)
@@ -296,8 +345,9 @@ public sealed class TaskMotionTask : MotionTask
         IDriver driver,
         MVarStore vars,
         IReadOnlyDictionary<string, MDeviceBase> devices,
-        IReadOnlyDictionary<string, string>? parameters = null)
-        : base(name, intervalMs, driver, vars, devices)
+        IReadOnlyDictionary<string, string>? parameters = null,
+        MdkAlarmManager? alarms = null)
+        : base(name, intervalMs, driver, vars, devices, alarms)
     {
         if (parameters is null)
         {

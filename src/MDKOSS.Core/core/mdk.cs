@@ -28,6 +28,9 @@ public sealed class MdkRuntime : IDisposable
     /// <summary>Recipe presets backed by <see cref="MdkSetting.Recipes"/>.</summary>
     public MdkRecipeManager RecipeManager { get; }
 
+    /// <summary>Alarm catalog + active alarm state.</summary>
+    public MdkAlarmManager AlarmManager { get; }
+
     /// <summary>SQLite persistence for orders, recipes, and teach points.</summary>
     public MdkDataStore DataStore { get; }
 
@@ -41,6 +44,7 @@ public sealed class MdkRuntime : IDisposable
         SettingPath = string.IsNullOrWhiteSpace(settingPath) ? null : Path.GetFullPath(settingPath.Trim());
         DataStore = new MdkDataStore(ResolveDatabasePath(setting));
         RecipeManager = new MdkRecipeManager(setting, Vars);
+        AlarmManager = new MdkAlarmManager(setting, Vars);
     }
 
     private static string ResolveDatabasePath(MdkSetting setting) =>
@@ -198,7 +202,8 @@ public sealed class MdkRuntime : IDisposable
             Vars,
             GetSnapshot,
             () => _tasks.Values.ToList(),
-            flowHost: new RuntimeFlowHost(this));
+            flowHost: new RuntimeFlowHost(this),
+            alarmManager: AlarmManager);
 
         return RuntimeTaskFactory.Create(taskType, ctx, config);
     }

@@ -13,7 +13,8 @@ public sealed class TaskBootstrapContext
         MVarStore vars,
         Func<RuntimeSnapshot> getSnapshot,
         Func<IReadOnlyList<MTaskBase>> listTasks,
-        IFlowRuntimeHost? flowHost = null)
+        IFlowRuntimeHost? flowHost = null,
+        MdkAlarmManager? alarmManager = null)
     {
         Drivers = drivers;
         Devices = devices;
@@ -21,6 +22,7 @@ public sealed class TaskBootstrapContext
         GetSnapshot = getSnapshot;
         ListTasks = listTasks;
         FlowHost = flowHost;
+        AlarmManager = alarmManager;
     }
 
     public IReadOnlyDictionary<string, IDriver> Drivers { get; }
@@ -35,6 +37,9 @@ public sealed class TaskBootstrapContext
 
     /// <summary>Optional host for <c>flow</c> task IO / device actions.</summary>
     public IFlowRuntimeHost? FlowHost { get; }
+
+    /// <summary>Optional alarm manager for motion / custom tasks.</summary>
+    public MdkAlarmManager? AlarmManager { get; }
 }
 
 /// <summary>Registry for task implementations keyed by config <c>type</c> string.</summary>
@@ -128,7 +133,8 @@ public static class RuntimeTaskFactory
             driver,
             ctx.Vars,
             ctx.Devices,
-            config.Parameters);
+            config.Parameters,
+            ctx.AlarmManager);
     }
 
     private static MTaskBase? CreateFlow(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)

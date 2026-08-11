@@ -65,6 +65,10 @@ public sealed class MdkSetting
     /// <summary>Optional default vision id applied by hosts.</summary>
     public string? ActiveVisionId { get; set; }
 
+    /// <summary>Alarm definitions (key / msg / code / solution / …) edited in Config.Wpf.</summary>
+    [JsonPropertyName("alarms")]
+    public List<AlarmConfig> Alarms { get; set; } = [];
+
     /// <summary>
     /// SQLite database path. When unset, defaults to <c>data/mdk.db</c> under
     /// <see cref="AppContext.BaseDirectory"/>.
@@ -119,6 +123,10 @@ public sealed class MdkSetting
         Axes ??= [];
         Platforms ??= [];
         Devices ??= [];
+        Alarms ??= [];
+        Recipes ??= [];
+        Visions ??= [];
+        Vars ??= new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
 
         var moveAxis = Devices
             .Where(d => AxisDeviceParameterSet.IsAxisFamilyType(d.Type))
@@ -216,6 +224,32 @@ public sealed class MdkSetting
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; }
         public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Alarm catalog entry used by runtime trigger/clear APIs.</summary>
+    public sealed class AlarmConfig
+    {
+        /// <summary>Unique alarm key (lookup id for Trigger/Clear).</summary>
+        public string Key { get; set; } = string.Empty;
+
+        /// <summary>Alarm message text.</summary>
+        public string Msg { get; set; } = string.Empty;
+
+        /// <summary>Alarm / error code.</summary>
+        public string Code { get; set; } = string.Empty;
+
+        /// <summary>Suggested recovery / solution text.</summary>
+        public string Solution { get; set; } = string.Empty;
+
+        /// <summary>Last trigger time (filled at runtime; editable in config).</summary>
+        [JsonPropertyName("triggertime")]
+        public string TriggerTime { get; set; } = string.Empty;
+
+        /// <summary>Owning module / subsystem label.</summary>
+        public string Module { get; set; } = string.Empty;
+
+        /// <summary>Whether the alarm should appear in monitoring UI when active.</summary>
+        public bool Display { get; set; } = true;
     }
 
     /// <summary>Named vision pipeline definition.</summary>
