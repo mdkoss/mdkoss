@@ -26,6 +26,8 @@ public sealed class MonitoringServer : IDisposable
         _modules.Add(new OrdersApiModule(runtime));
         _modules.Add(new TeachApiModule(runtime));
         _modules.Add(new DbApiModule(runtime));
+        _modules.Add(new AlarmsApiModule(runtime));
+        _modules.Add(new VisionsApiModule(runtime));
         _modules.Add(new ConfigApiModule(runtime));
         _modules.Add(new TasksApiModule(runtime));
         _modules.Add(new TaskApiModule(runtime));
@@ -62,11 +64,15 @@ public sealed class MonitoringServer : IDisposable
         RegisterViewsPage(_staticPages, "/monitor_axis.html");
         RegisterViewsPage(_staticPages, "/monitor_camera.html");
         RegisterViewsPage(_staticPages, "/monitor_task.html");
+        RegisterViewsPage(_staticPages, "/monitor_alarm.html");
+        RegisterViewsPage(_staticPages, "/monitor_vision.html");
         RegisterViewsPage(_staticPages, "/debug_axis.html");
         RegisterViewsPage(_staticPages, "/debug_camera.html");
         RegisterViewsPage(_staticPages, "/debug_driver.html");
         RegisterViewsPage(_staticPages, "/debug_io.html");
         RegisterViewsPage(_staticPages, "/debug_machine.html");
+        RegisterViewsPage(_staticPages, "/debug_alarm.html");
+        RegisterViewsPage(_staticPages, "/debug_vision.html");
         RegisterViewsPage(_staticPages, "/man_driver.html");
         RegisterViewsPage(_staticPages, "/man_device.html");
         RegisterViewsPage(_staticPages, "/man_axis.html");
@@ -74,6 +80,8 @@ public sealed class MonitoringServer : IDisposable
         RegisterViewsPage(_staticPages, "/man_gpio.html");
         RegisterViewsPage(_staticPages, "/man_recipe.html");
         RegisterViewsPage(_staticPages, "/man_task.html");
+        RegisterViewsPage(_staticPages, "/man_alarm.html");
+        RegisterViewsPage(_staticPages, "/man_vision.html");
         RegisterViewsPage(_staticPages, "/popup_devices.html");
         RegisterViewsPage(_staticPages, "/popup_tasks.html");
         RegisterViewsPage(_staticPages, "/popup_vars.html");
@@ -224,6 +232,31 @@ public sealed class MonitoringServer : IDisposable
 
     private async Task HandleAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
+        try
+        {
+            await HandleCoreAsync(context, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                await WriteResponseAsync(
+                        context.Response,
+                        "application/json; charset=utf-8",
+                        $"{{\"success\":false,\"error\":\"server_error\",\"message\":\"{ex.GetType().Name}\"}}",
+                        cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch
+            {
+                // Response may already be closed.
+            }
+        }
+    }
+
+    private async Task HandleCoreAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
         var path = context.Request.Url?.AbsolutePath?.TrimEnd('/') ?? "/";
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -243,9 +276,11 @@ public sealed class MonitoringServer : IDisposable
             }
         }
 
-        // 2. Static pages (HTML loaded at startup)
+        // 2. Static pages — prefer live views/ files so Sample always serves current HTML
         if (_staticPages.TryGetValue(path, out var html))
         {
+            var fileName = string.IsNullOrEmpty(path) || path == "/" ? "index.html" : path.TrimStart('/');
+            html = ViewsHtml.TryLoad(fileName) ?? html;
             await WriteResponseAsync(context.Response, "text/html; charset=utf-8", html, cancellationToken)
                 .ConfigureAwait(false);
             return;

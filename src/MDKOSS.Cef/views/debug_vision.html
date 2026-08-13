@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 视觉调试</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="debug" data-tool-page="debug_vision">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">视觉调试 <span class="pill warn">可写</span></div>
+        <div class="sub">POST /api/devices/{id}/action · run / captureAndRun</div>
+      </div>
+      <a class="link-btn" href="/monitor_vision.html">只读监控 →</a>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>视觉设备</label>
+        <select id="selDev"><option value="">— 选择 —</option></select>
+      </div>
+      <div class="form-group">
+        <label>覆盖流程 Id</label>
+        <input id="txtVision" placeholder="留空则用设备 visionId" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>覆盖图像路径</label>
+        <input id="txtImage" placeholder="可选；空则自动生成测试图" />
+      </div>
+      <div class="form-group" style="align-self:flex-end">
+        <div class="btn-group">
+          <button type="button" class="btn primary" id="btnRun">Run</button>
+          <button type="button" class="btn" id="btnCapture">CaptureAndRun</button>
+          <button type="button" class="btn" id="btnStatus">Status</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card span-3"><div class="label">OK</div><div class="value" id="vOk">—</div></div>
+      <div class="card span-3"><div class="label">X</div><div class="value" id="vX">—</div></div>
+      <div class="card span-3"><div class="label">Y</div><div class="value" id="vY">—</div></div>
+      <div class="card span-3"><div class="label">Score</div><div class="value" id="vScore">—</div></div>
+      <div class="card span-12">
+        <div class="label">最近结果</div>
+        <pre id="out">—</pre>
+      </div>
+      <div class="card span-12">
+        <h2 class="panel-title">日志</h2>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, qs, fetchJson, postJson, toast, logLine } = MdkTool;
+    const VIS = new Set(["visiondev", "vision"]);
+    const sel = document.getElementById("selDev");
+    const out = document.getElementById("out");
+    const logBox = document.getElementById("logBox");
+    let preferred = qs("deviceId", "");
+
+    async function refreshDevices() {
+      const data = await fetchJson("/api/status");
+      const devices = field(data, "devices", "Devices") || {};
+      const cur = sel.value || preferred;
+      const opts = Object.entries(devices)
+        .filter(([, d]) => VIS.has(String(field(d, "type", "Type") || "").toLowerCase()))
+        .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)}</option>`);
+      sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
+      if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      else if (sel.options.length > 1) sel.selectedIndex = 1;
+      preferred = "";
+    }
+
+    function showResult(data) {
+      const payload = data?.data ?? data;
+      out.textContent = JSON.stringify(payload, null, 2);
+      const pose = payload?.pose || payload?.data?.pose || {};
+      const ok = payload?.ok ?? pose.ok;
+      document.getElementById("vOk").textContent = ok == null ? "—" : String(ok);
+      document.getElementById("vX").textContent = pose.x ?? pose.X ?? "—";
+      document.getElementById("vY").textContent = pose.y ?? pose.Y ?? "—";
+      document.getElementById("vScore").textContent = pose.score ?? pose.Score ?? "—";
+    }
+
+    async function action(name) {
+      const id = sel.value;
+      if (!id) { toast("请选择视觉设备", false); return; }
+      const parameters = {};
+      const image = document.getElementById("txtImage").value.trim();
+      const visionId = document.getElementById("txtVision").value.trim();
+      if (image) parameters.imagePath = image;
+      if (visionId) parameters.visionId = visionId;
+      try {
+        const data = await postJson(`/api/devices/${encodeURIComponent(id)}/action`, { action: name, parameters });
+        showResult(data);
+        toast(name + " 成功", true);
+        logLine(logBox, name + " ok", true);
+      } catch (e) {
+        out.textContent = e.message || String(e);
+        toast(e.message || "失败", false);
+        logLine(logBox, name + " fail: " + e.message, false);
+      }
+    }
+
+    document.getElementById("btnRun").onclick = () => action("run");
+    document.getElementById("btnCapture").onclick = () => action("captureAndRun");
+    document.getElementById("btnStatus").onclick = () => action("status");
+
+    refreshDevices().catch((e) => { out.textContent = e.message; });
+    setInterval(() => refreshDevices().catch(() => {}), 3000);
+  </script>
+</body>
+</html>

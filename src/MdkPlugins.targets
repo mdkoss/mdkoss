@@ -7,6 +7,11 @@
     <MdkPluginsRoot>$(MSBuildThisFileDirectory)</MdkPluginsRoot>
   </PropertyGroup>
 
+  <!-- Hosts load Serial from plugins/ but JIT of SerialDevice needs System.IO.Ports in the default load context. -->
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="9.0.0" />
+  </ItemGroup>
+
   <ItemGroup Condition="'@(MdkPluginProject)' == ''">
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Sim\MDKOSS.Drivers.Sim.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Gts\MDKOSS.Drivers.Gts.csproj" />
@@ -56,12 +61,16 @@
       SkipUnchangedFiles="true"
       Condition="Exists('%(MdkPluginAssembly.Identity)')" />
 
-    <!-- Serial / other package dependencies beside plugins -->
+    <!-- Serial / other package dependencies: copy next to the plugin AND the host exe.
+         Default ALC (and JIT of SerialDevice.Dispose) looks beside the exe; PluginLoadContext looks in plugins/. -->
+    <PropertyGroup>
+      <_SerialOutDir>$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\</_SerialOutDir>
+    </PropertyGroup>
     <ItemGroup>
-      <_SerialDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\System.IO.Ports.dll" />
-      <_SerialDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\System.IO.Ports.*.dll" />
-      <_SerialDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
-      <_SerialRuntime Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\runtimes\**\*.*" />
+      <_SerialDeps Include="$(_SerialOutDir)System.IO.Ports.dll" />
+      <_SerialDeps Include="$(_SerialOutDir)System.IO.Ports.*.dll" />
+      <_SerialDepsJson Include="$(_SerialOutDir)*.deps.json" />
+      <_SerialRuntime Include="$(_SerialOutDir)runtimes\win\**\*.*" />
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.dll" />
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.*.dll" />
       <_ModServerDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
@@ -74,6 +83,12 @@
       Condition="Exists('%(_SerialDeps.Identity)')" />
 
     <Copy
+      SourceFiles="@(_SerialDeps)"
+      DestinationFolder="$(_HostOutDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_SerialDeps.Identity)')" />
+
+    <Copy
       SourceFiles="@(_SerialDepsJson)"
       DestinationFolder="$(MdkPluginsOutputDir)"
       SkipUnchangedFiles="true"
@@ -81,7 +96,13 @@
 
     <Copy
       SourceFiles="@(_SerialRuntime)"
-      DestinationFiles="@(_SerialRuntime->'$(MdkPluginsOutputDir)runtimes\%(RecursiveDir)%(Filename)%(Extension)')"
+      DestinationFiles="@(_SerialRuntime->'$(MdkPluginsOutputDir)runtimes\win\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(_SerialRuntime)' != ''" />
+
+    <Copy
+      SourceFiles="@(_SerialRuntime)"
+      DestinationFiles="@(_SerialRuntime->'$(_HostOutDir)runtimes\win\%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
       Condition="'@(_SerialRuntime)' != ''" />
 

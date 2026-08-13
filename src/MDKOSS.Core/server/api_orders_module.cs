@@ -75,29 +75,6 @@ public sealed class OrdersApiModule : MonitoringApiModule
         return false;
     }
 
-    private static string? GetQueryValue(string query, string name)
-    {
-        if (string.IsNullOrEmpty(query))
-        {
-            return null;
-        }
-
-        var q = query.StartsWith('?') ? query[1..] : query;
-        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var eq = part.IndexOf('=');
-            var key = eq >= 0 ? part[..eq] : part;
-            if (!string.Equals(Uri.UnescapeDataString(key), name, StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            return eq >= 0 ? Uri.UnescapeDataString(part[(eq + 1)..]) : string.Empty;
-        }
-
-        return null;
-    }
-
     private static Task WriteMutationResultAsync(
         HttpListenerResponse response,
         bool success,

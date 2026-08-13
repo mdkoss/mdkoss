@@ -3,12 +3,18 @@ namespace MDKOSS.Core.Monitor;
 /// <summary>Loads HTML from <c>{BaseDirectory}/views/</c>.</summary>
 internal static class ViewsHtml
 {
-    public static string Load(string fileName, string missingTitle)
+    public static string? TryLoad(string fileName)
     {
         var fullPath = Path.Combine(AppContext.BaseDirectory, "views", fileName);
-        if (File.Exists(fullPath))
+        return File.Exists(fullPath) ? File.ReadAllText(fullPath) : null;
+    }
+
+    public static string Load(string fileName, string missingTitle)
+    {
+        var html = TryLoad(fileName);
+        if (html is not null)
         {
-            return File.ReadAllText(fullPath);
+            return html;
         }
 
         return $"""

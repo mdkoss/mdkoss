@@ -1,26 +1,27 @@
-/* 深色主题 · 深蓝风格 — index / popup_* */
+/* 深色主题 · 高对比深蓝 — index / popup_* · 面向 1920×1080 工控屏 */
 :root {
-  --bg: #070d18;
-  --panel: #0e1830;
-  --panel2: #0a1224;
-  --text: #e8f0ff;
-  --muted: #8fa3cc;
-  --line: #1a2a4e;
-  --accent: #4e8cff;
-  --ok: #35d08f;
-  --warn: #ffcc66;
-  --danger: #ff5d5d;
-  --input-bg: #0a1120;
-  --btn-bg: #162644;
-  --btn-hover: #1d3157;
-  --table-head: #121c30;
-  --log-bg: #080d18;
-  --chrome-bg: rgba(10, 16, 28, 0.92);
-  --chrome-home: #142038;
-  --chrome-home-hover: #1a2a4a;
-  --toast-bg: #1a2844;
-  --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  --radius: 10px;
-  --top-h: 52px;
-  --bottom-h: 72px;
+  --bg: #0b1428;
+  --panel: #16264a;
+  --panel2: #101c38;
+  --text: #f4f7ff;
+  --muted: #c4d2ee;
+  --line: #4a6aa3;
+  --accent: #5ba3ff;
+  --ok: #3ee6a0;
+  --warn: #ffd166;
+  --danger: #ff6b6b;
+  --input-bg: #0e1a32;
+  --btn-bg: #1c345f;
+  --btn-hover: #27477e;
+  --table-head: #1a3058;
+  --log-bg: #0a1324;
+  --chrome-bg: #12203c;
+  --chrome-home: #1c345f;
+  --chrome-home-hover: #27477e;
+  --toast-bg: #1c345f;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --radius: 8px;
+  --top-h: 64px;
+  --bottom-h: 100px;
+  --mono: #c8dcff;
 }

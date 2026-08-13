@@ -31,7 +31,7 @@
     </div>
     <div class="card">
       <div class="label">状态</div>
-      <pre id="out" style="margin-top:8px;font-size:12px;color:var(--muted);white-space:pre-wrap">—</pre>
+      <pre id="out" style="margin-top:8px;white-space:pre-wrap">—</pre>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
@@ -56,16 +56,26 @@
       preferred = "";
     }
 
-    async function call(path, body) {
+    async function callExt(path, body) {
+      const id = sel.value;
+      if (!id) { toast("请选择相机", false); return; }
+      const url = path.includes("?") ? `${path}&deviceId=${encodeURIComponent(id)}` : `${path}?deviceId=${encodeURIComponent(id)}`;
+      if (body) return postJson(url, Object.assign({ deviceId: id }, body));
+      if (path.includes("status")) return fetchJson(url);
+      return postJson(url, { deviceId: id });
+    }
+
+    async function call(path, action) {
       const id = sel.value;
       if (!id) { toast("请选择相机", false); return; }
       try {
-        const url = path.includes("?") ? `${path}&deviceId=${encodeURIComponent(id)}` : `${path}?deviceId=${encodeURIComponent(id)}`;
-        const data = body
-          ? await postJson(url, Object.assign({ deviceId: id }, body))
-          : path.includes("status")
-            ? await fetchJson(url)
-            : await postJson(url, { deviceId: id });
+        let data;
+        try {
+          data = await callExt(path);
+        } catch (extErr) {
+          if (!action) throw extErr;
+          data = await postJson(`/api/devices/${encodeURIComponent(id)}/action`, { action });
+        }
         out.textContent = JSON.stringify(data, null, 2);
         toast("成功", true);
       } catch (e) {
@@ -76,8 +86,8 @@
 
     document.getElementById("btnOpen").onclick = () => call("/api/extcamera/open");
     document.getElementById("btnClose").onclick = () => call("/api/extcamera/close");
-    document.getElementById("btnTrigger").onclick = () => call("/api/extcamera/trigger");
-    document.getElementById("btnStatus").onclick = () => call("/api/extcamera/status");
+    document.getElementById("btnTrigger").onclick = () => call("/api/extcamera/trigger", "trigger");
+    document.getElementById("btnStatus").onclick = () => call("/api/extcamera/status", "status");
 
     refreshDevices().catch((e) => { out.textContent = e.message; });
     setInterval(() => refreshDevices().catch(() => {}), 3000);

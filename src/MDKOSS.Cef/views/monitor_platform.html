@@ -43,17 +43,19 @@
       </div>
       <div class="card span-12">
         <div class="label">轴状态（platformAxes）</div>
-        <table>
-          <thead>
-            <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>位置</th><th>速度</th><th>报警</th></tr>
-          </thead>
-          <tbody id="axisRows"><tr><td colspan="7" style="color:var(--muted)">请选择平台</td></tr></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>位置</th><th>速度</th><th>报警</th></tr>
+            </thead>
+            <tbody id="axisRows"><tr><td colspan="7" style="color:var(--muted)">请选择平台</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
   <script>
-    const PLATFORM = new Set(["platform","xy","xyz","xyzu","xyzuv","xyzuvw"]);
+    const PLATFORM = new Set(["platform","x","xy","xyz","xyzu","xyzuv","xyzuvw"]);
     const sel = document.getElementById("selPlatform");
     const lnkTeach = document.getElementById("lnkTeach");
     const q = new URLSearchParams(location.search);
@@ -107,15 +109,16 @@
         return;
       }
       document.getElementById("axisRows").innerHTML = list.map(ax=>{
-        const letter = ax.letter ?? ax.Letter ?? ax.axis ?? ax.Axis ?? "—";
+        const letter = ax.axisLetter ?? ax.AxisLetter ?? ax.letter ?? ax.Letter ?? ax.axis ?? ax.Axis ?? "—";
         const driver = ax.driverId ?? ax.DriverId ?? "—";
-        const online = ax.driverConnected ?? ax.DriverConnected ?? ax.online ?? ax.Online;
-        const enabled = ax.enabled ?? ax.Enabled ?? ax.enable ?? ax.Enable;
+        const axisId = ax.axisDeviceId ?? ax.AxisDeviceId ?? "";
+        const online = ax.driverOnline ?? ax.DriverOnline ?? ax.driverConnected ?? ax.DriverConnected ?? ax.online ?? ax.Online;
+        const enabled = ax.motionEnabled ?? ax.MotionEnabled ?? ax.enabled ?? ax.Enabled;
         const pos = ax.position ?? ax.Position ?? ax.pos ?? "—";
         const vel = ax.velocity ?? ax.Velocity ?? ax.speed ?? "—";
-        const alarm = ax.alarm ?? ax.Alarm ?? ax.fault ?? ax.Fault ?? "—";
+        const alarm = ax.error ?? ax.Error ?? ax.alarm ?? ax.Alarm ?? ax.fault ?? ax.Fault ?? "—";
         return `<tr>
-          <td>${esc(letter)}</td><td>${esc(driver)}</td>
+          <td>${esc(letter)}${axisId ? ` <span style="color:var(--muted);font-size:11px">${esc(axisId)}</span>` : ""}</td><td>${esc(driver)}</td>
           <td>${online===true?"是":online===false?"否":esc(online)}</td>
           <td>${enabled===true?"是":enabled===false?"否":esc(enabled)}</td>
           <td>${esc(pos)}</td><td>${esc(vel)}</td><td>${esc(alarm)}</td>

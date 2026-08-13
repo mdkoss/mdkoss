@@ -12,7 +12,9 @@
         { id: "monitor_platform", href: "/monitor_platform.html", label: "平台" },
         { id: "monitor_axis", href: "/monitor_axis.html", label: "轴" },
         { id: "monitor_camera", href: "/monitor_camera.html", label: "相机" },
+        { id: "monitor_vision", href: "/monitor_vision.html", label: "视觉" },
         { id: "monitor_task", href: "/monitor_task.html", label: "任务" },
+        { id: "monitor_alarm", href: "/monitor_alarm.html", label: "报警" },
       ],
     },
     debug: {
@@ -23,9 +25,11 @@
         { id: "debug_axis", href: "/debug_axis.html", label: "轴" },
         { id: "debug_io", href: "/debug_io.html", label: "IO 强制" },
         { id: "debug_camera", href: "/debug_camera.html", label: "相机" },
+        { id: "debug_vision", href: "/debug_vision.html", label: "视觉" },
         { id: "debug_driver", href: "/debug_driver.html", label: "驱动" },
         { id: "debug_db", href: "/debug_db.html", label: "数据库" },
         { id: "debug_machine", href: "/debug_machine.html", label: "整机" },
+        { id: "debug_alarm", href: "/debug_alarm.html", label: "报警" },
       ],
     },
     man: {
@@ -38,6 +42,8 @@
         { id: "man_gpio", href: "/man_gpio.html", label: "GPIO" },
         { id: "man_recipe", href: "/man_recipe.html", label: "排单" },
         { id: "man_task", href: "/man_task.html", label: "任务" },
+        { id: "man_vision", href: "/man_vision.html", label: "视觉" },
+        { id: "man_alarm", href: "/man_alarm.html", label: "报警" },
       ],
     },
   };
@@ -78,7 +84,7 @@
 
     document.body.setAttribute("data-tool-group", group);
     document.body.setAttribute("data-tool-page", page);
-    document.body.setAttribute("data-theme", group === "man" ? "white" : "gray");
+    document.body.setAttribute("data-theme", "gray");
 
     // Remove ad-hoc page navs to avoid duplicates
     document.querySelectorAll(".header nav.nav, .header .nav").forEach((n) => n.remove());

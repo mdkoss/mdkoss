@@ -103,4 +103,27 @@ public abstract class MonitoringApiModule
     {
         return JsonSerializer.Deserialize<T>(json, options ?? IoWriteJsonOptions);
     }
+
+    protected static string? GetQueryValue(string? query, string name)
+    {
+        if (string.IsNullOrEmpty(query) || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var q = query.StartsWith('?') ? query[1..] : query;
+        foreach (var part in q.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            var key = eq >= 0 ? part[..eq] : part;
+            if (!string.Equals(Uri.UnescapeDataString(key), name, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            return eq >= 0 ? Uri.UnescapeDataString(part[(eq + 1)..]) : string.Empty;
+        }
+
+        return null;
+    }
 }

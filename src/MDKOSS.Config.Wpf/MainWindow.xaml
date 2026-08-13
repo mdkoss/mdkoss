@@ -6,6 +6,7 @@
         Title="MDKOSS.Config.Wpf"
         Height="760" Width="1360"
         MinHeight="560" MinWidth="1040"
+        Icon="pack://application:,,,/Assets/app.ico"
         Background="{StaticResource BgBrush}"
         Foreground="{StaticResource TextBrush}"
         FontFamily="Segoe UI"

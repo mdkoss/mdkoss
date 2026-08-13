@@ -7,15 +7,7 @@
   <link rel="stylesheet" href="/css/theme-navy.css" />
   <link rel="stylesheet" href="/css/main.css" />
   <style>
-    body { margin: 0; background: var(--bg); }
-    .popup-page { padding: 12px 14px; }
-    .popup-page table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .popup-page th, .popup-page td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
-    .popup-page th { color: var(--muted); }
-    .row { display:flex; justify-content:space-between; gap:12px; padding:6px 8px; font-size:12px; border-bottom:1px solid var(--line); }
-    .row span:first-child { color: var(--muted); }
-    .empty { color: var(--muted); padding: 16px; text-align: center; }
-    body.embedded .standalone-title { display: none; }
+    body { margin: 0; background: var(--panel); }
   </style>
 </head>
 <body>
@@ -23,7 +15,7 @@
     <div class="standalone-title" style="font-weight:700;margin-bottom:10px">任务状态</div>
     <div id="op"></div>
     <div id="body"><div class="empty">加载中…</div></div>
-    <div style="margin-top:12px;font-size:12px"><a href="/monitor_task.html" target="_blank" style="color:var(--accent)">任务详细监控 →</a></div>
+    <div style="margin-top:12px"><a href="/monitor_task.html" target="_blank" style="color:var(--accent)">任务详细监控 →</a></div>
   </div>
   <script>
     if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");

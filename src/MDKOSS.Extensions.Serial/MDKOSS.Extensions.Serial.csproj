@@ -7,6 +7,8 @@
     <RootNamespace>MDKOSS.Extensions.Serial</RootNamespace>
     <AssemblyName>MDKOSS.Extensions.Serial</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
+    <!-- Hosts load this DLL from plugins/; lockfile assemblies (System.IO.Ports) must land in bin so MdkPlugins.targets can copy them. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.IO.Ports" Version="9.0.0" />

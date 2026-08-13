@@ -134,6 +134,25 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 | `/api/task/start\|stop\|reset` | POST | 写入 `task.operation.command` |
 | `/api/task/lamp?color=` | POST | 三色灯 |
 
+### 报警
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/alarms` | GET | 评估配置定义 + 运行时故障；返回活动/未确认计数 |
+| `/api/alarms/ack` | POST | 确认一条（`id`）或全部（`all=true`） |
+| `/api/alarms/reset` | POST | 清除锁存/确认状态，并复位 `alarm.test` |
+| `/api/alarms/test` | POST | 将 `alarm.test` 置为 true（演示触发） |
+
+### 视觉流程
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/visions` | GET | 流程摘要 + `visiondev` 设备 |
+| `/api/visions/{id}` | GET | 单条流程（含 pipeline） |
+| `/api/visions/apply` | POST | 设置 `activeVisionId` |
+
+运行视觉：`POST /api/devices/{visiondevId}/action`，`action` = `run` / `captureAndRun` / `status`。
+
 ### 配置（轻量）
 
 | 路由 | 方法 | 说明 |
@@ -143,8 +162,16 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 | `/api/config/drivers/{id}` | PATCH | 更新 enabled / parameters（内存） |
 | `/api/config/devices` | GET | 设备配置列表 |
 | `/api/config/devices/{id}` | PATCH | 更新 name / enabled / driverId / parameters |
+| `/api/config/axes` | GET | 轴配置列表（顶层 `axes`） |
+| `/api/config/axes/{id}` | PATCH | 更新轴配置 |
+| `/api/config/platforms` | GET | 平台配置列表（顶层 `platforms`） |
+| `/api/config/platforms/{id}` | PATCH | 更新平台配置 |
 | `/api/config/tasks` | GET | 任务配置列表 |
 | `/api/config/tasks/{name}` | PATCH | 更新 intervalMs / parameters 等 |
+| `/api/config/alarms` | GET/POST | 报警定义列表 / 新建 |
+| `/api/config/alarms/{id}` | PATCH/DELETE | 更新或删除报警定义 |
+| `/api/config/visions` | GET/POST | 视觉流程列表 / 新建 |
+| `/api/config/visions/{id}` | PATCH/DELETE | 更新或删除流程（含 pipeline） |
 | `/api/config/save` | POST | 写入 setting JSON + SQLite 配置表；**需重启运行时**后设备/驱动变更才生效 |
 
 供 Task Manager 与监控页展示。
@@ -162,8 +189,10 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 7. `TeachApiModule`
 8. `DbApiModule`
 9. `ConfigApiModule`
-10. `TasksApiModule`
-11. `TaskApiModule`
+10. `AlarmsApiModule`
+11. `VisionsApiModule`
+12. `TasksApiModule`
+13. `TaskApiModule`
 
 运行时可通过 `AddModule` 在 `Start()` 前追加模块。
 

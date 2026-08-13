@@ -560,6 +560,8 @@ public sealed class AxisDevice : MDeviceBase
     public AxisDevice(string id, string name, IDriver driver, MVarStore vars)
         : base(id, name, MDeviceType.Axis, driver, vars)
     {
+        Vars.Set(BuildVarKey("position"), 0.0);
+        Vars.Set(BuildVarKey("motionEnabled"), false);
     }
 
     public bool MoveTo(double position)
@@ -612,6 +614,9 @@ public sealed class AxisDevice : MDeviceBase
         WriteState(State.ToString().ToLowerInvariant());
         return ok;
     }
+
+    internal object? ReadPublished(string suffix) =>
+        Vars.TryGet<object>(BuildVarKey(suffix), out var v) ? v : null;
 }
 
 /// <summary>One axis slot on a <see cref="PlatformDevice"/> (letter key, config driver id, runtime axis device).</summary>
@@ -691,13 +696,20 @@ public sealed class PlatformDevice : MDeviceBase
         {
             var online = entry.Axis.LinkedDriver.IsConnected;
             allConnected &= online;
-            rows.Add(new PlatformAxisSnapshot(entry.AxisLetter, entry.DriverId, online));
+            rows.Add(new PlatformAxisSnapshot(
+                entry.AxisLetter,
+                entry.DriverId,
+                online,
+                entry.Axis.Id,
+                ToDouble(entry.Axis.ReadPublished("position")),
+                ToBool(entry.Axis.ReadPublished("motionEnabled")),
+                ToStringValue(entry.Axis.ReadPublished("error"))));
         }
 
         return new DeviceSnapshot(
             Id,
             Name,
-            Type.ToString(),
+            _kind.ToConfigToken(),
             State.ToString(),
             $"platform-{_kind.ToConfigToken()}",
             allConnected,
@@ -706,6 +718,59 @@ public sealed class PlatformDevice : MDeviceBase
             null,
             null);
     }
+
+    private static double? ToDouble(object? raw)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        if (raw is double d)
+        {
+            return d;
+        }
+
+        if (raw is IConvertible conv)
+        {
+            try
+            {
+                return conv.ToDouble(CultureInfo.InvariantCulture);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        return double.TryParse(Convert.ToString(raw, CultureInfo.InvariantCulture), NumberStyles.Any, CultureInfo.InvariantCulture, out var n)
+            ? n
+            : null;
+    }
+
+    private static bool? ToBool(object? raw)
+    {
+        if (raw is null)
+        {
+            return null;
+        }
+
+        if (raw is bool b)
+        {
+            return b;
+        }
+
+        var s = Convert.ToString(raw, CultureInfo.InvariantCulture)?.Trim().ToLowerInvariant();
+        return s switch
+        {
+            "1" or "true" or "yes" or "on" => true,
+            "0" or "false" or "no" or "off" => false,
+            _ => null,
+        };
+    }
+
+    private static string? ToStringValue(object? raw) =>
+        raw is null || raw is string { Length: 0 } ? null : Convert.ToString(raw, CultureInfo.InvariantCulture);
 }
 
 /// <summary>Basic camera device abstraction.</summary>
@@ -761,7 +826,14 @@ public sealed record TcpConnectionSnapshot(
     int BytesToRead);
 
 /// <summary>One platform axis for monitoring (each axis may use a different driver).</summary>
-public sealed record PlatformAxisSnapshot(string AxisLetter, string DriverId, bool DriverOnline);
+public sealed record PlatformAxisSnapshot(
+    string AxisLetter,
+    string DriverId,
+    bool DriverOnline,
+    string? AxisDeviceId = null,
+    double? Position = null,
+    bool? MotionEnabled = null,
+    string? Error = null);
 
 public sealed record DeviceSnapshot(
     string Id,

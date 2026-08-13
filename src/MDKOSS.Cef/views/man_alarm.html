@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>报警定义</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="man" data-tool-page="man_alarm">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">报警定义 <span class="pill warn">配置</span></div>
+        <div class="sub" id="manMeta">条件变量 · 比较 · 锁存</div>
+      </div>
+      <div class="btn-group">
+        <button type="button" class="btn" id="btnAdd">新建</button>
+        <button type="button" class="btn primary" id="btnApply">应用修改</button>
+        <button type="button" class="btn" id="btnSave">保存到磁盘</button>
+        <a class="link-btn" href="/monitor_alarm.html">监控 →</a>
+      </div>
+    </div>
+    <p class="man-note">PATCH 仅改内存 Setting；保存后下次启动仍有效。运行时评估见 /api/alarms。</p>
+    <div class="man-layout">
+      <div class="card"><div class="label">列表</div><div id="manList" style="margin-top:8px"></div></div>
+      <div class="card"><div class="label">编辑</div><div id="manForm" style="margin-top:8px"></div></div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, fetchJson, patchJson, postJson, toast } = MdkTool;
+    const listEl = document.getElementById("manList");
+    const formEl = document.getElementById("manForm");
+    let items = [];
+    let selectedId = null;
+
+    async function loadMeta() {
+      try {
+        const s = await fetchJson("/api/config");
+        document.getElementById("manMeta").textContent =
+          `项目 ${s.projectName || "—"} · 报警 ${s.counts?.alarms ?? "—"} 条 · ${s.settingPath || ""}`;
+      } catch (e) {
+        document.getElementById("manMeta").textContent = e.message || "无法加载 /api/config";
+      }
+    }
+
+    async function loadList() {
+      const data = await fetchJson("/api/config/alarms");
+      items = data.alarms || [];
+      const cur = selectedId;
+      listEl.innerHTML = items.length
+        ? items.map((it) => {
+            const id = it.id || "";
+            const active = id === cur ? " active" : "";
+            return `<button type="button" class="recipe-option${active}" data-id="${esc(id)}">
+              <div class="recipe-option-name">${esc(it.code || id)} · ${esc(it.name || "")}</div>
+              <div class="recipe-option-meta">${esc([it.level, it.varKey, it.op, it.value].filter(Boolean).join(" "))}</div>
+            </button>`;
+          }).join("")
+        : '<div class="recipe-dialog-empty">无报警定义</div>';
+      listEl.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => { selectedId = btn.getAttribute("data-id"); renderForm(); loadList().catch(() => {}); });
+      });
+      if (selectedId && !items.some((it) => it.id === selectedId)) selectedId = null;
+      if (!selectedId && items.length) selectedId = items[0].id;
+      renderForm();
+    }
+
+    function current() { return items.find((it) => it.id === selectedId) || null; }
+
+    function renderForm() {
+      const it = current();
+      if (!it) {
+        formEl.innerHTML = '<div class="recipe-dialog-empty">请选择或新建</div>';
+        return;
+      }
+      formEl.innerHTML = `
+        <div class="form-row">
+          <div class="form-group"><label>ID</label><input id="fId" value="${esc(it.id)}" disabled /></div>
+          <div class="form-group"><label>代码</label><input id="fCode" value="${esc(it.code || "")}" /></div>
+        </div>
+        <div class="form-group"><label>名称</label><input id="fName" value="${esc(it.name || "")}" /></div>
+        <div class="form-row">
+          <div class="form-group"><label>级别</label>
+            <select id="fLevel">
+              ${["error","warn","info"].map((l) => `<option value="${l}"${(it.level||"error")===l?" selected":""}>${l}</option>`).join("")}
+            </select>
+          </div>
+          <div class="form-group"><label>比较</label>
+            <select id="fOp">
+              ${[["eq","等于"],["ne","不等于"],["gt","大于"],["lt","小于"],["ge","大于等于"],["le","小于等于"],["truthy","为真"],["falsy","为假"],["empty","空"],["nonempty","非空"]].map(([v,l]) =>
+                `<option value="${v}"${(it.op||"eq")===v?" selected":""}>${l}</option>`).join("")}
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>变量键</label><input id="fVar" value="${esc(it.varKey || "")}" placeholder="task.operation.state" /></div>
+        <div class="form-group"><label>比较值</label><input id="fVal" value="${esc(it.value || "")}" /></div>
+        <div class="form-group"><label>消息</label><input id="fMsg" value="${esc(it.message || "")}" /></div>
+        <label class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="fEnabled" ${it.enabled !== false ? "checked" : ""} /> 启用
+        </label>
+        <label class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="fLatch" ${it.latch ? "checked" : ""} /> 锁存（需确认/复位才消失）
+        </label>
+        <div class="btn-group"><button type="button" class="btn danger" id="btnDel">删除</button></div>`;
+      document.getElementById("btnDel").onclick = removeCurrent;
+    }
+
+    function readForm() {
+      return {
+        code: document.getElementById("fCode").value,
+        name: document.getElementById("fName").value,
+        level: document.getElementById("fLevel").value,
+        op: document.getElementById("fOp").value,
+        varKey: document.getElementById("fVar").value,
+        value: document.getElementById("fVal").value,
+        message: document.getElementById("fMsg").value,
+        enabled: document.getElementById("fEnabled").checked,
+        latch: document.getElementById("fLatch").checked,
+      };
+    }
+
+    async function applyPatch() {
+      if (!selectedId) return;
+      try {
+        await patchJson(`/api/config/alarms/${encodeURIComponent(selectedId)}`, readForm());
+        toast("已更新内存配置", true);
+        await loadList();
+      } catch (e) { toast(e.message || "失败", false); }
+    }
+
+    async function addNew() {
+      try {
+        const data = await postJson("/api/config/alarms", {
+          name: "新报警", code: "E000", level: "error", op: "eq", varKey: "alarm.test", value: "true",
+          message: "测试报警", latch: true, enabled: true,
+        });
+        selectedId = data.alarm?.id || null;
+        toast("已新建", true);
+        await loadList();
+        await loadMeta();
+      } catch (e) { toast(e.message || "失败", false); }
+    }
+
+    async function removeCurrent() {
+      if (!selectedId || !confirm("删除该报警定义？")) return;
+      try {
+        await fetchJson(`/api/config/alarms/${encodeURIComponent(selectedId)}`, { method: "DELETE" });
+        selectedId = null;
+        toast("已删除", true);
+        await loadList();
+        await loadMeta();
+      } catch (e) { toast(e.message || "失败", false); }
+    }
+
+    document.getElementById("btnApply").onclick = applyPatch;
+    document.getElementById("btnAdd").onclick = addNew;
+    document.getElementById("btnSave").onclick = async () => {
+      try {
+        const data = await postJson("/api/config/save");
+        toast(data.message || "已保存", true);
+        await loadMeta();
+      } catch (e) { toast(e.message || "保存失败", false); }
+    };
+
+    loadMeta();
+    loadList().catch((e) => { listEl.innerHTML = `<div class="recipe-dialog-empty">${esc(e.message)}</div>`; });
+  </script>
+</body>
+</html>

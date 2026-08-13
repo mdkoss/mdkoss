@@ -15,48 +15,56 @@
       </div>
       <div class="sub">自动刷新间隔：1s</div>
     </div>
-    <div class="grid">
-      <div class="card span-4">
+    <div class="grid runtime-dash">
+      <div class="card span-3">
         <div class="label">项目</div>
         <div class="value" id="projectName">-</div>
       </div>
-      <div class="card span-4">
+      <div class="card span-3">
         <div class="label">运行状态</div>
         <div id="runtimeStatus"><span class="pill warn">UNKNOWN</span></div>
       </div>
-      <div class="card span-4">
+      <div class="card span-3">
         <div class="label">在线驱动数</div>
         <div class="value" id="driverOnlineCount">0</div>
       </div>
+      <div class="card span-3">
+        <div class="label">最后更新</div>
+        <div class="value" id="lastUpdate" style="font-size:22px">-</div>
+      </div>
 
-      <div class="card span-8">
+      <div class="card span-6">
         <div class="label">驱动状态</div>
-        <table>
-          <thead><tr><th>Driver ID</th><th>Type</th><th>Status</th></tr></thead>
-          <tbody id="driverRows"></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Driver ID</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody id="driverRows"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="card span-12">
+      <div class="card span-6">
         <div class="label">设备状态</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Device ID</th>
-              <th>名称</th>
-              <th>类型</th>
-              <th>状态</th>
-              <th>驱动/链路</th>
-              <th>在线</th>
-              <th>调试</th>
-            </tr>
-          </thead>
-          <tbody id="deviceRows"></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Device ID</th>
+                <th>名称</th>
+                <th>类型</th>
+                <th>状态</th>
+                <th>驱动/链路</th>
+                <th>在线</th>
+                <th>调试</th>
+              </tr>
+            </thead>
+            <tbody id="deviceRows"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="card span-12">
-        <div class="label">GPIO IO 状态（来自各设备的 gpioIoPoints）</div>
+      <div class="card span-6">
+        <div class="label">GPIO IO</div>
         <div class="io-wrap">
           <table>
             <thead>
@@ -75,19 +83,24 @@
         </div>
       </div>
 
-      <div class="card span-4">
-        <div class="label">最后更新时间</div>
-        <div class="value" id="lastUpdate" style="font-size: 18px">-</div>
+      <div class="card span-6">
+        <div class="label">运行变量</div>
+        <div class="vars-wrap">
+          <table class="vars-table">
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="varsRows"></tbody>
+          </table>
+        </div>
       </div>
 
-      <div class="card span-12">
+      <div class="card span-6">
         <div class="label">配方 / 排单</div>
         <div class="value" id="activeRecipeLabel" style="font-size:18px;margin-bottom:8px">—</div>
         <div class="op-row" id="recipeButtons"></div>
         <div class="footer" id="recipeMeta">接口: <code>/api/recipe</code></div>
       </div>
 
-      <div class="card span-12">
+      <div class="card span-6">
         <div class="label">任务操作</div>
         <div class="op-row">
           <button class="btn green" onclick="sendTaskAction('/api/task/start')">启动任务</button>
@@ -101,18 +114,13 @@
         </div>
         <div class="footer" id="taskOperationState">状态: -</div>
       </div>
-
-      <div class="card span-12">
-        <div class="label">运行变量</div>
-        <div class="vars-wrap">
-          <table class="vars-table">
-            <thead><tr><th>键</th><th>值</th></tr></thead>
-            <tbody id="varsRows"></tbody>
-          </table>
-        </div>
-      </div>
     </div>
-    <div class="footer">接口: <code>/api/status</code> · 平台调试: <a class="link-btn" href="/debug_platform.html">debug_platform.html</a> · 只读: <a class="link-btn" href="/monitor_platform.html">monitor_platform.html</a></div>
+    <div class="footer">接口: <code>/api/status</code> ·
+      <a class="link-btn" href="/monitor_alarm.html">报警</a> ·
+      <a class="link-btn" href="/monitor_vision.html">视觉</a> ·
+      <a class="link-btn" href="/debug_platform.html">平台示教</a> ·
+      <a class="link-btn" href="/monitor_platform.html">平台监控</a>
+    </div>
   </div>
 
   <script>
@@ -170,7 +178,7 @@
       const obj = vars && typeof vars === "object" ? vars : {};
       const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
       if (!keys.length) {
-        varsRows.innerHTML = '<tr><td colspan="2" style="color:#90a4d4">（无变量）</td></tr>';
+        varsRows.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">（无变量）</td></tr>';
         return;
       }
       varsRows.innerHTML = keys.map((k) => {
@@ -193,7 +201,7 @@
       }).join("");
       driverOnlineCount.textContent = String(online);
       if (!entries.length) {
-        driverRows.innerHTML = '<tr><td colspan="3" style="color:#90a4d4">No drivers</td></tr>';
+        driverRows.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">No drivers</td></tr>';
       }
     }
 
@@ -217,7 +225,7 @@
         }
       }
       if (!flat.length) {
-        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">（无 GPIO 映射或暂无数据）</td></tr>';
+        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">（无 GPIO 映射或暂无数据）</td></tr>';
         return;
       }
       gpioIoRows.innerHTML = flat
@@ -264,7 +272,7 @@
         </tr>`;
       }).join("");
       if (!entries.length) {
-        deviceRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">（无设备）</td></tr>';
+        deviceRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">（无设备）</td></tr>';
       }
     }
 
@@ -281,7 +289,7 @@
         activeRecipeLabel.textContent = activeId ? `${activeName} (${activeId})` : "未选择";
         recipeMeta.textContent = `配方键 ${keys.length} 项 · 共 ${recipes.length} 个配方 · 接口 /api/recipe`;
         if (!recipes.length) {
-          recipeButtons.innerHTML = '<span style="color:#90a4d4;font-size:13px">（未配置 recipes）</span>';
+          recipeButtons.innerHTML = '<span style="color:var(--muted);font-size:13px">（未配置 recipes）</span>';
           return;
         }
         recipeButtons.innerHTML = recipes.map((r) => {
@@ -333,8 +341,8 @@
         lastUpdate.textContent = new Date().toLocaleTimeString();
       } catch (err) {
         runtimeStatus.innerHTML = '<span class="pill warn">UNREACHABLE</span>';
-        varsRows.innerHTML = '<tr><td colspan="2" style="color:#90a4d4">无法加载</td></tr>';
-        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:#90a4d4">无法加载</td></tr>';
+        varsRows.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">无法加载</td></tr>';
+        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无法加载</td></tr>';
       }
     }
 

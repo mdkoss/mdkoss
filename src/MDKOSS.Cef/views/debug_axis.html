@@ -7,114 +7,563 @@
   <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body data-tool-group="debug" data-tool-page="debug_axis">
+<body data-tool-group="debug" data-tool-page="debug_axis" class="page-compact">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
-    <div class="header">
+    <div class="header compact-header">
       <div>
         <div class="title">轴调试 <span class="pill warn">可写</span></div>
-        <div class="sub" id="hdrSubtitle">enable / disable / move / stop / jog</div>
+        <div class="sub" id="hdrSubtitle">使能 / 点动 / 定位</div>
       </div>
-      <a class="link-btn" href="/monitor_axis.html">只读监控 →</a>
+      <div class="header-actions">
+        <span class="sub">刷新 <span id="pollHint">1s</span></span>
+        <span id="hdrMotion"></span>
+        <button type="button" class="btn danger btn-sm" id="btnStop">停止 (Esc)</button>
+        <a class="link-btn" id="lnkMonitor" href="/monitor_axis.html">只读监控 →</a>
+      </div>
     </div>
-    <div class="form-row">
-      <div class="form-group" style="flex:2">
+    <div id="warnBar" class="warn-bar hidden">运行时未启动，仍可下发轴动作。</div>
+
+    <div class="form-row platform-bar compact-bar">
+      <div class="form-group grow">
         <label>轴设备</label>
         <select id="selAxis"><option value="">— 选择 —</option></select>
       </div>
-      <div class="form-group"><label>状态</label><div id="vState">—</div></div>
-      <div class="form-group"><label>在线</label><div id="vOnline">—</div></div>
+      <div class="form-group shrink">
+        <label>类型</label>
+        <div id="badgeKind" class="badge-val">—</div>
+      </div>
+      <div class="form-group shrink">
+        <label>驱动</label>
+        <div id="badgeDriver" class="badge-val">—</div>
+      </div>
+      <div class="form-group shrink">
+        <label>在线</label>
+        <div id="badgeOnline">—</div>
+      </div>
     </div>
+
     <div class="grid">
-      <div class="card span-6">
-        <h2 class="panel-title">动作</h2>
-        <div class="btn-group" style="margin-bottom:12px">
-          <button type="button" class="btn primary" id="btnEnable">使能</button>
-          <button type="button" class="btn" id="btnDisable">去使能</button>
-          <button type="button" class="btn danger" id="btnStop">停止</button>
+      <div class="card span-3"><div class="label">位置 <span class="hint" id="unitHint">mm</span></div><div class="value mono" id="vPos">—</div></div>
+      <div class="card span-3"><div class="label">使能</div><div class="value" id="vEnabled">—</div></div>
+      <div class="card span-3"><div class="label">点动指令</div><div class="value mono" id="vJog">—</div></div>
+      <div class="card span-3"><div class="label">状态</div><div class="value" id="vState">—</div></div>
+    </div>
+
+    <div class="main-layout" style="margin-top:10px">
+      <div class="card jog-card">
+        <div class="panel-head">
+          <h2 class="panel-title">点动 <span class="hint">按住连续 · 单击步进</span></h2>
+          <label class="inline-field">速度
+            <input type="number" id="txtVel" value="1" step="0.1" style="width:72px" />
+          </label>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>目标位置</label><input type="number" id="txtPos" value="0" step="0.1" /></div>
-          <div class="form-group" style="align-self:flex-end"><button type="button" class="btn primary" id="btnMove">位置移动</button></div>
+        <div class="axis-jog-row">
+          <button type="button" class="jog-btn" id="btnJogNeg" data-sign="-1" aria-label="负向点动">
+            <span class="arr">←</span><span class="lbl">Jog −</span>
+          </button>
+          <button type="button" class="jog-btn" id="btnJogPos" data-sign="1" aria-label="正向点动">
+            <span class="lbl">Jog +</span><span class="arr">→</span>
+          </button>
         </div>
-        <div class="form-row">
-          <div class="form-group"><label>点动速度</label><input type="number" id="txtVel" value="1" step="0.1" /></div>
-          <div class="form-group" style="align-self:flex-end">
-            <button type="button" class="btn" id="btnJogNeg">Jog −</button>
-            <button type="button" class="btn" id="btnJogPos">Jog +</button>
+        <div class="panel-head tight">
+          <h2 class="panel-title">步距</h2>
+          <div class="seg-group" id="stepPresetGroup" role="group" aria-label="步距预设">
+            <button type="button" class="seg-btn active" data-preset="continuous">连续 C</button>
+            <button type="button" class="seg-btn" data-preset="long">长 L</button>
+            <button type="button" class="seg-btn" data-preset="medium">中 M</button>
+            <button type="button" class="seg-btn" data-preset="short">短 S</button>
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group"><label>步距</label><input type="number" id="txtStep" value="1" step="0.001" disabled /></div>
+          <div class="form-group" style="align-self:flex-end">
+            <div class="btn-group compact-btns" style="margin:0">
+              <button type="button" class="btn btn-sm" id="btnStepNeg">− 步进</button>
+              <button type="button" class="btn btn-sm" id="btnStepPos">+ 步进</button>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group compact-btns">
+          <button type="button" class="btn primary btn-sm" id="btnEnable">使能</button>
+          <button type="button" class="btn btn-sm" id="btnDisable">去使能</button>
+        </div>
+        <h2 class="panel-title tight-title">位置移动</h2>
+        <div class="form-row">
+          <div class="form-group"><label>目标位置</label><input type="number" id="txtPos" value="0" step="0.1" /></div>
+          <div class="form-group" style="align-self:flex-end">
+            <div class="btn-group compact-btns" style="margin:0">
+              <button type="button" class="btn btn-sm" id="btnFillPos">填入当前</button>
+              <button type="button" class="btn primary btn-sm" id="btnMove">定位</button>
+              <button type="button" class="btn btn-sm" id="btnMoveZero">定位 0</button>
+            </div>
+          </div>
+        </div>
+        <p class="footer" style="margin-top:6px">软限位 <span id="vLimits">—</span> · 轴号 <span id="vAxisNo">—</span></p>
       </div>
-      <div class="card span-6">
-        <h2 class="panel-title">日志</h2>
-        <div class="log-box" id="logBox" style="min-height:160px;max-height:280px;overflow:auto;font-size:12px"></div>
+
+      <div class="card status-card">
+        <div class="panel-head">
+          <h2 class="panel-title">轴一览</h2>
+          <span class="hint" id="axisCountHint">0</span>
+        </div>
+        <div class="table-wrap dense-table">
+          <table>
+            <thead><tr><th>名称</th><th>ID</th><th>位置</th><th>使能</th><th>在线</th><th>状态</th></tr></thead>
+            <tbody id="axisTableBody"></tbody>
+          </table>
+        </div>
+        <h2 class="panel-title tight-title">参数</h2>
+        <div class="meta-row" id="paramMeta">
+          <div><span class="meta-label">型号</span> <strong id="pModel">—</strong></div>
+          <div><span class="meta-label">最大速度</span> <strong id="pMaxVel">—</strong></div>
+          <div><span class="meta-label">加速度</span> <strong id="pAccel">—</strong></div>
+        </div>
+        <div class="table-wrap dense-table">
+          <table>
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="varRows"><tr><td colspan="2" style="color:var(--muted)">请选择轴</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
+
+    <div class="card bottom-card">
+      <h2 class="panel-title">日志</h2>
+      <div class="log-box" id="logBox"></div>
+    </div>
+    <p class="footer">C 连续点动（松开停）· L/M/S 步进 · ←/→ 点动 · Esc 停 · <code>/api/devices/{id}/action</code></p>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson, postJson, toast, logLine } = MdkTool;
+    const { esc, field, qs, fetchJson, postJson, toast, logLine, isAxisType } = MdkTool;
+    const STEP_PRESETS = { continuous: 1, long: 10, medium: 1, short: 0.1 };
     const sel = document.getElementById("selAxis");
     const logBox = document.getElementById("logBox");
-    let preferred = qs("deviceId", "");
+    const txtStep = document.getElementById("txtStep");
+    const txtPos = document.getElementById("txtPos");
+    const txtVel = document.getElementById("txtVel");
 
-    function fillSelect(devices) {
-      const cur = sel.value || preferred;
-      const opts = Object.entries(devices || {})
-        .filter(([, d]) => String(field(d, "type", "Type") || "").toLowerCase() === "axis")
-        .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)} (${esc(id)})</option>`);
+    const state = {
+      preferred: qs("deviceId", ""),
+      devices: {},
+      vars: {},
+      configs: {},
+      stepPreset: "continuous",
+      jogging: false,
+      jogSign: 0,
+      lastPos: NaN,
+      pollMs: 1000,
+      pollTimer: null,
+    };
+
+    function axisId() { return sel.value; }
+
+    function cfgOf(id) {
+      return state.configs[id] || state.configs[String(id || "").toLowerCase()] || null;
+    }
+
+    function param(cfg, key, fallback) {
+      const p = cfg?.parameters || cfg?.Parameters || {};
+      const v = p[key] ?? p[key.charAt(0).toUpperCase() + key.slice(1)];
+      return v == null || v === "" ? fallback : String(v);
+    }
+
+    function unitOf(id, d) {
+      const cfg = cfgOf(id);
+      const fromCfg = param(cfg, "unit", "");
+      if (fromCfg) return fromCfg;
+      const t = String(field(d, "type", "Type") || param(cfg, "kind", "")).toLowerCase();
+      return t === "rotary" ? "deg" : "mm";
+    }
+
+    function readVar(id, suffix) {
+      const d = state.devices[id];
+      const name = d ? (field(d, "name", "Name") || id) : id;
+      const exact = `device.${name}.${id}.${suffix}`;
+      if (Object.prototype.hasOwnProperty.call(state.vars, exact)) return state.vars[exact];
+      const needle = `.${id}.${suffix}`.toLowerCase();
+      for (const [k, v] of Object.entries(state.vars)) {
+        if (k.toLowerCase().endsWith(needle) || k.toLowerCase().includes(needle)) return v;
+      }
+      return undefined;
+    }
+
+    function numVar(id, suffix) {
+      const n = Number(readVar(id, suffix));
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function boolVar(id, suffix) {
+      const v = readVar(id, suffix);
+      if (v === true || v === false) return v;
+      const s = String(v ?? "").trim().toLowerCase();
+      if (s === "true" || s === "1" || s === "on" || s === "yes") return true;
+      if (s === "false" || s === "0" || s === "off" || s === "no") return false;
+      return null;
+    }
+
+    function fmtNum(n, digits) {
+      if (!Number.isFinite(n)) return "—";
+      const d = digits == null ? (Math.abs(n) >= 100 ? 2 : 3) : digits;
+      return n.toFixed(d);
+    }
+
+    function pill(ok, yes, no) {
+      if (ok === true) return `<span class="pill ok">${esc(yes)}</span>`;
+      if (ok === false) return `<span class="pill">${esc(no)}</span>`;
+      return "—";
+    }
+
+    function updateMonitorLink() {
+      const id = axisId();
+      document.getElementById("lnkMonitor").href = id
+        ? `/monitor_axis.html?deviceId=${encodeURIComponent(id)}`
+        : "/monitor_axis.html";
+    }
+
+    function setPoll(ms) {
+      if (state.pollMs === ms) return;
+      state.pollMs = ms;
+      document.getElementById("pollHint").textContent = ms < 1000 ? (ms + "ms") : (ms / 1000 + "s");
+      if (state.pollTimer) {
+        clearInterval(state.pollTimer);
+        state.pollTimer = setInterval(tick, state.pollMs);
+      }
+    }
+
+    function fillSelect() {
+      const cur = sel.value || state.preferred;
+      const opts = Object.entries(state.devices)
+        .filter(([, d]) => isAxisType(field(d, "type", "Type")))
+        .map(([id, d]) => {
+          const name = field(d, "name", "Name") || id;
+          return `<option value="${esc(id)}">${esc(name)} (${esc(id)})</option>`;
+        });
       sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
       if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
       else if (sel.options.length > 1) sel.selectedIndex = 1;
-      preferred = "";
+      state.preferred = "";
+      updateMonitorLink();
     }
 
-    async function action(name, parameters) {
-      const id = sel.value;
-      if (!id) { toast("请选择轴", false); return; }
+    function applyStepPreset(preset) {
+      state.stepPreset = preset;
+      document.querySelectorAll("#stepPresetGroup .seg-btn").forEach((b) => {
+        b.classList.toggle("active", b.getAttribute("data-preset") === preset);
+      });
+      const cont = preset === "continuous";
+      txtStep.disabled = cont;
+      if (!cont) txtStep.value = String(STEP_PRESETS[preset] ?? 1);
+    }
+
+    function stepValue() {
+      const n = Number(txtStep.value);
+      return Number.isFinite(n) && n !== 0 ? n : (STEP_PRESETS[state.stepPreset] || 1);
+    }
+
+    function softLimits(id) {
+      const cfg = cfgOf(id);
+      const neg = Number(param(cfg, "softNeg", ""));
+      const pos = Number(param(cfg, "softPos", ""));
+      return {
+        neg: Number.isFinite(neg) ? neg : null,
+        pos: Number.isFinite(pos) ? pos : null,
+      };
+    }
+
+    function checkLimit(target) {
+      const lim = softLimits(axisId());
+      if (lim.neg != null && target < lim.neg) {
+        toast(`超出负软限位 ${lim.neg}`, false);
+        return false;
+      }
+      if (lim.pos != null && target > lim.pos) {
+        toast(`超出正软限位 ${lim.pos}`, false);
+        return false;
+      }
+      return true;
+    }
+
+    async function action(name, parameters, opts) {
+      const id = axisId();
+      if (!id) { toast("请选择轴", false); return false; }
+      const quiet = opts && opts.quiet;
       try {
         await postJson(`/api/devices/${encodeURIComponent(id)}/action`, { action: name, parameters });
-        toast(name + " 成功", true);
-        logLine(logBox, name + " ok", true);
+        if (!quiet) {
+          toast(name + " 成功", true);
+          logLine(logBox, name + " ok", true);
+        }
         await tick();
+        return true;
       } catch (e) {
         toast(e.message || "失败", false);
         logLine(logBox, name + " fail: " + e.message, false);
+        return false;
+      }
+    }
+
+    async function stopJog(emergency) {
+      if (!state.jogging && !emergency) return;
+      state.jogging = false;
+      state.jogSign = 0;
+      document.querySelectorAll(".jog-btn").forEach((b) => b.classList.remove("active"));
+      setPoll(1000);
+      if (emergency) {
+        await action("stop");
+        return;
+      }
+      await action("jog", { direction: 0, velocity: 0 }, { quiet: true });
+    }
+
+    async function startHoldJog(sign, btn) {
+      if (!axisId()) { toast("请选择轴", false); return; }
+      if (state.stepPreset !== "continuous") {
+        await stepBy(sign);
+        return;
+      }
+      if (state.jogging && state.jogSign === sign) return;
+      state.jogging = true;
+      state.jogSign = sign;
+      if (btn) btn.classList.add("active");
+      setPoll(200);
+      const vel = Number(txtVel.value) || 1;
+      const ok = await action("jog", { direction: sign, velocity: vel }, { quiet: true });
+      if (ok) logLine(logBox, "jog " + (sign > 0 ? "+" : "−") + " vel=" + vel, true);
+      else stopJog(false);
+    }
+
+    async function stepBy(sign) {
+      const cur = numVar(axisId(), "position");
+      const from = Number.isFinite(cur) ? cur : (Number.isFinite(state.lastPos) ? state.lastPos : 0);
+      const target = from + stepValue() * sign;
+      if (!checkLimit(target)) return;
+      txtPos.value = String(target);
+      await action("move", { position: target });
+    }
+
+    function bindHold(btn) {
+      const sign = Number(btn.getAttribute("data-sign"));
+      const down = (e) => {
+        e.preventDefault();
+        startHoldJog(sign, btn);
+      };
+      const up = () => {
+        if (state.stepPreset === "continuous") stopJog(false);
+        else btn.classList.remove("active");
+      };
+      btn.addEventListener("mousedown", down);
+      btn.addEventListener("touchstart", down, { passive: false });
+      btn.addEventListener("mouseup", up);
+      btn.addEventListener("mouseleave", up);
+      btn.addEventListener("touchend", up);
+      btn.addEventListener("touchcancel", up);
+    }
+
+    function renderSelected() {
+      const id = axisId();
+      const d = id ? state.devices[id] : null;
+      const cfg = cfgOf(id);
+      updateMonitorLink();
+
+      if (!d) {
+        document.getElementById("hdrSubtitle").textContent = "请选择轴设备";
+        document.getElementById("vPos").textContent = "—";
+        document.getElementById("vEnabled").innerHTML = "—";
+        document.getElementById("vJog").textContent = "—";
+        document.getElementById("vState").textContent = "—";
+        document.getElementById("badgeKind").textContent = "—";
+        document.getElementById("badgeDriver").textContent = "—";
+        document.getElementById("badgeOnline").innerHTML = "—";
+        document.getElementById("hdrMotion").innerHTML = "";
+        document.getElementById("vLimits").textContent = "—";
+        document.getElementById("vAxisNo").textContent = "—";
+        document.getElementById("pModel").textContent = "—";
+        document.getElementById("pMaxVel").textContent = "—";
+        document.getElementById("pAccel").textContent = "—";
+        document.getElementById("varRows").innerHTML = '<tr><td colspan="2" style="color:var(--muted)">请选择轴</td></tr>';
+        return;
+      }
+
+      const name = field(d, "name", "Name") || id;
+      const type = field(d, "type", "Type") || "—";
+      const kind = param(cfg, "kind", type);
+      const unit = unitOf(id, d);
+      const pos = numVar(id, "position");
+      const enabled = boolVar(id, "motionEnabled");
+      const jog = numVar(id, "jogCommand");
+      const online = field(d, "driverConnected", "DriverConnected") === true;
+      const st = String(field(d, "state", "State") || "—");
+      state.lastPos = pos;
+
+      document.getElementById("hdrSubtitle").textContent = `${name} · ${id}`;
+      document.getElementById("unitHint").textContent = unit;
+      document.getElementById("vPos").textContent = fmtNum(pos);
+      document.getElementById("vEnabled").innerHTML = pill(enabled, "ON", "OFF");
+      document.getElementById("vJog").textContent = Number.isFinite(jog) ? fmtNum(jog) : "—";
+      document.getElementById("vState").textContent = st;
+      document.getElementById("badgeKind").textContent = kind;
+      document.getElementById("badgeDriver").textContent = String(field(d, "driverType", "DriverType") || "—");
+      document.getElementById("badgeOnline").innerHTML = pill(online, "在线", "离线");
+      document.getElementById("hdrMotion").innerHTML = enabled
+        ? '<span class="pill ok">使能</span>'
+        : '<span class="pill">未使能</span>';
+
+      const lim = softLimits(id);
+      document.getElementById("vLimits").textContent =
+        lim.neg == null && lim.pos == null ? "未配置" : `${lim.neg ?? "—"} ~ ${lim.pos ?? "—"} ${unit}`;
+      document.getElementById("vAxisNo").textContent = param(cfg, "axis", param(cfg, "axisNo", "—"));
+      document.getElementById("pModel").textContent = param(cfg, "model", "—");
+      document.getElementById("pMaxVel").textContent = param(cfg, "maxVel", "—");
+      document.getElementById("pAccel").textContent = param(cfg, "accel", "—");
+
+      const prefix = `device.${name}.${id}.`;
+      const keys = Object.keys(state.vars)
+        .filter((k) => k.toLowerCase().startsWith(prefix.toLowerCase()) || k.toLowerCase().includes(`.${id.toLowerCase()}.`))
+        .sort((a, b) => a.localeCompare(b));
+      const body = document.getElementById("varRows");
+      if (!keys.length) {
+        body.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">无匹配变量</td></tr>';
+      } else {
+        body.innerHTML = keys.map((k) => {
+          let v = state.vars[k];
+          if (typeof v === "object") try { v = JSON.stringify(v); } catch { v = String(v); }
+          return `<tr><td class="mono">${esc(k)}</td><td class="mono">${esc(v)}</td></tr>`;
+        }).join("");
+      }
+    }
+
+    function renderTable() {
+      const rows = Object.entries(state.devices).filter(([, d]) => isAxisType(field(d, "type", "Type")));
+      document.getElementById("axisCountHint").textContent = String(rows.length);
+      const tbody = document.getElementById("axisTableBody");
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">无轴设备</td></tr>';
+        return;
+      }
+      const cur = axisId();
+      tbody.innerHTML = rows.map(([id, d]) => {
+        const name = field(d, "name", "Name") || id;
+        const pos = numVar(id, "position");
+        const enabled = boolVar(id, "motionEnabled");
+        const online = field(d, "driverConnected", "DriverConnected") === true;
+        const st = String(field(d, "state", "State") || "—");
+        const selCls = id === cur ? " selected" : "";
+        return `<tr class="teach-row${selCls}" data-id="${esc(id)}">
+          <td>${esc(name)}</td>
+          <td class="mono">${esc(id)}</td>
+          <td class="mono">${esc(fmtNum(pos))}</td>
+          <td>${pill(enabled, "ON", "OFF")}</td>
+          <td>${pill(online, "是", "否")}</td>
+          <td>${esc(st)}</td>
+        </tr>`;
+      }).join("");
+      tbody.querySelectorAll("tr[data-id]").forEach((tr) => {
+        tr.onclick = () => {
+          sel.value = tr.getAttribute("data-id");
+          tick();
+        };
+      });
+    }
+
+    async function loadConfigs() {
+      try {
+        const data = await fetchJson("/api/config/axes");
+        const list = data.axes || data.Axes || [];
+        state.configs = {};
+        for (const item of list) {
+          const id = item.id || item.Id;
+          if (id) {
+            state.configs[id] = item;
+            state.configs[String(id).toLowerCase()] = item;
+          }
+        }
+      } catch {
+        state.configs = {};
+      }
+    }
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        state.devices = field(data, "devices", "Devices") || {};
+        state.vars = field(data, "vars", "Vars") || {};
+        const running = field(data, "isRunning", "IsRunning");
+        document.getElementById("warnBar").classList.toggle("hidden", running !== false);
+        fillSelect();
+        renderSelected();
+        renderTable();
+      } catch {
+        document.getElementById("hdrSubtitle").textContent = "无法连接 /api/status";
+        document.getElementById("warnBar").classList.remove("hidden");
+        document.getElementById("warnBar").textContent = "无法连接监控服务。";
       }
     }
 
     document.getElementById("btnEnable").onclick = () => action("enable");
     document.getElementById("btnDisable").onclick = () => action("disable");
-    document.getElementById("btnStop").onclick = () => action("stop");
-    document.getElementById("btnMove").onclick = () =>
-      action("move", { position: Number(document.getElementById("txtPos").value) || 0 });
-    document.getElementById("btnJogPos").onclick = () =>
-      action("jog", { direction: 1, velocity: Number(document.getElementById("txtVel").value) || 1 });
-    document.getElementById("btnJogNeg").onclick = () =>
-      action("jog", { direction: -1, velocity: Number(document.getElementById("txtVel").value) || 1 });
+    document.getElementById("btnStop").onclick = () => stopJog(true);
+    document.getElementById("btnMove").onclick = () => {
+      const target = Number(txtPos.value);
+      if (!Number.isFinite(target)) { toast("目标位置无效", false); return; }
+      if (!checkLimit(target)) return;
+      action("move", { position: target });
+    };
+    document.getElementById("btnMoveZero").onclick = () => {
+      if (!checkLimit(0)) return;
+      txtPos.value = "0";
+      action("move", { position: 0 });
+    };
+    document.getElementById("btnFillPos").onclick = () => {
+      const p = numVar(axisId(), "position");
+      if (!Number.isFinite(p)) { toast("无当前位置", false); return; }
+      txtPos.value = String(p);
+    };
+    document.getElementById("btnStepNeg").onclick = () => stepBy(-1);
+    document.getElementById("btnStepPos").onclick = () => stepBy(1);
+    bindHold(document.getElementById("btnJogNeg"));
+    bindHold(document.getElementById("btnJogPos"));
 
-    async function tick() {
-      try {
-        const data = await fetchJson("/api/status");
-        const devices = field(data, "devices", "Devices") || {};
-        fillSelect(devices);
-        const id = sel.value;
-        const d = id ? devices[id] : null;
-        document.getElementById("hdrSubtitle").textContent = id
-          ? `${field(d, "name", "Name") || id} · ${id}`
-          : "请选择轴设备";
-        document.getElementById("vState").textContent = d ? String(field(d, "state", "State") || "—") : "—";
-        document.getElementById("vOnline").textContent = d
-          ? (field(d, "driverConnected", "DriverConnected") ? "是" : "否")
-          : "—";
-      } catch (e) {
-        document.getElementById("hdrSubtitle").textContent = "无法连接";
-      }
-    }
+    document.getElementById("stepPresetGroup").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-preset]");
+      if (btn) applyStepPreset(btn.getAttribute("data-preset"));
+    });
+
     sel.addEventListener("change", () => tick());
-    tick();
-    setInterval(tick, 1000);
+
+    document.addEventListener("keydown", (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") {
+        if (e.key === "Escape") { e.preventDefault(); stopJog(true); }
+        return;
+      }
+      if (e.key === "Escape") { e.preventDefault(); stopJog(true); return; }
+      if (e.repeat) return;
+      if (e.key === "ArrowLeft" || e.key === "-") {
+        e.preventDefault();
+        startHoldJog(-1, document.getElementById("btnJogNeg"));
+      } else if (e.key === "ArrowRight" || e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        startHoldJog(1, document.getElementById("btnJogPos"));
+      } else if (e.key === "c" || e.key === "C") applyStepPreset("continuous");
+      else if (e.key === "l" || e.key === "L") applyStepPreset("long");
+      else if (e.key === "m" || e.key === "M") applyStepPreset("medium");
+      else if (e.key === "s" || e.key === "S") applyStepPreset("short");
+    });
+    document.addEventListener("keyup", (e) => {
+      const tag = (e.target && e.target.tagName) || "";
+      if (tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA") return;
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "-" || e.key === "+" || e.key === "=") {
+        if (state.stepPreset === "continuous") stopJog(false);
+      }
+    });
+    window.addEventListener("blur", () => { if (state.jogging) stopJog(false); });
+
+    applyStepPreset("continuous");
+    loadConfigs().then(tick);
+    state.pollTimer = setInterval(tick, state.pollMs);
   </script>
 </body>
 </html>

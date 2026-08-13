@@ -18,10 +18,12 @@
     </div>
     <div class="card">
       <div class="label">驱动列表（/api/status）</div>
-      <table>
-        <thead><tr><th>Driver ID</th><th>类型</th><th>在线</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">加载中…</td></tr></tbody>
-      </table>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Driver ID</th><th>类型</th><th>在线</th></tr></thead>
+          <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">加载中…</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>

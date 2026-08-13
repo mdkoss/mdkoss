@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 报警监控</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="monitor" data-tool-page="monitor_alarm">
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">报警监控 <span class="pill warn">只读</span></div>
+        <div class="sub">GET /api/alarms · 配置定义 + 运行时故障</div>
+      </div>
+      <div class="btn-group">
+        <a class="link-btn" href="/debug_alarm.html">报警调试 →</a>
+        <a class="link-btn" href="/man_alarm.html">定义配置 →</a>
+      </div>
+    </div>
+    <div class="grid alarm-dash">
+      <div class="card span-3"><div class="label">活动</div><div class="value" id="vActive">—</div></div>
+      <div class="card span-3"><div class="label">错误</div><div class="value" id="vError">—</div></div>
+      <div class="card span-3"><div class="label">警告</div><div class="value" id="vWarn">—</div></div>
+      <div class="card span-3"><div class="label">未确认</div><div class="value" id="vUnacked">—</div></div>
+      <div class="card span-12">
+        <div class="form-row" style="margin-bottom:8px">
+          <div class="form-group" style="flex:2"><label>筛选</label>
+            <input type="search" id="flt" placeholder="代码 / 名称 / 消息 / 变量…" />
+          </div>
+          <div class="form-group"><label>范围</label>
+            <select id="fltScope">
+              <option value="active">仅活动</option>
+              <option value="all">全部</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>级别</th><th>代码</th><th>名称</th><th>消息</th><th>变量</th><th>值</th><th>确认</th><th>来源</th></tr></thead>
+            <tbody id="rows"><tr><td colspan="8" style="color:var(--muted)">加载中…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, fetchJson } = MdkTool;
+    let lastItems = [];
+
+    function pill(level) {
+      const l = String(level || "info").toLowerCase();
+      const cls = l === "error" ? "err" : l === "warn" ? "warn" : "info";
+      return `<span class="pill ${cls}">${esc(l)}</span>`;
+    }
+
+    function render() {
+      const q = document.getElementById("flt").value.trim().toLowerCase();
+      const scope = document.getElementById("fltScope").value;
+      const list = lastItems.filter((a) => {
+        if (scope === "active" && !a.active) return false;
+        if (!q) return true;
+        return [a.code, a.name, a.message, a.varKey, a.id, a.source].join(" ").toLowerCase().includes(q);
+      });
+      const body = document.getElementById("rows");
+      if (!list.length) {
+        body.innerHTML = '<tr><td colspan="8" style="color:var(--muted)">无匹配报警</td></tr>';
+        return;
+      }
+      body.innerHTML = list.map((a) => `<tr>
+        <td>${pill(a.level)}</td>
+        <td class="mono">${esc(a.code)}</td>
+        <td>${esc(a.name)}</td>
+        <td>${esc(a.message)}</td>
+        <td style="font-family:monospace;font-size:12px">${esc(a.varKey || "—")}</td>
+        <td style="font-family:monospace;font-size:12px">${esc(a.value ?? "—")}</td>
+        <td>${a.acked ? "已确认" : (a.active ? "未确认" : "—")}</td>
+        <td>${esc(a.source)}</td>
+      </tr>`).join("");
+    }
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/alarms");
+        lastItems = data.items || [];
+        document.getElementById("vActive").textContent = data.activeCount ?? 0;
+        document.getElementById("vError").textContent = data.errorCount ?? 0;
+        document.getElementById("vWarn").textContent = data.warnCount ?? 0;
+        document.getElementById("vUnacked").textContent = data.unackedCount ?? 0;
+        render();
+      } catch (e) {
+        document.getElementById("rows").innerHTML =
+          `<tr><td colspan="8" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
+      }
+    }
+    document.getElementById("flt").addEventListener("input", render);
+    document.getElementById("fltScope").addEventListener("change", render);
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

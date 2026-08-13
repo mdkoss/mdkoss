@@ -169,7 +169,7 @@
     function renderDi(list) {
       lastDi = list;
       if (!list.length) {
-        diRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">（无 DI 映射或暂无数据）</td></tr>';
+        diRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">（无 DI 映射或暂无数据）</td></tr>';
         return;
       }
       diRows.innerHTML = list
@@ -190,7 +190,7 @@
     function renderDo(list) {
       lastDo = list;
       if (!list.length) {
-        doRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">（无 DO 映射或暂无数据）</td></tr>';
+        doRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">（无 DO 映射或暂无数据）</td></tr>';
         return;
       }
       doRows.innerHTML = list
@@ -219,8 +219,8 @@
         renderDo(dout);
         lastUpdate.textContent = new Date().toLocaleTimeString();
       } catch (err) {
-        diRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">无法加载</td></tr>';
-        doRows.innerHTML = '<tr><td colspan="6" style="color:#90a4d4">无法加载</td></tr>';
+        diRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">无法加载</td></tr>';
+        doRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">无法加载</td></tr>';
         ioMsg.textContent = "无法连接 /api/status";
         ioMsg.classList.add("err");
       }

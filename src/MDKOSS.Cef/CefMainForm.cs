@@ -8,9 +8,22 @@ public sealed class CefMainForm : Form
     public CefMainForm(MdkRuntime runtime, string? startPath = null)
     {
         Text = $"MDKOSS - {runtime.Setting.ProjectName}";
-        Width = 1440;
-        Height = 900;
+        Width = 1920;
+        Height = 1080;
         StartPosition = FormStartPosition.CenterScreen;
+        try
+        {
+            // Prefer each host exe's ApplicationIcon (Sample / Cef.Sample differ).
+            var exeIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+            if (exeIcon != null)
+            {
+                Icon = exeIcon;
+            }
+        }
+        catch
+        {
+            // Keep default Form icon if extraction fails.
+        }
 
         var startUrl = ResolveStartUrl(runtime, startPath);
         var browser = new ChromiumWebBrowser(startUrl)

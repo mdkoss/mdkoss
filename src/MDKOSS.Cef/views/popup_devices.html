@@ -24,7 +24,7 @@
   </div>
   <script>
     if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
-    const PLATFORM = new Set(["platform","xy","xyz","xyzu","xyzuv","xyzuvw"]);
+    const PLATFORM = new Set(["platform","x","xy","xyz","xyzu","xyzuv","xyzuvw"]);
     function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
     async function tick(){
       try{
@@ -48,11 +48,17 @@
             } else if(t==="serialdev"){
               links=`<a href="/debug_serial.html?deviceId=${encodeURIComponent(id)}" target="_blank">串口</a>`;
             } else if(t==="gpio"||t==="vio"){
-              links=`<a href="/monitor_io.html" target="_blank">IO</a>`;
-            } else if(t==="axis"){
-              links=`<a href="/monitor_axis.html?deviceId=${encodeURIComponent(id)}" target="_blank">监控</a>`;
-            } else if(t==="cameradev"||t==="camera"){
-              links=`<a href="/monitor_camera.html?deviceId=${encodeURIComponent(id)}" target="_blank">监控</a>`;
+              links=`<a href="/monitor_io.html" target="_blank">IO</a>`
+                +`<a href="/debug_io.html" target="_blank">强制</a>`;
+            } else if(t==="axis"||t==="linear"||t==="rotary"){
+              links=`<a href="/monitor_axis.html?deviceId=${encodeURIComponent(id)}" target="_blank">监控</a>`
+                +`<a href="/debug_axis.html?deviceId=${encodeURIComponent(id)}" target="_blank">调试</a>`;
+            } else if(t==="cameradev"||t==="camera"||t==="extcamera"){
+              links=`<a href="/monitor_camera.html?deviceId=${encodeURIComponent(id)}" target="_blank">监控</a>`
+                +`<a href="/debug_camera.html?deviceId=${encodeURIComponent(id)}" target="_blank">调试</a>`;
+            } else if(t==="tcpdev"||t==="devpyscript"||t==="devmodserver"||t==="devmodclient"||t==="visiondev"||t==="vision"){
+              links=`<a href="/man_device.html" target="_blank">配置</a>`
+                +`<a href="/monitor_runtime.html" target="_blank">总览</a>`;
             } else {
               links=`<a href="/monitor_runtime.html" target="_blank">总览</a>`;
             }

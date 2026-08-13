@@ -65,7 +65,7 @@ public sealed class MdkSetting
     /// <summary>Optional default vision id applied by hosts.</summary>
     public string? ActiveVisionId { get; set; }
 
-    /// <summary>Alarm definitions (key / msg / code / solution / …) edited in Config.Wpf.</summary>
+    /// <summary>Alarm catalog (Config.Wpf) plus optional HMI condition fields.</summary>
     [JsonPropertyName("alarms")]
     public List<AlarmConfig> Alarms { get; set; } = [];
 
@@ -226,30 +226,74 @@ public sealed class MdkSetting
         public Dictionary<string, object?> Vars { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Alarm catalog entry used by runtime trigger/clear APIs.</summary>
-    public sealed class AlarmConfig
+    /// <summary>Alarm catalog entry used by runtime trigger/clear and HMI condition evaluation.</summary>
+    public sealed class AlarmConfig : System.Text.Json.Serialization.IJsonOnDeserialized
     {
-        /// <summary>Unique alarm key (lookup id for Trigger/Clear).</summary>
+        /// <summary>Catalog key used by <see cref="MdkAlarmManager"/> Trigger/Clear.</summary>
         public string Key { get; set; } = string.Empty;
 
-        /// <summary>Alarm message text.</summary>
+        /// <summary>HMI / JSON alias of <see cref="Key"/>.</summary>
+        public string Id { get; set; } = string.Empty;
+
+        public string Name { get; set; } = string.Empty;
+
+        /// <summary>Alarm message text (config catalog).</summary>
         public string Msg { get; set; } = string.Empty;
 
-        /// <summary>Alarm / error code.</summary>
-        public string Code { get; set; } = string.Empty;
+        /// <summary>HMI alias of <see cref="Msg"/>.</summary>
+        public string Message { get; set; } = string.Empty;
 
-        /// <summary>Suggested recovery / solution text.</summary>
+        public string Code { get; set; } = string.Empty;
         public string Solution { get; set; } = string.Empty;
 
-        /// <summary>Last trigger time (filled at runtime; editable in config).</summary>
         [JsonPropertyName("triggertime")]
         public string TriggerTime { get; set; } = string.Empty;
 
-        /// <summary>Owning module / subsystem label.</summary>
         public string Module { get; set; } = string.Empty;
-
-        /// <summary>Whether the alarm should appear in monitoring UI when active.</summary>
         public bool Display { get; set; } = true;
+
+        /// <summary><c>error</c> / <c>warn</c> / <c>info</c>.</summary>
+        public string Level { get; set; } = "error";
+        public bool Enabled { get; set; } = true;
+        public string VarKey { get; set; } = string.Empty;
+        public string Op { get; set; } = "eq";
+        public string Value { get; set; } = string.Empty;
+        public bool Latch { get; set; }
+
+        [JsonIgnore]
+        public string EffectiveId =>
+            !string.IsNullOrWhiteSpace(Id) ? Id.Trim()
+            : !string.IsNullOrWhiteSpace(Key) ? Key.Trim()
+            : "";
+
+        [JsonIgnore]
+        public string EffectiveMessage =>
+            !string.IsNullOrWhiteSpace(Message) ? Message
+            : !string.IsNullOrWhiteSpace(Msg) ? Msg
+            : Name;
+
+        void System.Text.Json.Serialization.IJsonOnDeserialized.OnDeserialized()
+        {
+            if (string.IsNullOrWhiteSpace(Id) && !string.IsNullOrWhiteSpace(Key))
+            {
+                Id = Key;
+            }
+
+            if (string.IsNullOrWhiteSpace(Key) && !string.IsNullOrWhiteSpace(Id))
+            {
+                Key = Id;
+            }
+
+            if (string.IsNullOrWhiteSpace(Msg) && !string.IsNullOrWhiteSpace(Message))
+            {
+                Msg = Message;
+            }
+
+            if (string.IsNullOrWhiteSpace(Message) && !string.IsNullOrWhiteSpace(Msg))
+            {
+                Message = Msg;
+            }
+        }
     }
 
     /// <summary>Named vision pipeline definition.</summary>

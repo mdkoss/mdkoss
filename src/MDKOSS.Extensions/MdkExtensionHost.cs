@@ -89,6 +89,7 @@ public static class MdkExtensionHost
     /// </summary>
     public static ExtensionDiscoveryResult DiscoverAndRegister(ExtensionDiscoveryOptions? options = null)
     {
+        EnsureDefaultContextPluginResolve();
         options ??= ExtensionDiscoveryOptions.Default;
         var log = options.Log ?? (_ => { });
         var errors = new List<string>();
@@ -172,6 +173,61 @@ public static class MdkExtensionHost
                 return Registered.Keys.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToArray();
             }
         }
+    }
+
+    private static int _defaultResolveHooked;
+
+    /// <summary>
+    /// Plugin assemblies live in a collectible-false <see cref="PluginLoadContext"/>, but some
+    /// dependencies (System.IO.Ports) are requested from the default context. Probe plugins/ and RID folders.
+    /// </summary>
+    private static void EnsureDefaultContextPluginResolve()
+    {
+        if (Interlocked.Exchange(ref _defaultResolveHooked, 1) != 0)
+        {
+            return;
+        }
+
+        AssemblyLoadContext.Default.Resolving += (_, assemblyName) =>
+        {
+            var name = assemblyName.Name;
+            if (string.IsNullOrEmpty(name) || name.StartsWith("System.Runtime", StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            var fileName = name + ".dll";
+            var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+            var baseDir = AppContext.BaseDirectory;
+            var plugins = Path.Combine(baseDir, "plugins");
+            foreach (var dir in new[]
+            {
+                baseDir,
+                plugins,
+                Path.Combine(baseDir, "runtimes", "win", "lib", "net8.0"),
+                Path.Combine(plugins, "runtimes", "win", "lib", "net8.0"),
+                Path.Combine(baseDir, "runtimes", rid, "lib", "net8.0"),
+                Path.Combine(plugins, "runtimes", rid, "lib", "net8.0"),
+            })
+            {
+                var path = Path.Combine(dir, fileName);
+                if (!File.Exists(path))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    return AssemblyLoadContext.Default.LoadFromAssemblyPath(Path.GetFullPath(path));
+                }
+                catch
+                {
+                    // Another context may already own this path.
+                }
+            }
+
+            return null;
+        };
     }
 
     private static void TryLoadAndRegister(
@@ -428,15 +484,18 @@ public static class MdkExtensionHost
 
     /// <summary>
     /// Loads a plugin assembly so shared MDKOSS.Core / MDKOSS.Extensions resolve from the default context.
+    /// Extra probe paths cover NuGet RID assets copied beside the plugin (e.g. System.IO.Ports).
     /// </summary>
     private sealed class PluginLoadContext : AssemblyLoadContext
     {
         private readonly AssemblyDependencyResolver _resolver;
+        private readonly string _pluginDirectory;
 
         public PluginLoadContext(string pluginPath)
             : base(isCollectible: false)
         {
             _resolver = new AssemblyDependencyResolver(pluginPath);
+            _pluginDirectory = Path.GetDirectoryName(Path.GetFullPath(pluginPath)) ?? AppContext.BaseDirectory;
         }
 
         protected override Assembly? Load(AssemblyName assemblyName)
@@ -456,14 +515,69 @@ public static class MdkExtensionHost
                 }
             }
 
-            var path = _resolver.ResolveAssemblyToPath(assemblyName);
+            var path = _resolver.ResolveAssemblyToPath(assemblyName)
+                       ?? ProbeManagedAssembly(name);
             return path is null ? null : LoadFromAssemblyPath(path);
         }
 
         protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
         {
-            var path = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+            var path = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName)
+                       ?? ProbeNativeLibrary(unmanagedDllName);
             return path is null ? IntPtr.Zero : LoadUnmanagedDllFromPath(path);
+        }
+
+        private string? ProbeManagedAssembly(string assemblyName)
+        {
+            var fileName = assemblyName + ".dll";
+            foreach (var dir in EnumerateProbeDirectories())
+            {
+                var candidate = Path.Combine(dir, fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private string? ProbeNativeLibrary(string unmanagedDllName)
+        {
+            var fileName = unmanagedDllName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                ? unmanagedDllName
+                : unmanagedDllName + ".dll";
+
+            foreach (var dir in EnumerateProbeDirectories())
+            {
+                var candidate = Path.Combine(dir, fileName);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private IEnumerable<string> EnumerateProbeDirectories()
+        {
+            var rid = System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier;
+            var baseDir = AppContext.BaseDirectory;
+            string[] roots = [_pluginDirectory, baseDir];
+            string[] tfms = ["net8.0", "net9.0"];
+
+            foreach (var root in roots)
+            {
+                yield return root;
+                yield return Path.Combine(root, "runtimes", rid, "native");
+                yield return Path.Combine(root, "runtimes", "win", "native");
+                foreach (var tfm in tfms)
+                {
+                    yield return Path.Combine(root, "runtimes", rid, "lib", tfm);
+                    yield return Path.Combine(root, "runtimes", "win", "lib", tfm);
+                }
+            }
         }
     }
 }

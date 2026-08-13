@@ -7,50 +7,88 @@
   <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body data-tool-group="debug" data-tool-page="debug_platform">
+<body data-tool-group="debug" data-tool-page="debug_platform" class="page-compact">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
-    <div class="header">
+    <div class="header compact-header">
       <div>
-        <div class="title">平台步进示教</div>
+        <div class="title">平台步进示教 <span class="pill warn">可写</span></div>
         <div class="sub" id="hdrSubtitle">请选择平台设备</div>
+      </div>
+      <div class="header-actions">
+        <span class="sub">刷新 <span id="pollHint">1s</span></span>
+        <span id="hdrMotion"></span>
+        <button type="button" class="btn danger btn-sm" id="btnStopJog">停止 (Esc)</button>
+        <a class="link-btn" id="lnkMonitor" href="/monitor_platform.html">监控 →</a>
       </div>
     </div>
     <div id="warnBar" class="warn-bar hidden">运行时未启动，仍可调试平台。</div>
-    <div class="form-row">
-      <div class="form-group" style="flex:2">
-        <label>平台设备</label>
+    <div class="form-row platform-bar compact-bar">
+      <div class="form-group grow">
+        <label>平台</label>
         <select id="selPlatform"><option value="">— 选择平台 —</option></select>
       </div>
-      <div class="form-group">
+      <div class="form-group shrink">
         <label>项目</label>
-        <div id="badgeProject" style="padding:8px 0">—</div>
+        <div id="badgeProject" class="badge-val">—</div>
       </div>
-      <div class="form-group">
+      <div class="form-group shrink">
         <label>运行</label>
         <div id="badgeRuntime">—</div>
       </div>
     </div>
-    <div class="sub" style="margin-bottom:12px">刷新: <span id="pollHint">1s</span></div>
     <div class="main-layout">
-      <div class="card">
-        <h2 class="panel-title">步进</h2>
-        <div class="form-row">
-          <div class="form-group"><label>模式</label><select id="selMode"><option value="default">默认</option><option value="joint">关节</option><option value="world">世界</option></select></div>
-          <div class="form-group"><label>速度</label><select id="selSpeed"><option value="low">低</option><option value="medium">中</option><option value="high">高</option></select></div>
+      <div class="card jog-card">
+        <div class="panel-head">
+          <h2 class="panel-title">步进 <span class="hint">按住连续</span></h2>
+          <div class="inline-controls">
+            <label class="inline-field">模式
+              <select id="selMode" title="一期占位：世界/默认同关节读数">
+                <option value="default">默认</option>
+                <option value="joint">关节</option>
+                <option value="world">世界</option>
+              </select>
+            </label>
+            <label class="inline-field">速度
+              <select id="selSpeed">
+                <option value="low">低</option>
+                <option value="medium">中</option>
+                <option value="high">高</option>
+              </select>
+            </label>
+          </div>
         </div>
         <div id="jogGrid" class="jog-grid"></div>
-        <div class="btn-group">
-          <button type="button" class="btn primary" id="btnEnable">平台使能</button>
-          <button type="button" class="btn danger" id="btnDisable">平台去使能</button>
+        <div class="btn-group compact-btns">
+          <button type="button" class="btn primary btn-sm" id="btnEnable">使能</button>
+          <button type="button" class="btn danger btn-sm" id="btnDisable">去使能</button>
+        </div>
+        <div class="panel-head tight">
+          <h2 class="panel-title">步距</h2>
+          <div class="seg-group" id="stepPresetGroup" role="group" aria-label="步距预设">
+            <button type="button" class="seg-btn active" data-preset="continuous">连续 C</button>
+            <button type="button" class="seg-btn" data-preset="long">长 L</button>
+            <button type="button" class="seg-btn" data-preset="medium">中 M</button>
+            <button type="button" class="seg-btn" data-preset="short">短 S</button>
+          </div>
+        </div>
+        <div class="step-grid">
+          <div class="form-group"><label>X</label><input type="number" id="step_X" step="0.001" value="1" disabled /></div>
+          <div class="form-group"><label>Y</label><input type="number" id="step_Y" step="0.001" value="1" disabled /></div>
+          <div class="form-group"><label>Z</label><input type="number" id="step_Z" step="0.001" value="1" disabled /></div>
+          <div class="form-group"><label>U</label><input type="number" id="step_U" step="0.001" value="1" disabled /></div>
+          <div class="form-group"><label>V</label><input type="number" id="step_V" step="0.001" value="1" disabled /></div>
+          <div class="form-group"><label>W</label><input type="number" id="step_W" step="0.001" value="1" disabled /></div>
         </div>
       </div>
-      <div class="card">
-        <h2 class="panel-title">目前位置</h2>
-        <div class="radio-row">
-          <label><input type="radio" name="coord" value="world" /> 世界 (W)</label>
-          <label><input type="radio" name="coord" value="joint" checked /> 关节 (J)</label>
-          <label><input type="radio" name="coord" value="pulse" /> 脉冲 (U)</label>
+      <div class="card status-card">
+        <div class="panel-head">
+          <h2 class="panel-title">目前位置</h2>
+          <div class="radio-row">
+            <label class="radio-chip"><input type="radio" name="coord" value="world" /> 世界</label>
+            <label class="radio-chip"><input type="radio" name="coord" value="joint" checked /> 关节</label>
+            <label class="radio-chip"><input type="radio" name="coord" value="pulse" /> 脉冲</label>
+          </div>
         </div>
         <div class="pos-grid">
           <div class="pos-field" id="posField_X">
@@ -66,40 +104,28 @@
             <input type="text" id="pos_Z" readonly value="—" />
           </div>
           <div class="pos-field" id="posField_U">
-            <label>U <span id="unit_U">mm</span></label>
+            <label>U <span id="unit_U">deg</span></label>
             <input type="text" id="pos_U" readonly value="—" />
           </div>
           <div class="pos-field" id="posField_V">
-            <label>V <span id="unit_V">mm</span></label>
+            <label>V <span id="unit_V">deg</span></label>
             <input type="text" id="pos_V" readonly value="—" />
           </div>
           <div class="pos-field" id="posField_W">
-            <label>W <span id="unit_W">mm</span></label>
+            <label>W <span id="unit_W">deg</span></label>
             <input type="text" id="pos_W" readonly value="—" />
           </div>
         </div>
-        <h2 class="panel-title">平台与轴状态</h2>
+        <h2 class="panel-title tight-title">平台与轴状态</h2>
         <div class="meta-row">
-          <div><span>类型 </span><strong id="metaKind">—</strong></div>
-          <div><span>使能 </span><span id="metaMotion">—</span></div>
-          <div><span>状态 </span><strong id="metaState">—</strong></div>
+          <div><span class="meta-label">类型</span> <strong id="metaKind">—</strong></div>
+          <div><span class="meta-label">使能</span> <span id="metaMotion">—</span></div>
+          <div><span class="meta-label">状态</span> <strong id="metaState">—</strong></div>
         </div>
-        <div class="table-wrap"><table><thead><tr><th>轴</th><th>子设备</th><th>驱动</th><th>在线</th><th>使能</th><th>备注</th></tr></thead><tbody id="axisTableBody"></tbody></table></div>
-        <h2 class="panel-title">步进距离</h2>
-        <div class="radio-row">
-          <label><input type="radio" name="stepPreset" value="continuous" checked /> 连续 (C)</label>
-          <label><input type="radio" name="stepPreset" value="long" /> 长 (L)</label>
-          <label><input type="radio" name="stepPreset" value="medium" /> 中 (M)</label>
-          <label><input type="radio" name="stepPreset" value="short" /> 短 (S)</label>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>X 步距</label><input type="number" id="step_X" step="0.001" value="1" disabled /></div>
-          <div class="form-group"><label>Y 步距</label><input type="number" id="step_Y" step="0.001" value="1" disabled /></div>
-          <div class="form-group"><label>Z 步距</label><input type="number" id="step_Z" step="0.001" value="1" disabled /></div>
-          <div class="form-group"><label>U 步距</label><input type="number" id="step_U" step="0.001" value="1" disabled /></div>
-          <div class="form-group"><label>V 步距</label><input type="number" id="step_V" step="0.001" value="1" disabled /></div>
-          <div class="form-group"><label>W 步距</label><input type="number" id="step_W" step="0.001" value="1" disabled /></div>
-        </div>
+        <div class="table-wrap dense-table"><table>
+          <thead><tr><th>轴</th><th>子设备</th><th>驱动</th><th>在线</th><th>使能</th><th>备注</th></tr></thead>
+          <tbody id="axisTableBody"></tbody>
+        </table></div>
       </div>
     </div>
     <div class="card bottom-card">
@@ -109,16 +135,31 @@
         <button type="button" class="tab" data-tab="io">关联 IO</button>
       </div>
       <div id="panel-teach" class="tab-panel active">
-        <div class="form-row">
+        <div class="teach-toolbar">
           <div class="form-group"><label>点文件</label><select id="selTeachFile"><option value="default">default.pts.json</option></select></div>
-          <div class="form-group"><label>点</label><select id="selPoint"></select></div>
+          <div class="form-group"><label>名称</label><input type="text" id="txtPointName" placeholder="改名" /></div>
+          <div class="btn-group compact-btns teach-btns">
+            <button type="button" class="btn primary btn-sm" id="btnTeach">示教 T</button>
+            <button type="button" class="btn btn-sm" id="btnGoto">定位</button>
+            <button type="button" class="btn btn-sm" id="btnRenamePoint">改名</button>
+            <button type="button" class="btn btn-sm" id="btnAddPoint">新增</button>
+            <button type="button" class="btn danger btn-sm" id="btnDeletePoint">删除</button>
+            <button type="button" class="btn btn-sm" id="btnExport">导出</button>
+            <label class="btn btn-sm">导入<input type="file" id="importFile" accept=".json" hidden /></label>
+          </div>
         </div>
-        <div class="btn-group">
-          <button type="button" class="btn primary" id="btnTeach">示教 (T)</button>
-          <button type="button" class="btn" id="btnGoto">定位</button>
-          <button type="button" class="btn" id="btnAddPoint">新增点</button>
-          <button type="button" class="btn" id="btnExport">导出</button>
-          <label class="btn">导入<input type="file" id="importFile" accept=".json" hidden /></label>
+        <div class="teach-layout">
+          <div class="table-wrap teach-table-wrap dense-table">
+            <table>
+              <thead><tr><th>ID</th><th>名称</th><th>摘要</th><th>状态</th></tr></thead>
+              <tbody id="teachTableBody"></tbody>
+            </table>
+          </div>
+          <div class="teach-preview card-inner">
+            <div class="panel-title">预览 <span class="hint" id="previewPointId">—</span></div>
+            <pre class="teach-preview-box" id="teachPreview">选择示教点</pre>
+            <select id="selPoint" class="hidden-select" aria-hidden="true"></select>
+          </div>
         </div>
       </div>
       <div id="panel-action" class="tab-panel">
@@ -127,16 +168,19 @@
           <div class="form-group"><label>action</label><input type="text" id="customAction" placeholder="enable / move" /></div>
         </div>
         <div class="form-group"><label>parameters (JSON)</label><textarea id="customParams" rows="2">{}</textarea></div>
-        <button type="button" class="btn primary" id="btnCustomAction">执行</button>
+        <button type="button" class="btn primary btn-sm" id="btnCustomAction">执行</button>
         <div class="log-box" id="actionLog"></div>
       </div>
       <div id="panel-io" class="tab-panel">
-        <div class="table-wrap"><table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>链接</th></tr></thead><tbody id="ioTableBody"></tbody></table></div>
+        <div class="table-wrap dense-table"><table>
+          <thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>链接</th></tr></thead>
+          <tbody id="ioTableBody"></tbody>
+        </table></div>
       </div>
     </div>
-    <p class="footer">API: <code>/api/status</code> · <code>/api/devices/{id}/action</code></p>
+    <p class="footer">C/L/M/S 步距 · T 示教 · 轴键± · Esc 停 · <code>/api/status</code></p>
   </div>
-<script src="debug_platform.js"></script>
+  <script src="debug_platform.js"></script>
   <script src="/js/tool_nav.js"></script>
 </body>
 </html>

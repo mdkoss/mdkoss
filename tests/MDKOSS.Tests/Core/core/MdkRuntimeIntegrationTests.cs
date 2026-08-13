@@ -260,6 +260,9 @@ public sealed class MdkRuntimeIntegrationTests
         Assert.Equal("X", p1.PlatformAxes[0].AxisLetter);
         Assert.Equal("Y", p1.PlatformAxes[1].AxisLetter);
         Assert.All(p1.PlatformAxes, row => Assert.Equal("d1", row.DriverId));
+        Assert.Equal("p1.X", p1.PlatformAxes[0].AxisDeviceId);
+        Assert.Equal("p1.Y", p1.PlatformAxes[1].AxisDeviceId);
+        Assert.Equal("xy", p1.Type);
     }
 
     [Fact]

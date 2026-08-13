@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 报警调试</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="debug" data-tool-page="debug_alarm">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">报警调试 <span class="pill warn">可写</span></div>
+        <div class="sub">确认 / 复位 / 模拟触发 · 三色灯</div>
+      </div>
+      <a class="link-btn" href="/monitor_alarm.html">只读监控 →</a>
+    </div>
+    <div class="grid alarm-dash">
+      <div class="card span-4"><div class="label">活动</div><div class="value" id="vActive">—</div></div>
+      <div class="card span-4"><div class="label">未确认</div><div class="value" id="vUnacked">—</div></div>
+      <div class="card span-4"><div class="label">操作任务</div><div class="value" id="vOp">—</div></div>
+      <div class="card span-12">
+        <h2 class="panel-title">操作</h2>
+        <div class="btn-group">
+          <button type="button" class="btn primary" id="btnAckAll">全部确认</button>
+          <button type="button" class="btn" id="btnReset">复位锁存</button>
+          <button type="button" class="btn" id="btnTest">模拟触发 alarm.test</button>
+          <button type="button" class="btn danger" id="btnTaskReset">任务复位</button>
+        </div>
+        <div class="btn-group" style="margin-top:10px">
+          <button type="button" class="btn red" id="btnRed">红灯</button>
+          <button type="button" class="btn yellow" id="btnYellow">黄灯</button>
+          <button type="button" class="btn green" id="btnGreen">绿灯</button>
+        </div>
+      </div>
+      <div class="card span-12">
+        <div class="label">活动报警（点击确认）</div>
+        <div id="list"></div>
+      </div>
+      <div class="card span-12">
+        <h2 class="panel-title">日志</h2>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, fetchJson, postJson, toast, logLine } = MdkTool;
+    const logBox = document.getElementById("logBox");
+
+    async function cmd(url, label, body) {
+      try {
+        const data = body != null ? await postJson(url, body) : await postJson(url);
+        toast(label + " 成功", true);
+        logLine(logBox, label + " ok", true);
+        await tick();
+        return data;
+      } catch (e) {
+        toast(e.message || "失败", false);
+        logLine(logBox, label + " fail: " + e.message, false);
+      }
+    }
+
+    document.getElementById("btnAckAll").onclick = () => cmd("/api/alarms/ack", "全部确认", { all: true });
+    document.getElementById("btnReset").onclick = () => cmd("/api/alarms/reset", "复位锁存");
+    document.getElementById("btnTest").onclick = () => cmd("/api/alarms/test", "模拟触发");
+    document.getElementById("btnTaskReset").onclick = () => fetch("/api/task/reset", { method: "POST" }).then(() => cmd("/api/alarms/reset", "任务+报警复位"));
+    document.getElementById("btnRed").onclick = () => fetch("/api/task/lamp?color=red", { method: "POST" });
+    document.getElementById("btnYellow").onclick = () => fetch("/api/task/lamp?color=yellow", { method: "POST" });
+    document.getElementById("btnGreen").onclick = () => fetch("/api/task/lamp?color=green", { method: "POST" });
+
+    async function tick() {
+      try {
+        const [alarms, status] = await Promise.all([
+          fetchJson("/api/alarms"),
+          fetchJson("/api/status").catch(() => ({})),
+        ]);
+        const vars = field(status, "vars", "Vars") || {};
+        document.getElementById("vActive").textContent = alarms.activeCount ?? 0;
+        document.getElementById("vUnacked").textContent = alarms.unackedCount ?? 0;
+        document.getElementById("vOp").textContent = vars["task.operation.state"] ?? "—";
+        const items = (alarms.items || []).filter((a) => a.active);
+        const box = document.getElementById("list");
+        if (!items.length) {
+          box.innerHTML = '<div style="color:var(--ok);font-size:15px">无活动报警</div>';
+          return;
+        }
+        box.innerHTML = items.map((a) => {
+          const cls = a.level === "error" ? "err" : a.level === "warn" ? "warn" : "info";
+          return `<div class="alarm-row">
+            <span class="lvl"><span class="pill ${cls}">${esc(a.level)}</span></span>
+            <div style="flex:1">
+              <div><strong>${esc(a.code)}</strong> ${esc(a.name)}</div>
+              <div style="color:var(--muted);font-size:13px">${esc(a.message)}</div>
+            </div>
+            <button type="button" class="btn" data-ack="${esc(a.id)}" ${a.acked ? "disabled" : ""}>${a.acked ? "已确认" : "确认"}</button>
+          </div>`;
+        }).join("");
+        box.querySelectorAll("button[data-ack]").forEach((btn) => {
+          btn.onclick = () => cmd("/api/alarms/ack", "确认 " + btn.getAttribute("data-ack"), { id: btn.getAttribute("data-ack") });
+        });
+      } catch (e) {
+        document.getElementById("list").innerHTML = `<div style="color:var(--danger)">${esc(e.message)}</div>`;
+      }
+    }
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

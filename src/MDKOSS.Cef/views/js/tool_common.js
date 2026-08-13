@@ -22,6 +22,17 @@
     return v == null || v === "" ? fallback : v;
   }
 
+  const AXIS_TYPES = new Set(["axis", "linear", "rotary"]);
+  const PLATFORM_TYPES = new Set(["platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
+
+  function isAxisType(t) {
+    return AXIS_TYPES.has(String(t || "").toLowerCase());
+  }
+
+  function isPlatformType(t) {
+    return PLATFORM_TYPES.has(String(t || "").toLowerCase());
+  }
+
   async function fetchJson(url, options) {
     const res = await fetch(url, Object.assign({ cache: "no-store" }, options || {}));
     const data = await res.json().catch(() => ({}));
@@ -42,12 +53,8 @@
     });
   }
 
-  function patchJson(url, body) {
-    return fetchJson(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body || {}),
-    });
+  function deleteJson(url) {
+    return fetchJson(url, { method: "DELETE" });
   }
 
   function ensureToast() {
@@ -61,13 +68,24 @@
     return el;
   }
 
+  function hideToast(el) {
+    el.classList.remove("show");
+    clearTimeout(el._hide);
+    el._hide = setTimeout(() => {
+      el.classList.remove("ok", "err");
+      el.textContent = "";
+    }, 240);
+  }
+
   function toast(msg, ok) {
     const el = ensureToast();
+    clearTimeout(el._t);
+    clearTimeout(el._hide);
     el.textContent = msg;
     el.classList.remove("show", "ok", "err");
+    void el.offsetWidth;
     el.classList.add("show", ok === false ? "err" : "ok");
-    clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove("show"), 2200);
+    el._t = setTimeout(() => hideToast(el), 2200);
   }
 
   function logLine(box, text, ok) {
@@ -83,9 +101,12 @@
     esc,
     field,
     qs,
+    isAxisType,
+    isPlatformType,
     fetchJson,
     postJson,
     patchJson,
+    deleteJson,
     toast,
     logLine,
   };

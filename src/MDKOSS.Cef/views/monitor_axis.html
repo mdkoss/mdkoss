@@ -28,17 +28,19 @@
       <div class="card span-4"><div class="label">在线</div><div class="value" id="vOnline">—</div></div>
       <div class="card span-12">
         <div class="label">相关变量（device.*）</div>
-        <table>
-          <thead><tr><th>键</th><th>值</th></tr></thead>
-          <tbody id="varRows"><tr><td colspan="2" style="color:var(--muted)">请选择轴</td></tr></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="varRows"><tr><td colspan="2" style="color:var(--muted)">请选择轴</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson } = MdkTool;
+    const { esc, field, qs, fetchJson, isAxisType } = MdkTool;
     const sel = document.getElementById("selAxis");
     let preferred = qs("deviceId", "");
 
@@ -52,7 +54,7 @@
     function fillSelect(devices) {
       const cur = sel.value || preferred;
       const opts = Object.entries(devices || {})
-        .filter(([, d]) => String(field(d, "type", "Type") || "").toLowerCase() === "axis")
+        .filter(([, d]) => isAxisType(field(d, "type", "Type")))
         .map(([id, d]) => {
           const name = field(d, "name", "Name") || id;
           return `<option value="${esc(id)}">${esc(name)} (${esc(id)})</option>`;

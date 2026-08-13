@@ -4,78 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>排单配置</title>
-  <link rel="stylesheet" href="/css/theme-white.css" />
+  <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body data-tool-group="man" data-tool-page="man_recipe">
+<body data-tool-group="man" data-tool-page="man_recipe" data-man-kind="recipes">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">排单 / 配方 <span class="pill warn">配置</span></div>
-        <div class="sub">查看与切换 · 深度维护见 debug_db</div>
+        <div class="sub" id="manMeta">Id / 名称 / Vars · 与 Config.Wpf Recipes 模块对应</div>
       </div>
-      <a class="link-btn" href="/debug_db.html">数据库维护 →</a>
+      <div class="btn-group">
+        <button type="button" class="btn" id="btnAdd">新建</button>
+        <button type="button" class="btn" id="btnDup">复制</button>
+        <button type="button" class="btn danger" id="btnDel">删除</button>
+        <button type="button" class="btn primary" id="btnApplyPatch">应用属性</button>
+        <a class="link-btn" href="/debug_db.html">数据库维护 →</a>
+      </div>
     </div>
-    <div class="card" style="margin-top:12px">
-      <div class="label">当前激活</div>
-      <div class="value" id="activeName" style="font-size:18px;margin-top:6px">—</div>
-      <div style="color:var(--muted);font-size:12px;margin-top:4px" id="activeId">—</div>
+    <p class="man-note">与 Config.Wpf 相同：Vars 为 Key/Value。应用属性会写入配方库；可用「应用排单」切换当前激活配方。</p>
+    <div class="man-toolbar">
+      <input type="search" id="manFilter" class="filter" placeholder="查找 Id / 名称 / 变量键…" autocomplete="off" />
     </div>
-    <div class="card" style="margin-top:12px">
-      <div class="label">配方列表（点击应用）</div>
-      <div id="list" style="margin-top:8px"><div class="recipe-dialog-empty">加载中…</div></div>
+    <div class="man-layout">
+      <div class="card">
+        <div class="label">组件列表</div>
+        <div class="table-scroll">
+          <table>
+            <thead id="manHead"></thead>
+            <tbody id="manList"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label" id="manFormTitle">属性</div>
+        <div id="manForm"></div>
+      </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
-  <script>
-    const { esc, field, fetchJson, toast } = MdkTool;
-    async function load() {
-      try {
-        const data = await fetchJson("/api/recipe");
-        const activeId = field(data, "activeRecipeId", "ActiveRecipeId") || "";
-        const recipes = field(data, "recipes", "Recipes") || [];
-        const active = recipes.find((r) => String(r.id ?? r.Id).toLowerCase() === String(activeId).toLowerCase());
-        document.getElementById("activeName").textContent = active
-          ? (active.name ?? active.Name ?? activeId)
-          : (activeId || "未选择");
-        document.getElementById("activeId").textContent = activeId ? `ID: ${activeId}` : "—";
-        const list = document.getElementById("list");
-        if (!recipes.length) {
-          list.innerHTML = '<div class="recipe-dialog-empty">暂无配方</div>';
-          return;
-        }
-        list.innerHTML = recipes.map((r) => {
-          const id = r.id ?? r.Id ?? "";
-          const name = r.name ?? r.Name ?? id;
-          const desc = r.description ?? r.Description ?? "";
-          const activeCls = String(id).toLowerCase() === String(activeId).toLowerCase() ? " active" : "";
-          return `<button type="button" class="recipe-option${activeCls}" data-id="${esc(id)}">
-            <div class="recipe-option-name">${esc(name)}</div>
-            <div class="recipe-option-meta">${esc([id, desc].filter(Boolean).join(" · "))}</div>
-          </button>`;
-        }).join("");
-        list.querySelectorAll("button[data-id]").forEach((btn) => {
-          btn.addEventListener("click", async () => {
-            const id = btn.getAttribute("data-id");
-            try {
-              const res = await fetch(`/api/recipe/apply?id=${encodeURIComponent(id)}`, { method: "POST" });
-              const body = await res.json().catch(() => ({}));
-              if (!res.ok || body.success === false) throw new Error(body.error || "apply_failed");
-              toast("已切换排单", true);
-              await load();
-            } catch (e) {
-              toast(e.message || "失败", false);
-            }
-          });
-        });
-      } catch (e) {
-        document.getElementById("list").innerHTML =
-          `<div class="recipe-dialog-empty">${esc(e.message)}</div>`;
-      }
-    }
-    load();
-  </script>
+  <script src="/js/man_editor.js"></script>
 </body>
 </html>

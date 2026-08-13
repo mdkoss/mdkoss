@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 视觉监控</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="monitor" data-tool-page="monitor_vision">
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">视觉流程监控 <span class="pill warn">只读</span></div>
+        <div class="sub" id="hdrSubtitle">visiondev 状态 · 结果变量</div>
+      </div>
+      <a class="link-btn" id="lnkDebug" href="/debug_vision.html">视觉调试 →</a>
+    </div>
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group" style="flex:2">
+        <label>视觉设备</label>
+        <select id="selDev"><option value="">— 选择 —</option></select>
+      </div>
+      <div class="form-group">
+        <label>当前流程</label>
+        <div class="value" id="vActive" style="font-size:16px">—</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card span-3"><div class="label">状态</div><div class="value" id="vState">—</div></div>
+      <div class="card span-3"><div class="label">OK</div><div class="value" id="vOk">—</div></div>
+      <div class="card span-3"><div class="label">Score</div><div class="value" id="vScore">—</div></div>
+      <div class="card span-3"><div class="label">次数</div><div class="value" id="vCount">—</div></div>
+      <div class="card span-12">
+        <div class="label">流程定义（/api/visions）</div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>ID</th><th>名称</th><th>相机</th><th>节点</th><th>说明</th></tr></thead>
+            <tbody id="visRows"><tr><td colspan="5" style="color:var(--muted)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card span-12">
+        <div class="label">结果 / 设备变量</div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="varRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, field, qs, fetchJson } = MdkTool;
+    const VIS = new Set(["visiondev", "vision"]);
+    const sel = document.getElementById("selDev");
+    let preferred = qs("deviceId", "");
+
+    function isVis(t) { return VIS.has(String(t || "").toLowerCase()); }
+
+    function updateLink() {
+      const id = sel.value;
+      document.getElementById("lnkDebug").href = id
+        ? `/debug_vision.html?deviceId=${encodeURIComponent(id)}`
+        : "/debug_vision.html";
+    }
+
+    function pick(vars, prefixes, suffix) {
+      for (const p of prefixes) {
+        const k = p + suffix;
+        if (vars[k] !== undefined && vars[k] !== null && vars[k] !== "") return vars[k];
+      }
+      return undefined;
+    }
+
+    async function tick() {
+      try {
+        const [status, visions] = await Promise.all([
+          fetchJson("/api/status"),
+          fetchJson("/api/visions").catch(() => ({ visions: [] })),
+        ]);
+        const devices = field(status, "devices", "Devices") || {};
+        const vars = field(status, "vars", "Vars") || {};
+        const cur = sel.value || preferred;
+        const opts = Object.entries(devices)
+          .filter(([, d]) => isVis(field(d, "type", "Type")))
+          .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)} (${esc(id)})</option>`);
+        sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
+        if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+        else if (sel.options.length > 1) sel.selectedIndex = 1;
+        preferred = "";
+        updateLink();
+
+        const activeId = visions.activeVisionId || vars["vision.activeId"] || "";
+        const visList = visions.visions || [];
+        const active = visList.find((v) => String(v.id).toLowerCase() === String(activeId).toLowerCase());
+        document.getElementById("vActive").textContent = active
+          ? `${active.name || active.id}`
+          : (activeId || "未选择");
+
+        const vbody = document.getElementById("visRows");
+        vbody.innerHTML = visList.length
+          ? visList.map((v) => `<tr>
+              <td>${esc(v.id)}</td><td>${esc(v.name)}</td>
+              <td>${esc(v.cameraDeviceId || "—")}</td>
+              <td>${esc(v.nodeCount)}</td><td>${esc(v.description || "")}</td>
+            </tr>`).join("")
+          : '<tr><td colspan="5" style="color:var(--muted)">无视觉流程</td></tr>';
+
+        const id = sel.value;
+        if (!id) {
+          document.getElementById("hdrSubtitle").textContent = opts.length ? "请选择视觉设备" : "无 visiondev";
+          return;
+        }
+        const d = devices[id];
+        const name = field(d, "name", "Name") || id;
+        document.getElementById("hdrSubtitle").textContent = `${name} · ${id}`;
+        document.getElementById("vState").textContent = String(field(d, "state", "State") || "—");
+        const prefixes = [`device.${name}.${id}.`, `device.${id}.`, "vision."];
+        document.getElementById("vOk").textContent = String(pick(vars, prefixes, "lastOk") ?? vars["vision.ok"] ?? "—");
+        document.getElementById("vScore").textContent = String(pick(vars, prefixes, "lastScore") ?? vars["vision.score"] ?? "—");
+        document.getElementById("vCount").textContent = String(pick(vars, prefixes, "runCount") ?? "—");
+
+        const keys = Object.keys(vars).filter((k) => {
+          const lk = k.toLowerCase();
+          return lk.startsWith("vision.")
+            || lk.includes(`.${id.toLowerCase()}.`)
+            || lk.startsWith(`device.${name.toLowerCase()}.`);
+        }).sort((a, b) => a.localeCompare(b));
+        const body = document.getElementById("varRows");
+        body.innerHTML = keys.length
+          ? keys.map((k) => {
+              let v = vars[k];
+              if (typeof v === "object") try { v = JSON.stringify(v); } catch { v = String(v); }
+              return `<tr><td>${esc(k)}</td><td style="font-family:monospace;font-size:12px">${esc(v)}</td></tr>`;
+            }).join("")
+          : '<tr><td colspan="2" style="color:var(--muted)">无匹配变量</td></tr>';
+      } catch {
+        document.getElementById("hdrSubtitle").textContent = "无法连接";
+      }
+    }
+    sel.addEventListener("change", () => tick());
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>

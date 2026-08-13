@@ -99,3 +99,4 @@ body {
 }
 .recipe-option-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
 .recipe-option-meta { font-size: 11px; color: var(--muted); }
+.recipe-dialog-empty { color: var(--muted); font-size: 12px; padding: 16px; text-align: center; }

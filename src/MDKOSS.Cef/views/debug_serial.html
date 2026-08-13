@@ -526,6 +526,8 @@
     els.txData.addEventListener("input", updateHexHint);
 
     // Initial state
+    const qid = new URLSearchParams(location.search).get("deviceId");
+    if (qid) els.deviceId.value = qid;
     updateHexHint();
     els.lastUpdate.textContent = new Date().toLocaleTimeString();
   </script>

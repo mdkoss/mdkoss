@@ -8,7 +8,8 @@ namespace MDKOSS.Cef.Sample;
 
 /// <summary>
 /// Lightweight CEF host that opens <c>index.html</c> to exercise core HMI pages
-/// (popup / monitor / debug / man) without DieBonder / PNP machine plugins.
+/// and extension-device config/debug (serial/tcp/modbus/pyscript/extcamera).
+/// Not a machine sample: no DieBonder / PNP tray workflows.
 /// </summary>
 internal static class Program
 {
@@ -58,40 +59,58 @@ internal static class Program
         // Force core HMI entry for this sample (config may still declare startPage).
         setting.StartPage = "index.html";
 
-        using var runtime = new MdkRuntime(setting, settingPath);
-        if (!RuntimeHost.TryBootstrapRuntime(runtime, out var startupError))
-        {
-            MessageBox.Show(
-                startupError ?? "Startup failed.",
-                appTitle,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            return;
-        }
-
-        if (!CefRuntimeBootstrap.TryInitialize(out var cefError))
-        {
-            AppLog.Error($"CEF init failed: {cefError}");
-            MessageBox.Show(
-                cefError ?? "Failed to initialize CEF.",
-                appTitle,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-            RuntimeHost.ShutdownRuntime(runtime);
-            return;
-        }
-
+        MdkRuntime runtime;
         try
         {
-            var startUrl = CefMainForm.ResolveStartUrl(runtime, "index.html");
-            AppLog.Info($"CEF UI starting ({startUrl})");
-            Application.Run(new CefMainForm(runtime, "index.html"));
-            AppLog.Info("CEF UI closed");
+            runtime = new MdkRuntime(setting, settingPath);
         }
-        finally
+        catch (Exception ex)
         {
-            CefRuntimeBootstrap.Shutdown();
-            RuntimeHost.ShutdownRuntime(runtime);
+            AppLog.Error(ex, "Failed to create runtime");
+            MessageBox.Show(
+                ex.Message,
+                appTitle,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return;
+        }
+
+        using (runtime)
+        {
+            if (!RuntimeHost.TryBootstrapRuntime(runtime, out var startupError))
+            {
+                MessageBox.Show(
+                    startupError ?? "Startup failed.",
+                    appTitle,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            if (!CefRuntimeBootstrap.TryInitialize(out var cefError))
+            {
+                AppLog.Error($"CEF init failed: {cefError}");
+                MessageBox.Show(
+                    cefError ?? "Failed to initialize CEF.",
+                    appTitle,
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                RuntimeHost.ShutdownRuntime(runtime);
+                return;
+            }
+
+            try
+            {
+                var startUrl = CefMainForm.ResolveStartUrl(runtime, "index.html");
+                AppLog.Info($"CEF UI starting ({startUrl})");
+                Application.Run(new CefMainForm(runtime, "index.html"));
+                AppLog.Info("CEF UI closed");
+            }
+            finally
+            {
+                CefRuntimeBootstrap.Shutdown();
+                RuntimeHost.ShutdownRuntime(runtime);
+            }
         }
     }
 }

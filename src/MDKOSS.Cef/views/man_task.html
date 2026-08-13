@@ -4,13 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>任务配置</title>
-  <link rel="stylesheet" href="/css/theme-white.css" />
+  <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
-  <style>
-    .man-layout { display:grid; grid-template-columns: minmax(220px,320px) 1fr; gap:16px; }
-    @media (max-width:900px){ .man-layout{ grid-template-columns:1fr; } }
-    .man-note { color:var(--warn); font-size:12px; margin-top:8px; }
-  </style>
 </head>
 <body data-tool-group="man" data-tool-page="man_task" data-man-kind="tasks">
   <div id="toast" class="toast" role="status"></div>
@@ -18,17 +13,35 @@
     <div class="header">
       <div>
         <div class="title">任务配置 <span class="pill warn">配置</span></div>
-        <div class="sub" id="manMeta">intervalMs / parameters</div>
+        <div class="sub" id="manMeta">Name / Type / DriverId / IntervalMs</div>
       </div>
       <div class="btn-group">
-        <button type="button" class="btn primary" id="btnApplyPatch">应用修改</button>
+        <button type="button" class="btn" id="btnAdd">新建</button>
+        <button type="button" class="btn" id="btnDup">复制</button>
+        <button type="button" class="btn danger" id="btnDel">删除</button>
+        <button type="button" class="btn primary" id="btnApplyPatch">应用属性</button>
         <button type="button" class="btn" id="btnSaveDisk">保存到磁盘</button>
       </div>
     </div>
-    <p class="man-note">PATCH 仅改内存 Setting；保存后需重启运行时，设备/驱动变更才会生效。</p>
-    <div class="man-layout" style="margin-top:12px">
-      <div class="card"><div class="label">列表</div><div id="manList" style="margin-top:8px"></div></div>
-      <div class="card"><div class="label">编辑</div><div id="manForm" style="margin-top:8px"></div></div>
+    <p class="man-note">与 Config.Wpf 相同：pollDriver / operation / cycle / flow 等类型；应用属性写内存，保存后需重启运行时。</p>
+    <div class="man-toolbar">
+      <input type="search" id="manFilter" class="filter" placeholder="查找 Name / Type / Driver…" autocomplete="off" />
+      <div id="manQuickAdd" class="man-quick"></div>
+    </div>
+    <div class="man-layout">
+      <div class="card">
+        <div class="label">组件列表</div>
+        <div class="table-scroll">
+          <table>
+            <thead id="manHead"></thead>
+            <tbody id="manList"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="label" id="manFormTitle">属性</div>
+        <div id="manForm"></div>
+      </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>

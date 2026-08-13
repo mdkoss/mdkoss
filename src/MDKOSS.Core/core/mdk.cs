@@ -47,10 +47,18 @@ public sealed class MdkRuntime : IDisposable
         AlarmManager = new MdkAlarmManager(setting, Vars);
     }
 
-    private static string ResolveDatabasePath(MdkSetting setting) =>
-        string.IsNullOrWhiteSpace(setting.DatabasePath)
+    private static string ResolveDatabasePath(MdkSetting setting)
+    {
+        var raw = string.IsNullOrWhiteSpace(setting.DatabasePath)
             ? MdkSetting.DefaultDatabasePath
             : setting.DatabasePath.Trim();
+        if (Path.IsPathRooted(raw))
+        {
+            return Path.GetFullPath(raw);
+        }
+
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, raw));
+    }
 
     public static MdkRuntime CreateFromFile(string settingPath)
     {
@@ -101,7 +109,14 @@ public sealed class MdkRuntime : IDisposable
 
         foreach (var device in _devices.Values)
         {
-            device.Start();
+            try
+            {
+                device.Start();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, $"Failed to start device '{device.Id}'.");
+            }
         }
 
         _scheduler.Start();
@@ -379,59 +394,66 @@ public sealed class MdkRuntime : IDisposable
         Setting.NormalizeSections();
         foreach (var config in Setting.AllDeviceConfigs.Where(d => d.Enabled))
         {
-            var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
-            var deviceType = config.Type.ToLowerInvariant();
+            try
+            {
+                var deviceName = string.IsNullOrWhiteSpace(config.Name) ? config.Id : config.Name;
+                var deviceType = config.Type.ToLowerInvariant();
 
-            MDeviceBase device;
-            if (string.Equals(deviceType, "gpio", StringComparison.OrdinalIgnoreCase))
-            {
-                device = BuildGpioDevice(config, deviceName);
-            }
-            else if (string.Equals(deviceType, "vio", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!_drivers.TryGetValue(config.DriverId, out var vioDriver))
+                MDeviceBase device;
+                if (string.Equals(deviceType, "gpio", StringComparison.OrdinalIgnoreCase))
+                {
+                    device = BuildGpioDevice(config, deviceName);
+                }
+                else if (string.Equals(deviceType, "vio", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!_drivers.TryGetValue(config.DriverId, out var vioDriver))
+                    {
+                        continue;
+                    }
+
+                    device = BuildVioDevice(config, deviceName, vioDriver);
+                }
+                else if (PlatformDeviceParameterSet.IsPlatformFamilyType(deviceType))
+                {
+                    var platform = BuildPlatformDevice(config, deviceName, deviceType);
+                    if (platform is null)
+                    {
+                        continue;
+                    }
+
+                    device = platform;
+                }
+                else if (DeviceExtensionRegistry.TryCreate(deviceType, config, deviceName, Vars, _drivers, out var extensionDevice))
+                {
+                    device = extensionDevice!;
+                }
+                else if (string.Equals(deviceType, "visiondev", StringComparison.OrdinalIgnoreCase)
+                         || string.Equals(deviceType, "vision", StringComparison.OrdinalIgnoreCase))
+                {
+                    device = BuildVisionDevice(config, deviceName);
+                }
+                else if (!_drivers.TryGetValue(config.DriverId, out var driver))
                 {
                     continue;
                 }
-
-                device = BuildVioDevice(config, deviceName, vioDriver);
-            }
-            else if (PlatformDeviceParameterSet.IsPlatformFamilyType(deviceType))
-            {
-                var platform = BuildPlatformDevice(config, deviceName, deviceType);
-                if (platform is null)
+                else
                 {
-                    continue;
+                    device = deviceType switch
+                    {
+                        _ when AxisDeviceParameterSet.IsAxisFamilyType(deviceType) =>
+                            new AxisDevice(config.Id, deviceName, driver, Vars),
+                        "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
+                        _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
+                    };
                 }
 
-                device = platform;
+                device.Initialize();
+                _devices[config.Id] = device;
             }
-            else if (DeviceExtensionRegistry.TryCreate(deviceType, config, deviceName, Vars, _drivers, out var extensionDevice))
+            catch (Exception ex)
             {
-                device = extensionDevice!;
+                AppLog.Error(ex, $"Failed to create device '{config.Id}' ({config.Type}). Skipping.");
             }
-            else if (string.Equals(deviceType, "visiondev", StringComparison.OrdinalIgnoreCase)
-                     || string.Equals(deviceType, "vision", StringComparison.OrdinalIgnoreCase))
-            {
-                device = BuildVisionDevice(config, deviceName);
-            }
-            else if (!_drivers.TryGetValue(config.DriverId, out var driver))
-            {
-                continue;
-            }
-            else
-            {
-                device = deviceType switch
-                {
-                    _ when AxisDeviceParameterSet.IsAxisFamilyType(deviceType) =>
-                        new AxisDevice(config.Id, deviceName, driver, Vars),
-                    "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
-                    _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
-                };
-            }
-
-            device.Initialize();
-            _devices[config.Id] = device;
         }
     }
 
@@ -672,7 +694,14 @@ public sealed class MdkRuntime : IDisposable
         }
         foreach (var device in _devices.Values)
         {
-            device.Dispose();
+            try
+            {
+                device.Dispose();
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error(ex, $"Failed to dispose device '{device.Id}'.");
+            }
         }
 
         _drivers.Clear();
@@ -947,6 +976,11 @@ public sealed class MdkRuntime : IDisposable
             return camera.TriggerCapture(recipe)
                 ? DeviceActionResult.Ok(new { recipe })
                 : DeviceActionResult.Fail("capture_failed");
+        }
+
+        if (action.Equals("status", StringComparison.OrdinalIgnoreCase))
+        {
+            return DeviceActionResult.Ok(camera.GetSnapshot());
         }
 
         return DeviceActionResult.Fail("unknown_action");

@@ -22,17 +22,21 @@
       <div class="card span-4"><div class="label">灯</div><div class="value" id="opLamp">—</div></div>
       <div class="card span-12">
         <div class="label">运行时任务</div>
-        <table>
-          <thead><tr><th>名称</th><th>类型</th><th>间隔 ms</th><th>状态</th></tr></thead>
-          <tbody id="taskRows"><tr><td colspan="4" style="color:var(--muted)">加载中…</td></tr></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>名称</th><th>类型</th><th>间隔 ms</th><th>状态</th></tr></thead>
+            <tbody id="taskRows"><tr><td colspan="4" style="color:var(--muted)">加载中…</td></tr></tbody>
+          </table>
+        </div>
       </div>
       <div class="card span-12">
         <div class="label">周期变量（task.cycle.*）</div>
-        <table>
-          <thead><tr><th>键</th><th>值</th></tr></thead>
-          <tbody id="cycleRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>键</th><th>值</th></tr></thead>
+            <tbody id="cycleRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>
