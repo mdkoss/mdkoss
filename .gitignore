@@ -5,6 +5,7 @@ _build_verify/
 *.user
 /.cursor
 /marketing
+/scripts
 
 # Plugin build outputs (copied by MdkPlugins.targets)
 /src/plugins/
