@@ -3,7 +3,9 @@ obj/
 _build_verify/
 .vs/
 *.user
-/.cursor
+/.cursor/*
+!/.cursor/skills/
+!/.cursor/skills/**
 /marketing
 /scripts
 
