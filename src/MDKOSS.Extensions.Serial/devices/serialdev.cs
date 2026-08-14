@@ -521,7 +521,7 @@ public sealed class SerialDevice : MDeviceBase
         return new DeviceSnapshot(
             Id,
             Name,
-            Type.ToString(),
+            "serialdev",
             State.ToString(),
             "serial",
             isOpen,

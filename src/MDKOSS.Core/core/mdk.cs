@@ -15,6 +15,7 @@ public sealed class MdkRuntime : IDisposable
     private readonly Dictionary<string, IDriver> _drivers = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MDeviceBase> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MTaskBase> _tasks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly object _graphLock = new();
     private readonly MTaskScheduler _scheduler = new();
     private MonitoringServer? _monitoringServer;
 
@@ -441,7 +442,7 @@ public sealed class MdkRuntime : IDisposable
                     device = deviceType switch
                     {
                         _ when AxisDeviceParameterSet.IsAxisFamilyType(deviceType) =>
-                            new AxisDevice(config.Id, deviceName, driver, Vars),
+                            new AxisDevice(config.Id, deviceName, driver, Vars, deviceType),
                         "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
                         _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
                     };

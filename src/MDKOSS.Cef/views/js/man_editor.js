@@ -1,7 +1,6 @@
 /**
- * Config editor aligned with MDKOSS.Config.Wpf:
- * list table + property panel (typed fields + Key/Value parameters).
- * body[data-man-kind]=drivers|devices|tasks|axes|platforms|recipes
+ * Simplified Config.Wpf editor: list + add/delete/duplicate + typed fields + Key/Value params.
+ * body[data-man-kind]=drivers|devices|tasks|axes|platforms|recipes|alarms|visions|vars|machine
  * optional body[data-man-filter]=gpio,vio
  */
 (function () {
@@ -9,51 +8,86 @@
     drivers: {
       api: "/api/config/drivers",
       catalog: "drivers",
-      idField: "id",
       cols: ["#", "Name", "Type", "Desc", "Enable"],
       fields: { id: true, name: true, type: true, enabled: true, parameters: true },
       labels: { id: "Name (Id)", name: "Desc (描述)" },
+      created: (d) => d.driver,
     },
     devices: {
       api: "/api/config/devices",
       catalog: "devices",
-      idField: "id",
       cols: ["#", "Name", "Type", "Desc", "Enable"],
       fields: { id: true, name: true, type: true, driverId: true, enabled: true, parameters: true },
       labels: { id: "Name (Id)", name: "Desc (描述)" },
+      created: (d) => d.device,
     },
     axes: {
       api: "/api/config/axes",
       catalog: "axes",
-      idField: "id",
       cols: ["#", "Name", "Type", "Desc", "Enable"],
       fields: { id: true, name: true, type: true, driverId: true, enabled: true, parameters: true },
       labels: { id: "Name (Id)", name: "Desc (描述)" },
+      created: (d) => d.device,
     },
     platforms: {
       api: "/api/config/platforms",
       catalog: "platforms",
-      idField: "id",
       cols: ["#", "Name", "Type", "Desc", "Enable"],
       fields: { id: true, name: true, type: true, enabled: true, parameters: true },
       labels: { id: "Name (Id)", name: "Desc (描述)" },
+      created: (d) => d.device,
     },
     tasks: {
       api: "/api/config/tasks",
       catalog: "tasks",
-      idField: "name",
       cols: ["#", "Name", "Type", "Desc", ""],
       fields: { name: true, type: true, driverId: true, interval: true, parameters: true },
       labels: { name: "Name" },
+      created: (d) => d.task,
     },
     recipes: {
       api: "/api/recipe",
       catalog: "",
-      idField: "id",
       cols: ["#", "Name", "Type", "Desc", ""],
       fields: { id: true, name: true, description: true, parameters: true },
       labels: { id: "Name (Id)", name: "名称", description: "Description" },
       paramTitle: "Vars (Key / Value)",
+      persistHint: "应用属性写入配方库",
+    },
+    alarms: {
+      api: "/api/config/alarms",
+      catalog: "",
+      cols: ["#", "Name", "Code", "条件", "Enable"],
+      fields: { id: true, name: true, code: true, level: true, op: true, varKey: true, value: true, description: true, enabled: true, latch: true },
+      labels: { id: "Key", name: "名称", description: "消息" },
+      created: (d) => d.alarm,
+    },
+    visions: {
+      api: "/api/config/visions",
+      catalog: "",
+      cols: ["#", "Name", "Type", "Desc", ""],
+      fields: { id: true, name: true, description: true, cameraDeviceId: true },
+      labels: { id: "Name (Id)", name: "名称", description: "说明" },
+      created: (d) => d.vision,
+    },
+    vars: {
+      api: "/api/config/vars",
+      catalog: "",
+      cols: ["#", "Name", "", "Value", ""],
+      fields: { id: true, value: true },
+      labels: { id: "Key", value: "Value" },
+      created: (d) => d.varItem,
+    },
+    machine: {
+      api: "/api/config/machine",
+      catalog: "",
+      cols: ["#", "Name", "Type", "Desc", ""],
+      fields: { parameters: true },
+      labels: {},
+      paramTitle: "Machine (Key / Value)",
+      canCreate: false,
+      canDelete: false,
+      canDuplicate: false,
     },
   };
 
@@ -80,11 +114,18 @@
 
     let items = [];
     let selectedId = null;
-    let catalog = { types: {}, driverIds: [], defaults: {} };
+    let catalog = { types: {}, driverIds: [], axisIds: [], cameraDeviceIds: [], defaults: {} };
     let dirty = false;
 
+    function canCreate() { return meta.canCreate !== false; }
+    function canDelete() { return meta.canDelete !== false; }
+    function canDuplicate() { return meta.canDuplicate !== false; }
+
     function itemKey(it) {
+      if (!it) return "";
       if (kind === "tasks") return it.name || it.Name || "";
+      if (kind === "vars") return it.key || it.Key || it.id || "";
+      if (kind === "alarms") return it.id || it.Id || it.key || it.Key || "";
       return it.id || it.Id || "";
     }
 
@@ -96,19 +137,44 @@
       if (!q) return true;
       const blob = [
         itemKey(it), it.name, it.Name, it.type, it.Type, it.driverId, it.DriverId,
-        it.description, it.enabled, JSON.stringify(it.parameters || it.vars || {}),
+        it.description, it.code, it.varKey, it.enabled, it.key,
+        stringifyValue(it.value), JSON.stringify(paramObj(it)),
       ].join(" ").toLowerCase();
       return blob.includes(q);
+    }
+
+    function stringifyValue(v) {
+      if (v == null) return "";
+      if (typeof v === "object") {
+        try { return JSON.stringify(v); } catch { return String(v); }
+      }
+      return String(v);
+    }
+
+    function colType(it) {
+      if (kind === "recipes") return "recipe";
+      if (kind === "alarms") return it.code || it.level || "alarm";
+      if (kind === "visions") return "vision";
+      if (kind === "vars") return "";
+      if (kind === "machine") return "machine";
+      return it.type || "—";
     }
 
     function colDesc(it) {
       if (kind === "tasks") return it.driverId || it.parameters?.note || "";
       if (kind === "recipes") return it.name || it.description || "";
+      if (kind === "alarms") return [it.varKey, it.op, it.value].filter((x) => x != null && x !== "").join(" ");
+      if (kind === "visions") {
+        const n = it.pipeline?.nodes?.length ?? it.Pipeline?.Nodes?.length ?? 0;
+        return `${it.cameraDeviceId || "无相机"} · ${n} 节点`;
+      }
+      if (kind === "vars") return stringifyValue(it.value);
+      if (kind === "machine") return it.parameters?.projectName || it.name || "";
       return it.name || it.id || "";
     }
 
     function colEnable(it) {
-      if (kind === "tasks" || kind === "recipes") return "";
+      if (kind === "tasks" || kind === "recipes" || kind === "visions" || kind === "vars" || kind === "machine") return "";
       return it.enabled === false ? "否" : "是";
     }
 
@@ -121,10 +187,12 @@
       }
       return prefix + "-" + Date.now();
     }
+
+    async function loadCatalog() {
       try {
         catalog = await fetchJson("/api/config/catalog");
       } catch {
-        catalog = { types: {}, driverIds: [], defaults: {} };
+        catalog = { types: {}, driverIds: [], axisIds: [], cameraDeviceIds: [], defaults: {} };
       }
       renderQuickAdd();
     }
@@ -137,6 +205,10 @@
 
     function renderQuickAdd() {
       if (!quickEl) return;
+      if (!canCreate()) {
+        quickEl.innerHTML = "";
+        return;
+      }
       const types = typeOptions();
       if (!types.length) {
         quickEl.innerHTML = "";
@@ -150,12 +222,22 @@
       });
     }
 
+    function syncToolbar() {
+      const add = document.getElementById("btnAdd");
+      const dup = document.getElementById("btnDup");
+      const del = document.getElementById("btnDel");
+      if (add) add.hidden = !canCreate();
+      if (dup) dup.hidden = !canDuplicate();
+      if (del) del.hidden = !canDelete();
+    }
+
     async function loadMeta() {
       try {
         const s = await fetchJson("/api/config");
         if (metaEl) {
+          const persist = meta.persistHint || "应用属性写内存，保存后需重启运行时";
           metaEl.textContent =
-            `项目 ${s.projectName || "—"} · ${s.settingPath || "(未设置 SettingPath)"} · 应用属性写内存，保存后需重启运行时`;
+            `项目 ${s.projectName || "—"} · ${s.settingPath || "(未设置 SettingPath)"} · ${persist}`;
         }
       } catch (e) {
         if (metaEl) metaEl.textContent = e.message || "无法加载 /api/config";
@@ -164,9 +246,28 @@
 
     async function loadList() {
       const data = await fetchJson(meta.api);
-      const raw = field(data, kind, kind[0].toUpperCase() + kind.slice(1)) || data[kind] || data.recipes || [];
-      items = raw;
+      if (kind === "machine") {
+        items = [{
+          id: "machine",
+          name: data.projectName || "Machine",
+          type: "machine",
+          parameters: data.parameters || {},
+        }];
+      } else if (kind === "vars") {
+        items = (data.vars || []).map((it) => ({
+          key: it.key || it.Key,
+          value: it.value !== undefined ? it.value : it.Value,
+        }));
+      } else {
+        const raw = field(data, kind, kind[0].toUpperCase() + kind.slice(1)) || data[kind] || data.recipes || [];
+        items = raw;
+      }
       renderList();
+    }
+
+    function confirmLeave() {
+      if (!dirty) return true;
+      return confirm("当前属性未应用，放弃修改？");
     }
 
     function renderList() {
@@ -182,7 +283,7 @@
               return `<tr class="man-row${active}" data-id="${esc(id)}">
                 <td>${i + 1}</td>
                 <td class="mono">${esc(id)}</td>
-                <td>${esc(it.type || (kind === "recipes" ? "recipe" : "—"))}</td>
+                <td>${esc(colType(it))}</td>
                 <td>${esc(colDesc(it))}</td>
                 <td>${esc(colEnable(it))}</td>
               </tr>`;
@@ -191,10 +292,12 @@
         : `<tr><td colspan="5" class="recipe-dialog-empty">无配置项</td></tr>`;
       listEl.querySelectorAll("tr[data-id]").forEach((tr) => {
         tr.addEventListener("click", () => {
-          selectedId = tr.getAttribute("data-id");
+          const id = tr.getAttribute("data-id");
+          if (id === selectedId) return;
+          if (!confirmLeave()) return;
+          selectedId = id;
           dirty = false;
           renderList();
-          renderForm();
         });
       });
       if (selectedId && !items.some((it) => itemKey(it) === selectedId)) selectedId = null;
@@ -207,7 +310,9 @@
     }
 
     function paramObj(it) {
+      if (!it) return {};
       if (kind === "recipes") return it.vars || it.Vars || {};
+      if (kind === "vars") return {};
       return it.parameters || it.Parameters || {};
     }
 
@@ -223,19 +328,24 @@
 
     function kvRowsHtml(obj) {
       const entries = Object.entries(obj || {});
-      if (!entries.length) {
-        return kvRowHtml("", "");
-      }
+      if (!entries.length) return kvRowHtml("", "");
       return entries
         .sort(([a], [b]) => a.localeCompare(b, undefined, { sensitivity: "base" }))
-        .map(([k, v]) => kvRowHtml(k, v == null ? "" : String(v)))
+        .map(([k, v]) => kvRowHtml(k, v == null ? "" : stringifyValue(v)))
         .join("");
     }
 
+    function valueSuggestions() {
+      if (kind === "platforms") return catalog.axisIds || [];
+      return [];
+    }
+
     function kvRowHtml(k, v) {
+      const list = valueSuggestions();
+      const listId = list.length ? ' list="kvValSuggest"' : "";
       return `<tr class="kv-row">
         <td><input class="kv-key" value="${esc(k)}" /></td>
-        <td><input class="kv-val" value="${esc(v)}" /></td>
+        <td><input class="kv-val"${listId} value="${esc(v)}" /></td>
       </tr>`;
     }
 
@@ -247,10 +357,16 @@
         .join("");
     }
 
+    function dirtyBadge() {
+      return dirty ? ' <span class="man-dirty">未应用</span>' : "";
+    }
+
     function renderForm() {
       const it = current();
       const f = meta.fields;
-      if (formTitle) formTitle.textContent = it ? `属性 — ${itemKey(it)}` : "属性";
+      if (formTitle) {
+        formTitle.innerHTML = (it ? `属性 — ${esc(itemKey(it))}` : "属性") + dirtyBadge();
+      }
       if (!it) {
         formEl.innerHTML =
           '<div class="recipe-dialog-empty">未选择组件。可用上方类型按钮快速新建，或从列表点选后编辑。</div>';
@@ -259,12 +375,14 @@
 
       const types = typeOptions();
       const drivers = catalog.driverIds || [];
+      const cameras = catalog.cameraDeviceIds || [];
       const type = it.type || "";
       const params = paramObj(it);
       let html = "";
       if (f.id) {
+        const editable = kind === "vars";
         html += `<div class="form-group"><label>${esc(meta.labels.id || "Name (Id)")}</label>
-          <input id="fId" value="${esc(it.id || "")}" disabled /></div>`;
+          <input id="fId" value="${esc(itemKey(it))}" ${editable ? "" : "disabled"} /></div>`;
       }
       if (f.name) {
         html += `<div class="form-group"><label>${esc(meta.labels.name || "Desc (描述)")}</label>
@@ -274,33 +392,66 @@
         html += `<div class="form-group"><label>Type</label>
           <select id="fType">${optionList(types, type)}</select></div>`;
       }
+      if (f.code) {
+        html += `<div class="form-group"><label>Code</label>
+          <input id="fCode" value="${esc(it.code || "")}" /></div>`;
+      }
       if (f.driverId) {
         html += `<div class="form-group"><label>DriverId</label>
           <select id="fDriverId">${optionList(["", ...drivers], it.driverId || "")}</select></div>`;
+      }
+      if (f.cameraDeviceId) {
+        html += `<div class="form-group"><label>默认相机设备</label>
+          <select id="fCam">${optionList(["", ...cameras], it.cameraDeviceId || "")}</select></div>`;
       }
       if (f.interval) {
         html += `<div class="form-group"><label>IntervalMs</label>
           <input id="fInterval" type="number" min="1" value="${esc(it.intervalMs ?? 100)}" /></div>`;
       }
+      if (f.level) {
+        const lv = it.level || "error";
+        html += `<div class="form-group"><label>级别</label>
+          <select id="fLevel">${optionList(["error", "warn", "info"], lv)}</select></div>`;
+      }
+      if (f.op) {
+        const ops = ["eq", "ne", "gt", "lt", "ge", "le", "truthy", "falsy", "empty", "nonempty"];
+        html += `<div class="form-group"><label>比较</label>
+          <select id="fOp">${optionList(ops, it.op || "eq")}</select></div>`;
+      }
+      if (f.varKey) {
+        html += `<div class="form-group"><label>变量键</label>
+          <input id="fVar" value="${esc(it.varKey || "")}" placeholder="task.operation.state" /></div>`;
+      }
+      if (f.value) {
+        html += `<div class="form-group"><label>${esc(meta.labels.value || "比较值")}</label>
+          <input id="fVal" value="${esc(stringifyValue(it.value))}" /></div>`;
+      }
       if (f.description) {
         html += `<div class="form-group"><label>${esc(meta.labels.description || "Description")}</label>
-          <input id="fDesc" value="${esc(it.description || "")}" /></div>`;
+          <input id="fDesc" value="${esc(it.description || it.message || it.msg || "")}" /></div>`;
       }
       if (f.enabled) {
         html += `<label class="form-group" style="display:flex;align-items:center;gap:8px">
           <input type="checkbox" id="fEnabled" ${it.enabled !== false ? "checked" : ""} /> Enabled
         </label>`;
       }
+      if (f.latch) {
+        html += `<label class="form-group" style="display:flex;align-items:center;gap:8px">
+          <input type="checkbox" id="fLatch" ${it.latch ? "checked" : ""} /> 锁存
+        </label>`;
+      }
       if (f.parameters) {
+        const suggest = valueSuggestions();
         html += `<div class="kv-head">
           <span>${esc(meta.paramTitle || "Parameters (Key / Value)")}</span>
           <div class="btn-group compact-btns">
-            ${kind !== "recipes" ? '<button type="button" class="btn btn-sm" id="btnFillTpl">补全模板</button><button type="button" class="btn btn-sm" id="btnResetTpl">重置模板</button>' : ""}
+            ${meta.catalog ? '<button type="button" class="btn btn-sm" id="btnFillTpl">补全模板</button><button type="button" class="btn btn-sm" id="btnResetTpl">重置模板</button>' : ""}
             ${kind === "recipes" ? '<button type="button" class="btn btn-sm" id="btnApplyRecipe">应用排单</button>' : ""}
             <button type="button" class="btn btn-sm" id="btnAddRow">+ 行</button>
             <button type="button" class="btn btn-sm" id="btnDelRow">删行</button>
           </div>
         </div>
+        ${suggest.length ? `<datalist id="kvValSuggest">${suggest.map((id) => `<option value="${esc(id)}"></option>`).join("")}</datalist>` : ""}
         <div class="table-scroll kv-wrap">
           <table class="kv-table">
             <thead><tr><th>Key</th><th>Value</th></tr></thead>
@@ -308,14 +459,25 @@
           </table>
         </div>`;
       }
+      if (kind === "visions") {
+        html += '<p class="man-hint">管线节点请用 Config.Wpf 视觉编辑器；此处仅配置名称与默认相机。</p>';
+      }
       formEl.innerHTML = html;
       bindFormEvents();
     }
 
+    function markDirty() {
+      dirty = true;
+      if (formTitle) {
+        const it = current();
+        formTitle.innerHTML = (it ? `属性 — ${esc(itemKey(it))}` : "属性") + dirtyBadge();
+      }
+    }
+
     function bindFormEvents() {
       formEl.querySelectorAll("input, select").forEach((el) => {
-        el.addEventListener("input", () => { dirty = true; });
-        el.addEventListener("change", () => { dirty = true; });
+        el.addEventListener("input", markDirty);
+        el.addEventListener("change", markDirty);
       });
       const add = document.getElementById("btnAddRow");
       const del = document.getElementById("btnDelRow");
@@ -323,14 +485,14 @@
       if (add && body) {
         add.onclick = () => {
           body.insertAdjacentHTML("beforeend", kvRowHtml("", ""));
-          dirty = true;
+          markDirty();
         };
       }
       if (del && body) {
         del.onclick = () => {
           const last = body.querySelector(".kv-row:last-child");
           if (last) last.remove();
-          dirty = true;
+          markDirty();
         };
       }
       const fill = document.getElementById("btnFillTpl");
@@ -353,12 +515,12 @@
         const next = fillOnly ? { ...cur } : { ...tpl };
         if (fillOnly) {
           for (const [k, v] of Object.entries(tpl)) {
-            if (!next[k] || String(next[k]).trim() === "") next[k] = v;
+            if (!(k in next) || String(next[k]).trim() === "") next[k] = v;
           }
         }
         const body = document.getElementById("kvBody");
         if (body) body.innerHTML = kvRowsHtml(next);
-        dirty = true;
+        markDirty();
         toast(fillOnly ? "已补全缺失参数键" : "已重置为类型默认参数", true);
       } catch (e) {
         toast(e.message || "模板失败", false);
@@ -393,6 +555,35 @@
           vars: parameters,
         };
       }
+      if (kind === "alarms") {
+        return {
+          code: document.getElementById("fCode")?.value || "",
+          name: document.getElementById("fName")?.value || "",
+          level: document.getElementById("fLevel")?.value || "error",
+          op: document.getElementById("fOp")?.value || "eq",
+          varKey: document.getElementById("fVar")?.value || "",
+          value: document.getElementById("fVal")?.value || "",
+          message: document.getElementById("fDesc")?.value || "",
+          enabled: document.getElementById("fEnabled")?.checked !== false,
+          latch: document.getElementById("fLatch")?.checked === true,
+        };
+      }
+      if (kind === "visions") {
+        return {
+          name: document.getElementById("fName")?.value || "",
+          description: document.getElementById("fDesc")?.value || "",
+          cameraDeviceId: document.getElementById("fCam")?.value || "",
+        };
+      }
+      if (kind === "vars") {
+        return {
+          key: document.getElementById("fId")?.value || selectedId,
+          value: document.getElementById("fVal")?.value || "",
+        };
+      }
+      if (kind === "machine") {
+        return { parameters };
+      }
       return {
         name: document.getElementById("fName")?.value || "",
         type: document.getElementById("fType")?.value || "",
@@ -409,11 +600,17 @@
         const body = readBody();
         if (kind === "recipes") {
           await postJson("/api/recipe", body);
+        } else if (kind === "machine") {
+          await patchJson(meta.api, body);
+        } else if (kind === "vars") {
+          const data = await patchJson(`${meta.api}/${encodeURIComponent(selectedId)}`, body);
+          selectedId = data.varItem?.key || body.key || selectedId;
         } else {
           await patchJson(`${meta.api}/${encodeURIComponent(selectedId)}`, body);
+          if (kind === "tasks" && body.name) selectedId = body.name;
         }
         dirty = false;
-        toast("已更新内存配置", true);
+        toast(kind === "recipes" ? "已写入配方库" : "已更新内存配置", true);
         await loadList();
       } catch (e) {
         toast(e.message || "应用失败", false);
@@ -435,17 +632,43 @@
       }
     }
 
+    function createdKey(data, fallbackType) {
+      const created = typeof meta.created === "function" ? meta.created(data) : null;
+      return itemKey(created) || itemKey(data) || fallbackType || "";
+    }
+
     async function createItem(preferredType) {
+      if (!canCreate()) return;
       try {
-        let data;
         if (kind === "recipes") {
           const id = uniqueClientId("recipe-new");
           await postJson("/api/recipe", { id, name: id, description: "", vars: {} });
           selectedId = id;
+        } else if (kind === "vars") {
+          const data = await postJson(meta.api, { key: uniqueClientId("var.new"), value: "" });
+          selectedId = createdKey(data) || data.varItem?.key;
+        } else if (kind === "alarms") {
+          const data = await postJson(meta.api, {
+            name: "新报警",
+            code: "E000",
+            level: "error",
+            op: "eq",
+            varKey: "alarm.test",
+            value: "true",
+            message: "测试报警",
+            latch: true,
+            enabled: true,
+          });
+          selectedId = createdKey(data);
+        } else if (kind === "visions") {
+          const data = await postJson(meta.api, { name: "新视觉流程" });
+          selectedId = createdKey(data);
         } else {
-          const data = await postJson(meta.api, { type: preferredType || catalog.defaults?.[meta.catalog] || "" });
-          selectedId = itemKey(data.driver || data.device || data.task || {});
+          const type = preferredType || typeOptions()[0] || catalog.defaults?.[meta.catalog] || "";
+          const data = await postJson(meta.api, { type });
+          selectedId = createdKey(data);
         }
+        dirty = false;
         toast("已新建（内存）", true);
         await loadList();
       } catch (e) {
@@ -454,17 +677,10 @@
     }
 
     async function duplicateItem() {
+      if (!canDuplicate()) return;
       const it = current();
       if (!it) { toast("请先选择组件", false); return; }
       try {
-        const body = {
-          type: it.type,
-          name: (it.name || itemKey(it)) + " 副本",
-          driverId: it.driverId || "",
-          enabled: it.enabled !== false,
-          intervalMs: it.intervalMs,
-          parameters: paramObj(it),
-        };
         if (kind === "recipes") {
           const id = uniqueClientId((it.id || "recipe") + "-copy");
           await postJson("/api/recipe", {
@@ -474,10 +690,45 @@
             vars: paramObj(it),
           });
           selectedId = id;
+        } else if (kind === "vars") {
+          const data = await postJson(meta.api, {
+            key: uniqueClientId(itemKey(it) + "_copy"),
+            value: it.value,
+          });
+          selectedId = createdKey(data);
+        } else if (kind === "alarms") {
+          const data = await postJson(meta.api, {
+            name: (it.name || itemKey(it)) + " 副本",
+            code: it.code || "",
+            level: it.level || "error",
+            op: it.op || "eq",
+            varKey: it.varKey || "",
+            value: stringifyValue(it.value),
+            message: it.message || it.msg || "",
+            latch: !!it.latch,
+            enabled: it.enabled !== false,
+          });
+          selectedId = createdKey(data);
+        } else if (kind === "visions") {
+          const data = await postJson(meta.api, {
+            name: (it.name || itemKey(it)) + " 副本",
+            description: it.description || "",
+            cameraDeviceId: it.cameraDeviceId || "",
+          });
+          selectedId = createdKey(data);
         } else {
+          const body = {
+            type: it.type,
+            name: (it.name || itemKey(it)) + " 副本",
+            driverId: it.driverId || "",
+            enabled: it.enabled !== false,
+            intervalMs: it.intervalMs,
+            parameters: paramObj(it),
+          };
           const data = await postJson(meta.api, body);
-          selectedId = itemKey(data.driver || data.device || data.task || {});
+          selectedId = createdKey(data);
         }
+        dirty = false;
         toast("已复制（内存）", true);
         await loadList();
       } catch (e) {
@@ -486,6 +737,7 @@
     }
 
     async function deleteItem() {
+      if (!canDelete()) return;
       const it = current();
       if (!it) { toast("请先选择组件", false); return; }
       if (!confirm(`删除 ${itemKey(it)} ？`)) return;
@@ -493,6 +745,7 @@
         if (kind === "recipes") await deleteJson(`/api/recipe/${encodeURIComponent(selectedId)}`);
         else await deleteJson(`${meta.api}/${encodeURIComponent(selectedId)}`);
         selectedId = null;
+        dirty = false;
         toast("已删除（内存）", true);
         await loadList();
       } catch (e) {
@@ -515,8 +768,9 @@
     document.getElementById("btnAdd")?.addEventListener("click", () => createItem());
     document.getElementById("btnDup")?.addEventListener("click", duplicateItem);
     document.getElementById("btnDel")?.addEventListener("click", deleteItem);
-    filterEl?.addEventListener("input", renderList);
+    filterEl?.addEventListener("input", () => renderList());
 
+    syncToolbar();
     loadCatalog();
     loadMeta();
     loadList().catch((e) => {

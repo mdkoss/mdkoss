@@ -1,19 +1,19 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>GPIO 配置</title>
+  <title>变量配置</title>
   <link rel="stylesheet" href="/css/theme-white.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body data-tool-group="man" data-tool-page="man_gpio" data-man-kind="devices" data-man-filter="gpio,vio">
+<body data-tool-group="man" data-tool-page="man_vars" data-man-kind="vars">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">GPIO / VIO 配置 <span class="pill warn">配置</span></div>
-        <div class="sub" id="manMeta">gpio / vio 设备 · 点位写在 Parameters</div>
+        <div class="title">变量配置 <span class="pill warn">配置</span></div>
+        <div class="sub" id="manMeta">Key / Value · Setting.Vars 种子变量</div>
       </div>
       <div class="btn-group compact-btns">
         <button type="button" class="btn" id="btnAdd">新建</button>
@@ -23,10 +23,9 @@
         <button type="button" class="btn" id="btnSaveDisk">保存到磁盘</button>
       </div>
     </div>
-    <p class="man-note">简化配置：GPIO 点位为 driverId|address|label。VIO 用「补全 / 重置模板」填充 vio.b1…</p>
+    <p class="man-note">简化配置：增删启动种子变量。应用属性写内存；保存后下次启动生效。</p>
     <div class="man-toolbar">
-      <input type="search" id="manFilter" class="filter" placeholder="查找设备 / 别名 / 地址…" autocomplete="off" />
-      <div id="manQuickAdd" class="man-quick"></div>
+      <input type="search" id="manFilter" class="filter" placeholder="查找 Key / Value…" autocomplete="off" />
     </div>
     <div class="man-layout">
       <div class="card">

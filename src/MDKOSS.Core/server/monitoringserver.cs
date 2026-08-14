@@ -82,6 +82,8 @@ public sealed class MonitoringServer : IDisposable
         RegisterViewsPage(_staticPages, "/man_task.html");
         RegisterViewsPage(_staticPages, "/man_alarm.html");
         RegisterViewsPage(_staticPages, "/man_vision.html");
+        RegisterViewsPage(_staticPages, "/man_vars.html");
+        RegisterViewsPage(_staticPages, "/man_machine.html");
         RegisterViewsPage(_staticPages, "/popup_devices.html");
         RegisterViewsPage(_staticPages, "/popup_tasks.html");
         RegisterViewsPage(_staticPages, "/popup_vars.html");

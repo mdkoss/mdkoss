@@ -328,7 +328,7 @@ public sealed class MdkRuntimeIntegrationTests
         rt.Initialize();
         var snap = rt.GetSnapshot();
         Assert.True(snap.Devices.TryGetValue("vio1", out var vio));
-        Assert.Equal("Vio", vio.Type);
+        Assert.Equal("vio", vio.Type);
         Assert.Equal("vio", vio.DriverType);
         Assert.NotNull(vio.GpioIoPoints);
         Assert.Equal(2, vio.GpioIoPoints!.Count);

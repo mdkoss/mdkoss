@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>排单配置</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-white.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="man" data-tool-page="man_recipe" data-man-kind="recipes">
@@ -13,17 +13,16 @@
     <div class="header">
       <div>
         <div class="title">排单 / 配方 <span class="pill warn">配置</span></div>
-        <div class="sub" id="manMeta">Id / 名称 / Vars · 与 Config.Wpf Recipes 模块对应</div>
+        <div class="sub" id="manMeta">Id / 名称 / Vars</div>
       </div>
-      <div class="btn-group">
+      <div class="btn-group compact-btns">
         <button type="button" class="btn" id="btnAdd">新建</button>
         <button type="button" class="btn" id="btnDup">复制</button>
         <button type="button" class="btn danger" id="btnDel">删除</button>
         <button type="button" class="btn primary" id="btnApplyPatch">应用属性</button>
-        <a class="link-btn" href="/debug_db.html">数据库维护 →</a>
       </div>
     </div>
-    <p class="man-note">与 Config.Wpf 相同：Vars 为 Key/Value。应用属性会写入配方库；可用「应用排单」切换当前激活配方。</p>
+    <p class="man-note">简化配置：增删配方并编辑 Vars。应用属性写入配方库；可用「应用排单」切换当前配方。</p>
     <div class="man-toolbar">
       <input type="search" id="manFilter" class="filter" placeholder="查找 Id / 名称 / 变量键…" autocomplete="off" />
     </div>

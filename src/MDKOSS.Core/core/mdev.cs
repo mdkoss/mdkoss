@@ -127,7 +127,7 @@ public abstract class MDeviceBase : IDisposable
     /// <summary>Returns monitor-friendly device snapshot.</summary>
     public virtual DeviceSnapshot GetSnapshot()
     {
-        return new DeviceSnapshot(Id, Name, Type.ToString(), State.ToString(), Driver.Name, Driver.IsConnected, null, null, null, null);
+        return new DeviceSnapshot(Id, Name, Type.ToString().ToLowerInvariant(), State.ToString(), Driver.Name, Driver.IsConnected, null, null, null, null);
     }
 
     /// <summary>Guards operations that require online driver.</summary>
@@ -284,7 +284,7 @@ public sealed class GpioDevice : MDeviceBase
         return new DeviceSnapshot(
             Id,
             Name,
-            Type.ToString(),
+            "gpio",
             State.ToString(),
             "multi-driver-gpio",
             allConnected,
@@ -463,7 +463,7 @@ public sealed class VioDevice : MDeviceBase
         return new DeviceSnapshot(
             Id,
             Name,
-            Type.ToString(),
+            "vio",
             State.ToString(),
             "vio",
             Driver.IsConnected,
@@ -557,12 +557,20 @@ public sealed class VioDevice : MDeviceBase
 /// <summary>Basic motion axis device abstraction.</summary>
 public sealed class AxisDevice : MDeviceBase
 {
-    public AxisDevice(string id, string name, IDriver driver, MVarStore vars)
+    public AxisDevice(string id, string name, IDriver driver, MVarStore vars, string? configType = null)
         : base(id, name, MDeviceType.Axis, driver, vars)
     {
+        ConfigType = string.IsNullOrWhiteSpace(configType) ? "axis" : configType.Trim().ToLowerInvariant();
         Vars.Set(BuildVarKey("position"), 0.0);
         Vars.Set(BuildVarKey("motionEnabled"), false);
+        Vars.Set(BuildVarKey("kind"), ConfigType);
     }
+
+    /// <summary>Config type token (<c>axis</c> / <c>linear</c> / <c>rotary</c>) for HMI filters.</summary>
+    public string ConfigType { get; }
+
+    public override DeviceSnapshot GetSnapshot() =>
+        new(Id, Name, ConfigType, State.ToString(), Driver.Name, Driver.IsConnected);
 
     public bool MoveTo(double position)
     {

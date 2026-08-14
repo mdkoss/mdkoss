@@ -47,6 +47,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
         public string? Op { get; set; }
         public string? Value { get; set; }
         public string? Message { get; set; }
+        public string? Solution { get; set; }
+        public string? Module { get; set; }
         public bool? Latch { get; set; }
     }
 
@@ -57,6 +59,25 @@ public sealed class ConfigApiModule : MonitoringApiModule
         public string? Description { get; set; }
         public string? CameraDeviceId { get; set; }
         public JsonElement? Pipeline { get; set; }
+    }
+
+    private sealed class VarPatch
+    {
+        public string? Key { get; set; }
+        public JsonElement? Value { get; set; }
+    }
+
+    private sealed class MachinePatch
+    {
+        public string? ProjectName { get; set; }
+        public int? CycleMs { get; set; }
+        public string? MonitoringPrefix { get; set; }
+        public string? StartPage { get; set; }
+        public string? DatabasePath { get; set; }
+        public string? ActiveRecipeId { get; set; }
+        public string? ActiveVisionId { get; set; }
+        public string? RecipeVarKeys { get; set; }
+        public Dictionary<string, string>? Parameters { get; set; }
     }
 
     public ConfigApiModule(MdkRuntime runtime) : base(runtime) { }
@@ -252,6 +273,53 @@ public sealed class ConfigApiModule : MonitoringApiModule
                 }
             }
 
+            if (segments.Length >= 1 && segments[0].Equals("vars", StringComparison.OrdinalIgnoreCase))
+            {
+                if (segments.Length == 1 && isGet)
+                {
+                    await WriteJsonAsync(context.Response, new
+                    {
+                        success = true,
+                        vars = Runtime.Setting.Vars.Select(kv => new { key = kv.Key, value = kv.Value }),
+                    }, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+
+                if (segments.Length == 1 && isPost)
+                {
+                    await CreateVarAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+
+                if (segments.Length == 2 && isPatch)
+                {
+                    await PatchVarAsync(context, segments[1], cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+
+                if (segments.Length == 2 && method.Equals("DELETE", StringComparison.OrdinalIgnoreCase))
+                {
+                    await DeleteVarAsync(context.Response, segments[1], cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+            }
+
+            if (segments.Length >= 1 && segments[0].Equals("machine", StringComparison.OrdinalIgnoreCase))
+            {
+                if (segments.Length == 1 && isGet)
+                {
+                    await WriteJsonAsync(context.Response, MachinePayload(), cancellationToken)
+                        .ConfigureAwait(false);
+                    return true;
+                }
+
+                if (segments.Length == 1 && isPatch)
+                {
+                    await PatchMachineAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+            }
+
             return false;
         }
         catch (JsonException)
@@ -285,6 +353,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
                 recipes = s.Recipes.Count,
                 visions = s.Visions.Count,
                 alarms = s.Alarms.Count,
+                vars = s.Vars.Count,
             },
             note = "PATCH updates Setting in memory; POST /api/config/save writes disk. Restart runtime to apply to live devices.",
             timestampUtc = DateTime.UtcNow,
@@ -323,10 +392,18 @@ public sealed class ConfigApiModule : MonitoringApiModule
         }
 
         var s = Runtime.Setting;
+        var cameraIds = s.Devices
+            .Where(d => string.Equals(d.Type, "cameradev", StringComparison.OrdinalIgnoreCase)
+                        || string.Equals(d.Type, "extcamera", StringComparison.OrdinalIgnoreCase))
+            .Select(d => d.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .ToList();
         return WriteJsonAsync(context.Response, new
         {
             success = true,
             driverIds = s.Drivers.Select(d => d.Id).Where(id => !string.IsNullOrWhiteSpace(id)).ToList(),
+            axisIds = s.Axes.Select(a => a.Id).Where(id => !string.IsNullOrWhiteSpace(id)).ToList(),
+            cameraDeviceIds = cameraIds,
             types = new
             {
                 drivers = DriverParameterPresets.KnownTypes,
@@ -502,7 +579,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
         if (patch.Name is not null) item.Name = patch.Name;
         if (patch.Enabled.HasValue) item.Enabled = patch.Enabled.Value;
         if (!string.IsNullOrWhiteSpace(patch.Type)) item.Type = patch.Type.Trim();
-        MergeParameters(item.Parameters, patch.Parameters);
+        ReplaceParameters(item.Parameters, patch.Parameters);
 
         await WriteJsonAsync(context.Response, new { success = true, driver = item }, cancellationToken)
             .ConfigureAwait(false);
@@ -562,7 +639,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
         if (patch.Enabled.HasValue) item.Enabled = patch.Enabled.Value;
         if (patch.DriverId is not null) item.DriverId = patch.DriverId;
         if (!string.IsNullOrWhiteSpace(patch.Type)) item.Type = patch.Type.Trim();
-        MergeParameters(item.Parameters, patch.Parameters);
+        ReplaceParameters(item.Parameters, patch.Parameters);
 
         await WriteJsonAsync(context.Response, new { success = true, device = item }, cancellationToken)
             .ConfigureAwait(false);
@@ -590,7 +667,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
         if (patch.Type is not null) item.Type = patch.Type;
         if (patch.DriverId is not null) item.DriverId = patch.DriverId;
         if (patch.IntervalMs.HasValue) item.IntervalMs = Math.Max(1, patch.IntervalMs.Value);
-        MergeParameters(item.Parameters, patch.Parameters);
+        ReplaceParameters(item.Parameters, patch.Parameters);
 
         await WriteJsonAsync(context.Response, new { success = true, task = item }, cancellationToken)
             .ConfigureAwait(false);
@@ -675,6 +752,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
             item.Msg = patch.Message;
         }
         if (patch.Latch.HasValue) item.Latch = patch.Latch.Value;
+        if (patch.Solution is not null) item.Solution = patch.Solution;
+        if (patch.Module is not null) item.Module = patch.Module;
         if (string.IsNullOrWhiteSpace(item.Key)) item.Key = item.EffectiveId;
         if (string.IsNullOrWhiteSpace(item.Id)) item.Id = item.EffectiveId;
         return item;
@@ -814,9 +893,175 @@ public sealed class ConfigApiModule : MonitoringApiModule
         return prefix + "-" + Guid.NewGuid().ToString("N")[..6];
     }
 
-    private static void MergeParameters(Dictionary<string, string> target, Dictionary<string, string>? patch)
+    private async Task CreateVarAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        var patch = string.IsNullOrWhiteSpace(body) ? new VarPatch() : Deserialize<VarPatch>(body) ?? new VarPatch();
+        var key = string.IsNullOrWhiteSpace(patch.Key)
+            ? UniqueId(Runtime.Setting.Vars.Keys, "var.new")
+            : patch.Key.Trim();
+        if (Runtime.Setting.Vars.ContainsKey(key))
+        {
+            await WriteErrorAsync(context.Response, "var_exists", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var value = FromJsonElement(patch.Value);
+        Runtime.Setting.Vars[key] = value;
+        await WriteJsonAsync(context.Response, new { success = true, varItem = new { key, value } }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task PatchVarAsync(HttpListenerContext context, string oldKey, CancellationToken cancellationToken)
+    {
+        oldKey = Uri.UnescapeDataString(oldKey);
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        var patch = Deserialize<VarPatch>(body);
+        if (patch is null)
+        {
+            await WriteErrorAsync(context.Response, "invalid_body", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (!Runtime.Setting.Vars.ContainsKey(oldKey))
+        {
+            await WriteErrorAsync(context.Response, "var_not_found", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var newKey = string.IsNullOrWhiteSpace(patch.Key) ? oldKey : patch.Key.Trim();
+        if (!string.Equals(oldKey, newKey, StringComparison.OrdinalIgnoreCase)
+            && Runtime.Setting.Vars.ContainsKey(newKey))
+        {
+            await WriteErrorAsync(context.Response, "var_exists", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var value = patch.Value.HasValue
+            ? FromJsonElement(patch.Value)
+            : Runtime.Setting.Vars[oldKey];
+        if (!string.Equals(oldKey, newKey, StringComparison.OrdinalIgnoreCase))
+        {
+            Runtime.Setting.Vars.Remove(oldKey);
+        }
+
+        Runtime.Setting.Vars[newKey] = value;
+        await WriteJsonAsync(context.Response, new { success = true, varItem = new { key = newKey, value } }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task DeleteVarAsync(HttpListenerResponse response, string key, CancellationToken cancellationToken)
+    {
+        key = Uri.UnescapeDataString(key);
+        if (!Runtime.Setting.Vars.Remove(key))
+        {
+            await WriteErrorAsync(response, "var_not_found", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        await WriteJsonAsync(response, new { success = true, action = "delete" }, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private object MachinePayload()
+    {
+        var s = Runtime.Setting;
+        return new
+        {
+            success = true,
+            projectName = s.ProjectName,
+            cycleMs = s.CycleMs,
+            monitoringPrefix = s.MonitoringPrefix ?? "",
+            startPage = s.StartPage ?? "",
+            databasePath = s.DatabasePath ?? "",
+            activeRecipeId = s.ActiveRecipeId ?? "",
+            activeVisionId = s.ActiveVisionId ?? "",
+            recipeVarKeys = s.RecipeVarKeys,
+            parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["projectName"] = s.ProjectName ?? "",
+                ["cycleMs"] = s.CycleMs.ToString(),
+                ["monitoringPrefix"] = s.MonitoringPrefix ?? "",
+                ["startPage"] = s.StartPage ?? "",
+                ["databasePath"] = s.DatabasePath ?? "",
+                ["activeRecipeId"] = s.ActiveRecipeId ?? "",
+                ["activeVisionId"] = s.ActiveVisionId ?? "",
+                ["recipeVarKeys"] = string.Join(",", s.RecipeVarKeys ?? []),
+            },
+        };
+    }
+
+    private async Task PatchMachineAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        var patch = Deserialize<MachinePatch>(body);
+        if (patch is null)
+        {
+            await WriteErrorAsync(context.Response, "invalid_body", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var s = Runtime.Setting;
+        var book = patch.Parameters ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        string Read(string key, string? fallback) =>
+            book.TryGetValue(key, out var v) && v is not null ? v : (fallback ?? "");
+
+        var projectName = FirstNonEmpty(patch.ProjectName, Read("projectName", s.ProjectName));
+        s.ProjectName = string.IsNullOrWhiteSpace(projectName) ? "MDKOSS" : projectName.Trim();
+
+        var cycleRaw = patch.CycleMs?.ToString() ?? Read("cycleMs", s.CycleMs.ToString());
+        if (!int.TryParse(cycleRaw, out var cycle) || cycle <= 0)
+        {
+            await WriteErrorAsync(context.Response, "cycleMs_invalid", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        s.CycleMs = cycle;
+        s.MonitoringPrefix = EmptyToNull(FirstNonEmpty(patch.MonitoringPrefix, Read("monitoringPrefix", s.MonitoringPrefix)));
+        s.StartPage = EmptyToNull(FirstNonEmpty(patch.StartPage, Read("startPage", s.StartPage))?.Trim().TrimStart('/'));
+        s.DatabasePath = EmptyToNull(FirstNonEmpty(patch.DatabasePath, Read("databasePath", s.DatabasePath)));
+        s.ActiveRecipeId = EmptyToNull(FirstNonEmpty(patch.ActiveRecipeId, Read("activeRecipeId", s.ActiveRecipeId)));
+        s.ActiveVisionId = EmptyToNull(FirstNonEmpty(patch.ActiveVisionId, Read("activeVisionId", s.ActiveVisionId)));
+
+        var keysRaw = FirstNonEmpty(patch.RecipeVarKeys, Read("recipeVarKeys", string.Join(",", s.RecipeVarKeys ?? []))) ?? "";
+        s.RecipeVarKeys = keysRaw
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .ToList();
+
+        await WriteJsonAsync(context.Response, MachinePayload(), cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? FirstNonEmpty(string? a, string? b) =>
+        !string.IsNullOrWhiteSpace(a) ? a : b;
+
+    private static string? EmptyToNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static object? FromJsonElement(JsonElement? element)
+    {
+        if (element is null || element.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
+        {
+            return "";
+        }
+
+        var e = element.Value;
+        return e.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Number when e.TryGetInt64(out var l) => l,
+            JsonValueKind.Number => e.GetDouble(),
+            JsonValueKind.String => e.GetString() ?? "",
+            _ => e.GetRawText(),
+        };
+    }
+
+    /// <summary>Replace the parameter book (Config.Wpf Apply* behavior). Null patch leaves existing keys.</summary>
+    private static void ReplaceParameters(Dictionary<string, string> target, Dictionary<string, string>? patch)
     {
         if (patch is null) return;
+        target.Clear();
         foreach (var (k, v) in patch)
         {
             if (string.IsNullOrWhiteSpace(k)) continue;

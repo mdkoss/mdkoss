@@ -4,319 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>视觉流程配置</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-white.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
-<body data-tool-group="man" data-tool-page="man_vision">
+<body data-tool-group="man" data-tool-page="man_vision" data-man-kind="visions">
   <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
         <div class="title">视觉流程 <span class="pill warn">配置</span></div>
-        <div class="sub" id="manMeta">线性管线 start → ops → end</div>
+        <div class="sub" id="manMeta">名称 / 默认相机</div>
       </div>
-      <div class="btn-group">
-        <button type="button" class="btn" id="btnAdd">新建流程</button>
-        <button type="button" class="btn primary" id="btnApply">应用修改</button>
-        <button type="button" class="btn" id="btnSave">保存到磁盘</button>
-        <a class="link-btn" href="/debug_vision.html">调试 →</a>
+      <div class="btn-group compact-btns">
+        <button type="button" class="btn" id="btnAdd">新建</button>
+        <button type="button" class="btn" id="btnDup">复制</button>
+        <button type="button" class="btn danger" id="btnDel">删除</button>
+        <button type="button" class="btn primary" id="btnApplyPatch">应用属性</button>
+        <button type="button" class="btn" id="btnSaveDisk">保存到磁盘</button>
       </div>
     </div>
-    <p class="man-note">PATCH 仅改内存 Setting。深度画布编辑仍以 Config.Wpf 视觉编辑器为主。</p>
+    <p class="man-note">简化配置：增删视觉流程并绑定默认相机。管线节点请用 Config.Wpf 视觉编辑器。</p>
+    <div class="man-toolbar">
+      <input type="search" id="manFilter" class="filter" placeholder="查找 Id / 名称 / 相机…" autocomplete="off" />
+    </div>
     <div class="man-layout">
-      <div class="card"><div class="label">流程列表</div><div id="manList" style="margin-top:8px"></div></div>
-      <div>
-        <div class="card">
-          <div class="label">属性</div>
-          <div id="metaForm" style="margin-top:8px"></div>
+      <div class="card">
+        <div class="label">组件列表</div>
+        <div class="table-scroll">
+          <table>
+            <thead id="manHead"></thead>
+            <tbody id="manList"></tbody>
+          </table>
         </div>
-        <div class="card">
-          <div class="label">管线节点</div>
-          <div class="v-palette" id="palette" style="margin:8px 0"></div>
-          <div id="nodes"></div>
-          <div id="nodeProps" style="margin-top:12px"></div>
-        </div>
+      </div>
+      <div class="card">
+        <div class="label" id="manFormTitle">属性</div>
+        <div id="manForm"></div>
       </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
-  <script>
-    const { esc, fetchJson, patchJson, postJson, toast } = MdkTool;
-    const KINDS = [
-      { kind: "vision.loadImage", label: "加载图像", props: { path: "" } },
-      { kind: "vision.toGray", label: "转灰度", props: {} },
-      { kind: "vision.blur", label: "模糊", props: { kind: "gaussian", ksize: "5" } },
-      { kind: "vision.threshold", label: "阈值", props: { mode: "binary", thresh: "80", maxVal: "255" } },
-      { kind: "vision.morphology", label: "形态学", props: { op: "open", ksize: "3", iterations: "1" } },
-      { kind: "vision.roi", label: "ROI", props: { x: "0", y: "0", w: "200", h: "200" } },
-      { kind: "vision.templateMatch", label: "模板匹配", props: { templatePath: "", minScore: "0.7" } },
-      { kind: "vision.findContours", label: "找轮廓", props: { thresh: "80", minArea: "200" } },
-      { kind: "vision.findCircles", label: "找圆", props: { minDist: "20", minRadius: "5", maxRadius: "0" } },
-      { kind: "vision.findLines", label: "找线", props: { threshold: "50", minLength: "30" } },
-      { kind: "vision.outputPose", label: "输出位姿", props: { prefix: "vision", requireOk: "false" } },
-    ];
-    const LABELS = Object.fromEntries(KINDS.map((k) => [k.kind.toLowerCase(), k.label]));
-    LABELS.start = "开始";
-    LABELS.end = "结束";
-
-    let items = [];
-    let selectedId = null;
-    let draft = null;
-    let selectedNodeId = null;
-
-    function kindLabel(kind) { return LABELS[String(kind || "").toLowerCase()] || kind; }
-    function isTerminal(kind) {
-      const k = String(kind || "").toLowerCase();
-      return k === "start" || k === "end";
-    }
-
-    async function loadMeta() {
-      try {
-        const s = await fetchJson("/api/config");
-        document.getElementById("manMeta").textContent =
-          `项目 ${s.projectName || "—"} · 视觉 ${s.counts?.visions ?? "—"} · ${s.settingPath || ""}`;
-      } catch (e) {
-        document.getElementById("manMeta").textContent = e.message || "无法加载";
-      }
-    }
-
-    async function loadList() {
-      const data = await fetchJson("/api/config/visions");
-      items = data.visions || [];
-      const listEl = document.getElementById("manList");
-      listEl.innerHTML = items.length
-        ? items.map((it) => {
-            const id = it.id || "";
-            const n = (it.pipeline?.nodes || []).length;
-            return `<button type="button" class="recipe-option${id === selectedId ? " active" : ""}" data-id="${esc(id)}">
-              <div class="recipe-option-name">${esc(it.name || id)}</div>
-              <div class="recipe-option-meta">${esc(id)} · ${n} 节点</div>
-            </button>`;
-          }).join("")
-        : '<div class="recipe-dialog-empty">无视觉流程</div>';
-      listEl.querySelectorAll("button[data-id]").forEach((btn) => {
-        btn.addEventListener("click", () => selectVision(btn.getAttribute("data-id")));
-      });
-      if (selectedId && !items.some((it) => it.id === selectedId)) selectedId = null;
-      if (!selectedId && items.length) selectedId = items[0].id;
-      bindDraft();
-    }
-
-    function selectVision(id) {
-      selectedId = id;
-      selectedNodeId = null;
-      bindDraft();
-      loadList().catch(() => {});
-    }
-
-    function bindDraft() {
-      const it = items.find((x) => x.id === selectedId);
-      if (!it) {
-        draft = null;
-        document.getElementById("metaForm").innerHTML = '<div class="recipe-dialog-empty">请选择或新建</div>';
-        document.getElementById("nodes").innerHTML = "";
-        document.getElementById("nodeProps").innerHTML = "";
-        return;
-      }
-      const nodes = [...(it.pipeline?.nodes || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      draft = {
-        name: it.name || "",
-        description: it.description || "",
-        cameraDeviceId: it.cameraDeviceId || "",
-        nodes: nodes.map((n, i) => ({
-          id: n.id,
-          kind: n.kind,
-          order: i,
-          x: n.x ?? 300,
-          y: n.y ?? (40 + i * 80),
-          props: { ...(n.props || {}) },
-        })),
-      };
-      renderMeta();
-      renderNodes();
-    }
-
-    function renderMeta() {
-      if (!draft) return;
-      document.getElementById("metaForm").innerHTML = `
-        <div class="form-group"><label>ID</label><input value="${esc(selectedId)}" disabled /></div>
-        <div class="form-group"><label>名称</label><input id="fName" value="${esc(draft.name)}" /></div>
-        <div class="form-group"><label>说明</label><input id="fDesc" value="${esc(draft.description)}" /></div>
-        <div class="form-group"><label>默认相机设备</label><input id="fCam" value="${esc(draft.cameraDeviceId)}" /></div>
-        <div class="btn-group"><button type="button" class="btn danger" id="btnDel">删除流程</button></div>`;
-      document.getElementById("btnDel").onclick = removeCurrent;
-    }
-
-    function renderPalette() {
-      document.getElementById("palette").innerHTML = KINDS.map((k) =>
-        `<button type="button" class="btn" data-kind="${esc(k.kind)}">+ ${esc(k.label)}</button>`
-      ).join("");
-      document.getElementById("palette").querySelectorAll("button[data-kind]").forEach((btn) => {
-        btn.onclick = () => insertNode(btn.getAttribute("data-kind"));
-      });
-    }
-
-    function renderNodes() {
-      if (!draft) return;
-      const box = document.getElementById("nodes");
-      box.innerHTML = draft.nodes.map((n) => {
-        const active = n.id === selectedNodeId ? " active" : "";
-        const props = Object.entries(n.props || {}).map(([k, v]) => `${k}=${v}`).join(" ");
-        return `<div class="v-node${active}" data-id="${esc(n.id)}">
-          <div class="kind">${esc(kindLabel(n.kind))} <span style="color:var(--muted);font-weight:500">${esc(n.kind)}</span></div>
-          <div class="meta">${esc(n.id)}${props ? " · " + esc(props) : ""}</div>
-        </div>`;
-      }).join("");
-      box.querySelectorAll(".v-node").forEach((el) => {
-        el.onclick = () => { selectedNodeId = el.getAttribute("data-id"); renderNodes(); renderNodeProps(); };
-      });
-      renderNodeProps();
-    }
-
-    function selectedNode() {
-      return draft?.nodes.find((n) => n.id === selectedNodeId) || null;
-    }
-
-    function renderNodeProps() {
-      const n = selectedNode();
-      const el = document.getElementById("nodeProps");
-      if (!n) {
-        el.innerHTML = '<div style="color:var(--muted);font-size:14px">点击节点编辑参数</div>';
-        return;
-      }
-      const keys = Object.keys(n.props || {});
-      const fields = keys.length
-        ? keys.map((k) => `<div class="form-group"><label>${esc(k)}</label><input data-prop="${esc(k)}" value="${esc(n.props[k] ?? "")}" /></div>`).join("")
-        : '<div style="color:var(--muted);font-size:14px">该节点无参数</div>';
-      el.innerHTML = `
-        <div class="label">节点 ${esc(n.id)}</div>
-        ${fields}
-        <div class="btn-group">
-          <button type="button" class="btn" id="btnUp" ${isTerminal(n.kind) ? "disabled" : ""}>上移</button>
-          <button type="button" class="btn" id="btnDown" ${isTerminal(n.kind) ? "disabled" : ""}>下移</button>
-          <button type="button" class="btn danger" id="btnRm" ${isTerminal(n.kind) ? "disabled" : ""}>删除节点</button>
-        </div>`;
-      el.querySelectorAll("input[data-prop]").forEach((inp) => {
-        inp.addEventListener("input", () => { n.props[inp.getAttribute("data-prop")] = inp.value; });
-      });
-      document.getElementById("btnUp").onclick = () => moveNode(-1);
-      document.getElementById("btnDown").onclick = () => moveNode(1);
-      document.getElementById("btnRm").onclick = () => removeNode();
-    }
-
-    function insertNode(kind) {
-      if (!draft) return;
-      const spec = KINDS.find((k) => k.kind === kind);
-      const node = {
-        id: "n-" + Math.random().toString(16).slice(2, 10),
-        kind,
-        order: 0,
-        x: 300,
-        y: 0,
-        props: { ...(spec?.props || {}) },
-      };
-      const endIdx = draft.nodes.findIndex((n) => String(n.kind).toLowerCase() === "end");
-      const selIdx = draft.nodes.findIndex((n) => n.id === selectedNodeId);
-      let at = selIdx >= 0 ? selIdx + 1 : (endIdx >= 0 ? endIdx : draft.nodes.length);
-      if (endIdx >= 0 && at > endIdx) at = endIdx;
-      if (at <= 0) at = 1;
-      draft.nodes.splice(at, 0, node);
-      selectedNodeId = node.id;
-      renderNodes();
-    }
-
-    function moveNode(delta) {
-      if (!draft) return;
-      const idx = draft.nodes.findIndex((n) => n.id === selectedNodeId);
-      const n = draft.nodes[idx];
-      if (!n || isTerminal(n.kind)) return;
-      const startIdx = draft.nodes.findIndex((x) => String(x.kind).toLowerCase() === "start");
-      const endIdx = draft.nodes.findIndex((x) => String(x.kind).toLowerCase() === "end");
-      const min = startIdx >= 0 ? startIdx + 1 : 0;
-      const max = endIdx >= 0 ? endIdx - 1 : draft.nodes.length - 1;
-      const target = Math.max(min, Math.min(max, idx + delta));
-      if (target === idx) return;
-      draft.nodes.splice(idx, 1);
-      draft.nodes.splice(target, 0, n);
-      renderNodes();
-    }
-
-    function removeNode() {
-      if (!draft) return;
-      const n = selectedNode();
-      if (!n || isTerminal(n.kind)) return;
-      draft.nodes = draft.nodes.filter((x) => x.id !== n.id);
-      selectedNodeId = null;
-      renderNodes();
-    }
-
-    function collectPipeline() {
-      const nodes = draft.nodes.map((n, i) => ({
-        id: n.id,
-        kind: n.kind,
-        x: 300,
-        y: 40 + i * 80,
-        order: i,
-        props: n.props || {},
-      }));
-      const edges = [];
-      for (let i = 0; i < nodes.length - 1; i++) {
-        edges.push({ from: nodes[i].id, to: nodes[i + 1].id, port: "next" });
-      }
-      return { version: 1, nodes, edges };
-    }
-
-    async function applyPatch() {
-      if (!selectedId || !draft) return;
-      try {
-        await patchJson(`/api/config/visions/${encodeURIComponent(selectedId)}`, {
-          name: document.getElementById("fName").value,
-          description: document.getElementById("fDesc").value,
-          cameraDeviceId: document.getElementById("fCam").value,
-          pipeline: collectPipeline(),
-        });
-        toast("已更新内存配置", true);
-        await loadList();
-      } catch (e) { toast(e.message || "失败", false); }
-    }
-
-    async function addNew() {
-      try {
-        const data = await postJson("/api/config/visions", { name: "新视觉流程" });
-        selectedId = data.vision?.id || null;
-        toast("已新建", true);
-        await loadList();
-        await loadMeta();
-      } catch (e) { toast(e.message || "失败", false); }
-    }
-
-    async function removeCurrent() {
-      if (!selectedId || !confirm("删除该视觉流程？")) return;
-      try {
-        await fetchJson(`/api/config/visions/${encodeURIComponent(selectedId)}`, { method: "DELETE" });
-        selectedId = null;
-        toast("已删除", true);
-        await loadList();
-        await loadMeta();
-      } catch (e) { toast(e.message || "失败", false); }
-    }
-
-    document.getElementById("btnApply").onclick = applyPatch;
-    document.getElementById("btnAdd").onclick = addNew;
-    document.getElementById("btnSave").onclick = async () => {
-      try {
-        const data = await postJson("/api/config/save");
-        toast(data.message || "已保存", true);
-        await loadMeta();
-      } catch (e) { toast(e.message || "保存失败", false); }
-    };
-
-    renderPalette();
-    loadMeta();
-    loadList().catch((e) => {
-      document.getElementById("manList").innerHTML = `<div class="recipe-dialog-empty">${esc(e.message)}</div>`;
-    });
-  </script>
+  <script src="/js/man_editor.js"></script>
 </body>
 </html>

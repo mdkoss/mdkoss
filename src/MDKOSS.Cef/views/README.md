@@ -118,14 +118,16 @@ index ──popup_*──► monitor_* ──► debug_*
 
 | 页面 | 功能 |
 |------|------|
-| `man_driver.html` | 驱动列表与参数摘要（骨架） |
-| `man_device.html` | 设备与驱动绑定（骨架） |
-| `man_axis.html` / `man_platform.html` | 轴/平台参数（骨架） |
-| `man_gpio.html` | GPIO/VIO 点位别名（骨架） |
-| `man_recipe.html` | 排单切换 |
-| `man_task.html` | 任务绑定配置 |
-| `man_vision.html` | 视觉流程与线性管线 |
-| `man_alarm.html` | 报警定义（变量条件 / 锁存） |
+| `man_machine.html` | 整机参数（项目名 / 周期 / 路径） |
+| `man_driver.html` | 驱动增删与参数 |
+| `man_device.html` | 设备增删与驱动绑定 |
+| `man_axis.html` / `man_platform.html` | 轴 / 平台参数 |
+| `man_gpio.html` | GPIO / VIO 设备与点位参数 |
+| `man_task.html` | 任务增删与参数 |
+| `man_vars.html` | 种子变量 Key / Value |
+| `man_recipe.html` | 排单增删与 Vars |
+| `man_vision.html` | 视觉流程增删与默认相机（管线仍用 Config.Wpf） |
+| `man_alarm.html` | 报警定义增删与条件 |
 
 ---
 

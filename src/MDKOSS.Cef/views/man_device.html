@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>设备配置</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-white.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="man" data-tool-page="man_device" data-man-kind="devices">
@@ -15,7 +15,7 @@
         <div class="title">设备配置 <span class="pill warn">配置</span></div>
         <div class="sub" id="manMeta">Name / Type / DriverId / Parameters</div>
       </div>
-      <div class="btn-group">
+      <div class="btn-group compact-btns">
         <button type="button" class="btn" id="btnAdd">新建</button>
         <button type="button" class="btn" id="btnDup">复制</button>
         <button type="button" class="btn danger" id="btnDel">删除</button>
@@ -23,7 +23,7 @@
         <button type="button" class="btn" id="btnSaveDisk">保存到磁盘</button>
       </div>
     </div>
-    <p class="man-note">与 Config.Wpf 相同：轴/平台请用对应模块编辑。应用属性写内存；保存后需重启运行时。</p>
+    <p class="man-note">简化配置：增删设备并绑定驱动。轴 / 平台请用对应模块。</p>
     <div class="man-toolbar">
       <input type="search" id="manFilter" class="filter" placeholder="查找 Name / Type / Driver / 参数…" autocomplete="off" />
       <div id="manQuickAdd" class="man-quick"></div>

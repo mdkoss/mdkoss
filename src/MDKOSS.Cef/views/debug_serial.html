@@ -45,7 +45,9 @@
 
         <div class="form-group">
           <label>设备 ID</label>
-          <input type="text" id="deviceId" placeholder="serial1" value="serial1" />
+          <select id="deviceId">
+            <option value="serial1">serial1</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -525,9 +527,30 @@
 
     els.txData.addEventListener("input", updateHexHint);
 
-    // Initial state
-    const qid = new URLSearchParams(location.search).get("deviceId");
-    if (qid) els.deviceId.value = qid;
+    async function loadSerialDevices() {
+      const preferred = new URLSearchParams(location.search).get("deviceId") || els.deviceId.value || "serial1";
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        const devices = data.devices || data.Devices || {};
+        const opts = Object.entries(devices)
+          .filter(([, d]) => String(d.type || d.Type || "").toLowerCase() === "serialdev")
+          .map(([id, d]) => {
+            const name = d.name || d.Name || id;
+            return { id, label: name === id ? id : `${name} (${id})` };
+          });
+        if (!opts.length) opts.push({ id: preferred || "serial1", label: preferred || "serial1" });
+        els.deviceId.innerHTML = opts
+          .map((o) => `<option value="${o.id.replace(/"/g, "&quot;")}">${o.label.replace(/</g, "&lt;")}</option>`)
+          .join("");
+        if (opts.some((o) => o.id === preferred)) els.deviceId.value = preferred;
+        else els.deviceId.selectedIndex = 0;
+      } catch {
+        if (preferred) els.deviceId.value = preferred;
+      }
+    }
+
+    loadSerialDevices();
     updateHexHint();
     els.lastUpdate.textContent = new Date().toLocaleTimeString();
   </script>

@@ -1063,6 +1063,40 @@ body[data-tool-group] .wrap { padding-top: 16px; }
 .man-layout { display:grid; grid-template-columns: minmax(220px,320px) 1fr; gap:16px; }
 @media (max-width:900px){ .man-layout{ grid-template-columns:1fr; } }
 .man-note { color:var(--warn); font-size:12px; margin-top:8px; }
+.man-hint { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+.man-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 0 0 10px;
+}
+.man-toolbar .filter { margin: 0; flex: 1 1 220px; }
+.man-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.man-quick .btn { min-width: 0; padding: 6px 10px; font-size: 12px; }
+.man-dirty { color: #c9a227; font-size: 12px; font-weight: 600; }
+.kv-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 6px;
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 13px;
+}
+.kv-head .btn-group { margin: 0; }
+.kv-head .btn-group .btn,
+.compact-btns .btn {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 6px 10px;
+}
+.kv-wrap { max-height: min(42vh, 420px); }
+.kv-table input { width: 100%; padding: 6px 8px; font-size: 13px; }
+tbody tr.man-row { cursor: pointer; }
+tbody tr.man-row.selected td { background: #dbe7ff; }
+.btn.btn-sm { padding: 5px 10px; font-size: 12px; min-width: 0; }
 .v-node {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1726,6 +1760,12 @@ body[data-tool-group="man"] #nodeProps {
   min-height: 0;
   overflow: auto;
 }
+body[data-tool-group="man"] .man-layout > .card > .table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  overflow: auto;
+}
 body[data-tool-group="man"] .man-note {
   font-size: 14px;
   margin-top: 0;
@@ -1766,41 +1806,6 @@ body[data-tool-group="man"] .recipe-dialog-empty {
   font-size: 14px;
   padding: 16px;
   text-align: center;
-}
-body[data-tool-group="man"] .v-node .kind { font-size: 15px; }
-body[data-tool-group="man"] .v-node .meta { font-size: 13px; }
-
-body[data-tool-page="man_recipe"] .wrap > .card:first-of-type {
-  flex: 0 0 auto;
-}
-body[data-tool-page="man_recipe"] .wrap > .card:last-of-type {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-body[data-tool-page="man_recipe"] #list {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-}
-
-body[data-tool-page="man_vision"] .man-layout > div:last-child {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  overflow: hidden;
-}
-body[data-tool-page="man_vision"] .man-layout > div:last-child > .card:first-child {
-  flex: 0 0 auto;
-}
-body[data-tool-page="man_vision"] .man-layout > div:last-child > .card:last-child {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
 }
 
 @media (max-width: 900px) {

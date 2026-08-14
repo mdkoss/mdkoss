@@ -45,12 +45,20 @@
     return data;
   }
 
-  function postJson(url, body) {
+  function sendJson(url, method, body) {
     return fetchJson(url, {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       body: body == null ? undefined : JSON.stringify(body),
     });
+  }
+
+  function postJson(url, body) {
+    return sendJson(url, "POST", body);
+  }
+
+  function patchJson(url, body) {
+    return sendJson(url, "PATCH", body);
   }
 
   function deleteJson(url) {

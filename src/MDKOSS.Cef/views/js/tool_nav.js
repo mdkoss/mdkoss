@@ -35,13 +35,15 @@
     man: {
       label: "配置",
       pages: [
+        { id: "man_machine", href: "/man_machine.html", label: "整机" },
         { id: "man_driver", href: "/man_driver.html", label: "驱动" },
         { id: "man_device", href: "/man_device.html", label: "设备" },
         { id: "man_axis", href: "/man_axis.html", label: "轴" },
         { id: "man_platform", href: "/man_platform.html", label: "平台" },
         { id: "man_gpio", href: "/man_gpio.html", label: "GPIO" },
-        { id: "man_recipe", href: "/man_recipe.html", label: "排单" },
         { id: "man_task", href: "/man_task.html", label: "任务" },
+        { id: "man_vars", href: "/man_vars.html", label: "变量" },
+        { id: "man_recipe", href: "/man_recipe.html", label: "排单" },
         { id: "man_vision", href: "/man_vision.html", label: "视觉" },
         { id: "man_alarm", href: "/man_alarm.html", label: "报警" },
       ],
@@ -51,7 +53,7 @@
   const CROSS = [
     { group: "monitor", href: "/monitor_runtime.html", label: "监控" },
     { group: "debug", href: "/debug_platform.html", label: "调试" },
-    { group: "man", href: "/man_driver.html", label: "配置" },
+    { group: "man", href: "/man_machine.html", label: "配置" },
   ];
 
   function detect() {
@@ -84,7 +86,7 @@
 
     document.body.setAttribute("data-tool-group", group);
     document.body.setAttribute("data-tool-page", page);
-    document.body.setAttribute("data-theme", "gray");
+    document.body.setAttribute("data-theme", group === "man" ? "white" : "gray");
 
     // Remove ad-hoc page navs to avoid duplicates
     document.querySelectorAll(".header nav.nav, .header .nav").forEach((n) => n.remove());

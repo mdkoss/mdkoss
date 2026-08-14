@@ -74,11 +74,12 @@ public sealed class RecipeApiModule : MonitoringApiModule
             success = true,
             activeRecipeId = snap.ActiveRecipeId,
             recipeVarKeys = snap.RecipeVarKeys,
-            recipes = snap.Recipes.Select(r => new
+            recipes = Runtime.Setting.Recipes.Select(r => new
             {
                 id = r.Id,
                 name = r.Name,
-                description = r.Description
+                description = r.Description,
+                vars = r.Vars
             })
         }, SnapshotJsonOptions);
 

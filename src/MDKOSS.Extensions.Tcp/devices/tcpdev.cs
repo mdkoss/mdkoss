@@ -539,7 +539,7 @@ public sealed class TcpDevice : MDeviceBase
         return new DeviceSnapshot(
             Id,
             Name,
-            Type.ToString(),
+            "tcpdev",
             State.ToString(),
             "tcp",
             isConnected,

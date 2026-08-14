@@ -551,9 +551,12 @@ public sealed class MdkAlarmHub
         var b = expected ?? "";
         var kind = (op ?? "eq").Trim().ToLowerInvariant();
 
-        bool nums(out double na, out double nb) =>
-            double.TryParse(a, NumberStyles.Any, CultureInfo.InvariantCulture, out na)
-            && double.TryParse(b, NumberStyles.Any, CultureInfo.InvariantCulture, out nb);
+        bool nums(out double na, out double nb)
+        {
+            var okA = double.TryParse(a, NumberStyles.Any, CultureInfo.InvariantCulture, out na);
+            var okB = double.TryParse(b, NumberStyles.Any, CultureInfo.InvariantCulture, out nb);
+            return okA && okB;
+        }
 
         switch (kind)
         {
