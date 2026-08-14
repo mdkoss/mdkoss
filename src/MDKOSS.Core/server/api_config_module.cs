@@ -409,7 +409,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
                 drivers = DriverParameterPresets.KnownTypes,
                 devices = new[]
                 {
-                    "gpio", "vio", "cameradev", "visiondev", "serialdev", "tcpdev",
+                    "gpio", "vio", "cameradev", "visiondev", "serialdev", "tcpdev", "mysqldev",
                     "extcamera", "devpyscript", "devmodserver", "devmodclient", "tray",
                 },
                 axes = new[] { "linear", "rotary", "axis" },

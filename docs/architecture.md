@@ -84,6 +84,7 @@ MDKOSS.sln
 ├── src/MDKOSS.Drivers.Dmc/          # LTDMC 原生绑定
 ├── src/MDKOSS.Extensions.Serial/    # serialdev
 ├── src/MDKOSS.Extensions.Tcp/       # tcpdev
+├── src/MDKOSS.Extensions.Mysql/     # mysqldev
 ├── src/MDKOSS.Extensions.Camera/    # extcamera
 ├── src/MDKOSS.Extensions.PyScript/  # devpyscript
 ├── examples/pnp/                    # PNP 机型示例

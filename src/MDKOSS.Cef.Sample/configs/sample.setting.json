@@ -75,6 +75,25 @@
       }
     },
     {
+      "id": "mysql1",
+      "name": "演示 MySQL",
+      "type": "mysqldev",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "3306",
+        "database": "",
+        "user": "root",
+        "password": "",
+        "connectTimeout": "5000",
+        "commandTimeout": "30000",
+        "charset": "utf8mb4",
+        "sslMode": "None",
+        "autoConnect": "false",
+        "note": "不自动连接；debug_mysql 或 /api/mysql 手动 Connect"
+      }
+    },
+    {
       "id": "mod-1",
       "name": "演示 Modbus Server",
       "type": "devmodserver",

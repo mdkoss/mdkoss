@@ -68,7 +68,7 @@
 构建输出 `plugins/`（`MdkPlugins.targets` 全量复制）：
 
 - Drivers：Sim、Gts、Dmc
-- Extensions：Serial、Tcp、Camera、PyScript、ModServer
+- Extensions：Serial、Tcp、Mysql、Camera、PyScript、ModServer
 - Machine：Pnp（DLL 在，本 Sample **不启用** tray/任务）
 
 | 插件 | 设备 type | Monitoring API | Sample 配置 |
@@ -76,6 +76,7 @@
 | Sim | driver `sim` / `vio` | 核心 `/api/io` 等 | **仅 sim** |
 | Serial | `serialdev` | `/api/serial` | `serial1`（手动 Open） |
 | Tcp | `tcpdev` | `/api/tcp` | `tcp1`（手动 Connect） |
+| Mysql | `mysqldev` | `/api/mysql` | `mysql1`（手动 Connect） |
 | Camera ext | `extcamera` | `/api/extcamera` | `cam-ext-1`（另保留核心 `cam1`） |
 | PyScript | `devpyscript` | `/api/pyscript` | `py-1` + `configs/scripts/hello.py` |
 | ModServer | `devmodserver` / `devmodclient` | `/api/modserver` | `mod-1` 监听 `127.0.0.1:1502`，`modc-1` 自动连 |

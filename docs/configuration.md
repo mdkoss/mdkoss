@@ -95,6 +95,7 @@
 | `cameradev` | Core | `devices` | 相机类设备占位 |
 | `serialdev` | Extensions.Serial | `devices` | RS-232C 串口 |
 | `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
+| `mysqldev` | Extensions.Mysql | MySQL 客户端连接 / Query / Execute |
 | `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
 | `devpyscript` | Extensions.PyScript | 外部进程执行 Python 脚本（见 `src/MDKOSS.Extensions.PyScript`） |
 | `devmodserver` | Extensions.ModServer | Modbus TCP Server/Slave（见 `src/MDKOSS.Extensions.ModServer`） |
@@ -127,6 +128,23 @@
 ### tcpdev parameters
 
 主机、端口、连接模式等，见 `TcpDeviceParameterSet`（`src/MDKOSS.Extensions.Tcp`）与 `tcpdev.md`。
+
+### mysqldev parameters
+
+| 参数 | 说明 | 默认 |
+|------|------|------|
+| `host` | 服务器地址 | `127.0.0.1` |
+| `port` | 端口 | `3306` |
+| `database` | 库名（可空） | （空） |
+| `user` / `password` | 账号 | `root` / （空） |
+| `connectTimeout` | 连接超时（ms） | `5000` |
+| `commandTimeout` | 命令超时（ms） | `30000` |
+| `charset` | 字符集 | `utf8mb4` |
+| `sslMode` | `None` / `Preferred` / `Required` | `None` |
+| `pooling` | 连接池 | `true` |
+| `autoConnect` | 设备 Start 时自动连接 | `false` |
+
+解析：`MysqlDeviceParameters`（`src/MDKOSS.Extensions.Mysql`）与 `mysqldev.md`。
 
 ### extcamera parameters
 

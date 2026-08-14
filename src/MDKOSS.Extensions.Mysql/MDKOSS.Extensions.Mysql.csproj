@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MDKOSS.Extensions.Mysql</RootNamespace>
+    <AssemblyName>MDKOSS.Extensions.Mysql</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" Version="2.4.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="*.md" />
+  </ItemGroup>
+</Project>

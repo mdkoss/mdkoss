@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS MySQL 调试</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+  <style>
+    textarea.sql {
+      min-height: 140px;
+      font-family: Consolas, "Cascadia Mono", "Courier New", monospace;
+      resize: vertical;
+    }
+    .result-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .result-table th, .result-table td {
+      border: 1px solid var(--line); padding: 4px 8px; text-align: left; white-space: nowrap;
+    }
+    .result-table th { background: var(--panel); position: sticky; top: 0; }
+    .null-cell { color: var(--muted); font-style: italic; }
+    .result-scroll { max-height: 420px; overflow: auto; }
+  </style>
+</head>
+<body data-tool-group="debug" data-tool-page="debug_mysql">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">MySQL 调试 <span class="pill warn">可写</span></div>
+        <div class="sub">连接 / 查询 / 执行 · API: <code>/api/mysql/*</code></div>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div>
+        <div class="card">
+          <h2 class="panel-title">
+            <span>连接状态</span>
+            <span id="statusBadge" class="status-badge closed">
+              <span class="dot"></span>
+              <span id="statusText">未连接</span>
+            </span>
+          </h2>
+          <div id="connInfo" style="margin-bottom: 12px;">
+            <div class="info-row"><span class="info-label">主机</span><span class="info-value" id="infoHost">-</span></div>
+            <div class="info-row"><span class="info-label">端口</span><span class="info-value" id="infoPort">-</span></div>
+            <div class="info-row"><span class="info-label">库</span><span class="info-value" id="infoDatabase">-</span></div>
+            <div class="info-row"><span class="info-label">用户</span><span class="info-value" id="infoUser">-</span></div>
+            <div class="info-row"><span class="info-label">错误</span><span class="info-value" id="infoError">-</span></div>
+          </div>
+          <div class="btn-group">
+            <button type="button" id="btnConnect" class="btn primary">连接</button>
+            <button type="button" id="btnDisconnect" class="btn danger" disabled>断开</button>
+            <button type="button" id="btnPing" class="btn" disabled>Ping</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <h2 class="panel-title">连接配置</h2>
+          <div class="form-group">
+            <label>设备 ID</label>
+            <select id="deviceId"></select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>主机</label>
+              <input id="host" value="127.0.0.1" />
+            </div>
+            <div class="form-group">
+              <label>端口</label>
+              <input type="number" id="port" value="3306" min="1" max="65535" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>数据库</label>
+            <input id="database" placeholder="可空" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>用户</label>
+              <input id="user" value="root" />
+            </div>
+            <div class="form-group">
+              <label>密码</label>
+              <input type="password" id="password" autocomplete="off" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>连接超时 (ms)</label>
+              <input type="number" id="connectTimeout" value="5000" min="100" />
+            </div>
+            <div class="form-group">
+              <label>命令超时 (ms)</label>
+              <input type="number" id="commandTimeout" value="30000" min="100" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>字符集</label>
+              <input id="charset" value="utf8mb4" />
+            </div>
+            <div class="form-group">
+              <label>SSL</label>
+              <select id="sslMode">
+                <option value="None" selected>None</option>
+                <option value="Preferred">Preferred</option>
+                <option value="Required">Required</option>
+              </select>
+            </div>
+          </div>
+          <div class="btn-group">
+            <button type="button" id="btnApply" class="btn">应用配置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="panel-title">SQL</h2>
+        <div class="form-group">
+          <textarea id="sql" class="sql">SELECT 1 AS ok;</textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>最大行数</label>
+            <input type="number" id="maxRows" value="1000" min="1" max="10000" />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button type="button" id="btnQuery" class="btn primary" disabled>Query</button>
+          <button type="button" id="btnExecute" class="btn" disabled>Execute</button>
+          <button type="button" id="btnScalar" class="btn" disabled>Scalar</button>
+        </div>
+        <p id="resultMeta" style="margin-top:10px;color:var(--muted);font-size:13px">—</p>
+        <div class="result-scroll" id="resultBox"></div>
+        <h2 class="panel-title" style="margin-top:16px">日志</h2>
+        <div class="log-box" id="logBox"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, fetchJson, postJson, toast, logLine, qs } = MdkTool;
+    const logBox = document.getElementById("logBox");
+    const els = {
+      deviceId: document.getElementById("deviceId"),
+      host: document.getElementById("host"),
+      port: document.getElementById("port"),
+      database: document.getElementById("database"),
+      user: document.getElementById("user"),
+      password: document.getElementById("password"),
+      connectTimeout: document.getElementById("connectTimeout"),
+      commandTimeout: document.getElementById("commandTimeout"),
+      charset: document.getElementById("charset"),
+      sslMode: document.getElementById("sslMode"),
+      sql: document.getElementById("sql"),
+      maxRows: document.getElementById("maxRows"),
+      btnConnect: document.getElementById("btnConnect"),
+      btnDisconnect: document.getElementById("btnDisconnect"),
+      btnPing: document.getElementById("btnPing"),
+      btnQuery: document.getElementById("btnQuery"),
+      btnExecute: document.getElementById("btnExecute"),
+      btnScalar: document.getElementById("btnScalar"),
+      statusBadge: document.getElementById("statusBadge"),
+      statusText: document.getElementById("statusText"),
+      resultMeta: document.getElementById("resultMeta"),
+      resultBox: document.getElementById("resultBox"),
+    };
+
+    function deviceId() { return (els.deviceId.value || "").trim(); }
+
+    function configBody() {
+      return {
+        deviceId: deviceId(),
+        config: {
+          host: els.host.value.trim(),
+          port: Number(els.port.value) || 3306,
+          database: els.database.value.trim(),
+          user: els.user.value.trim(),
+          password: els.password.value,
+          connectTimeout: Number(els.connectTimeout.value) || 5000,
+          commandTimeout: Number(els.commandTimeout.value) || 30000,
+          charset: els.charset.value.trim() || "utf8mb4",
+          sslMode: els.sslMode.value,
+        },
+      };
+    }
+
+    function setConnected(on) {
+      els.statusBadge.className = "status-badge " + (on ? "open" : "closed");
+      els.statusText.textContent = on ? "已连接" : "未连接";
+      els.btnConnect.disabled = on;
+      els.btnDisconnect.disabled = !on;
+      els.btnPing.disabled = !on;
+      els.btnQuery.disabled = !on;
+      els.btnExecute.disabled = !on;
+      els.btnScalar.disabled = !on;
+    }
+
+    function fillStatus(st) {
+      if (!st) return;
+      document.getElementById("infoHost").textContent = st.host ?? "-";
+      document.getElementById("infoPort").textContent = st.port ?? "-";
+      document.getElementById("infoDatabase").textContent = st.database || "(未指定)";
+      document.getElementById("infoUser").textContent = st.user ?? "-";
+      document.getElementById("infoError").textContent = st.lastError || "-";
+      if (st.host) els.host.value = st.host;
+      if (st.port) els.port.value = st.port;
+      if (st.database != null) els.database.value = st.database;
+      if (st.user) els.user.value = st.user;
+      if (st.connectTimeoutMs) els.connectTimeout.value = st.connectTimeoutMs;
+      if (st.commandTimeoutMs) els.commandTimeout.value = st.commandTimeoutMs;
+      if (st.charset) els.charset.value = st.charset;
+      if (st.sslMode) els.sslMode.value = st.sslMode;
+      setConnected(!!st.isConnected);
+    }
+
+    async function refreshStatus() {
+      const id = deviceId();
+      if (!id) return;
+      try {
+        const st = await fetchJson("/api/mysql/status?deviceId=" + encodeURIComponent(id));
+        fillStatus(st);
+      } catch (e) {
+        setConnected(false);
+        document.getElementById("infoError").textContent = e.message || "device_not_found";
+      }
+    }
+
+    async function cmd(path, label, body) {
+      try {
+        const data = await postJson(path, body);
+        toast(label + " 成功", true);
+        logLine(logBox, label + " ok", true);
+        await refreshStatus();
+        return data;
+      } catch (e) {
+        toast(e.message || "失败", false);
+        logLine(logBox, label + " fail: " + e.message, false);
+        await refreshStatus();
+        return null;
+      }
+    }
+
+    function cell(v) {
+      if (v == null) return '<span class="null-cell">NULL</span>';
+      return esc(typeof v === "object" ? JSON.stringify(v) : String(v));
+    }
+
+    function renderTable(columns, rows) {
+      if (!columns || !columns.length) {
+        els.resultBox.innerHTML = "";
+        return;
+      }
+      const head = columns.map((c) => "<th>" + esc(c) + "</th>").join("");
+      const body = (rows || []).map((r) =>
+        "<tr>" + (r || []).map((v) => "<td>" + cell(v) + "</td>").join("") + "</tr>"
+      ).join("");
+      els.resultBox.innerHTML = '<table class="result-table"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table>";
+    }
+
+    els.btnConnect.onclick = () => cmd("/api/mysql/connect", "连接", configBody());
+    els.btnDisconnect.onclick = () => cmd("/api/mysql/disconnect", "断开", { deviceId: deviceId() });
+    els.btnPing.onclick = () => cmd("/api/mysql/ping", "Ping", { deviceId: deviceId() });
+    document.getElementById("btnApply").onclick = () => cmd("/api/mysql/config", "应用配置", configBody());
+
+    els.btnQuery.onclick = async () => {
+      const data = await cmd("/api/mysql/query", "Query", {
+        deviceId: deviceId(),
+        sql: els.sql.value,
+        maxRows: Number(els.maxRows.value) || 1000,
+      });
+      if (!data) return;
+      els.resultMeta.textContent = "行数 " + (data.rowCount ?? 0) + (data.truncated ? "（已截断）" : "");
+      renderTable(data.columns, data.rows);
+    };
+
+    els.btnExecute.onclick = async () => {
+      const data = await cmd("/api/mysql/execute", "Execute", { deviceId: deviceId(), sql: els.sql.value });
+      if (!data) return;
+      els.resultMeta.textContent = "affectedRows=" + (data.affectedRows ?? 0) + " lastInsertId=" + (data.lastInsertId ?? 0);
+      els.resultBox.innerHTML = "";
+    };
+
+    els.btnScalar.onclick = async () => {
+      const data = await cmd("/api/mysql/scalar", "Scalar", { deviceId: deviceId(), sql: els.sql.value });
+      if (!data) return;
+      els.resultMeta.textContent = "scalar=" + (data.value == null ? "NULL" : String(data.value));
+      els.resultBox.innerHTML = "";
+    };
+
+    els.deviceId.addEventListener("change", refreshStatus);
+
+    async function loadDevices() {
+      const preferred = qs("deviceId", "") || "mysql1";
+      try {
+        const data = await fetchJson("/api/status");
+        const devices = data.devices || data.Devices || {};
+        const opts = Object.entries(devices)
+          .filter(([, d]) => String(d.type || d.Type || "").toLowerCase() === "mysqldev")
+          .map(([id, d]) => {
+            const name = d.name || d.Name || id;
+            return { id, label: name === id ? id : name + " (" + id + ")" };
+          });
+        if (!opts.length) opts.push({ id: preferred, label: preferred });
+        els.deviceId.innerHTML = opts
+          .map((o) => '<option value="' + esc(o.id) + '">' + esc(o.label) + "</option>")
+          .join("");
+        if (opts.some((o) => o.id === preferred)) els.deviceId.value = preferred;
+      } catch {
+        els.deviceId.innerHTML = '<option value="' + esc(preferred) + '">' + esc(preferred) + "</option>";
+      }
+      await refreshStatus();
+    }
+
+    loadDevices();
+  </script>
+</body>
+</html>

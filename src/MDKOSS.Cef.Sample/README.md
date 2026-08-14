@@ -39,6 +39,7 @@ dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Debug
 | GPIO / 相机占位 | `gpio1`、`cam1`（`cameradev`） | `debug_io` / `monitor_camera` |
 | 串口 | `serial1`（`serialdev`） | `debug_serial`、`/api/serial`（不自动 Open） |
 | TCP | `tcp1`（`tcpdev`） | `/api/tcp`（不自动 Connect） |
+| MySQL | `mysql1`（`mysqldev`） | `debug_mysql`、`/api/mysql`（不自动 Connect） |
 | Modbus | `mod-1` + `modc-1` | `/api/modserver`（Server 监听 `127.0.0.1:1502`） |
 | Python | `py-1`（`devpyscript`） | `/api/pyscript`（脚本 `configs/scripts/hello.py`） |
 | 扩展相机 | `cam-ext-1`（`extcamera`） | `debug_camera`、`/api/extcamera` |
@@ -71,5 +72,5 @@ dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Debug
 - `MDKOSS.Core` / `MDKOSS.Extensions` / `MDKOSS.Cef`
 - 构建导入 `MdkPlugins.targets`，输出 `plugins/` 含：
   - Drivers：`Sim`、`Gts`、`Dmc`（配置只用 `sim`）
-  - Extensions：`Serial`、`Tcp`、`Camera`、`PyScript`、`ModServer`
+  - Extensions：`Serial`、`Tcp`、`Mysql`、`Camera`、`PyScript`、`ModServer`
   - Machine：`Pnp`（DLL 会复制，本 Sample **不启用** tray/PNP 任务）

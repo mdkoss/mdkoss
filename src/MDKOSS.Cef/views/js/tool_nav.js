@@ -22,6 +22,7 @@
       pages: [
         { id: "debug_platform", href: "/debug_platform.html", label: "平台示教" },
         { id: "debug_serial", href: "/debug_serial.html", label: "串口" },
+        { id: "debug_mysql", href: "/debug_mysql.html", label: "MySQL" },
         { id: "debug_axis", href: "/debug_axis.html", label: "轴" },
         { id: "debug_io", href: "/debug_io.html", label: "IO 强制" },
         { id: "debug_camera", href: "/debug_camera.html", label: "相机" },

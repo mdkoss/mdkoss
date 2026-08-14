@@ -18,6 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MDKOSS.Config.Wpf\MDKOSS.Config.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\MDKOSS.Config.Wpf\configs\sample.setting.json" Link="configs\sample.setting.json">

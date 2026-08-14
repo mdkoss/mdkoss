@@ -56,6 +56,8 @@
             } else if(t==="cameradev"||t==="camera"||t==="extcamera"){
               links=`<a href="/monitor_camera.html?deviceId=${encodeURIComponent(id)}" target="_blank">监控</a>`
                 +`<a href="/debug_camera.html?deviceId=${encodeURIComponent(id)}" target="_blank">调试</a>`;
+            } else if(t==="mysqldev"){
+              links=`<a href="/debug_mysql.html?deviceId=${encodeURIComponent(id)}" target="_blank">MySQL</a>`;
             } else if(t==="tcpdev"||t==="devpyscript"||t==="devmodserver"||t==="devmodclient"||t==="visiondev"||t==="vision"){
               links=`<a href="/man_device.html" target="_blank">配置</a>`
                 +`<a href="/monitor_runtime.html" target="_blank">总览</a>`;

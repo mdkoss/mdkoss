@@ -147,6 +147,7 @@ _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 |-------------|--------|----------|------|------|--------|
 | `serialdev` | `SerialDevice` | `SerialDeviceParameterSet` | open/close/write/read/status | `/api/serial/*` | MDKOSS.Extensions.Serial |
 | `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` | connect/disconnect/write/read/status | `/api/tcp/*` | MDKOSS.Extensions.Tcp |
+| `mysqldev` | `MysqlDevice` | `MysqlDeviceParameters` | connect/disconnect/ping/query/execute/scalar/status | `/api/mysql/*` | MDKOSS.Extensions.Mysql |
 | `extcamera` | `ExtCameraDevice` | `ExtCameraDeviceParameters` | open/close/trigger/status | `/api/extcamera/*` | MDKOSS.Extensions.Camera |
 | `devpyscript` | `PyScriptDevice` | `PyScriptDeviceParameters` | run/kill/status | `/api/pyscript/*` | MDKOSS.Extensions.PyScript |
 | `devmodserver` | `ModServerDevice` | `ModServerDeviceParameters` | start/stop/status/寄存器读写 | `/api/modserver/*` | MDKOSS.Extensions.ModServer |
@@ -163,6 +164,7 @@ _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 | `serialdev.md` | 命令语义对照（OpenCom / Print# 等） |
 
 TCP 侧对称：`tcpdev.cs`、`tcp_device_parameters.cs`、`api_tcp_module.cs`、`tcpdev.md`。
+MySQL 侧对称：`mysqldev.cs`、`mysql_device_parameters.cs`、`api_mysql_module.cs`、`mysqldev.md`。
 
 NuGet：扩展项目单独引用 `System.IO.Ports`；Core 无此依赖。
 

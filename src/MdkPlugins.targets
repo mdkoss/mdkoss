@@ -18,6 +18,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\MDKOSS.Extensions.Serial.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\MDKOSS.Extensions.Tcp.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\MDKOSS.Extensions.PyScript.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\MDKOSS.Extensions.ModServer.csproj" />
@@ -30,6 +31,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Dmc.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Serial.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Tcp.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Mysql.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Camera.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.PyScript.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.ModServer.dll" />
@@ -74,6 +76,9 @@
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.dll" />
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.*.dll" />
       <_ModServerDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
+      <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.dll" />
+      <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.*.dll" />
+      <_MysqlDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
     </ItemGroup>
 
     <Copy
@@ -117,5 +122,23 @@
       DestinationFolder="$(MdkPluginsOutputDir)"
       SkipUnchangedFiles="true"
       Condition="'@(_ModServerDepsJson)' != ''" />
+
+    <Copy
+      SourceFiles="@(_MysqlDeps)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_MysqlDeps.Identity)')" />
+
+    <Copy
+      SourceFiles="@(_MysqlDeps)"
+      DestinationFolder="$(_HostOutDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_MysqlDeps.Identity)')" />
+
+    <Copy
+      SourceFiles="@(_MysqlDepsJson)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="'@(_MysqlDepsJson)' != ''" />
   </Target>
 </Project>

@@ -11,6 +11,7 @@ src/
 ├── MDKOSS.Drivers.Dmc/          # LTDMC 绑定
 ├── MDKOSS.Extensions.Serial/
 ├── MDKOSS.Extensions.Tcp/
+├── MDKOSS.Extensions.Mysql/
 ├── MDKOSS.Extensions.Camera/
 ├── MDKOSS.Extensions.PyScript/
 ├── MDKOSS.Extensions.ModServer/
@@ -37,6 +38,7 @@ src/
 |------|------|-----------|
 | `MDKOSS.Extensions.Serial` | `serialdev` | `SerialExtensionBootstrap` |
 | `MDKOSS.Extensions.Tcp` | `tcpdev` | `TcpExtensionBootstrap` |
+| `MDKOSS.Extensions.Mysql` | `mysqldev` | `MysqlExtensionBootstrap` |
 | `MDKOSS.Extensions.Camera` | `extcamera` | `CameraExtensionBootstrap` |
 | `MDKOSS.Extensions.ModServer` | `devmodserver` | `ModServerExtensionBootstrap` |
 | `MDKOSS.Extensions.PyScript` | `devpyscript` | `PyScriptExtensionBootstrap` |

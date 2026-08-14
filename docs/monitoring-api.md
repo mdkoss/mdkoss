@@ -82,6 +82,19 @@ flowchart LR
 
 TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模块对称，具体路由见 `api_tcp_module.cs`）。
 
+### MySQL（Extensions）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/api/mysql/status` | GET | 查询 `deviceId` 连接状态（不含密码） |
+| `/api/mysql/connect` | POST | 按 config 连接 |
+| `/api/mysql/disconnect` | POST | 断开 |
+| `/api/mysql/config` | POST | 应用连接参数（已连接则重连） |
+| `/api/mysql/ping` | POST | 探测连接 |
+| `/api/mysql/query` | POST | 执行 SELECT，返回 `columns` / `rows` |
+| `/api/mysql/execute` | POST | 执行非查询，返回 `affectedRows` / `lastInsertId` |
+| `/api/mysql/scalar` | POST | 返回第一行第一列 |
+
 ### 扩展相机（MDKOSS.Extensions.Camera）
 
 | 路由 | 方法 | 说明 |
