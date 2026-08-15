@@ -60,27 +60,29 @@
 | 来源 | 方式 | 内容 |
 |------|------|------|
 | `MDKOSS.Cef` | `ProjectReference` → Content | 核心：`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*` / `css` / `js` |
-| `MDKOSS.Sample/views/**` | 本项目 `None` | 机型：`indexDieBonder.html` / `monitorDieBonder.html` |
+| `MDKOSS.Sample/views/**` | 本项目 `None` | 机型：`indexDieBonder.html` / `monitorDieBonder.html` / `demo_sample_ext.html` |
 | `MDKOSS.Pnp` | `ProjectReference` → None | 可选 PNP 演示页 |
 
 ```text
 src/MDKOSS.Sample/
-├── DieBonder/
-│   ├── DieBonderExtension.cs   # 注册 task / API / 静态页
-│   ├── BondCycleTask.cs
-│   ├── MaterialConveyorTask.cs
-│   ├── BondLogStore.cs
-│   ├── DieBonderApiModule.cs   # /api/bond/*
-│   └── DieBonderViewPages.cs
+├── DieBonder/                  # 贴片机业务扩展
+├── SampleExt/                  # 扩展示例（设备 / MotionTask / API / 页）
+│   ├── SampleExtExtension.cs
+│   ├── SampleBeaconDevice.cs   # type=samplebeacon
+│   ├── SampleMotionDemoTask.cs # type=samplemotion（enable/move/jog/stop）
+│   ├── SampleExtApiModule.cs   # /api/sampleext/*
+│   └── SampleExtViewPages.cs
 └── views/
-    ├── indexDieBonder.html     # 机型主界面
-    └── monitorDieBonder.html   # 循环细节
+    ├── indexDieBonder.html
+    ├── monitorDieBonder.html
+    └── demo_sample_ext.html
 ```
 
 | 能力 | 路径 |
 |------|------|
 | 机型主界面 | `/indexDieBonder.html`（配置 `startPage`） |
 | 循环监控 | `/monitorDieBonder.html` |
+| 扩展示例页 | `/demo_sample_ext.html` |
 | 系统主界面 | `/index.html`（Cef） |
 | IO / 平台监控 | `/monitor_io.html` · `/monitor_platform.html` |
 | 平台示教 | `/debug_platform.html?deviceId=head-bond` |
@@ -88,9 +90,13 @@ src/MDKOSS.Sample/
 | Dashboard | `GET /api/bond/dashboard` |
 | 日志 | `GET /api/bond/logs` |
 | 启停复位换盘 | `POST /api/bond/start\|stop\|reset\|traychange\|clearlogs` |
+| SampleExt 状态 | `GET /api/sampleext/status` |
+| SampleExt 动作 | `POST /api/sampleext/pulse\|motionstart\|motionstop\|reset` |
 
-`Program.Main` 在插件发现后 `Register(new DieBonderExtension())`。  
+`Program.Main` 在插件发现后依次 `Register(new DieBonderExtension())` 与 `Register(new SampleExtExtension())`。  
 Tray 仍由 `MDKOSS.Pnp` 提供；协调变量继续写 `task.pnp.*`，同时发布 `task.bond.*`。
+
+SampleExt 配置条目：`sample-beacon`（设备）与 `sample-motion-demo`（任务），用于演示完整扩展接入面。
 
 ## 4. 配方
 

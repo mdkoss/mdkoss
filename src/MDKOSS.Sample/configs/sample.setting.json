@@ -111,6 +111,16 @@
         "startIndex": "0",
         "note": "Leadframe / PCB 贴装 nest"
       }
+    },
+    {
+      "id": "sample-beacon",
+      "name": "Sample Beacon",
+      "type": "samplebeacon",
+      "enabled": true,
+      "parameters": {
+        "label": "扩展示例信标",
+        "note": "SampleExt 自定义设备示例（无板卡依赖）"
+      }
     }
   ],
   "platforms": [
@@ -188,6 +198,21 @@
         "sourceRunAlias": "wafer.conveyorRun",
         "targetRunAlias": "substrate.conveyorRun",
         "runTicks": "5"
+      }
+    },
+    {
+      "name": "sample-motion-demo",
+      "type": "samplemotion",
+      "driverId": "drv-motion",
+      "intervalMs": 100,
+      "parameters": {
+        "platformDeviceId": "head-bond",
+        "axisLetter": "X",
+        "beaconDeviceId": "sample-beacon",
+        "targetPos": "5",
+        "jogVelocity": "2",
+        "jogTicks": "3",
+        "note": "SampleExt MotionTask：enable/move/jog/stop"
       }
     }
   ],

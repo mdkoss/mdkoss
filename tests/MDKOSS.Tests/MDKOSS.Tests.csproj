@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Drivers.Sim\MDKOSS.Drivers.Sim.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Sample\MDKOSS.Sample.csproj" />
     <ProjectReference Include="..\..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
   <ItemGroup>

@@ -4,6 +4,7 @@ using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
 using MDKOSS.Pnp;
 using MDKOSS.Sample.DieBonder;
+using MDKOSS.Sample.SampleExt;
 using System.Windows.Forms;
 
 namespace MDKOSS.Sample;
@@ -24,6 +25,8 @@ internal static class Program
         });
         // Sample-owned die bonder: tasks + /api/bond + indexDieBonder.html (tray device from MDKOSS.Pnp plugin).
         MdkExtensionHost.Register(new DieBonderExtension());
+        // Sample 扩展示例：自定义设备 / MotionTask / API / 自定义页（见 SampleExt/）。
+        MdkExtensionHost.Register(new SampleExtExtension());
 
         var settingPath = RuntimeHost.ResolveSettingPath(args);
         if (args.Any(a => string.Equals(a, "--console", StringComparison.OrdinalIgnoreCase)))

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS Sample 扩展示例</title>
+  <style>
+    :root {
+      --bg: #0a1220;
+      --text: #e6eefc;
+      --muted: #8aa0c0;
+      --line: #243552;
+      --accent: #3d8bfd;
+      --ok: #35d08f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background:
+        radial-gradient(700px 360px at 10% -10%, rgba(61,139,253,.18), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    .sub { color: var(--muted); margin-bottom: 18px; font-size: 13px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    button {
+      border: 1px solid var(--line);
+      background: #132033;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary { background: rgba(61,139,253,.2); border-color: rgba(61,139,253,.45); }
+    button:hover { filter: brightness(1.1); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+    }
+    .card h3 { margin: 0 0 10px; font-size: 15px; }
+    .kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 10px; font-size: 13px; }
+    .k { color: var(--muted); }
+    .v { font-family: Consolas, "Cascadia Mono", monospace; }
+    .links { margin-top: 16px; font-size: 13px; }
+    .links a { color: var(--accent); margin-right: 12px; }
+    .ok { color: var(--ok); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Sample 扩展示例</h1>
+    <div class="sub">演示自定义设备 / MotionTask 点动停止 / 后台 API / 自定义界面</div>
+    <div class="actions">
+      <button class="primary" id="btnPulse">Beacon Pulse</button>
+      <button class="primary" id="btnMotion">Motion Start</button>
+      <button id="btnStop">Motion Stop</button>
+      <button id="btnReset">Reset</button>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h3>Beacon 设备</h3>
+        <div class="kv">
+          <div class="k">id</div><div class="v" id="bId">-</div>
+          <div class="k">label</div><div class="v" id="bLabel">-</div>
+          <div class="k">pulse</div><div class="v" id="bPulse">-</div>
+          <div class="k">message</div><div class="v" id="bMsg">-</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>MotionTask 演示</h3>
+        <div class="kv">
+          <div class="k">phase</div><div class="v" id="mPhase">-</div>
+          <div class="k">message</div><div class="v" id="mMsg">-</div>
+          <div class="k">cycles</div><div class="v" id="mCycles">-</div>
+        </div>
+      </div>
+    </div>
+    <div class="links">
+      <a href="/indexDieBonder.html">贴片机主界面</a>
+      <a href="/monitor_runtime.html">运行总览</a>
+      <span class="ok" id="pollHint">polling…</span>
+    </div>
+  </div>
+  <script>
+    async function post(path) {
+      await fetch('/api/sampleext/' + path, { method: 'POST' });
+      await refresh();
+    }
+    async function refresh() {
+      try {
+        const res = await fetch('/api/sampleext/status');
+        const data = await res.json();
+        const b = data.beacon || {};
+        document.getElementById('bId').textContent = b.id || '-';
+        document.getElementById('bLabel').textContent = b.label || '-';
+        document.getElementById('bPulse').textContent = b.pulseCount ?? '-';
+        document.getElementById('bMsg').textContent = b.message || '-';
+        const m = data.motion || {};
+        document.getElementById('mPhase').textContent = m.phase || '-';
+        document.getElementById('mMsg').textContent = m.message || '-';
+        document.getElementById('mCycles').textContent = m.cycleCount ?? '-';
+        document.getElementById('pollHint').textContent = 'ok @ ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        document.getElementById('pollHint').textContent = 'poll failed';
+      }
+    }
+    document.getElementById('btnPulse').onclick = () => post('pulse');
+    document.getElementById('btnMotion').onclick = () => post('motionstart');
+    document.getElementById('btnStop').onclick = () => post('motionstop');
+    document.getElementById('btnReset').onclick = () => post('reset');
+    refresh();
+    setInterval(refresh, 800);
+  </script>
+</body>
+</html>
