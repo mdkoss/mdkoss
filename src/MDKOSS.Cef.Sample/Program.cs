@@ -7,9 +7,8 @@ using System.Windows.Forms;
 namespace MDKOSS.Cef.Sample;
 
 /// <summary>
-/// Lightweight CEF host that opens <c>index.html</c> to exercise core HMI pages
-/// and extension-device config/debug (serial/tcp/modbus/pyscript/extcamera).
-/// Not a machine sample: no DieBonder / PNP tray workflows.
+/// CEF host that loads and runs <c>configs/sample.setting.json</c>.
+/// Start page, devices, and tasks come from the setting file.
 /// </summary>
 internal static class Program
 {
@@ -33,7 +32,7 @@ internal static class Program
 
         ApplicationConfiguration.Initialize();
 
-        const string appTitle = "MDKOSS CEF HMI — index.html";
+        const string appTitle = "MDKOSS CEF Sample";
 
         if (!File.Exists(settingPath))
         {
@@ -56,8 +55,7 @@ internal static class Program
             return;
         }
 
-        // Force core HMI entry for this sample (config may still declare startPage).
-        setting.StartPage = "index.html";
+        var startPath = RuntimeHost.ResolveStartPage(setting);
 
         MdkRuntime runtime;
         try
@@ -101,9 +99,9 @@ internal static class Program
 
             try
             {
-                var startUrl = CefMainForm.ResolveStartUrl(runtime, "index.html");
+                var startUrl = CefMainForm.ResolveStartUrl(runtime, startPath);
                 AppLog.Info($"CEF UI starting ({startUrl})");
-                Application.Run(new CefMainForm(runtime, "index.html"));
+                Application.Run(new CefMainForm(runtime, startPath));
                 AppLog.Info("CEF UI closed");
             }
             finally

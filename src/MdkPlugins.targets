@@ -5,6 +5,8 @@
 <Project>
   <PropertyGroup>
     <MdkPluginsRoot>$(MSBuildThisFileDirectory)</MdkPluginsRoot>
+    <!-- Cef.Sample 等通用宿主可设 false，避免构建/复制 examples/pnp。 -->
+    <IncludeMdkPnpPlugin Condition="'$(IncludeMdkPnpPlugin)' == ''">true</IncludeMdkPnpPlugin>
   </PropertyGroup>
 
   <!-- Hosts load Serial from plugins/ but JIT of SerialDevice needs System.IO.Ports in the default load context. -->
@@ -22,7 +24,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\MDKOSS.Extensions.PyScript.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\MDKOSS.Extensions.ModServer.csproj" />
-    <MdkPluginProject Include="$(MdkPluginsRoot)..\examples\pnp\MDKOSS.Pnp.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)..\examples\pnp\MDKOSS.Pnp.csproj" Condition="'$(IncludeMdkPnpPlugin)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,7 +37,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Camera.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.PyScript.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.ModServer.dll" />
-    <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" Condition="'$(IncludeMdkPnpPlugin)' == 'true'" />
   </ItemGroup>
 
   <!-- Skip design-time / IntelliSense builds: VS evaluates every host that imports this

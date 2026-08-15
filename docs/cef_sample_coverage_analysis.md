@@ -2,23 +2,23 @@
 
 - 日期：2026-08-13
 - 对象：`src/MDKOSS.Cef.Sample`
-- 结论：作为**核心 CEF HMI + 扩展设备配置/调试宿主**够用；**不是全功能 / 机型 Sample**。DieBonder、PNP tray/任务、GTS/DMC 真机、Config.Wpf 仍由专用工程演示。
+- 结论：本工程**只负责加载并运行** `configs/sample.setting.json`。能演示什么，以 JSON 里配了什么为准。DieBonder、GTS/DMC 真机、Config.Wpf、PNP 不在本工程。
 
 ---
 
 ## 1. Sample 定位（设计意图）
 
-`Program.cs` / `README.md`：轻量 CEF 宿主，强制 `startPage = index.html`，联调核心 HMI，并挂一份扩展设备最小集供 debug / API 点选。**不加载机型页与机型流程。**
+`Program.cs` / `README.md`：CEF 宿主，按 `sample.setting.json` 启动（`startPage` / 设备 / 任务均读配置，不硬编码覆盖）。
 
 | 项 | 实际 |
 |---|---|
 | 宿主 | WinForms + CefSharp（`CefMainForm`） |
-| 入口页 | `index.html`（`MDKOSS.Cef/views`，经 ProjectReference 复制到输出） |
+| 入口页 | JSON `startPage`（默认 `index.html`，`MDKOSS.Cef/views` 经 ProjectReference 复制） |
 | 配置 | `configs/sample.setting.json`，监控前缀 `http://127.0.0.1:5081/` |
 | 扩展发现 | `MdkExtensionHost.DiscoverAndRegister` |
 | 插件构建 | 导入 `MdkPlugins.targets`（构建后复制到 `plugins/`） |
 
-与 `MDKOSS.Sample`（DieBonder，5080）/ `examples/pnp` 分工：Cef.Sample 负责**通用 HMI 壳 + 设备类型演示**，机型工程负责**业务场景**。
+与 `MDKOSS.Sample`（DieBonder，5080）分工：Cef.Sample 只跑 `sample.setting.json`；机型工程负责业务场景。PNP 见 `examples/pnp`，不进入本 Sample 的 `plugins/`。
 
 ---
 
@@ -50,7 +50,7 @@
 
 ## 3. HMI 页面可达性
 
-`MonitoringServer` 注册完整核心静态页；`popup_about.html` 链到 `monitor_*` / `debug_*` / `man_*`，PNP 链接标明需 `examples/pnp` 完整配置。
+`MonitoringServer` 注册完整核心静态页；`popup_about.html` 链到 `monitor_*` / `debug_*` / `man_*`。
 
 | 页面族 | 是否随 CEF views 落地 | 在本 Sample 中是否有数据可玩 |
 |---|---|---|
@@ -59,17 +59,15 @@
 | `debug_serial` / `debug_db` / `debug_camera` | 是 | 是（有 `serial1` / db 路径 / `extcamera`） |
 | `debug_platform` | 是 | 是（xy / xyz / xyzu） |
 | `man_*` | 是 | 是 |
-| `indexPnp.html` / `monitorPnp.html` | PNP 插件 StaticPage | **刻意不配**：无 tray / pnp 任务 |
 
 ---
 
 ## 4. 插件与 API：已加载且已配置（机型插件除外）
 
-构建输出 `plugins/`（`MdkPlugins.targets` 全量复制）：
+构建输出 `plugins/`（`MdkPlugins.targets`，`IncludeMdkPnpPlugin=false`）：
 
 - Drivers：Sim、Gts、Dmc
 - Extensions：Serial、Tcp、Mysql、Camera、PyScript、ModServer
-- Machine：Pnp（DLL 在，本 Sample **不启用** tray/任务）
 
 | 插件 | 设备 type | Monitoring API | Sample 配置 |
 |---|---|---|---|
@@ -81,7 +79,6 @@
 | PyScript | `devpyscript` | `/api/pyscript` | `py-1` + `configs/scripts/hello.py` |
 | ModServer | `devmodserver` / `devmodclient` | `/api/modserver` | `mod-1` 监听 `127.0.0.1:1502`，`modc-1` 自动连 |
 | Gts / Dmc | driver `gts` /（Dmc 包装未完成） | — | 否（真机） |
-| Pnp | `tray` + pnp 任务 | `/api/pnp` + 静态页 | 否（机型） |
 
 核心 Monitoring API（始终挂载）：
 
@@ -111,7 +108,6 @@
 - 串口 Open 需要本机 COM 或虚拟串口
 - TCP Connect 需要本机有监听（默认 `127.0.0.1:15100`）
 - `devpyscript` 需要 PATH 上的 `python`
-- PNP 入口链接仍可打开，但无 tray/任务数据（已在 about 标注）
 
 ### 5.3 明确未演示（需其他工程）
 
@@ -132,7 +128,7 @@
 |---|---|
 | 是否足够演示**所有**功能？ | **否**（机型 / 真机 / 配置器不在范围） |
 | 是否足够演示**核心 CEF HMI + 扩展设备配置与调试**？ | **是** |
-| 与 DieBonder / PNP Sample 关系 | 互补：通壳+设备类型 vs 机型场景 |
+| 与 DieBonder Sample 关系 | 互补：通壳+设备类型 vs 机型场景 |
 
 覆盖粗估（按「用户能在界面或 API 上点到有意义对象」计）：
 
@@ -148,7 +144,7 @@
 1. **扩展设备最小集**：已加 `serialdev` / `tcpdev` / `devmodserver` + `devmodclient` / `devpyscript` / `extcamera`。
 2. **数据库**：`databasePath` = `data/mdk.db`。
 3. **视觉与报警**：2 条 `visions` + `visiondev`；2 条 `alarms`（`alarm.test` / `alarm.warn`）+ `/api/alarms`。
-4. **PNP**：不加 tray；about 链接标明需完整 PNP 配置。
+4. **PNP**：不构建、不复制 `MDKOSS.Pnp`；关于页无 PNP 入口。
 5. **平台族**：额外 `xyz` / `xyzu`（仍用 sim）。
 6. **文档**：README 插件列表与覆盖边界已更新。
 7. **未塞入**：DieBonder、GTS/DMC 真机、Config.Wpf。

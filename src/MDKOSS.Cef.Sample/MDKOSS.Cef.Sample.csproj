@@ -10,6 +10,7 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <IncludeMdkPnpPlugin>false</IncludeMdkPnpPlugin>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NLog" Version="6.1.2" />
