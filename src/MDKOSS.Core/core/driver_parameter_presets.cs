@@ -84,6 +84,7 @@ public static class DriverParameterPresets
           "model": "VirtualCard",
           "inBits": "32",
           "outBits": "32",
+          "ioBitBase": "0",
           "note": "SIM VirtualCard"
         }
         """;
@@ -93,6 +94,7 @@ public static class DriverParameterPresets
         {
           "inBits": "128",
           "outBits": "128",
+          "ioBitBase": "0",
           "model": "VirtualCard",
           "note": "VIO 128bit DI/DO"
         }
@@ -115,6 +117,8 @@ public static class DriverParameterPresets
         {
           "card": "0",
           "configPath": "",
+          "resetOnInit": "false",
+          "sevonActiveLow": "true",
           "note": "DMC motion card"
         }
         """;

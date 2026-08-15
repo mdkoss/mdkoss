@@ -108,7 +108,7 @@
 | **Desc** | 显示名 / 描述（原 name）；GPIO 为点位 label |
 | **Enable** | 启用 |
 | **驱动** | （Gpios）点位绑定驱动 `id · 名称`；（Vios）所属 vio 设备 Driver |
-| **Port** | （仅 Gpios）端口号 / 地址；Vios 的 Port/Value 显示 DeviceId |
+| **Port** | （仅 Gpios）驱动 IO 地址（GTS：`bit.1`；DMC / SIM 默认：`bit.0`）；Vios 的 Port/Value 显示 DeviceId |
 
 中部列表支持 **查找**（Ctrl+F）：按 Name / Desc / 驱动 / Port / Alias 等即时筛选；切换模块时清空筛选。
 

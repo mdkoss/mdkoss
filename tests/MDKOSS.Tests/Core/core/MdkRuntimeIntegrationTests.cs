@@ -185,7 +185,7 @@ public sealed class MdkRuntimeIntegrationTests
                     Enabled = true,
                     Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                     {
-                        ["out.lamp"] = "d1:Y0",
+                        ["out.lamp"] = "d1|do.gpo.bit.0|灯",
                     },
                 },
             ],
@@ -194,7 +194,45 @@ public sealed class MdkRuntimeIntegrationTests
         using var rt = new MdkRuntime(setting);
         rt.Initialize();
         Assert.True(rt.TryWriteDigitalOutput("", "lamp", true, out var err), err);
+        var on = rt.GetSnapshot().Devices["gpio-main"].GpioIoPoints!.Single(p => p.Alias == "lamp");
+        Assert.Equal("true", on.Value, StringComparer.OrdinalIgnoreCase);
+
         Assert.True(rt.TryWriteDigitalOutput("  ", "lamp", false, out err), err);
+        var off = rt.GetSnapshot().Devices["gpio-main"].GpioIoPoints!.Single(p => p.Alias == "lamp");
+        Assert.Equal("false", off.Value, StringComparer.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Gpio_bit_write_does_not_clobber_other_outputs()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "gpio-main",
+                    Type = "gpio",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["out.red"] = "d1|do.gpo.bit.0|红",
+                        ["out.green"] = "d1|do.gpo.bit.1|绿",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        Assert.True(rt.TryWriteDigitalOutput("gpio-main", "red", true, out var err), err);
+        Assert.True(rt.TryWriteDigitalOutput("gpio-main", "green", true, out err), err);
+        Assert.True(rt.TryWriteDigitalOutput("gpio-main", "red", false, out err), err);
+
+        var points = rt.GetSnapshot().Devices["gpio-main"].GpioIoPoints!;
+        Assert.Equal("false", points.Single(p => p.Alias == "red").Value, StringComparer.OrdinalIgnoreCase);
+        Assert.Equal("true", points.Single(p => p.Alias == "green").Value, StringComparer.OrdinalIgnoreCase);
     }
 
     [Fact]

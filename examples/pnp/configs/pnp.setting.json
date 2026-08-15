@@ -10,7 +10,8 @@
       "enabled": true,
       "parameters": {
         "ip": "127.0.0.1",
-        "port": "5000"
+        "port": "5000",
+        "ioBitBase": "0"
       }
     }
   ],
@@ -21,17 +22,17 @@
       "type": "gpio",
       "enabled": true,
       "parameters": {
-        "in.startButton": "drv-main:X0",
-        "in.stopButton": "drv-main:X1",
-        "in.resetButton": "drv-main:X2",
-        "in.src.trayPresent": "drv-main:X10",
-        "in.tgt.trayPresent": "drv-main:X11",
-        "out.tower.red": "drv-main:Y0",
-        "out.tower.yellow": "drv-main:Y1",
-        "out.tower.green": "drv-main:Y2",
-        "out.vacuum": "drv-main:Y10",
-        "out.src.conveyorRun": "drv-main:Y20",
-        "out.tgt.conveyorRun": "drv-main:Y21"
+        "in.startButton": "drv-main|di.gpi.bit.0|启动",
+        "in.stopButton": "drv-main|di.gpi.bit.1|停止",
+        "in.resetButton": "drv-main|di.gpi.bit.2|复位",
+        "in.src.trayPresent": "drv-main|di.gpi.bit.10|源托盘",
+        "in.tgt.trayPresent": "drv-main|di.gpi.bit.11|目标托盘",
+        "out.tower.red": "drv-main|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "drv-main|do.gpo.bit.1|黄灯",
+        "out.tower.green": "drv-main|do.gpo.bit.2|绿灯",
+        "out.vacuum": "drv-main|do.gpo.bit.10|真空",
+        "out.src.conveyorRun": "drv-main|do.gpo.bit.20|源传送",
+        "out.tgt.conveyorRun": "drv-main|do.gpo.bit.21|目标传送"
       }
     },
     {

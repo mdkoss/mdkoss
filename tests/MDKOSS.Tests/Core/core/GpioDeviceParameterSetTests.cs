@@ -27,6 +27,20 @@ public sealed class GpioDeviceParameterSetTests
     }
 
     [Fact]
+    public void TryParsePointValue_accepts_driver_io_bit_address()
+    {
+        Assert.True(GpioDeviceParameterSet.TryParsePointValue(
+            "drv-m1|do.gpo.bit.1|绿灯", null, out var d, out var a, out var label));
+        Assert.Equal("drv-m1", d);
+        Assert.Equal("do.gpo.bit.1", a);
+        Assert.Equal("绿灯", label);
+
+        Assert.True(GpioDeviceParameterSet.TryParsePointRoute("drv-io1|di.gpi.bit.12", out d, out a));
+        Assert.Equal("drv-io1", d);
+        Assert.Equal("di.gpi.bit.12", a);
+    }
+
+    [Fact]
     public void TryParsePointValue_accepts_unified_driver_address_label()
     {
         Assert.True(GpioDeviceParameterSet.TryParsePointValue(

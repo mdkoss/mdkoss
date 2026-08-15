@@ -13,6 +13,7 @@
 | [extensions.md](./extensions.md) | MDKOSS.Extensions 扩展机制与注册表 |
 | [monitoring-api.md](./monitoring-api.md) | HTTP 监控服务、静态 HMI 页面、REST API |
 | [data-persistence.md](./data-persistence.md) | SQLite 持久化：排单、示教点、配方同步 |
+| [issues.md](./issues.md) | Issue 提交管理：mdkossdb 表结构 + Android 直连应用 |
 | [gui.md](./gui.md) | WPF / CEF 桌面壳与配置管理工具 |
 | [winform-epson-rc-design.md](./winform-epson-rc-design.md) | 历史 WinForms 配置界面设计参考（EPSON RC+ 风格） |
 | [MDKOSS.Config.Wpf/design.md](../src/MDKOSS.Config.Wpf/design.md) | WPF 配置界面设计指引（实现约定） |

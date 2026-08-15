@@ -11,7 +11,8 @@
       "parameters": {
         "ip": "127.0.0.1",
         "port": "5000",
-        "note": "运动控制卡：贴装头 XYZU + 相机触发"
+        "note": "运动控制卡：贴装头 XYZU + 相机触发",
+        "ioBitBase": "0"
       }
     },
     {
@@ -21,7 +22,8 @@
       "parameters": {
         "ip": "127.0.0.1",
         "port": "5001",
-        "note": "IO 卡：真空/顶针/传送带/塔灯/安全"
+        "note": "IO 卡：真空/顶针/传送带/塔灯/安全",
+        "ioBitBase": "0"
       }
     }
   ],
@@ -32,22 +34,22 @@
       "type": "gpio",
       "enabled": true,
       "parameters": {
-        "in.startButton": "drv-io:X0",
-        "in.stopButton": "drv-io:X1",
-        "in.resetButton": "drv-io:X2",
-        "in.safetyDoor": "drv-io:X3",
-        "in.wafer.present": "drv-io:X10",
-        "in.substrate.present": "drv-io:X11",
-        "in.vacuum.ok": "drv-io:X12",
-        "out.tower.red": "drv-io:Y0",
-        "out.tower.yellow": "drv-io:Y1",
-        "out.tower.green": "drv-io:Y2",
-        "out.buzzer": "drv-io:Y3",
-        "out.vacuum": "drv-io:Y10",
-        "out.ejector": "drv-io:Y11",
-        "out.dispenser": "drv-io:Y12",
-        "out.wafer.conveyorRun": "drv-io:Y20",
-        "out.substrate.conveyorRun": "drv-io:Y21"
+        "in.startButton": "drv-io|di.gpi.bit.0|启动",
+        "in.stopButton": "drv-io|di.gpi.bit.1|停止",
+        "in.resetButton": "drv-io|di.gpi.bit.2|复位",
+        "in.safetyDoor": "drv-io|di.gpi.bit.3|安全门",
+        "in.wafer.present": "drv-io|di.gpi.bit.10|晶圆到位",
+        "in.substrate.present": "drv-io|di.gpi.bit.11|基板到位",
+        "in.vacuum.ok": "drv-io|di.gpi.bit.12|真空OK",
+        "out.tower.red": "drv-io|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "drv-io|do.gpo.bit.1|黄灯",
+        "out.tower.green": "drv-io|do.gpo.bit.2|绿灯",
+        "out.buzzer": "drv-io|do.gpo.bit.3|蜂鸣器",
+        "out.vacuum": "drv-io|do.gpo.bit.10|真空",
+        "out.ejector": "drv-io|do.gpo.bit.11|顶针",
+        "out.dispenser": "drv-io|do.gpo.bit.12|点胶",
+        "out.wafer.conveyorRun": "drv-io|do.gpo.bit.20|晶圆传送",
+        "out.substrate.conveyorRun": "drv-io|do.gpo.bit.21|基板传送"
       }
     },
     {

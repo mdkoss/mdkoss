@@ -314,11 +314,11 @@ public sealed class ConfigApiModuleTests
                 enabled = true,
                 parameters = new Dictionary<string, string>
                 {
-                    ["in.start"] = "drv-sim|0|启动",
-                    ["out.lamp"] = "drv-sim|1|灯",
+                    ["in.start"] = "drv-sim|di.gpi.bit.1|启动",
+                    ["out.lamp"] = "drv-sim|do.gpo.bit.1|灯",
                 },
             }));
-            Assert.Equal("drv-sim|0|启动", rt.Setting.Devices.First(d => d.Id == gpioId).Parameters["in.start"]);
+            Assert.Equal("drv-sim|di.gpi.bit.1|启动", rt.Setting.Devices.First(d => d.Id == gpioId).Parameters["in.start"]);
             Assert.False(rt.Setting.Devices.First(d => d.Id == gpioId).Parameters.ContainsKey("in.startButton"));
 
             var vio = await ReadJsonAsync(await client.PostAsJsonAsync("/api/config/devices", new { type = "vio" }));

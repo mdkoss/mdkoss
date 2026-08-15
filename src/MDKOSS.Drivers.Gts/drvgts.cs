@@ -53,9 +53,19 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
+        if (TryReadIoAddress(address, out value))
+        {
+            return true;
+        }
+
         if (TryReadNativeAddress(address, out value))
         {
             return true;
+        }
+
+        if (DriverIoAddress.LooksLike(address))
+        {
+            return false;
         }
 
         return _memory.TryGetValue(address, out value);
@@ -68,11 +78,21 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var handledByNative = TryWriteNativeAddress(address, value);
-        if (handledByNative)
+        if (TryWriteIoAddress(address, value))
         {
             _memory[address] = value;
             return true;
+        }
+
+        if (TryWriteNativeAddress(address, value))
+        {
+            _memory[address] = value;
+            return true;
+        }
+
+        if (DriverIoAddress.LooksLike(address))
+        {
+            return false;
         }
 
         _memory[address] = value;
@@ -118,6 +138,11 @@ public sealed class DrvGts : IDriver
 
     public bool WriteDoBit(short doType, short doIndex, bool value)
     {
+        if (!DriverIoAddress.IsGtsBit(doIndex))
+        {
+            return false;
+        }
+
         var bit = value ? (short)1 : (short)0;
         return IsConnected && Call(() => NativeGts.GT_SetDoBit(_cardNo, doType, doIndex, bit));
     }
@@ -360,29 +385,68 @@ public sealed class DrvGts : IDriver
     //  Address-based read/write helpers
     // ──────────────────────────────────────────────
 
+    private bool TryReadIoAddress(string address, out object? value)
+    {
+        value = null;
+        if (!DriverIoAddress.TryParse(address, out var io))
+        {
+            return false;
+        }
+
+        if (io.IsOutput)
+        {
+            if (!TryReadDo(io.Type, out var doValue))
+            {
+                return false;
+            }
+
+            if (io.IsBit && !DriverIoAddress.IsGtsBit(io.BitIndex!.Value))
+            {
+                return false;
+            }
+
+            value = io.IsBit ? DriverIoAddress.TestBit(doValue, io.BitIndex!.Value) : doValue;
+            return true;
+        }
+
+        if (!TryReadDi(io.Type, out var diValue))
+        {
+            return false;
+        }
+
+        if (io.IsBit && !DriverIoAddress.IsGtsBit(io.BitIndex!.Value))
+        {
+            return false;
+        }
+
+        value = io.IsBit ? DriverIoAddress.TestBit(diValue, io.BitIndex!.Value) : diValue;
+        return true;
+    }
+
+    private bool TryWriteIoAddress(string address, object? value)
+    {
+        if (!DriverIoAddress.TryParse(address, out var io) || !io.IsOutput)
+        {
+            return false;
+        }
+
+        if (io.IsBit)
+        {
+            return WriteDoBit(io.Type, io.BitIndex!.Value, Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture));
+        }
+
+        // Whole-port write is a bitmask; bool would wipe every other bit via GT_SetDo.
+        if (value is bool || !TryConvertToInt(value, out var doValue))
+        {
+            return false;
+        }
+
+        return WriteDo(io.Type, doValue);
+    }
+
     private bool TryReadNativeAddress(string address, out object? value)
     {
         value = null;
-
-        if (TryParseTypeAndIndex(address, "di.", out var diType))
-        {
-            if (TryReadDi(diType, out var diValue))
-            {
-                value = diValue;
-                return true;
-            }
-            return false;
-        }
-
-        if (TryParseTypeAndIndex(address, "do.", out var doType))
-        {
-            if (TryReadDo(doType, out var doValue))
-            {
-                value = doValue;
-                return true;
-            }
-            return false;
-        }
 
         if (TryParseTypeAndIndex(address, "axis.", out var axis))
         {
@@ -441,20 +505,6 @@ public sealed class DrvGts : IDriver
 
     private bool TryWriteNativeAddress(string address, object? value)
     {
-        if (TryParseTypeAndIndex(address, "do.", out var doType))
-        {
-            if (!TryConvertToInt(value, out var doValue))
-            {
-                return false;
-            }
-            return WriteDo(doType, doValue);
-        }
-
-        if (TryParseDoBitAddress(address, out var doBitType, out var doBitIndex))
-        {
-            return WriteDoBit(doBitType, doBitIndex, Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture));
-        }
-
         if (TryParseTypeAndIndex(address, "axis.", out var axis))
         {
             if (!TryConvertToInt(value, out var target))
@@ -570,25 +620,6 @@ public sealed class DrvGts : IDriver
         var dotIdx = suffix.IndexOf('.');
         var numPart = dotIdx >= 0 ? suffix[..dotIdx] : suffix;
         return short.TryParse(numPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryParseDoBitAddress(string address, out short doType, out short doIndex)
-    {
-        doType = 0;
-        doIndex = 0;
-        if (!address.StartsWith("do.", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var parts = address.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 4 || !parts[2].Equals("bit", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return short.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out doType)
-            && short.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out doIndex);
     }
 
     private static class NativeGts

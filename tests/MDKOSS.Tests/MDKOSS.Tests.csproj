@@ -18,6 +18,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MDKOSS.Config.Wpf\MDKOSS.Config.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Drivers.Sim\MDKOSS.Drivers.Sim.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
   </ItemGroup>
   <ItemGroup>

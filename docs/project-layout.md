@@ -43,8 +43,15 @@ src/
 | `MDKOSS.Extensions.ModServer` | `devmodserver` | `ModServerExtensionBootstrap` |
 | `MDKOSS.Extensions.PyScript` | `devpyscript` | `PyScriptExtensionBootstrap` |
 
+## Android
+
+| 目录 | 说明 |
+|------|------|
+| `android/MdkossIssues` | Issue 提交/管理，JDBC 直连 `mdkossdb`。见 [issues.md](./issues.md) |
+
 ## 延伸阅读
 
 - [extensions.md](./extensions.md)
 - [configuration.md](./configuration.md)
 - [core-subsystems.md](./core-subsystems.md)
+- [issues.md](./issues.md)

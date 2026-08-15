@@ -1,3 +1,5 @@
+using MDKOSS.Core.Drivers;
+
 namespace MDKOSS.Core;
 
 /// <summary>One GPIO point binding parsed from device <c>parameters</c> (<c>in.*</c> / <c>out.*</c> keys).</summary>
@@ -79,7 +81,7 @@ public static class GpioDeviceParameterSet
         TryParsePointValue(raw, defaultDriverId: null, out driverId, out address, out _);
 
     /// <summary>
-    /// Parses IO parameter value. Preferred: <c>drv-m1|0|急停</c>.
+    /// Parses IO parameter value. Preferred: <c>drv-m1|di.gpi.bit.1|急停</c>.
     /// Also accepts legacy <c>drv-m1:0|急停</c>, <c>drv-m1|0</c>, <c>0|急停</c> / <c>0</c> (needs defaultDriverId).
     /// </summary>
     public static bool TryParsePointValue(
@@ -293,12 +295,20 @@ public static class GpioDeviceParameterSet
         return !string.IsNullOrWhiteSpace(driverId) && !string.IsNullOrWhiteSpace(address);
     }
 
-    /// <summary>True when token looks like an IO address (e.g. <c>0</c>, <c>12</c>, <c>X0</c>, <c>DI1</c>).</summary>
+    /// <summary>
+    /// True when token looks like an IO address
+    /// (driver form <c>di.gpi.bit.1</c> / <c>do.gpo.bit.1</c>, or short <c>0</c> / <c>X0</c>).
+    /// </summary>
     private static bool LooksLikeIoAddress(string token)
     {
         if (string.IsNullOrWhiteSpace(token))
         {
             return false;
+        }
+
+        if (DriverIoAddress.LooksLike(token))
+        {
+            return true;
         }
 
         if (long.TryParse(token, out _))

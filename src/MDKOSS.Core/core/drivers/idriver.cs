@@ -21,10 +21,18 @@ public interface IDriver : IDisposable
     /// <summary>Initializes driver with parsed config.</summary>
     void Initialize(MdkSetting.DriverConfig config);
 
-    /// <summary>Reads a value from an address/key.</summary>
+    /// <summary>
+    /// Reads a value from an address/key.
+    /// Digital IO uses <see cref="DriverIoAddress"/>:
+    /// <c>di.{type}</c> / <c>do.{type}</c> (port word) or <c>di|do.{type}.bit.{n}</c>
+    /// (<c>n</c> is card-native: GTS from 1, DMC from 0, SIM follows <c>ioBitBase</c> default 0).
+    /// </summary>
     bool TryRead(string address, out object? value);
 
-    /// <summary>Writes a value to an address/key.</summary>
+    /// <summary>
+    /// Writes a value to an address/key.
+    /// Single GPIO points must use <c>do.{type}.bit.{n}</c> (bool). Whole-port <c>do.{type}</c> takes an int bitmask.
+    /// </summary>
     bool Write(string address, object? value);
 
     // ──────────────────────────────────────────────

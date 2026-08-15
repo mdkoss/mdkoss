@@ -21,3 +21,6 @@ _build_verify/
 # Local NuGet cache / offline packages
 /.nuget-local/
 /.nuget-packages/
+
+# Android（本地工程，不上传）
+/android

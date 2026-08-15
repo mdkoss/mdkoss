@@ -26,12 +26,15 @@ public sealed class DriverFactoryTests
     {
         Assert.True(DriverFactory.IsSupported("sim"));
         Assert.Contains("sim", DriverFactory.RegisteredTypes);
+        Assert.True(DriverFactory.IsSupported("dmc"));
+        Assert.Contains("dmc", DriverFactory.RegisteredTypes);
     }
 
     [Fact]
     public void Discovery_registers_expected_extensions()
     {
         Assert.Contains("driver-sim", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
+        Assert.Contains("driver-dmc", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("serial", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("tcp", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("camera", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);

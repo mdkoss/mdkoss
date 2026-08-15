@@ -6,6 +6,7 @@ namespace MDKOSS.Core.Drivers;
 /// <summary>
 /// Software simulation driver for controller development and testing.
 /// Simulates all motion-control operations in memory without hardware.
+/// Digital <c>bit.{n}</c> numbering follows parameter <c>ioBitBase</c> (default 0).
 /// </summary>
 public sealed class DrvSim : IDriver
 {
@@ -13,6 +14,7 @@ public sealed class DrvSim : IDriver
     private readonly ConcurrentDictionary<short, int> _di = new();
     private readonly ConcurrentDictionary<short, int> _do = new();
     private readonly ConcurrentDictionary<short, SimAxisState> _axes = new();
+    private short _ioBitBase;
 
     public string Name => "SIM";
 
@@ -20,9 +22,11 @@ public sealed class DrvSim : IDriver
 
     public void Initialize(MdkSetting.DriverConfig config)
     {
+        _ioBitBase = ParseIoBitBase(config);
         _memory["driver.id"] = config.Id;
         _memory["driver.type"] = config.Type;
         _memory["driver.mode"] = "simulation";
+        _memory["driver.ioBitBase"] = _ioBitBase;
         _memory["driver.lastCode"] = 0;
         IsConnected = true;
     }
@@ -35,9 +39,19 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        if (TryReadIoAddress(address, out value))
+        {
+            return true;
+        }
+
         if (TryReadNativeAddress(address, out value))
         {
             return true;
+        }
+
+        if (DriverIoAddress.LooksLike(address))
+        {
+            return false;
         }
 
         return _memory.TryGetValue(address, out value);
@@ -50,10 +64,21 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        if (TryWriteIoAddress(address, value))
+        {
+            _memory[address] = value;
+            return true;
+        }
+
         if (TryWriteNativeAddress(address, value))
         {
             _memory[address] = value;
             return true;
+        }
+
+        if (DriverIoAddress.LooksLike(address))
+        {
+            return false;
         }
 
         _memory[address] = value;
@@ -104,6 +129,7 @@ public sealed class DrvSim : IDriver
 
     public bool WriteDoBit(short doType, short doIndex, bool value)
     {
+        // IDriver bit index is 0-based (debug grid). Address bit.{n} follows ioBitBase (default 0).
         if (!IsConnected || doIndex < 0 || doIndex > 31)
         {
             return false;
@@ -397,31 +423,144 @@ public sealed class DrvSim : IDriver
     //  Address-based read/write helpers
     // ──────────────────────────────────────────────
 
+    private bool TryReadIoAddress(string address, out object? value)
+    {
+        value = null;
+        if (!DriverIoAddress.TryParse(address, out var io))
+        {
+            return false;
+        }
+
+        if (io.IsOutput)
+        {
+            if (!TryReadDo(io.Type, out var doValue))
+            {
+                return false;
+            }
+
+            if (io.IsBit)
+            {
+                if (!TryAddressBitShift(io.BitIndex!.Value, out var shift))
+                {
+                    return false;
+                }
+
+                value = TestPortBit(doValue, shift);
+                return true;
+            }
+
+            value = doValue;
+            return true;
+        }
+
+        if (!TryReadDi(io.Type, out var diValue))
+        {
+            return false;
+        }
+
+        if (io.IsBit)
+        {
+            if (!TryAddressBitShift(io.BitIndex!.Value, out var shift))
+            {
+                return false;
+            }
+
+            value = TestPortBit(diValue, shift);
+            return true;
+        }
+
+        value = diValue;
+        return true;
+    }
+
+    private bool TryWriteIoAddress(string address, object? value)
+    {
+        if (!DriverIoAddress.TryParse(address, out var io))
+        {
+            return false;
+        }
+
+        if (io.IsBit)
+        {
+            var bit = Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture);
+            return io.IsOutput
+                ? WritePortBit(_do, io.Type, io.BitIndex!.Value, bit)
+                : WritePortBit(_di, io.Type, io.BitIndex!.Value, bit);
+        }
+
+        if (value is bool || !TryConvertToInt(value, out var word))
+        {
+            return false;
+        }
+
+        if (io.IsOutput)
+        {
+            return WriteDo(io.Type, word);
+        }
+
+        _di[io.Type] = word;
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    private bool WritePortBit(ConcurrentDictionary<short, int> port, short type, short addressBit, bool value)
+    {
+        if (!IsConnected || !TryAddressBitShift(addressBit, out var shift))
+        {
+            return false;
+        }
+
+        var current = port.GetOrAdd(type, 0);
+        port[type] = ApplyPortBit(current, shift, value);
+        _memory["driver.lastCode"] = 0;
+        return true;
+    }
+
+    /// <summary>
+    /// Maps address <c>bit.{n}</c> to a 0-based shift in the port word.
+    /// <c>ioBitBase=0</c>: n=0 is the first bit; <c>ioBitBase=1</c>: n=1 is the first bit (GTS-style).
+    /// </summary>
+    private bool TryAddressBitShift(short addressBit, out int shift)
+    {
+        shift = addressBit - _ioBitBase;
+        return shift is >= 0 and <= 31;
+    }
+
+    private static bool TestPortBit(int word, int shift) => (word & (1 << shift)) != 0;
+
+    private static int ApplyPortBit(int word, int shift, bool value)
+    {
+        var mask = 1 << shift;
+        return value ? word | mask : word & ~mask;
+    }
+
+    private static short ParseIoBitBase(MdkSetting.DriverConfig config)
+    {
+        if (!config.Parameters.TryGetValue("ioBitBase", out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return 0;
+        }
+
+        var key = raw.Trim();
+        if (int.TryParse(key, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n))
+        {
+            return n == 1 ? (short)1 : (short)0;
+        }
+
+        if (key.Equals("1base", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("one", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("true", StringComparison.OrdinalIgnoreCase)
+            || key.Equals("gts", StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        return 0;
+    }
+
     private bool TryReadNativeAddress(string address, out object? value)
     {
         value = null;
-
-        if (TryParseTypeAndIndex(address, "di.", out var diType))
-        {
-            if (TryReadDi(diType, out var diValue))
-            {
-                value = diValue;
-                return true;
-            }
-
-            return false;
-        }
-
-        if (TryParseTypeAndIndex(address, "do.", out var doType))
-        {
-            if (TryReadDo(doType, out var doValue))
-            {
-                value = doValue;
-                return true;
-            }
-
-            return false;
-        }
 
         if (TryParseTypeAndIndex(address, "axis.", out var axis))
         {
@@ -480,22 +619,6 @@ public sealed class DrvSim : IDriver
 
     private bool TryWriteNativeAddress(string address, object? value)
     {
-        if (TryParseTypeAndIndex(address, "do.", out var doType))
-        {
-            if (!TryConvertToInt(value, out var doValue))
-            {
-                return false;
-            }
-
-            return WriteDo(doType, doValue);
-        }
-
-        if (TryParseDoBitAddress(address, out var doBitType, out var doBitIndex))
-        {
-            var doBitValue = Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture);
-            return WriteDoBit(doBitType, doBitIndex, doBitValue);
-        }
-
         if (TryParseTypeAndIndex(address, "axis.", out var axis))
         {
             if (!TryConvertToInt(value, out var target))
@@ -543,25 +666,6 @@ public sealed class DrvSim : IDriver
         var dotIdx = suffix.IndexOf('.');
         var numPart = dotIdx >= 0 ? suffix[..dotIdx] : suffix;
         return short.TryParse(numPart, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
-    }
-
-    private static bool TryParseDoBitAddress(string address, out short doType, out short doIndex)
-    {
-        doType = 0;
-        doIndex = 0;
-        if (!address.StartsWith("do.", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        var parts = address.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 4 || !parts[2].Equals("bit", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        return short.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out doType)
-            && short.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out doIndex);
     }
 
     private static bool TryConvertToInt(object? value, out int result)

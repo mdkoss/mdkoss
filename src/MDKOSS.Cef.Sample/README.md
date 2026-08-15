@@ -36,7 +36,7 @@ dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Debug
 | 类别 | 实例 | 调试入口 |
 |------|------|----------|
 | 驱动 | `sim1`（`sim`） | `debug_driver` |
-| GPIO / 相机占位 | `gpio1`、`cam1`（`cameradev`） | `debug_io` / `monitor_camera` |
+| GPIO / 相机占位 | `gpio1`（`di.gpi.bit.n` / `do.gpo.bit.n`，SIM `ioBitBase=0`）、`cam1` | `debug_io` / `monitor_camera` |
 | 串口 | `serial1`（`serialdev`） | `debug_serial`、`/api/serial`（不自动 Open） |
 | TCP | `tcp1`（`tcpdev`） | `/api/tcp`（不自动 Connect） |
 | MySQL | `mysql1`（`mysqldev`） | `debug_mysql`、`/api/mysql`（不自动 Connect） |

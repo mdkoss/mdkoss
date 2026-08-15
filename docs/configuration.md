@@ -28,7 +28,7 @@
   "id": "sim1",
   "type": "sim",
   "enabled": true,
-  "parameters": { }
+  "parameters": { "ioBitBase": "0" }
 }
 ```
 
@@ -46,16 +46,16 @@
 | `sim` | `DrvSim`（`MDKOSS.Drivers.Sim`） | 软件仿真：内存 DI/DO、轴等 |
 | `vio` | `DrvSim`（同插件注册） | 虚拟 IO 卡；默认参数 `inBits=128` / `outBits=128` |
 | `gts` | `DrvGts`（`MDKOSS.Drivers.Gts`） | GTS 运动卡驱动（gts.dll） |
-| `dmc` | （待 `DrvDmc`） | LTDMC 原生绑定在 `MDKOSS.Drivers.Dmc`，IDriver 包装待补 |
+| `dmc` | `DrvDmc`（`MDKOSS.Drivers.Dmc`） | 雷赛 LTDMC；GPIO 地址同 GTS（`di.gpi.bit.n` / `do.gpo.bit.n`） |
 
 各类型默认 `parameters` JSON 见 `DriverParameterPresets`（Config.Wpf「重置模板」/新建 Type 切换会写入）：
 
 | type | 默认键 |
 |------|--------|
-| `sim` | `ip` / `port` / `card` / `model` / `inBits` / `outBits` / `note` |
-| `vio` | `inBits=128` / `outBits=128` / `model` / `note` |
+| `sim` | `ip` / `port` / `card` / `model` / `inBits` / `outBits` / `ioBitBase`（`0` 默认 / `1` 与 GTS 相同） / `note` |
+| `vio` | `inBits=128` / `outBits=128` / `ioBitBase` / `model` / `note` |
 | `gts` | `cardNo` / `channel` / `openParam` / `resetOnInit` / `configPath` / `note` |
-| `dmc` | `card` / `configPath` / `note` |
+| `dmc` | `card` / `configPath` / `resetOnInit` / `sevonActiveLow` / `note` |
 
 扩展新驱动：新建 `src/MDKOSS.Drivers.Xxx`，实现 `IDriver` + `IMdkExtension`（`registration.Driver`），宿主调用 `XxxDriverBootstrap.Register()`；并在 `DriverParameterPresets` 增加对应默认 JSON。
 
@@ -68,8 +68,8 @@
   "type": "gpio",
   "enabled": true,
   "parameters": {
-    "in.startButton": "drv-m1|0|启动",
-    "out.tower.green": "drv-io1|0|绿灯"
+    "in.startButton": "drv-m1|di.gpi.bit.0|启动",
+    "out.tower.green": "drv-io1|do.gpo.bit.0|绿灯"
   }
 }
 ```
@@ -104,8 +104,14 @@
 
 - 建议整机只配置 **一个** `type=gpio` 设备；运行时默认挂载全部启用的非 `vio` 驱动卡
 - `in.{alias}` / `out.{alias}`：值须为 `driverId|address`（可选 `|label`），在参数里标明所属驱动卡
+- `address` 必须是驱动 `IDriver.TryRead` / `Write` 认识的格式；**`bit.{n}` 的 n 按该驱动所属控制卡手册**，驱动不做统一换算：
+  - GTS：`n` 从 **1** 起（`GT_SetDoBit`），例 `do.gpo.bit.1`
+  - DMC：`n` 从 **0** 起（`dmc_write_outbit`），例 `do.gpo.bit.0`
+  - SIM：由驱动参数 `ioBitBase` 决定（`0` 默认，与 DMC 相同；`1` 与 GTS 相同）
+  - 整口：`di.gpi` / `do.gpo`（int 位图；单点 GPIO 不要用整口）
+  - `{type}` 也可用数字：`di.4.bit.1`（GTS `MC_GPI=4`）、`do.12.bit.1`（`MC_GPO=12`）
 - 可选 `driverIds`：逗号分隔，进一步限定可见驱动子集（默认不必填）
-- `driverId` 字段可选，仅作为旧式短地址（`0|标签`）的默认卡；新配置请写全 `driverId|address|label`（读取仍兼容旧式 `driverId:address|label`）
+- `driverId` 字段可选，仅作为旧式短地址的默认卡；新配置请写全 `driverId|address|label`（读取仍兼容旧式 `driverId:address|label`）
 - Task / Flow：`gpioDeviceId` 可空，空则使用第一个（共享）GpioDevice，IO 只写 alias
 
 解析：`GpioDeviceParameterSet`（`gpio_device_parameters.cs`）

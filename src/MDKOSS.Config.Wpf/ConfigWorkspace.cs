@@ -4287,7 +4287,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             if (string.IsNullOrWhiteSpace(portRaw))
             {
-                throw new InvalidOperationException("Port 不能为空（端口号/地址，如 0）。");
+                throw new InvalidOperationException("Port 不能为空（驱动地址：GTS 用 di.gpi.bit.1，DMC/SIM 默认 di.gpi.bit.0）。");
             }
 
             address = portRaw;
