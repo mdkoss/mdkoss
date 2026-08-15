@@ -60,6 +60,7 @@ mdkoss/
 ├── tests/MDKOSS.Tests/
 └── src/
     ├── MDKOSS.Sample/            # Demo / console 宿主 + configs（引用 Cef）
+    ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs（引用 Cef）
     ├── MDKOSS.Cef/               # CefSharp 界面库 + views
     ├── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
     ├── MDKOSS.Core/              # 运行时内核（core/server/tasks/host）
@@ -74,10 +75,11 @@ mdkoss/
 
 > 详见 [docs/core-subsystems.md](./docs/core-subsystems.md)、[docs/extensions.md](./docs/extensions.md)。
 
-- `MDKOSS.Config.Wpf` / `MDKOSS.Sample` / `MDKOSS.Cef`  
+- `MDKOSS.Config.Wpf` / `MDKOSS.Sample` / `MDKOSS.Sample.Dispenser` / `MDKOSS.Cef`  
   宿主与 CEF 界面拆分（共用 `host/RuntimeHost.cs`）：
   - **MDKOSS.Config.Wpf**：WPF 离线配置（`MainWindow`）
   - **MDKOSS.Sample**：Demo / PNP 可执行入口；嵌入 CEF；可选 `--console` 无 GUI
+  - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo 宿主；嵌入 CEF；可选 `--console` 无 GUI
   - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
   均在入口中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
@@ -293,6 +295,9 @@ Sample + CEF 桌面壳：
 
 ```bash
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
+
+# 三轴点胶机
+dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
 ```
 
 也可使用根目录脚本 `run-src-mdkoss.bat` / `run-src-mdkoss-cef.bat`。

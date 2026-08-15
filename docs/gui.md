@@ -8,6 +8,7 @@ MDKOSS 将桌面宿主拆成独立可执行项目，CEF 仅为界面库，共享
 |------|------|------|------|
 | **MDKOSS.Config.Wpf** | `src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj` | `App.xaml` → `MainWindow` | WPF 离线配置工具 |
 | **MDKOSS.Sample** | `src/MDKOSS.Sample/MDKOSS.Sample.csproj` | `MDKOSS.Sample/Program.cs` → `CefMainForm` | Demo / PNP 宿主；嵌入 CEF HMI；支持 `--console` |
+| **MDKOSS.Sample.Dispenser** | `src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj` | `MDKOSS.Sample.Dispenser/Program.cs` → `CefMainForm` | 三轴点胶机宿主；嵌入 CEF HMI；支持 `--console` |
 | **MDKOSS.Cef** | `src/MDKOSS.Cef/MDKOSS.Cef.csproj` | `CefMainForm` / `CefRuntimeBootstrap` | CefSharp 界面库 + `views/*.html`（非可执行） |
 
 共用启动逻辑在 `src/MDKOSS.Core/host/RuntimeHost.cs`（配置路径解析、Load / Initialize / Start / Stop）。
@@ -23,6 +24,9 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs
 
 # 无 GUI 控制台
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setting configs/pnp.setting.json
+
+# 三轴点胶机
+dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
 ```
 
 桌面模式流程：

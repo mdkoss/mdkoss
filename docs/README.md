@@ -26,7 +26,7 @@
 
 ## 相关资源
 
-- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`
+- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`
 - 配置模块说明：`src/MDKOSS.Config.Wpf/README.md`、`src/MDKOSS.Config.Wpf/design.md`
 - 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`、`src/MDKOSS.Extensions.Mysql/mysqldev.md`
 - 平台示教页设计：`src/MDKOSS.Cef/views/_docs/debug_platform.md`

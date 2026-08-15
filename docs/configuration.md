@@ -311,4 +311,4 @@ WinForms `ComponentConfigForm` 在保存前校验：重复 id、缺失驱动、�
 
 ## 示例
 
-完整示例见 `src/MDKOSS.Sample/configs/sample.setting.json`。
+完整示例见 `src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`。

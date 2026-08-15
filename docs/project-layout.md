@@ -17,6 +17,7 @@ src/
 ├── MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Sample/
+├── MDKOSS.Sample.Dispenser/
 └── MDKOSS.Config.Wpf/
 ```
 

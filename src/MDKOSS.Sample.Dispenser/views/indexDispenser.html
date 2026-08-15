@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 三轴点胶机</title>
+  <style>
+    :root {
+      --bg: #140c08;
+      --panel: #1c120c;
+      --text: #ffe8d6;
+      --muted: #c4a484;
+      --line: #3a2618;
+      --accent: #f4a261;
+      --ok: #35d08f;
+      --warn: #ffcc66;
+      --danger: #ff5d5d;
+      --top-h: 64px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(900px 420px at 8% -10%, rgba(244,162,97,.16), transparent 55%),
+        radial-gradient(700px 380px at 100% 0%, rgba(231,111,81,.10), transparent 50%),
+        var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .topbar {
+      height: var(--top-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, #2a1a10 0%, #160e09 100%);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), #e76f51);
+      display: grid; place-items: center;
+      font-weight: 800; font-size: 11px; letter-spacing: -.2px;
+      color: #2a1408;
+    }
+    .brand h1 { font-size: 17px; font-weight: 700; white-space: nowrap; }
+    .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 420px; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .runtime {
+      font-size: 12px; color: var(--muted);
+      padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: #1a100a;
+    }
+    .runtime.on { color: var(--ok); border-color: rgba(53,208,143,.35); }
+    button {
+      border: 1px solid var(--line);
+      background: #24160e;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.primary { background: rgba(244,162,97,.18); border-color: rgba(244,162,97,.45); }
+    button.danger { background: rgba(255,93,93,.14); border-color: rgba(255,93,93,.4); }
+    button:hover { filter: brightness(1.1); }
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 14px;
+      padding: 14px;
+    }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr; overflow: auto; }
+      body { overflow: auto; }
+    }
+    .col { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      min-height: 0;
+    }
+    .card h2 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600;
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(53,208,143,.4); }
+    .badge.warn { color: var(--warn); border-color: rgba(255,204,102,.4); }
+    .badge.err { color: var(--danger); border-color: rgba(255,93,93,.4); }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+    .stat {
+      background: #1a100a;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .stat .n { font-size: 22px; font-weight: 700; }
+    .stat .l { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .kv { display: grid; grid-template-columns: 88px 1fr; gap: 6px 10px; font-size: 13px; }
+    .k { color: var(--muted); }
+    .v { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pipeline { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 8px; }
+    .pipe {
+      padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line);
+      font-size: 11px; color: var(--muted);
+    }
+    .pipe.on { color: #2a1408; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+    .grid-wrap { display: flex; align-items: center; gap: 16px; margin-top: 10px; }
+    .dot-grid {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      background: #1a100a;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+    }
+    .dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      border: 2px solid var(--line); background: #24160e;
+    }
+    .dot.done { background: var(--ok); border-color: rgba(53,208,143,.6); }
+    .dot.cur { background: var(--accent); border-color: #ffd19a; box-shadow: 0 0 0 3px rgba(244,162,97,.25); }
+    .msg {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #1a100a;
+      border: 1px solid var(--line);
+      font-size: 13px;
+      min-height: 42px;
+    }
+    .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .links a { color: var(--accent); font-size: 12px; text-decoration: none; }
+    .links a:hover { text-decoration: underline; }
+    .modules { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; overflow: auto; }
+    .mod {
+      background: #1a100a; border: 1px solid var(--line); border-radius: 10px; padding: 10px;
+    }
+    .mod .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .mod .name { font-weight: 700; font-size: 13px; }
+    .mod .id, .mod .detail { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .dot-ok, .dot.err { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .dot-ok.ok { background: var(--ok); }
+    .dot-ok.err { background: var(--danger); }
+    .log-card { flex: 1; display: flex; flex-direction: column; }
+    .log-toolbar { display: flex; align-items: center; gap: 8px; }
+    .hint { font-size: 11px; color: var(--muted); font-weight: 500; }
+    .log-view {
+      flex: 1; min-height: 180px; overflow: auto;
+      background: #1a100a; border: 1px solid var(--line); border-radius: 8px;
+      padding: 8px 10px; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px;
+    }
+    .log-line { margin-bottom: 4px; color: var(--text); }
+    .log-line .t { color: var(--muted); }
+    .log-line .lv { font-weight: 700; }
+    .log-line.WARN { color: var(--warn); }
+    .log-line.ERROR { color: var(--danger); }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">XYZ</div>
+      <div>
+        <h1 id="projectName">三轴点胶机</h1>
+        <p id="subtitle">Dispenser · 点阵循环 · 阀控</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <div class="runtime" id="runtimeBadge">连接中…</div>
+      <button class="primary" id="btnStart" type="button">启动</button>
+      <button class="danger" id="btnStop" type="button">停止</button>
+      <button id="btnReset" type="button">复位</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="col">
+      <section class="card">
+        <h2>运行概览 <span class="badge" id="phaseBadge">—</span></h2>
+        <div class="stats">
+          <div class="stat"><div class="n" id="okCount">0</div><div class="l">已点胶</div></div>
+          <div class="stat"><div class="n" id="remain">—</div><div class="l">剩余点</div></div>
+          <div class="stat"><div class="n" id="xyz">—</div><div class="l">当前 XYZ</div></div>
+          <div class="stat"><div class="n" id="valve">关</div><div class="l">点胶阀</div></div>
+        </div>
+        <div class="kv">
+          <div class="k">循环阶段</div><div class="v" id="phase">—</div>
+          <div class="k">操作状态</div><div class="v" id="opState">—</div>
+          <div class="k">配方</div><div class="v" id="recipe">—</div>
+          <div class="k">点序号</div><div class="v" id="point">—</div>
+          <div class="k">工件</div><div class="v" id="workpiece">—</div>
+        </div>
+        <div class="pipeline" id="pipeline"></div>
+        <div class="grid-wrap">
+          <div class="dot-grid" id="dotGrid"></div>
+        </div>
+        <div class="msg" id="message">等待状态…</div>
+        <div class="links">
+          <a href="/index.html">系统主界面</a>
+          <a href="/monitor_io.html">IO 监控</a>
+          <a href="/monitor_platform.html?deviceId=head-dispense">点胶头监控</a>
+          <a href="/debug_platform.html?deviceId=head-dispense">点胶头示教</a>
+          <a href="/monitor_runtime.html">综合监控</a>
+        </div>
+      </section>
+
+      <section class="card" style="flex:1; display:flex; flex-direction:column;">
+        <h2>模块运行状态 <span class="badge" id="moduleCount">0</span></h2>
+        <div class="modules" id="modules"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card log-card">
+        <h2>
+          <span>执行日志</span>
+          <span class="log-toolbar">
+            <span class="hint" id="logHint">0 条</span>
+            <button id="btnClearLog" type="button">清空</button>
+          </span>
+        </h2>
+        <div class="log-view" id="logView"></div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const PIPE = [
+      ["WaitWorkpiece", "等工件"],
+      ["Enable", "使能"],
+      ["MoveXy", "走 XY"],
+      ["DescendZ", "下降"],
+      ["ValveOn", "开阀"],
+      ["RetractZ", "抬起"],
+      ["NextPoint", "下一点"],
+      ["Done", "完成"]
+    ];
+    const pipelineEl = document.getElementById("pipeline");
+    PIPE.forEach(([key, label]) => {
+      const el = document.createElement("div");
+      el.className = "pipe";
+      el.dataset.key = key;
+      el.textContent = label;
+      pipelineEl.appendChild(el);
+    });
+
+    const modulesEl = document.getElementById("modules");
+    const logView = document.getElementById("logView");
+    const dotGrid = document.getElementById("dotGrid");
+    let lastLogSignature = "";
+    let stickToBottom = true;
+
+    logView.addEventListener("scroll", () => {
+      const gap = logView.scrollHeight - logView.scrollTop - logView.clientHeight;
+      stickToBottom = gap < 40;
+    });
+
+    function setText(id, value) {
+      document.getElementById(id).textContent = value == null || value === "" ? "—" : String(value);
+    }
+
+    function phaseBadgeClass(phase) {
+      if (phase === "Fault") return "badge err";
+      if (phase === "Idle" || phase === "Done" || !phase || phase === "—") return "badge";
+      return "badge ok";
+    }
+
+    function highlightPipeline(phase) {
+      const map = {
+        WaitWorkpiece: "WaitWorkpiece",
+        Enable: "Enable", MoveSafeZ: "Enable",
+        MoveXy: "MoveXy",
+        DescendZ: "DescendZ",
+        ValveOn: "ValveOn", Dwell: "ValveOn", ValveOff: "ValveOn",
+        RetractZ: "RetractZ",
+        NextPoint: "NextPoint",
+        Done: "Done"
+      };
+      const active = map[phase] || "";
+      document.querySelectorAll(".pipe").forEach((el) => {
+        el.classList.toggle("on", el.dataset.key === active);
+      });
+    }
+
+    function renderGrid(rows, cols, index, total) {
+      const r = Number(rows) || 0;
+      const c = Number(cols) || 0;
+      if (!r || !c) {
+        dotGrid.innerHTML = "";
+        return;
+      }
+      dotGrid.style.gridTemplateColumns = `repeat(${c}, 18px)`;
+      const n = r * c;
+      const cur = Number(index) || 0;
+      const doneCount = Math.min(Number(total) ? cur : 0, n);
+      let html = "";
+      for (let i = 0; i < n; i++) {
+        let cls = "dot";
+        if (i < doneCount) cls += " done";
+        if (i === cur && cur < n) cls += " cur";
+        html += `<div class="${cls}"></div>`;
+      }
+      dotGrid.innerHTML = html;
+    }
+
+    function renderModules(modules) {
+      modulesEl.innerHTML = "";
+      const list = Array.isArray(modules) ? modules : [];
+      setText("moduleCount", String(list.length));
+      list.forEach((m) => {
+        const el = document.createElement("div");
+        el.className = "mod";
+        el.innerHTML = `
+          <div class="row">
+            <div class="name">${escapeHtml(m.name || m.id || "")}</div>
+            <span class="dot-ok ${m.ok ? "ok" : "err"}"></span>
+          </div>
+          <div class="id">${escapeHtml(m.category || "")} · ${escapeHtml(m.id || "")}</div>
+          <div class="row">
+            <span class="badge ${m.ok ? "ok" : "err"}">${escapeHtml(m.state || "")}</span>
+          </div>
+          <div class="detail">${escapeHtml(m.detail || m.type || "")}</div>`;
+        modulesEl.appendChild(el);
+      });
+    }
+
+    function renderLogs(logs) {
+      const list = Array.isArray(logs) ? logs : [];
+      const signature = list.map((l) => `${l.time}|${l.level}|${l.message}`).join("\n");
+      if (signature === lastLogSignature) return;
+      lastLogSignature = signature;
+      setText("logHint", `${list.length} 条`);
+      logView.innerHTML = list.map((l) => {
+        const level = (l.level || "INFO").toUpperCase();
+        return `<div class="log-line ${level}"><span class="t">${escapeHtml(l.time || "")}</span> <span class="lv">[${escapeHtml(level)}]</span> <span class="s">${escapeHtml(l.source || "")}</span> ${escapeHtml(l.message || "")}</div>`;
+      }).join("");
+      if (stickToBottom) logView.scrollTop = logView.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function truthy(v) {
+      return v === true || v === "true" || v === 1 || v === "1";
+    }
+
+    async function post(action) {
+      await fetch(`/api/dispense/${action}`, { method: "POST" });
+      await refresh();
+    }
+
+    async function refresh() {
+      try {
+        const res = await fetch("/api/dispense/dashboard", { cache: "no-store" });
+        const data = await res.json();
+        const phase = data.phase || "—";
+        document.getElementById("projectName").textContent = data.projectName || "三轴点胶机";
+        document.getElementById("subtitle").textContent = data.message || "Dispenser · 点阵循环 · 阀控";
+        const runtime = document.getElementById("runtimeBadge");
+        runtime.textContent = data.isRunning ? "Runtime 运行中" : "Runtime 已停止";
+        runtime.className = "runtime" + (data.isRunning ? " on" : "");
+        setText("phase", phase);
+        setText("message", data.message);
+        setText("opState", data.operationState);
+        setText("recipe", data.activeRecipeId);
+        const idx = Number(data.pointIndex) || 0;
+        const total = Number(data.pointTotal) || 0;
+        setText("point", total ? `${idx + 1} / ${total}` : "—");
+        setText("workpiece", truthy(data.workpiecePresent) ? "到位" : "未到位");
+        setText("okCount", data.okCount);
+        setText("remain", total ? Math.max(0, total - idx) : "—");
+        setText("xyz", `X=${data.x ?? "—"} Y=${data.y ?? "—"} Z=${data.z ?? "—"}`);
+        setText("valve", truthy(data.valve) ? "开" : "关");
+        const badge = document.getElementById("phaseBadge");
+        badge.className = phaseBadgeClass(phase);
+        badge.textContent = phase;
+        highlightPipeline(phase);
+        renderGrid(data.rows, data.cols, data.pointIndex, data.pointTotal);
+        renderModules(data.modules);
+        renderLogs(data.logs);
+      } catch (e) {
+        setText("message", "状态刷新失败: " + e);
+        document.getElementById("runtimeBadge").textContent = "连接失败";
+        document.getElementById("runtimeBadge").className = "runtime";
+      }
+    }
+
+    document.getElementById("btnStart").onclick = () => post("start");
+    document.getElementById("btnStop").onclick = () => post("stop");
+    document.getElementById("btnReset").onclick = () => post("reset");
+    document.getElementById("btnClearLog").onclick = () => post("clearlogs");
+    refresh();
+    setInterval(refresh, 500);
+  </script>
+</body>
+</html>

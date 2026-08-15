@@ -75,6 +75,7 @@ flowchart TB
 ```text
 MDKOSS.sln
 ├── src/MDKOSS.Sample/         # Demo / console 可执行入口（嵌入 CEF）
+├── src/MDKOSS.Sample.Dispenser/ # 三轴点胶机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Cef/            # CefSharp 界面库 + views
 ├── src/MDKOSS.Config.Wpf/     # WPF 配置界面可执行入口
 ├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）

@@ -1,0 +1,247 @@
+{
+  "projectName": "三轴点胶机",
+  "startPage": "indexDispenser.html",
+  "monitoringPrefix": "http://127.0.0.1:5082/",
+  "cycleMs": 20,
+  "databasePath": "data/mdk.db",
+  "drivers": [
+    {
+      "id": "drv-motion",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000",
+        "note": "运动控制卡：点胶头 XYZ",
+        "ioBitBase": "0"
+      }
+    },
+    {
+      "id": "drv-io",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5001",
+        "note": "IO 卡：点胶阀 / 塔灯 / 安全 / 工件",
+        "ioBitBase": "0"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio-machine",
+      "name": "整机 IO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "drv-io|di.gpi.bit.0|启动",
+        "in.stopButton": "drv-io|di.gpi.bit.1|停止",
+        "in.resetButton": "drv-io|di.gpi.bit.2|复位",
+        "in.safetyDoor": "drv-io|di.gpi.bit.3|安全门",
+        "in.workpiece.present": "drv-io|di.gpi.bit.10|工件到位",
+        "out.tower.red": "drv-io|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "drv-io|do.gpo.bit.1|黄灯",
+        "out.tower.green": "drv-io|do.gpo.bit.2|绿灯",
+        "out.buzzer": "drv-io|do.gpo.bit.3|蜂鸣器",
+        "out.valve": "drv-io|do.gpo.bit.10|点胶阀"
+      }
+    }
+  ],
+  "axes": [
+    {
+      "id": "axis-x",
+      "name": "X 轴",
+      "type": "linear",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "kind": "linear",
+        "axis": "0",
+        "unit": "mm",
+        "pulsePerUnit": "1000",
+        "maxVel": "80.00",
+        "accel": "800.00"
+      }
+    },
+    {
+      "id": "axis-y",
+      "name": "Y 轴",
+      "type": "linear",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "kind": "linear",
+        "axis": "1",
+        "unit": "mm",
+        "pulsePerUnit": "1000",
+        "maxVel": "80.00",
+        "accel": "800.00"
+      }
+    },
+    {
+      "id": "axis-z",
+      "name": "Z 轴",
+      "type": "linear",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "kind": "linear",
+        "axis": "2",
+        "unit": "mm",
+        "pulsePerUnit": "1000",
+        "maxVel": "40.00",
+        "accel": "400.00"
+      }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "head-dispense",
+      "name": "点胶头 XYZ",
+      "type": "xyz",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
+        "axis.Z": "axis-z",
+        "note": "三轴点胶头：XY 平面走点，Z 升降开阀"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 200,
+      "parameters": {
+        "gpioDeviceId": "gpio-machine"
+      }
+    },
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 1000,
+      "parameters": {}
+    },
+    {
+      "name": "poll-motion",
+      "type": "pollDriver",
+      "driverId": "drv-motion",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "poll-io",
+      "type": "pollDriver",
+      "driverId": "drv-io",
+      "intervalMs": 500,
+      "parameters": {}
+    },
+    {
+      "name": "dispense-cycle",
+      "type": "dispense",
+      "driverId": "drv-motion",
+      "intervalMs": 100,
+      "parameters": {
+        "platformDeviceId": "head-dispense",
+        "gpioDeviceId": "gpio-machine",
+        "valveAlias": "valve",
+        "workpieceAlias": "workpiece.present",
+        "checkWorkpieceIo": "false",
+        "rows": "2",
+        "cols": "2",
+        "originX": "10",
+        "originY": "10",
+        "pitchX": "8",
+        "pitchY": "8",
+        "safeZ": "0",
+        "dispenseZ": "-6",
+        "dwellTicks": "2"
+      }
+    }
+  ],
+  "recipeVarKeys": [
+    "machine.mode",
+    "dispense.rows",
+    "dispense.cols",
+    "dispense.originX",
+    "dispense.originY",
+    "dispense.pitchX",
+    "dispense.pitchY",
+    "dispense.safeZ",
+    "dispense.z",
+    "dispense.dwellTicks"
+  ],
+  "activeRecipeId": "grid-2x2",
+  "recipes": [
+    {
+      "id": "grid-2x2",
+      "name": "2×2 点阵",
+      "description": "四点球阵，短开阀，适合仿真联调",
+      "vars": {
+        "machine.mode": "AUTO",
+        "dispense.rows": 2,
+        "dispense.cols": 2,
+        "dispense.originX": 10,
+        "dispense.originY": 10,
+        "dispense.pitchX": 8,
+        "dispense.pitchY": 8,
+        "dispense.safeZ": 0,
+        "dispense.z": -6,
+        "dispense.dwellTicks": 2
+      }
+    },
+    {
+      "id": "grid-3x3",
+      "name": "3×3 点阵",
+      "description": "九点阵列，开阀稍长",
+      "vars": {
+        "machine.mode": "AUTO",
+        "dispense.rows": 3,
+        "dispense.cols": 3,
+        "dispense.originX": 8,
+        "dispense.originY": 8,
+        "dispense.pitchX": 6,
+        "dispense.pitchY": 6,
+        "dispense.safeZ": 0,
+        "dispense.z": -5,
+        "dispense.dwellTicks": 3
+      }
+    }
+  ],
+  "vars": {
+    "machine.mode": "AUTO",
+    "machine.ready": true,
+    "task.operation.alias.red": "tower.red",
+    "task.operation.alias.yellow": "tower.yellow",
+    "task.operation.alias.green": "tower.green",
+    "task.operation.command": "lamp:yellow",
+    "task.dispense.run": false,
+    "task.dispense.command": "",
+    "task.dispense.workpiecePresent": true,
+    "dispense.rows": 2,
+    "dispense.cols": 2,
+    "dispense.originX": 10,
+    "dispense.originY": 10,
+    "dispense.pitchX": 8,
+    "dispense.pitchY": 8,
+    "dispense.safeZ": 0,
+    "dispense.z": -6,
+    "dispense.dwellTicks": 2
+  },
+  "alarms": [
+    {
+      "id": "alm-op-fault",
+      "code": "E001",
+      "name": "操作任务故障",
+      "level": "error",
+      "enabled": true,
+      "varKey": "task.operation.state",
+      "op": "eq",
+      "value": "fault",
+      "message": "操作任务进入 fault",
+      "latch": true
+    }
+  ]
+}

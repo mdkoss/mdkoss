@@ -9,7 +9,7 @@
 ## 分层与依赖
 
 ```
-宿主（Sample / Cef.Sample / Config.Wpf）
+宿主（Sample / Cef.Sample / Sample.Dispenser / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
@@ -28,6 +28,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
 | `MDKOSS.Cef.Sample` | 加载并运行 `sample.setting.json` 的 CEF 宿主 |
 | `MDKOSS.Sample` | DieBonder 机型 Demo 宿主 |
+| `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 
 Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视觉/相机，`recipe`→配方/排单，`driver`→`IDriver`/板卡，`other`→先搜再改。
