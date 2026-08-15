@@ -337,14 +337,39 @@ public static class MdkExtensionHost
 
     private static Assembly LoadPluginAssembly(string fullPath)
     {
+        var asmName = AssemblyName.GetAssemblyName(fullPath);
+        var simpleName = asmName.Name;
+
+        // Prefer an already-loaded Default-ALC copy (host ProjectReference).
+        // Otherwise Sample/DieBonder `is TrayDevice` fails when plugins/ loads a second identity.
         foreach (var loaded in AssemblyLoadContext.Default.Assemblies)
         {
-            if (!loaded.IsDynamic
-                && !string.IsNullOrEmpty(loaded.Location)
+            if (loaded.IsDynamic)
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrEmpty(loaded.Location)
                 && string.Equals(Path.GetFullPath(loaded.Location), fullPath, StringComparison.OrdinalIgnoreCase))
             {
                 return loaded;
             }
+
+            if (!string.IsNullOrEmpty(simpleName)
+                && string.Equals(loaded.GetName().Name, simpleName, StringComparison.OrdinalIgnoreCase))
+            {
+                return loaded;
+            }
+        }
+
+        // Host output directory DLLs (ProjectReference copies) must share Default ALC types.
+        var baseDir = Path.GetFullPath(AppContext.BaseDirectory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var dllDir = Path.GetFullPath(Path.GetDirectoryName(fullPath) ?? fullPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (string.Equals(baseDir, dllDir, StringComparison.OrdinalIgnoreCase))
+        {
+            return AssemblyLoadContext.Default.LoadFromAssemblyPath(fullPath);
         }
 
         var context = new PluginLoadContext(fullPath);

@@ -2,6 +2,7 @@ using MDKOSS.Core;
 using MDKOSS.Extensions;
 using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
+using MDKOSS.Pnp;
 using MDKOSS.Sample.DieBonder;
 using System.Windows.Forms;
 
@@ -13,6 +14,10 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         AppLog.Configure();
+        // Force ProjectReference MDKOSS.Pnp into Default ALC before plugin scan so
+        // DieBonder `TryGetDevice<TrayDevice>` matches devices created by the Pnp extension.
+        _ = typeof(TrayDevice);
+
         MdkExtensionHost.DiscoverAndRegister(new ExtensionDiscoveryOptions
         {
             Log = msg => AppLog.Info(msg),
