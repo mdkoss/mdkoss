@@ -80,12 +80,40 @@
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="IO 调试" FontWeight="SemiBold"
                      Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
-          <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <TextBlock Text="Group" VerticalAlignment="Center" Margin="0,0,6,0"/>
-            <TextBox x:Name="IoGroupBox" Width="60" Text="0" Margin="0,0,12,0"/>
-            <Button Content="读 DI" Click="ReadDi_Click"/>
-            <Button Content="读 DO" Click="ReadDo_Click"/>
-            <Button Content="写 DO 字" Click="WriteDo_Click"/>
+          <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+            <Grid Margin="0,0,0,6">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="56"/>
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+              </Grid.RowDefinitions>
+              <TextBlock Grid.Row="0" Grid.Column="0" Text="DI 类型" VerticalAlignment="Center" Margin="0,0,6,4"
+                         Foreground="{StaticResource MutedBrush}"/>
+              <ComboBox x:Name="DiTypeCombo" Grid.Row="0" Grid.Column="1" Margin="0,0,8,4"
+                        SelectionChanged="DiTypeCombo_SelectionChanged"/>
+              <TextBlock Grid.Row="0" Grid.Column="2" Text="Group" VerticalAlignment="Center" Margin="0,0,6,4"
+                         Foreground="{StaticResource MutedBrush}"/>
+              <TextBox x:Name="DiGroupBox" Grid.Row="0" Grid.Column="3" Margin="0,0,0,4" Text="4"/>
+              <TextBlock Grid.Row="1" Grid.Column="0" Text="DO 类型" VerticalAlignment="Center" Margin="0,0,6,0"
+                         Foreground="{StaticResource MutedBrush}"/>
+              <ComboBox x:Name="DoTypeCombo" Grid.Row="1" Grid.Column="1" Margin="0,0,8,0"
+                        SelectionChanged="DoTypeCombo_SelectionChanged"/>
+              <TextBlock Grid.Row="1" Grid.Column="2" Text="Group" VerticalAlignment="Center" Margin="0,0,6,0"
+                         Foreground="{StaticResource MutedBrush}"/>
+              <TextBox x:Name="DoGroupBox" Grid.Row="1" Grid.Column="3" Text="12"/>
+            </Grid>
+            <StackPanel Orientation="Horizontal">
+              <Button Content="读 DI" Click="ReadDi_Click"/>
+              <Button Content="读 DO" Click="ReadDo_Click"/>
+              <Button Content="写 DO 字" Click="WriteDo_Click"/>
+            </StackPanel>
+            <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,6,0,0"
+                       Text="默认 gpi(4)/gpo(12)，与 GPIO 地址 di.gpi / do.gpo 一致；位号始终 0-based（不受 ioBitBase 影响）。"/>
           </StackPanel>
           <Grid>
             <Grid.ColumnDefinitions>

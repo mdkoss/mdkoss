@@ -424,9 +424,62 @@ public partial class PlatformDebugWindow : Window
         }
     }
 
-    private void JogPos_Down(object sender, MouseButtonEventArgs e) => StartJog(+1);
-    private void JogNeg_Down(object sender, MouseButtonEventArgs e) => StartJog(-1);
-    private void Jog_Up(object sender, MouseEventArgs e) => StopJog();
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+        {
+            return;
+        }
+
+        e.Handled = true;
+        StopAll_Click(sender, e);
+    }
+
+    private void FillPos_Click(object sender, RoutedEventArgs e)
+    {
+        if (AxisGrid.SelectedItem is PlatformAxisRow row
+            && !string.IsNullOrWhiteSpace(row.PrfPos)
+            && row.PrfPos != "-")
+        {
+            PosBox.Text = row.PrfPos;
+            DebugUi.Log(LogBox, $"已填入轴 {row.Letter} 指令位置 {PosBox.Text}");
+            return;
+        }
+
+        DebugUi.Log(LogBox, "请先选中有位置数据的轴");
+    }
+
+    private void JogPos_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement el)
+        {
+            el.CaptureMouse();
+        }
+
+        StartJog(+1);
+        e.Handled = true;
+    }
+
+    private void JogNeg_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement el)
+        {
+            el.CaptureMouse();
+        }
+
+        StartJog(-1);
+        e.Handled = true;
+    }
+
+    private void Jog_Up(object sender, MouseEventArgs e)
+    {
+        if (sender is UIElement el && el.IsMouseCaptured)
+        {
+            el.ReleaseMouseCapture();
+        }
+
+        StopJog();
+    }
 
     private void StartJog(int sign)
     {

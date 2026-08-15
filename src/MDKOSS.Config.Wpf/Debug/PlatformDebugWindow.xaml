@@ -6,7 +6,8 @@
         MinHeight="600" MinWidth="900"
         Background="{StaticResource BgBrush}"
         FontFamily="Segoe UI" FontSize="13"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="Window_PreviewKeyDown">
   <DockPanel Margin="10">
     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -84,25 +85,29 @@
               <TextBlock Grid.Row="2" Text="减速度" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
               <TextBox Grid.Row="2" Grid.Column="1" x:Name="DecBox" Text="500" Margin="0,0,0,6"/>
               <TextBlock Grid.Row="3" Text="目标位置" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
-              <TextBox Grid.Row="3" Grid.Column="1" x:Name="PosBox" Text="1000" Margin="0,0,0,6"/>
+              <DockPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,6">
+                <Button DockPanel.Dock="Right" Content="填入当前" Click="FillPos_Click" Padding="8,2" Margin="6,0,0,0"/>
+                <TextBox x:Name="PosBox" Text="1000"/>
+              </DockPanel>
               <TextBlock Grid.Row="4" Text="回零模式" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
               <TextBox Grid.Row="4" Grid.Column="1" x:Name="HomeModeBox" Text="0"/>
             </Grid>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <Button Content="使能" Click="Enable_Click"/>
               <Button Content="去使能" Click="Disable_Click"/>
-              <Button Content="停止" Click="Stop_Click"/>
+              <Button Content="停止" Click="Stop_Click" ToolTip="停止当前选中轴"/>
             </StackPanel>
             <Button Content="回原点" Click="Home_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
               <Button Content="点动 −" PreviewMouseLeftButtonDown="JogNeg_Down" PreviewMouseLeftButtonUp="Jog_Up"
-                      MouseLeave="Jog_Up" Width="90"/>
+                      LostMouseCapture="Jog_Up" Width="90"/>
               <Button Content="点动 +" PreviewMouseLeftButtonDown="JogPos_Down" PreviewMouseLeftButtonUp="Jog_Up"
-                      MouseLeave="Jog_Up" Width="90"/>
+                      LostMouseCapture="Jog_Up" Width="90"/>
             </StackPanel>
             <Button Content="速度移动" Click="VelMove_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
             <Button Content="位置移动" Click="PosMove_Click" Margin="0,0,0,6" HorizontalAlignment="Stretch"/>
-            <Button Content="全部轴停止" Click="StopAll_Click" Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
+            <Button Content="全部轴停止 (Esc)" Click="StopAll_Click" Margin="0,8,0,0" HorizontalAlignment="Stretch"
+                    ToolTip="Esc 亦可急停全部轴"/>
             <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" FontSize="11" Margin="0,10,0,0"
                        Text="平台按 Type/kind 展开轴字母；axis.X 直接选择已有 Axis 组件（驱动与轴号取自该轴）。"/>
           </StackPanel>

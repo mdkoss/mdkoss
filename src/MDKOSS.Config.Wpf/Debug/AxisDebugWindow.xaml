@@ -6,7 +6,8 @@
         MinHeight="560" MinWidth="760"
         Background="{StaticResource BgBrush}"
         FontFamily="Segoe UI" FontSize="13"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        PreviewKeyDown="Window_PreviewKeyDown">
   <DockPanel Margin="10">
     <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -68,7 +69,7 @@
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom">
               <Button Content="使能" Click="Enable_Click"/>
               <Button Content="去使能" Click="Disable_Click"/>
-              <Button Content="停止" Click="Stop_Click"/>
+              <Button Content="停止 (Esc)" Click="Stop_Click" ToolTip="Esc 亦可急停"/>
             </StackPanel>
           </UniformGrid>
           <TextBlock Text="轴状态位" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,4"/>
@@ -105,7 +106,11 @@
               <TextBlock Grid.Row="2" Text="减速度" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
               <TextBox Grid.Row="2" Grid.Column="1" x:Name="DecBox" Text="500" Margin="0,0,0,6"/>
               <TextBlock Grid.Row="3" Text="目标位置" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
-              <TextBox Grid.Row="3" Grid.Column="1" x:Name="PosBox" Text="1000" Margin="0,0,0,6"/>
+              <DockPanel Grid.Row="3" Grid.Column="1" Margin="0,0,0,6">
+                <Button DockPanel.Dock="Right" Content="填入当前" Click="FillPos_Click" Padding="8,2" Margin="6,0,0,0"
+                        ToolTip="用当前指令位置填入目标"/>
+                <TextBox x:Name="PosBox" Text="1000"/>
+              </DockPanel>
               <TextBlock Grid.Row="4" Text="回零模式" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}"/>
               <TextBox Grid.Row="4" Grid.Column="1" x:Name="HomeModeBox" Text="0"/>
             </Grid>
@@ -119,9 +124,9 @@
             <Button Content="回原点 (Home)" Click="Home_Click" Margin="0,0,0,8" HorizontalAlignment="Stretch"/>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
               <Button Content="点动 −" PreviewMouseLeftButtonDown="JogNeg_Down" PreviewMouseLeftButtonUp="Jog_Up"
-                      MouseLeave="Jog_Up" Width="100"/>
+                      LostMouseCapture="Jog_Up" Width="100"/>
               <Button Content="点动 +" PreviewMouseLeftButtonDown="JogPos_Down" PreviewMouseLeftButtonUp="Jog_Up"
-                      MouseLeave="Jog_Up" Width="100"/>
+                      LostMouseCapture="Jog_Up" Width="100"/>
               <TextBlock Text="按住点动，松开停止" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
             </StackPanel>
             <Button Content="速度移动 (Jog 持续)" Click="VelMove_Click" Margin="0,0,0,8" HorizontalAlignment="Stretch"

@@ -295,10 +295,60 @@ public partial class AxisDebugWindow : Window
         }
     }
 
-    private void JogPos_Down(object sender, MouseButtonEventArgs e) => StartJog(+1);
-    private void JogNeg_Down(object sender, MouseButtonEventArgs e) => StartJog(-1);
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape)
+        {
+            return;
+        }
 
-    private void Jog_Up(object sender, MouseEventArgs e) => StopJog();
+        e.Handled = true;
+        Stop_Click(sender, e);
+    }
+
+    private void FillPos_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(StPrfPos.Text) && StPrfPos.Text != "-" && StPrfPos.Text != "N/A")
+        {
+            PosBox.Text = StPrfPos.Text;
+            DebugUi.Log(LogBox, $"已填入当前指令位置 {PosBox.Text}");
+            return;
+        }
+
+        DebugUi.Log(LogBox, "无可用指令位置，请先连接并刷新状态");
+    }
+
+    private void JogPos_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement el)
+        {
+            el.CaptureMouse();
+        }
+
+        StartJog(+1);
+        e.Handled = true;
+    }
+
+    private void JogNeg_Down(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is UIElement el)
+        {
+            el.CaptureMouse();
+        }
+
+        StartJog(-1);
+        e.Handled = true;
+    }
+
+    private void Jog_Up(object sender, MouseEventArgs e)
+    {
+        if (sender is UIElement el && el.IsMouseCaptured)
+        {
+            el.ReleaseMouseCapture();
+        }
+
+        StopJog();
+    }
 
     private void StartJog(int sign)
     {

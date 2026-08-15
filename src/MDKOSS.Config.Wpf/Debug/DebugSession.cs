@@ -15,6 +15,28 @@ public static class DebugUi
         "configPath", "configFile", "cfgPath", "cfgFile", "cfg", "iniPath", "xmlPath", "dllPath",
     ];
 
+    /// <summary>DI port presets for driver debug (aligned with CEF debug_driver / <see cref="GtsIoType"/>).</summary>
+    public static readonly (string Label, short Type)[] DiPortPresets =
+    [
+        ("gpi (4)", GtsIoType.Gpi),
+        ("home (3)", GtsIoType.Home),
+        ("alarm (2)", GtsIoType.Alarm),
+        ("arrive (5)", GtsIoType.Arrive),
+        ("limit+ (0)", GtsIoType.LimitPositive),
+        ("limit- (1)", GtsIoType.LimitNegative),
+    ];
+
+    /// <summary>DO port presets for driver debug (aligned with CEF debug_driver / <see cref="GtsIoType"/>).</summary>
+    public static readonly (string Label, short Type)[] DoPortPresets =
+    [
+        ("gpo (12)", GtsIoType.Gpo),
+        ("enable (10)", GtsIoType.Enable),
+        ("clear (11)", GtsIoType.Clear),
+    ];
+
+    public static short DefaultDiGroup => GtsIoType.Gpi;
+    public static short DefaultDoGroup => GtsIoType.Gpo;
+
     public static short ParseAxisIndex(IReadOnlyDictionary<string, string>? parameters, short fallback = 0) =>
         AxisDeviceParameterSet.ParseAxisIndex(parameters, fallback);
 

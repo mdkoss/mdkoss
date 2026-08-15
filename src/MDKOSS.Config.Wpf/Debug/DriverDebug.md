@@ -22,7 +22,7 @@
 |------|------|
 | 顶栏 | Driver 下拉、连接/断开、刷新、连接状态徽章 |
 | 左栏 | Id/Type/Enabled、工程 DocumentPath、驱动配置路径键+路径、Parameters 表 |
-| 右栏 | IO Group、读 DI / 读 DO / 写 DO 字 / 写选中位、位表 |
+| 右栏 | DI/DO 类型预设与 Group（默认 gpi=4 / gpo=12）、读 DI / 读 DO / 写 DO 字 / 写选中位、位表 |
 | 底栏 | 操作日志 |
 
 ## 行为与 API
@@ -30,8 +30,8 @@
 | UI | 调用 |
 |----|------|
 | 连接 | `DriverFactory.Create(type)` → `IDriver.Initialize(config)` |
-| 读 DI | `TryReadDi` 连续 group，按 `inBits`（vio 默认 128）展开 |
-| 读 DO | `TryReadDo` 连续 group，按 `outBits`（vio 默认 128）展开 |
+| 读 DI | `TryReadDi` 连续 group（默认类型 gpi=4），按 `inBits`（vio 默认 128）展开 |
+| 读 DO | `TryReadDo` 连续 group（默认类型 gpo=12），按 `outBits`（vio 默认 128）展开 |
 | 写 DO 字 | 按位表分组写回各 group |
 | 写选中位 | `WriteDoBit(group, index, value)` |
 

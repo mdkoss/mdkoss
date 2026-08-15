@@ -29,8 +29,38 @@ public partial class DriverDebugWindow : Window
         }
 
         CfgKeyCombo.SelectedIndex = 0;
+        foreach (var (label, type) in DebugUi.DiPortPresets)
+        {
+            DiTypeCombo.Items.Add(new ComboBoxItem { Content = label, Tag = type });
+        }
+
+        foreach (var (label, type) in DebugUi.DoPortPresets)
+        {
+            DoTypeCombo.Items.Add(new ComboBoxItem { Content = label, Tag = type });
+        }
+
+        DiTypeCombo.SelectedIndex = 0;
+        DoTypeCombo.SelectedIndex = 0;
+        DiGroupBox.Text = DebugUi.DefaultDiGroup.ToString(CultureInfo.InvariantCulture);
+        DoGroupBox.Text = DebugUi.DefaultDoGroup.ToString(CultureInfo.InvariantCulture);
         Loaded += (_, _) => ReloadDriverList();
         Closed += (_, _) => DisconnectInternal();
+    }
+
+    private void DiTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DiTypeCombo.SelectedItem is ComboBoxItem { Tag: short type })
+        {
+            DiGroupBox.Text = type.ToString(CultureInfo.InvariantCulture);
+        }
+    }
+
+    private void DoTypeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DoTypeCombo.SelectedItem is ComboBoxItem { Tag: short type })
+        {
+            DoGroupBox.Text = type.ToString(CultureInfo.InvariantCulture);
+        }
     }
 
     private void ReloadDriverList()
@@ -240,15 +270,18 @@ public partial class DriverDebugWindow : Window
         ReadDo_Click(sender, e);
     }
 
-    private short IoGroup()
+    private short ReadIoGroup(TextBox box, string name)
     {
-        if (!short.TryParse(IoGroupBox.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var g))
+        if (!short.TryParse(box.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var g) || g < 0)
         {
-            throw new InvalidOperationException("IO Group 必须是整数。");
+            throw new InvalidOperationException($"{name} Group 必须是非负整数。");
         }
 
         return g;
     }
+
+    private short DiGroup() => ReadIoGroup(DiGroupBox, "DI");
+    private short DoGroup() => ReadIoGroup(DoGroupBox, "DO");
 
     private IReadOnlyDictionary<string, string> SessionParameters() =>
         _session?.Config.Parameters ?? ToParamDict();
@@ -296,7 +329,7 @@ public partial class DriverDebugWindow : Window
         try
         {
             var drv = RequireDriver();
-            var group = IoGroup();
+            var group = DiGroup();
             var bitCount = DiBitCount();
             var words = ReadGroups(drv, group, bitCount, di: true);
             _diRows = IoBitGrid.FromWords(group, words, bitCount, "DI");
@@ -315,7 +348,7 @@ public partial class DriverDebugWindow : Window
         try
         {
             var drv = RequireDriver();
-            var group = IoGroup();
+            var group = DoGroup();
             var bitCount = DoBitCount();
             var words = ReadGroups(drv, group, bitCount, di: false);
             _doRows = IoBitGrid.FromWords(group, words, bitCount, "DO");
@@ -334,7 +367,7 @@ public partial class DriverDebugWindow : Window
         try
         {
             var drv = RequireDriver();
-            var group = IoGroup();
+            var group = DoGroup();
             var bitCount = DoBitCount();
             if (_doRows.Count == 0)
             {
