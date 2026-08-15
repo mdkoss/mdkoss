@@ -8,7 +8,7 @@ public sealed class DrvSimIoBitBaseTests
     [Fact]
     public void Default_is_0base_so_bit0_is_first_port_bit()
     {
-        var drv = Create();
+        using var drv = Create();
         Assert.True(drv.Write("do.gpo.bit.0", true));
         Assert.True(drv.TryRead("do.gpo.bit.0", out var bit));
         Assert.True(Assert.IsType<bool>(bit));
@@ -19,7 +19,7 @@ public sealed class DrvSimIoBitBaseTests
     [Fact]
     public void Default_rejects_negative_shift()
     {
-        var drv = Create();
+        using var drv = Create();
         Assert.False(drv.Write("do.gpo.bit.-1", true));
     }
 
@@ -29,7 +29,7 @@ public sealed class DrvSimIoBitBaseTests
     [InlineData("gts")]
     public void IoBitBase_1_maps_bit1_to_first_port_bit(string ioBitBase)
     {
-        var drv = Create(ioBitBase);
+        using var drv = Create(ioBitBase);
         Assert.False(drv.Write("do.gpo.bit.0", true));
         Assert.True(drv.Write("do.gpo.bit.1", true));
         Assert.True(drv.TryRead("do.gpo.bit.1", out var bit));
@@ -41,7 +41,7 @@ public sealed class DrvSimIoBitBaseTests
     [Fact]
     public void IoBitBase_0_and_1_do_not_clobber_neighbor_bits()
     {
-        var zero = Create("0");
+        using var zero = Create("0");
         Assert.True(zero.Write("do.gpo.bit.0", true));
         Assert.True(zero.Write("do.gpo.bit.1", true));
         Assert.True(zero.Write("do.gpo.bit.0", false));
@@ -50,7 +50,7 @@ public sealed class DrvSimIoBitBaseTests
         Assert.False(Assert.IsType<bool>(b0));
         Assert.True(Assert.IsType<bool>(b1));
 
-        var one = Create("1");
+        using var one = Create("1");
         Assert.True(one.Write("do.gpo.bit.1", true));
         Assert.True(one.Write("do.gpo.bit.2", true));
         Assert.True(one.Write("do.gpo.bit.1", false));

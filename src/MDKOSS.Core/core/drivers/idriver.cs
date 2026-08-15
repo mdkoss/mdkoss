@@ -68,8 +68,27 @@ public interface IDriver : IDisposable
     //  Axis Status
     // ──────────────────────────────────────────────
 
-    /// <summary>Reads axis status word (driver-specific bit flags: ready, moving, in-position, alarm, etc.).</summary>
+    /// <summary>
+    /// Reads the native axis status word. On GTS this is <c>GT_GetSts</c>
+    /// (<see cref="AxisStatusBits"/>). Prefer <see cref="TryGetAxisState"/> for decoded flags.
+    /// </summary>
     bool TryGetAxisStatus(short axis, out int status);
+
+    /// <summary>
+    /// Reads the complete axis snapshot: GTS-aligned flags, home sensor, positions, velocity.
+    /// Default decodes <see cref="TryGetAxisStatus"/> as a GTS word (no home / motion values).
+    /// </summary>
+    bool TryGetAxisState(short axis, out AxisStatus status)
+    {
+        status = default;
+        if (!TryGetAxisStatus(axis, out var raw))
+        {
+            return false;
+        }
+
+        status = AxisStatus.FromGts(raw);
+        return true;
+    }
 
     /// <summary>Reads current profile (command) position of axis.</summary>
     bool TryGetAxisPrfPosition(short axis, out double position);

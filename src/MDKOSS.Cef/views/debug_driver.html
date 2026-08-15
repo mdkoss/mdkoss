@@ -11,45 +11,208 @@
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">驱动状态 <span class="pill warn">只读联调</span></div>
-        <div class="sub">运行时驱动在线状态 · 连接/断开请用 Config.Wpf 或重启后配置</div>
+        <div class="title">驱动 IO <span class="pill warn">可写</span></div>
+        <div class="sub">读驱动端口字 · GET/POST <code>/api/io/driver</code> · 点格切换位（地址点号，SIM 跟 <code>ioBitBase</code>） · <a class="link-btn" href="/debug_io.html">GPIO 别名 →</a></div>
       </div>
       <a class="link-btn" href="/man_driver.html">驱动配置 →</a>
     </div>
-    <div class="card">
-      <div class="label">驱动列表（/api/status）</div>
-      <div class="table-scroll">
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="label">驱动</div>
+      <div class="bit-toolbar">
+        <div class="form-group">
+          <label for="driverSel">Driver ID</label>
+          <select id="driverSel"></select>
+        </div>
+        <div class="form-group">
+          <label>类型 / 在线</label>
+          <div id="driverMeta" class="bit-meta" style="margin:8px 0 0">—</div>
+        </div>
+      </div>
+      <div class="table-scroll" style="max-height:180px">
         <table>
           <thead><tr><th>Driver ID</th><th>类型</th><th>在线</th></tr></thead>
           <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">加载中…</td></tr></tbody>
         </table>
       </div>
     </div>
+
+    <div class="io-layout">
+      <div class="card">
+        <h2 class="panel-title">数字输入 <span class="hint">DI · 点格写入（SIM 可测）</span></h2>
+        <div class="bit-toolbar">
+          <div class="form-group">
+            <label for="diType">类型</label>
+            <select id="diType">
+              <option value="gpi" selected>gpi (4)</option>
+              <option value="home">home (3)</option>
+              <option value="alarm">alarm (2)</option>
+              <option value="arrive">arrive (5)</option>
+              <option value="limit+">limit+ (0)</option>
+              <option value="limit-">limit- (1)</option>
+            </select>
+          </div>
+        </div>
+        <p class="bit-meta" id="diMeta">—</p>
+        <div class="bit-grid" id="diGrid"></div>
+      </div>
+      <div class="card">
+        <h2 class="panel-title">数字输出 <span class="hint">DO · 点格写入</span></h2>
+        <div class="bit-toolbar">
+          <div class="form-group">
+            <label for="doType">类型</label>
+            <select id="doType">
+              <option value="gpo" selected>gpo (12)</option>
+              <option value="enable">enable (10)</option>
+              <option value="clear">clear (11)</option>
+            </select>
+          </div>
+        </div>
+        <p class="bit-meta" id="doMeta">—</p>
+        <div class="bit-grid" id="doGrid"></div>
+      </div>
+    </div>
+
+    <div class="msg" id="ioMsg"></div>
+    <div class="footer">上次刷新：<span id="lastUpdate">-</span></div>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
     const { esc, field, fetchJson } = MdkTool;
+    const driverSel = document.getElementById("driverSel");
+    const driverMeta = document.getElementById("driverMeta");
+    const rows = document.getElementById("rows");
+    const diType = document.getElementById("diType");
+    const doType = document.getElementById("doType");
+    const diGrid = document.getElementById("diGrid");
+    const doGrid = document.getElementById("doGrid");
+    const diMeta = document.getElementById("diMeta");
+    const doMeta = document.getElementById("doMeta");
+    const ioMsg = document.getElementById("ioMsg");
+    const lastUpdate = document.getElementById("lastUpdate");
+
+    let lastDrivers = {};
+
+    function currentDriverId() {
+      return driverSel.value || "";
+    }
+
+    function renderDriverTable(drivers) {
+      lastDrivers = drivers && typeof drivers === "object" ? drivers : {};
+      const entries = Object.entries(lastDrivers);
+      const prev = currentDriverId();
+      driverSel.innerHTML = entries.length
+        ? entries.map(([id]) => `<option value="${esc(id)}">${esc(id)}</option>`).join("")
+        : '<option value="">（无驱动）</option>';
+      if (prev && lastDrivers[prev]) driverSel.value = prev;
+      else if (entries.length) driverSel.selectedIndex = 0;
+
+      if (!entries.length) {
+        rows.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">无驱动</td></tr>';
+        driverMeta.textContent = "—";
+        return;
+      }
+      rows.innerHTML = entries.map(([id, d]) => {
+        const type = field(d, "type", "Type") ?? field(d, "name", "Name") ?? "—";
+        const online = field(d, "isConnected", "IsConnected");
+        return `<tr><td>${esc(id)}</td><td>${esc(type)}</td><td>${online === true ? "是" : online === false ? "否" : esc(online)}</td></tr>`;
+      }).join("");
+      const cur = lastDrivers[currentDriverId()] || {};
+      const type = field(cur, "type", "Type") ?? field(cur, "name", "Name") ?? "—";
+      const online = field(cur, "isConnected", "IsConnected");
+      driverMeta.textContent = `${type} · ${online === true ? "在线" : "离线"}`;
+    }
+
+    function renderGrid(el, metaEl, data, dir) {
+      if (!data || !data.success) {
+        el.innerHTML = "";
+        metaEl.textContent = data && data.error ? data.error : "无法读取";
+        return;
+      }
+      metaEl.textContent = `${data.address} · word=0x${Number(data.word).toString(16).toUpperCase()} · ioBitBase=${data.ioBitBase}`;
+      el.innerHTML = (data.bits || []).map((b) => {
+        const on = b.value ? " on" : "";
+        return `<button type="button" class="bit-cell${on}" data-dir="${esc(dir)}" data-bit="${b.addressBit}" title="${esc(b.address)}">
+          <span class="bit-n">${b.addressBit}</span>
+          <span class="bit-addr">${esc(b.address)}</span>
+        </button>`;
+      }).join("");
+      el.querySelectorAll("button.bit-cell").forEach((btn) => btn.addEventListener("click", onBitClick));
+    }
+
+    async function fetchPort(dir, type) {
+      const id = currentDriverId();
+      if (!id) return { success: false, error: "no_driver" };
+      const q = new URLSearchParams({ driverId: id, dir, type });
+      const res = await fetch("/api/io/driver?" + q.toString(), { cache: "no-store" });
+      return await res.json().catch(() => ({ success: false, error: "http " + res.status }));
+    }
+
+    async function onBitClick(ev) {
+      const btn = ev.currentTarget;
+      const dir = btn.getAttribute("data-dir");
+      const bit = Number(btn.getAttribute("data-bit"));
+      const type = dir === "di" ? diType.value : doType.value;
+      const next = !btn.classList.contains("on");
+      ioMsg.textContent = "正在写入…";
+      ioMsg.classList.remove("err");
+      try {
+        const res = await fetch("/api/io/driver", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            driverId: currentDriverId(),
+            dir,
+            type,
+            bit,
+            value: next,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || "http " + res.status);
+        ioMsg.textContent = "写入 " + (data.address || "") + " = " + next;
+        await tickPorts();
+      } catch (e) {
+        ioMsg.textContent = "写入失败: " + (e && e.message ? e.message : String(e));
+        ioMsg.classList.add("err");
+      }
+    }
+
+    async function tickPorts() {
+      const id = currentDriverId();
+      if (!id) {
+        diGrid.innerHTML = "";
+        doGrid.innerHTML = "";
+        diMeta.textContent = "选择驱动";
+        doMeta.textContent = "选择驱动";
+        return;
+      }
+      const [di, dout] = await Promise.all([
+        fetchPort("di", diType.value),
+        fetchPort("do", doType.value),
+      ]);
+      renderGrid(diGrid, diMeta, di, "di");
+      renderGrid(doGrid, doMeta, dout, "do");
+    }
+
     async function tick() {
       try {
         const data = await fetchJson("/api/status");
         const drivers = field(data, "drivers", "Drivers") || {};
-        const entries = Object.entries(drivers);
-        const body = document.getElementById("rows");
-        if (!entries.length) {
-          body.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">无驱动</td></tr>';
-          return;
-        }
-        body.innerHTML = entries.map(([id, d]) => {
-          const type = field(d, "type", "Type") ?? field(d, "name", "Name") ?? "—";
-          const online = field(d, "isConnected", "IsConnected");
-          return `<tr><td>${esc(id)}</td><td>${esc(type)}</td><td>${online === true ? "是" : online === false ? "否" : esc(online)}</td></tr>`;
-        }).join("");
+        renderDriverTable(drivers);
+        await tickPorts();
+        lastUpdate.textContent = new Date().toLocaleTimeString();
       } catch (e) {
-        document.getElementById("rows").innerHTML =
-          `<tr><td colspan="3" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
+        rows.innerHTML = `<tr><td colspan="3" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
+        ioMsg.textContent = "无法连接 /api/status";
+        ioMsg.classList.add("err");
       }
     }
+
+    driverSel.addEventListener("change", () => tickPorts());
+    diType.addEventListener("change", () => tickPorts());
+    doType.addEventListener("change", () => tickPorts());
     tick();
     setInterval(tick, 1000);
   </script>

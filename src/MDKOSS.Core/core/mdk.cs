@@ -778,6 +778,64 @@ public sealed class MdkRuntime : IDisposable
         return _devices.TryGetValue(deviceId, out device!);
     }
 
+    /// <summary>Looks up a registered driver by id.</summary>
+    public bool TryGetDriver(string driverId, out IDriver driver)
+    {
+        driver = null!;
+        return !string.IsNullOrWhiteSpace(driverId) && _drivers.TryGetValue(driverId.Trim(), out driver!);
+    }
+
+    /// <summary>Reads a driver address (port word or single bit) for debug / HMI.</summary>
+    public bool TryReadDriverAddress(string driverId, string address, out object? value, out string? error)
+    {
+        value = null;
+        error = null;
+        if (!TryGetDriver(driverId, out var driver))
+        {
+            error = "driver_not_found";
+            return false;
+        }
+
+        if (!driver.IsConnected)
+        {
+            error = "driver_offline";
+            return false;
+        }
+
+        if (!driver.TryRead(address, out value))
+        {
+            error = "read_failed";
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>Writes a driver address (port word or single bit) for debug / HMI.</summary>
+    public bool TryWriteDriverAddress(string driverId, string address, object? value, out string? error)
+    {
+        error = null;
+        if (!TryGetDriver(driverId, out var driver))
+        {
+            error = "driver_not_found";
+            return false;
+        }
+
+        if (!driver.IsConnected)
+        {
+            error = "driver_offline";
+            return false;
+        }
+
+        if (!driver.Write(address, value))
+        {
+            error = "write_failed";
+            return false;
+        }
+
+        return true;
+    }
+
     public void Dispose()
     {
         AppLog.Info("MdkRuntime disposing.");

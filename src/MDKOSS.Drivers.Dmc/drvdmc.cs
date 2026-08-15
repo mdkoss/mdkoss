@@ -240,6 +240,44 @@ public sealed class DrvDmc : IDriver
         return true;
     }
 
+    public bool TryGetAxisState(short axis, out AxisStatus status)
+    {
+        status = default;
+        if (!TryGetAxisStatus(axis, out var native))
+        {
+            return false;
+        }
+
+        var word = unchecked((uint)native);
+        var servoOn = IsAxisEnabled(axis);
+        var pin = LTDMC.dmc_read_sevon_pin(_cardNo, (ushort)axis);
+        if (pin >= 0)
+        {
+            servoOn = _sevonActiveLow ? pin == 0 : pin != 0;
+            _axisEnabled[axis] = servoOn;
+        }
+
+        var done = LTDMC.dmc_check_done(_cardNo, (ushort)axis);
+        var moving = done == 0;
+
+        TryGetAxisPrfPosition(axis, out var prf);
+        TryGetAxisEncPosition(axis, out var enc);
+        TryGetAxisVelocity(axis, out var vel);
+
+        status = AxisStatus.Create(
+            alarm: (word & DmcIoMap.AxisAlm) != 0,
+            positiveLimit: (word & DmcIoMap.AxisElP) != 0,
+            negativeLimit: (word & DmcIoMap.AxisElN) != 0,
+            servoOn: servoOn,
+            moving: moving,
+            inPosition: (word & DmcIoMap.AxisInp) != 0,
+            home: (word & DmcIoMap.AxisOrg) != 0,
+            prfPosition: prf,
+            encPosition: enc,
+            velocity: vel);
+        return true;
+    }
+
     public bool TryGetAxisPrfPosition(short axis, out double position)
     {
         position = 0;

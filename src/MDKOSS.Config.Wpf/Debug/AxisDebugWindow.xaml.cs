@@ -201,19 +201,22 @@ public partial class AxisDebugWindow : Window
         {
             var drv = _session.Driver;
             var axis = AxisNo();
-            StEnabled.Text = drv.IsAxisEnabled(axis) ? "ON" : "OFF";
-            if (drv.TryGetAxisStatus(axis, out var status))
+            if (drv.TryGetAxisState(axis, out var state))
             {
-                StStatus.Text = $"0x{status:X8}";
+                StEnabled.Text = state.ServoOn ? "ON" : "OFF";
+                StStatus.Text = $"0x{state.Raw:X8} {state.FormatFlags()}";
+                StPrfPos.Text = state.PrfPosition.ToString("G6", CultureInfo.InvariantCulture);
+                StEncPos.Text = state.EncPosition.ToString("G6", CultureInfo.InvariantCulture);
+                StVel.Text = state.Velocity.ToString("G6", CultureInfo.InvariantCulture);
             }
             else
             {
+                StEnabled.Text = drv.IsAxisEnabled(axis) ? "ON" : "OFF";
                 StStatus.Text = "N/A";
+                StPrfPos.Text = drv.TryGetAxisPrfPosition(axis, out var prf) ? prf.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
+                StEncPos.Text = drv.TryGetAxisEncPosition(axis, out var enc) ? enc.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
+                StVel.Text = drv.TryGetAxisVelocity(axis, out var vel) ? vel.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
             }
-
-            StPrfPos.Text = drv.TryGetAxisPrfPosition(axis, out var prf) ? prf.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
-            StEncPos.Text = drv.TryGetAxisEncPosition(axis, out var enc) ? enc.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
-            StVel.Text = drv.TryGetAxisVelocity(axis, out var vel) ? vel.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
             if (log)
             {
                 DebugUi.Log(LogBox, $"状态刷新 axis={axis} enabled={StEnabled.Text} status={StStatus.Text}");

@@ -301,6 +301,38 @@ tbody tr.hidden { display: none; }
   background: var(--ok);
 }
 .toggle:not(.on)::after { transform: translateX(0); }
+.bit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+.bit-toolbar .form-group { margin: 0; min-width: 120px; }
+.bit-meta { font-size: 12px; color: var(--muted); margin: 0 0 10px 0; }
+.bit-grid {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 6px;
+}
+.bit-cell {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 4px 6px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: ui-monospace, Consolas, monospace;
+}
+.bit-cell:hover { border-color: var(--accent, #4e8cff); }
+.bit-cell.on {
+  background: rgba(53,208,143,.18);
+  border-color: rgba(53,208,143,.45);
+}
+.bit-cell .bit-n { display: block; font-size: 14px; font-weight: 700; line-height: 1.2; }
+.bit-cell .bit-addr { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; word-break: break-all; }
+.bit-cell.on .bit-n { color: var(--ok); }
 .msg { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 1.2em; }
 .msg.err { color: #ff8a8a; }
 .footer { margin-top: 14px; color: var(--muted); font-size: 12px; }

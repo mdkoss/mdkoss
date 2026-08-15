@@ -5,8 +5,9 @@ namespace MDKOSS.Core.Drivers;
 
 /// <summary>
 /// Software simulation driver for controller development and testing.
-/// Simulates all motion-control operations in memory without hardware.
+/// Simulates motion-control operations in memory without hardware.
 /// Digital <c>bit.{n}</c> numbering follows parameter <c>ioBitBase</c> (default 0).
+/// Axis trap/jog/home advance on an internal <see cref="MotionTickMs"/> timer.
 /// </summary>
 public sealed class DrvSim : IDriver
 {
@@ -14,7 +15,11 @@ public sealed class DrvSim : IDriver
     private readonly ConcurrentDictionary<short, int> _di = new();
     private readonly ConcurrentDictionary<short, int> _do = new();
     private readonly ConcurrentDictionary<short, SimAxisState> _axes = new();
+    private Timer? _motionTimer;
+    private int _disposed;
     private short _ioBitBase;
+
+    public const int MotionTickMs = 10;
 
     public string Name => "SIM";
 
@@ -29,6 +34,7 @@ public sealed class DrvSim : IDriver
         _memory["driver.ioBitBase"] = _ioBitBase;
         _memory["driver.lastCode"] = 0;
         IsConnected = true;
+        StartMotionTimer();
     }
 
     public bool TryRead(string address, out object? value)
@@ -154,8 +160,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        state.Enabled = true;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            state.Enabled = true;
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -167,16 +177,24 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        state.Enabled = false;
-        state.Moving = false;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            state.Enabled = false;
+            Halt(state);
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
 
     public bool IsAxisEnabled(short axis)
     {
-        return _axes.GetOrAdd(axis, _ => new SimAxisState()).Enabled;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            return state.Enabled;
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -185,19 +203,37 @@ public sealed class DrvSim : IDriver
 
     public bool TryGetAxisStatus(short axis, out int status)
     {
-        status = 0;
+        if (!TryGetAxisState(axis, out var state))
+        {
+            status = 0;
+            return false;
+        }
+
+        status = state.Raw;
+        return true;
+    }
+
+    public bool TryGetAxisState(short axis, out AxisStatus status)
+    {
+        status = default;
         if (!IsConnected)
         {
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        // Bit 0: servo enabled, Bit 1: moving, Bit 2: in-position, Bit 3: alarm
-        if (state.Enabled) status |= 0x01;
-        if (state.Moving) status |= 0x02;
-        if (!state.Moving) status |= 0x04;
-        if (state.Alarm) status |= 0x08;
-        if (state.Homed) status |= 0x10;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            status = AxisStatus.Create(
+                alarm: state.Alarm,
+                servoOn: state.Enabled,
+                moving: state.Moving,
+                inPosition: !state.Moving,
+                home: state.Homed,
+                prfPosition: state.PrfPosition,
+                encPosition: state.EncPosition,
+                velocity: state.CurrentVelocity);
+        }
 
         _memory["driver.lastCode"] = 0;
         return true;
@@ -211,7 +247,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        position = _axes.GetOrAdd(axis, _ => new SimAxisState()).PrfPosition;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            position = state.PrfPosition;
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -224,7 +265,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        position = _axes.GetOrAdd(axis, _ => new SimAxisState()).EncPosition;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            position = state.EncPosition;
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -237,7 +283,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        velocity = _axes.GetOrAdd(axis, _ => new SimAxisState()).Velocity;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            velocity = state.CurrentVelocity;
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -253,9 +304,14 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        state.PrfPosition = position;
-        state.EncPosition = position;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            Halt(state);
+            state.PrfPosition = position;
+            state.EncPosition = position;
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -271,7 +327,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        _axes.GetOrAdd(axis, _ => new SimAxisState()).Velocity = velocity;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            state.CommandSpeed = Math.Abs(velocity);
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -283,7 +344,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        _axes.GetOrAdd(axis, _ => new SimAxisState()).Acceleration = acceleration;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            state.Acceleration = Math.Abs(acceleration);
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -295,7 +361,12 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        _axes.GetOrAdd(axis, _ => new SimAxisState()).Deceleration = deceleration;
+        var state = Axis(axis);
+        lock (state.Gate)
+        {
+            state.Deceleration = Math.Abs(deceleration);
+        }
+
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -311,20 +382,24 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        if (!state.Enabled)
+        var state = Axis(axis);
+        lock (state.Gate)
         {
-            _memory["driver.lastCode"] = -1;
-            _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
-            return false;
+            if (!state.Enabled)
+            {
+                _memory["driver.lastCode"] = -1;
+                _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
+                return false;
+            }
+
+            state.Mode = SimMotionMode.Trap;
+            state.TargetPosition = targetPosition;
+            state.CommandSpeed = Math.Max(Math.Abs(velocity), 1e-6);
+            state.Acceleration = Math.Max(Math.Abs(acceleration), 1e-6);
+            state.Deceleration = Math.Max(Math.Abs(deceleration), 1e-6);
+            state.Moving = true;
         }
 
-        state.PrfPosition = targetPosition;
-        state.EncPosition = targetPosition;
-        state.Velocity = velocity;
-        state.Acceleration = acceleration;
-        state.Deceleration = deceleration;
-        state.Moving = false; // Instant in simulation
         _memory[$"axis.{axis}.targetPosition"] = targetPosition;
         _memory["driver.lastCode"] = 0;
         return true;
@@ -337,18 +412,24 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        if (!state.Enabled)
+        var state = Axis(axis);
+        lock (state.Gate)
         {
-            _memory["driver.lastCode"] = -1;
-            _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
-            return false;
+            if (!state.Enabled)
+            {
+                _memory["driver.lastCode"] = -1;
+                _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
+                return false;
+            }
+
+            state.Mode = SimMotionMode.Jog;
+            state.JogVelocity = velocity;
+            state.CommandSpeed = Math.Abs(velocity);
+            state.Acceleration = Math.Max(Math.Abs(acceleration), 1e-6);
+            state.Deceleration = Math.Max(Math.Abs(deceleration), 1e-6);
+            state.Moving = true;
         }
 
-        state.Moving = true;
-        state.Velocity = velocity;
-        state.Acceleration = acceleration;
-        state.Deceleration = deceleration;
         _memory[$"axis.{axis}.jogVelocity"] = velocity;
         _memory["driver.lastCode"] = 0;
         return true;
@@ -361,22 +442,29 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        var state = _axes.GetOrAdd(axis, _ => new SimAxisState());
-        if (!state.Enabled)
+        var state = Axis(axis);
+        lock (state.Gate)
         {
-            _memory["driver.lastCode"] = -1;
-            _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
-            return false;
+            if (!state.Enabled)
+            {
+                _memory["driver.lastCode"] = -1;
+                _memory[$"axis.{axis}.error"] = "Axis is not enabled.";
+                return false;
+            }
+
+            state.Mode = SimMotionMode.Home;
+            state.TargetPosition = 0;
+            state.Homed = false;
+            state.CommandSpeed = Math.Max(Math.Abs(velocity), 1e-6);
+            state.Acceleration = Math.Max(Math.Abs(acceleration), 1e-6);
+            state.Deceleration = Math.Max(Math.Abs(deceleration), 1e-6);
+            state.Moving = Math.Abs(state.PrfPosition) > 1e-6 || Math.Abs(state.CurrentVelocity) > 1e-6;
+            if (!state.Moving)
+            {
+                Arrive(state);
+            }
         }
 
-        // Simulate instant home: zero position and mark homed
-        state.PrfPosition = 0;
-        state.EncPosition = 0;
-        state.Homed = true;
-        state.Moving = false;
-        state.Velocity = velocity;
-        state.Acceleration = acceleration;
-        state.Deceleration = deceleration;
         _memory[$"axis.{axis}.homeMode"] = homeMode;
         _memory["driver.lastCode"] = 0;
         return true;
@@ -389,14 +477,24 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
-        // Clear moving flag for all axes in the mask
         foreach (var kvp in _axes)
         {
-            var bit = 1 << (kvp.Key - 1);
-            if ((axisMask & bit) != 0)
+            if (kvp.Key is < 0 or > 30 || (axisMask & (1 << kvp.Key)) == 0)
             {
-                kvp.Value.Moving = false;
-                kvp.Value.Velocity = 0;
+                continue;
+            }
+
+            lock (kvp.Value.Gate)
+            {
+                if (option != 0)
+                {
+                    Halt(kvp.Value);
+                }
+                else if (kvp.Value.Mode != SimMotionMode.Idle)
+                {
+                    kvp.Value.Mode = SimMotionMode.Stopping;
+                    kvp.Value.Moving = true;
+                }
             }
         }
 
@@ -412,7 +510,15 @@ public sealed class DrvSim : IDriver
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
         IsConnected = false;
+        var timer = _motionTimer;
+        _motionTimer = null;
+        timer?.Dispose();
         _memory.Clear();
         _di.Clear();
         _do.Clear();
@@ -633,6 +739,149 @@ public sealed class DrvSim : IDriver
     }
 
     // ──────────────────────────────────────────────
+    //  Motion timer (10 ms)
+    // ──────────────────────────────────────────────
+
+    private SimAxisState Axis(short axis) => _axes.GetOrAdd(axis, static _ => new SimAxisState());
+
+    private void StartMotionTimer()
+    {
+        _motionTimer ??= new Timer(OnMotionTick, null, MotionTickMs, MotionTickMs);
+    }
+
+    private void OnMotionTick(object? _)
+    {
+        if (Volatile.Read(ref _disposed) != 0 || !IsConnected)
+        {
+            return;
+        }
+
+        var dt = MotionTickMs / 1000.0;
+        foreach (var kv in _axes)
+        {
+            lock (kv.Value.Gate)
+            {
+                TickAxis(kv.Value, dt);
+            }
+        }
+    }
+
+    private static void TickAxis(SimAxisState state, double dt)
+    {
+        if (!state.Enabled)
+        {
+            Halt(state);
+            return;
+        }
+
+        if (state.Mode == SimMotionMode.Idle)
+        {
+            state.CurrentVelocity = 0;
+            state.Moving = false;
+            return;
+        }
+
+        if (state.Mode == SimMotionMode.Jog)
+        {
+            state.CurrentVelocity = ApproachVelocity(
+                state.CurrentVelocity, state.JogVelocity, state.Acceleration, state.Deceleration, dt);
+            Integrate(state, dt);
+            state.Moving = true;
+            return;
+        }
+
+        if (state.Mode == SimMotionMode.Stopping)
+        {
+            state.CurrentVelocity = ApproachVelocity(
+                state.CurrentVelocity, 0, state.Acceleration, state.Deceleration, dt);
+            Integrate(state, dt);
+            if (Math.Abs(state.CurrentVelocity) < 1e-6)
+            {
+                Halt(state);
+            }
+
+            return;
+        }
+
+        // Trap / Home: trapezoid toward TargetPosition.
+        var remaining = state.TargetPosition - state.PrfPosition;
+        if (Math.Abs(remaining) < 1e-6 && Math.Abs(state.CurrentVelocity) < 1e-6)
+        {
+            Arrive(state);
+            return;
+        }
+
+        var dir = remaining >= 0 ? 1.0 : -1.0;
+        var cruise = Math.Max(state.CommandSpeed, 1e-6);
+        var dec = Math.Max(state.Deceleration, 1e-6);
+        var v = state.CurrentVelocity;
+        var toward = Math.Abs(v) < 1e-9 || Math.Sign(v) == Math.Sign(dir);
+        var stopDist = (v * v) / (2.0 * dec);
+
+        if (!toward)
+        {
+            state.CurrentVelocity = ApproachVelocity(v, 0, state.Acceleration, dec, dt);
+        }
+        else if (Math.Abs(remaining) <= stopDist)
+        {
+            state.CurrentVelocity = ApproachVelocity(v, 0, state.Acceleration, dec, dt);
+        }
+        else
+        {
+            state.CurrentVelocity = ApproachVelocity(v, dir * cruise, state.Acceleration, dec, dt);
+        }
+
+        var step = state.CurrentVelocity * dt;
+        if (toward && Math.Abs(step) >= Math.Abs(remaining))
+        {
+            Arrive(state);
+            return;
+        }
+
+        Integrate(state, dt);
+        state.Moving = true;
+    }
+
+    private static void Integrate(SimAxisState state, double dt)
+    {
+        state.PrfPosition += state.CurrentVelocity * dt;
+        state.EncPosition = state.PrfPosition;
+    }
+
+    private static void Arrive(SimAxisState state)
+    {
+        state.PrfPosition = state.TargetPosition;
+        state.EncPosition = state.TargetPosition;
+        state.CurrentVelocity = 0;
+        state.Moving = false;
+        if (state.Mode == SimMotionMode.Home)
+        {
+            state.Homed = true;
+        }
+
+        state.Mode = SimMotionMode.Idle;
+    }
+
+    private static void Halt(SimAxisState state)
+    {
+        state.Mode = SimMotionMode.Idle;
+        state.Moving = false;
+        state.CurrentVelocity = 0;
+    }
+
+    private static double ApproachVelocity(double current, double target, double acc, double dec, double dt)
+    {
+        var sameDir = Math.Abs(current) < 1e-12
+            || Math.Sign(current) == Math.Sign(target)
+            || Math.Abs(target) < 1e-12;
+        var speedingUp = Math.Abs(target) > Math.Abs(current) && sameDir && Math.Abs(target) > 1e-12;
+        var rate = Math.Max(speedingUp ? acc : dec, 1e-6);
+        var delta = target - current;
+        var maxStep = rate * dt;
+        return Math.Abs(delta) <= maxStep ? target : current + Math.Sign(delta) * maxStep;
+    }
+
+    // ──────────────────────────────────────────────
     //  Private helpers
     // ──────────────────────────────────────────────
 
@@ -698,19 +947,33 @@ public sealed class DrvSim : IDriver
         return false;
     }
 
+    private enum SimMotionMode
+    {
+        Idle,
+        Trap,
+        Jog,
+        Home,
+        Stopping,
+    }
+
     /// <summary>
     /// Simulated per-axis state stored in the concurrent dictionary.
     /// </summary>
     private sealed class SimAxisState
     {
+        public readonly object Gate = new();
+        public SimMotionMode Mode;
         public bool Enabled;
         public bool Moving;
         public bool Homed;
         public bool Alarm;
         public double PrfPosition;
         public double EncPosition;
-        public double Velocity;
-        public double Acceleration;
-        public double Deceleration;
+        public double CurrentVelocity;
+        public double CommandSpeed;
+        public double JogVelocity;
+        public double TargetPosition;
+        public double Acceleration = 10000;
+        public double Deceleration = 10000;
     }
 }

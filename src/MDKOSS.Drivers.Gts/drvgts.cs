@@ -167,6 +167,13 @@ public sealed class DrvGts : IDriver
 
     public bool IsAxisEnabled(short axis)
     {
+        if (TryGetAxisStatus(axis, out var raw))
+        {
+            var on = AxisStatusBits.Test(raw, AxisStatusBits.ServoOn);
+            _axisEnabled[axis] = on;
+            return on;
+        }
+
         return _axisEnabled.GetOrAdd(axis, false);
     }
 
@@ -186,6 +193,29 @@ public sealed class DrvGts : IDriver
         _memory["driver.lastCode"] = rc;
         status = nativeStatus;
         return rc == 0;
+    }
+
+    public bool TryGetAxisState(short axis, out AxisStatus status)
+    {
+        status = default;
+        if (!TryGetAxisStatus(axis, out var raw))
+        {
+            return false;
+        }
+
+        var home = false;
+        if (TryReadDi(GtsIoType.Home, out var homeWord))
+        {
+            home = DriverIoAddress.TestBit(homeWord, axis);
+        }
+
+        TryGetAxisPrfPosition(axis, out var prf);
+        TryGetAxisEncPosition(axis, out var enc);
+        TryGetAxisVelocity(axis, out var vel);
+
+        status = AxisStatus.FromGts(raw, home, prf, enc, vel);
+        _axisEnabled[axis] = status.ServoOn;
+        return true;
     }
 
     public bool TryGetAxisPrfPosition(short axis, out double position)

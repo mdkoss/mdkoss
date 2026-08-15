@@ -55,6 +55,8 @@ flowchart LR
 | 路由 | 方法 | 说明 |
 |------|------|------|
 | `/api/io/write` | POST | 写数字输出（`gpio` / `vio`），body：`deviceId`、`alias`、`value` |
+| `/api/io/driver` | GET | 读驱动端口字（`driverId`、`dir=di\|do`、`type=gpi\|gpo`），返回 `word` / `bits[]` / `ioBitBase` |
+| `/api/io/driver` | POST | 写驱动单点，body：`driverId`、`dir`、`type`、`bit`（地址点号）、`value` |
 
 ### 设备
 
