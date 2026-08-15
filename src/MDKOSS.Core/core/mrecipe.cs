@@ -223,13 +223,26 @@ public sealed class MdkRecipeManager
 
     private void ApplyRecipeVars(MdkSetting.RecipeConfig recipe)
     {
+        // Push every key stored on the recipe (配置端「推送所有」写入的键也要生效).
+        foreach (var kv in recipe.Vars)
+        {
+            if (string.IsNullOrWhiteSpace(kv.Key))
+            {
+                continue;
+            }
+
+            _vars.Set(kv.Key.Trim(), kv.Value);
+        }
+
+        // Declared recipe keys missing from this recipe fall back to base setting vars.
         foreach (var key in RecipeVarKeys)
         {
-            if (recipe.Vars.TryGetValue(key, out var value))
+            if (recipe.Vars.ContainsKey(key))
             {
-                _vars.Set(key, value);
+                continue;
             }
-            else if (_setting.Vars.TryGetValue(key, out var baseValue))
+
+            if (_setting.Vars.TryGetValue(key, out var baseValue))
             {
                 _vars.Set(key, baseValue);
             }
@@ -291,6 +304,40 @@ public sealed class MdkRecipeManager
     {
         error = null;
         var allowed = RecipeVarKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Allow any seed Vars key so Config「推送所有 / 从 Vars」选中的项可写入并应用.
+        foreach (var key in _setting.Vars.Keys)
+        {
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                allowed.Add(key.Trim());
+            }
+        }
+
+        // Keys already used by other recipes remain valid.
+        foreach (var recipe in _setting.Recipes)
+        {
+            foreach (var key in recipe.Vars.Keys)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    allowed.Add(key.Trim());
+                }
+            }
+        }
+
+        // First recipe may define its own keys when recipeVarKeys / Vars are still empty.
+        if (allowed.Count == 0)
+        {
+            foreach (var key in vars.Keys)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    allowed.Add(key.Trim());
+                }
+            }
+        }
+
         if (allowed.Count == 0)
         {
             error = "recipe_var_keys_empty";
@@ -299,7 +346,7 @@ public sealed class MdkRecipeManager
 
         foreach (var key in vars.Keys)
         {
-            if (!allowed.Contains(key))
+            if (string.IsNullOrWhiteSpace(key) || !allowed.Contains(key.Trim()))
             {
                 error = $"recipe_var_key_invalid:{key}";
                 return false;

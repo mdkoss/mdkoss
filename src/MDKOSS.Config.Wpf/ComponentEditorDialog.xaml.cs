@@ -105,6 +105,7 @@ public partial class ComponentEditorDialog : Window
                 Show(DescriptionPanel, true);
                 Show(ParamsPanel, true);
                 Show(PickVarsButton, true);
+                Show(PushAllVarsButton, true);
                 break;
             case ConfigModule.Visions:
                 Show(IdPanel, true);
@@ -189,33 +190,72 @@ public partial class ComponentEditorDialog : Window
                 return;
             }
 
-            var existing = new HashSet<string>(
-                _paramRows.Select(r => r.Key).Where(k => !string.IsNullOrWhiteSpace(k)),
-                StringComparer.OrdinalIgnoreCase);
-            var byKey = Request.VarCandidates.ToDictionary(
-                c => c.Key,
-                c => c.ValuePreview,
-                StringComparer.OrdinalIgnoreCase);
-
-            foreach (var key in dlg.SelectedKeys)
-            {
-                if (existing.Contains(key))
-                {
-                    continue;
-                }
-
-                _paramRows.Add(new KvPairRow
-                {
-                    Key = key,
-                    Value = byKey.TryGetValue(key, out var preview) ? preview : "",
-                });
-                existing.Add(key);
-            }
+            MergeRecipeVarKeys(dlg.SelectedKeys);
         }
         catch (Exception ex)
         {
             MessageBox.Show(this, ex.Message, "从 Vars 选择", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    private void PushAllVars_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var keys = Request.VarCandidates
+                .Select(c => c.Key)
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Select(k => k.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            if (keys.Count == 0)
+            {
+                MessageBox.Show(this, "没有可推送的候选变量键。", "推送所有", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var added = MergeRecipeVarKeys(keys);
+            MessageBox.Show(
+                this,
+                $"已向当前配方推送全部候选键（共 {keys.Count} 个，新增 {added} 个）。已有键保留原值。",
+                "推送所有",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "推送所有", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private int MergeRecipeVarKeys(IEnumerable<string> keys)
+    {
+        var existing = new HashSet<string>(
+            _paramRows.Select(r => r.Key).Where(k => !string.IsNullOrWhiteSpace(k)),
+            StringComparer.OrdinalIgnoreCase);
+        var byKey = Request.VarCandidates.ToDictionary(
+            c => c.Key,
+            c => c.ValuePreview,
+            StringComparer.OrdinalIgnoreCase);
+
+        var added = 0;
+        foreach (var key in keys)
+        {
+            if (string.IsNullOrWhiteSpace(key) || existing.Contains(key))
+            {
+                continue;
+            }
+
+            _paramRows.Add(new KvPairRow
+            {
+                Key = key.Trim(),
+                Value = byKey.TryGetValue(key, out var preview) ? preview : "",
+            });
+            existing.Add(key.Trim());
+            added++;
+        }
+
+        return added;
     }
 
     private void TypeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

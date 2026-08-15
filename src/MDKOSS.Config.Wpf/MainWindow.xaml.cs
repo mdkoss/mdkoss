@@ -1062,6 +1062,29 @@ public partial class MainWindow : Window
         }
     }
 
+    private void PushAllRecipeVars_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (!_workspace.Draft.ShowPickRecipeVars || _workspace.Draft.IsReadOnly)
+            {
+                return;
+            }
+
+            var n = _workspace.PushAllRecipeVars();
+            MessageBox.Show(
+                this,
+                $"已向当前配方推送全部候选键（共 {n} 个）。已有键保留原值。",
+                "推送所有",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "推送所有", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ParamGrid_PreparingCellForEdit(object sender, DataGridPreparingCellForEditEventArgs e)
     {
         if (e.Row?.Item is not KvPairRow row)

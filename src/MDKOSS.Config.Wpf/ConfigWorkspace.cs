@@ -3619,6 +3619,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     /// <summary>
     /// Merge selected keys into the current recipe draft.
     /// Existing keys keep their draft values; new keys take Vars / SysConfig current values when available.
+    /// Also expands <see cref="MdkSetting.RecipeVarKeys"/> so runtime apply accepts the new keys.
     /// </summary>
     public void ApplyRecipeVarSelection(IEnumerable<string> keys)
     {
@@ -3653,10 +3654,44 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             book[key] = ResolveRecipeFillValue(key, sysValues);
         }
 
+        EnsureRecipeVarKeys(selected);
+
         Draft.LoadObjectParameters(book);
         Draft.MarkDirty();
         RefreshRecipeParamSuggestions();
         StatusLine = $"已加入 {selected.Count} 个配方变量键";
+    }
+
+    /// <summary>
+    /// One-click push of every Vars / SysConfig / recipe candidate key into the current recipe draft.
+    /// </summary>
+    public int PushAllRecipeVars()
+    {
+        var keys = GetRecipeVarCandidates().Select(c => c.Key).ToList();
+        ApplyRecipeVarSelection(keys);
+        return keys.Count;
+    }
+
+    private void EnsureRecipeVarKeys(IEnumerable<string> keys)
+    {
+        var existing = _setting.RecipeVarKeys
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k.Trim())
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in keys)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            var trimmed = key.Trim();
+            if (existing.Add(trimmed))
+            {
+                _setting.RecipeVarKeys.Add(trimmed);
+            }
+        }
     }
 
     private IEnumerable<RecipeVarCandidate> EnumerateRecipeKeyCandidates()

@@ -330,6 +330,9 @@
                     <Button Content="从 Vars…" Padding="8,2" Margin="0,0,4,0" Click="PickRecipeVars_Click"
                             Visibility="{Binding ShowPickRecipeVars, Converter={StaticResource BoolToVis}}"
                             ToolTip="从全部 Vars 与全部 SysConfig 配置参数中勾选写入配方"/>
+                    <Button Content="推送所有" Padding="8,2" Margin="0,0,4,0" Click="PushAllRecipeVars_Click"
+                            Visibility="{Binding ShowPickRecipeVars, Converter={StaticResource BoolToVis}}"
+                            ToolTip="一键把全部 Vars / SysConfig 候选键写入当前配方（已有键保留原值）"/>
                     <Button Content="编辑视觉流程…" Padding="8,2" Margin="0,0,4,0" Click="EditVisionPipeline_Click"
                             Visibility="{Binding ShowEditVisionPipeline, Converter={StaticResource BoolToVis}}"
                             ToolTip="打开视觉流程编辑器，编辑 pipelineJson"/>

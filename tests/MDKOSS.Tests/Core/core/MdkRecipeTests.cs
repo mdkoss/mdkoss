@@ -34,6 +34,22 @@ public sealed class MdkRecipeTests
     }
 
     [Fact]
+    public void TryApplyRecipe_pushes_all_recipe_vars_including_extra_seed_keys()
+    {
+        var setting = BuildSettingWithRecipes();
+        setting.Vars["machine.ready"] = false;
+        setting.Recipes.First(r => r.Id == "manual").Vars["machine.ready"] = true;
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+
+        Assert.True(rt.TryApplyRecipe("manual", out var error), error);
+        Assert.Equal("MANUAL", rt.Vars.Get<string>("machine.mode"));
+        Assert.Equal("lamp:yellow", rt.Vars.Get<string>("task.operation.command"));
+        Assert.True(rt.Vars.Get<bool>("machine.ready"));
+    }
+
+    [Fact]
     public void TryCaptureFromRuntime_updates_existing_recipe()
     {
         var setting = BuildSettingWithRecipes();
