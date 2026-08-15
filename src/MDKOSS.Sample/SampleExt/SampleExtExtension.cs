@@ -6,7 +6,7 @@ namespace MDKOSS.Sample.SampleExt;
 
 /// <summary>
 /// Sample 扩展示例包：自定义设备 <c>samplebeacon</c>、MotionTask <c>samplemotion</c>、
-/// API <c>/api/sampleext</c>、页面 <c>demo_sample_ext.html</c>。
+/// API <c>/api/sampleext</c>（含运行截图与钉钉发布）、页面 <c>demo_sample_ext.html</c>。
 /// </summary>
 public sealed class SampleExtExtension : IMdkExtension
 {

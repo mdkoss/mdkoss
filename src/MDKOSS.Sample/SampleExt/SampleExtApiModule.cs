@@ -8,6 +8,8 @@ namespace MDKOSS.Sample.SampleExt;
 /// <summary>Backend API example for SampleExt: <c>/api/sampleext/*</c>.</summary>
 public sealed class SampleExtApiModule : MonitoringApiModule
 {
+    private static readonly HttpClient SharedHttp = CreateHttpClient();
+
     public SampleExtApiModule(MdkRuntime runtime) : base(runtime) { }
 
     public override string RoutePrefix => "/api/sampleext";
@@ -28,6 +30,13 @@ public sealed class SampleExtApiModule : MonitoringApiModule
                 || string.IsNullOrEmpty(actionPath))
             {
                 await WriteStatusAsync(context.Response, cancellationToken).ConfigureAwait(false);
+                return true;
+            }
+
+            if (actionPath.Equals("run-screenshot.png", StringComparison.OrdinalIgnoreCase)
+                || actionPath.Equals("run-screenshot", StringComparison.OrdinalIgnoreCase))
+            {
+                await WriteScreenshotPngAsync(context.Response, cancellationToken).ConfigureAwait(false);
                 return true;
             }
         }
@@ -72,10 +81,114 @@ public sealed class SampleExtApiModule : MonitoringApiModule
                 await WriteSuccessAsync(context.Response, "motionstop", cancellationToken).ConfigureAwait(false);
                 return true;
 
+            case "publish-dingtalk":
+                await HandlePublishDingTalkAsync(context, cancellationToken).ConfigureAwait(false);
+                return true;
+
             default:
                 await WriteErrorAsync(context.Response, "unknown_action", cancellationToken).ConfigureAwait(false);
                 return true;
         }
+    }
+
+    private async Task WriteScreenshotPngAsync(HttpListenerResponse response, CancellationToken cancellationToken)
+    {
+        var png = SampleRunScreenshot.RenderPng(Runtime.GetSnapshot());
+        TrySaveScreenshot(png);
+        response.StatusCode = (int)HttpStatusCode.OK;
+        response.ContentType = "image/png";
+        response.ContentLength64 = png.Length;
+        await response.OutputStream.WriteAsync(png, cancellationToken).ConfigureAwait(false);
+        response.OutputStream.Close();
+    }
+
+    private async Task HandlePublishDingTalkAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        string? webhook = null;
+        string? imageUploadUrl = null;
+        if (context.Request.HasEntityBody)
+        {
+            using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+            var raw = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(raw);
+                    if (doc.RootElement.TryGetProperty("webhook", out var wh))
+                    {
+                        webhook = wh.GetString();
+                    }
+
+                    if (doc.RootElement.TryGetProperty("imageUploadUrl", out var up))
+                    {
+                        imageUploadUrl = up.GetString();
+                    }
+                }
+                catch (JsonException)
+                {
+                    await WriteErrorAsync(context.Response, "invalid_json", cancellationToken).ConfigureAwait(false);
+                    return;
+                }
+            }
+        }
+
+        webhook = SampleDingTalkPublisher.ResolveWebhook(webhook);
+        if (string.IsNullOrWhiteSpace(webhook))
+        {
+            await WriteErrorAsync(
+                context.Response,
+                $"webhook_missing (set body.webhook or env {SampleDingTalkPublisher.WebhookEnvVar})",
+                cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var snapshot = Runtime.GetSnapshot();
+        var png = SampleRunScreenshot.RenderPng(snapshot);
+        var savedPath = TrySaveScreenshot(png);
+        var result = await SampleDingTalkPublisher.PublishAsync(
+            SharedHttp,
+            webhook,
+            snapshot,
+            png,
+            imageUploadUrl,
+            cancellationToken).ConfigureAwait(false);
+
+        await WriteJsonAsync(
+            context.Response,
+            new
+            {
+                success = result.Success,
+                action = "publish-dingtalk",
+                error = result.Error,
+                pngBytes = png.Length,
+                savedPath,
+                imageUrl = result.ImageUrl,
+                dingtalk = result.ResponseBody,
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? TrySaveScreenshot(byte[] png)
+    {
+        try
+        {
+            var dir = Path.Combine(AppContext.BaseDirectory, "logs");
+            Directory.CreateDirectory(dir);
+            var path = Path.Combine(dir, "sample-run-screenshot.png");
+            File.WriteAllBytes(path, png);
+            return path;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static HttpClient CreateHttpClient()
+    {
+        var handler = new HttpClientHandler { UseProxy = false };
+        return new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
     }
 
     private bool TryGetBeacon(out SampleBeaconDevice? beacon)

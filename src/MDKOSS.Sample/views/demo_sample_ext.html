@@ -64,6 +64,13 @@
       <button class="primary" id="btnMotion">Motion Start</button>
       <button id="btnStop">Motion Stop</button>
       <button id="btnReset">Reset</button>
+      <button id="btnShot">刷新运行截图</button>
+      <button class="primary" id="btnDing">发布截图到钉钉</button>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>运行截图预览</h3>
+      <img id="runShot" alt="sample run screenshot" style="max-width:100%;border:1px solid var(--line);border-radius:8px;background:#000" />
+      <div class="sub" id="dingHint" style="margin:8px 0 0">GET /api/sampleext/run-screenshot.png · POST /api/sampleext/publish-dingtalk</div>
     </div>
     <div class="grid">
       <div class="card">
@@ -113,11 +120,31 @@
         document.getElementById('pollHint').textContent = 'poll failed';
       }
     }
+    function refreshShot() {
+      document.getElementById('runShot').src = '/api/sampleext/run-screenshot.png?t=' + Date.now();
+    }
+    async function publishDing() {
+      const hint = document.getElementById('dingHint');
+      hint.textContent = 'publishing…';
+      try {
+        const res = await fetch('/api/sampleext/publish-dingtalk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await res.json();
+        hint.textContent = data.success
+          ? ('钉钉已发送 · png ' + data.pngBytes + ' bytes')
+          : ('失败: ' + (data.error || res.status));
+        refreshShot();
+      } catch (e) {
+        hint.textContent = 'publish failed';
+      }
+    }
     document.getElementById('btnPulse').onclick = () => post('pulse');
     document.getElementById('btnMotion').onclick = () => post('motionstart');
     document.getElementById('btnStop').onclick = () => post('motionstop');
     document.getElementById('btnReset').onclick = () => post('reset');
+    document.getElementById('btnShot').onclick = () => refreshShot();
+    document.getElementById('btnDing').onclick = () => publishDing();
     refresh();
+    refreshShot();
     setInterval(refresh, 800);
   </script>
 </body>

@@ -173,6 +173,52 @@ public sealed class SampleExtExtensionTests
             page.EnsureSuccessStatusCode();
             var html = await page.Content.ReadAsStringAsync();
             Assert.Contains("Sample 扩展示例", html, StringComparison.Ordinal);
+            Assert.Contains("publish-dingtalk", html, StringComparison.Ordinal);
+
+            using (var shot = await http.GetAsync($"http://127.0.0.1:{port}/api/sampleext/run-screenshot.png"))
+            {
+                shot.EnsureSuccessStatusCode();
+                Assert.Equal("image/png", shot.Content.Headers.ContentType?.MediaType);
+                var png = await shot.Content.ReadAsByteArrayAsync();
+                Assert.True(SampleRunScreenshot.LooksLikePng(png));
+                Assert.True(png.Length > 500);
+            }
+
+            var fakePort = FreePort();
+            using var fakeWebhook = new HttpListener();
+            fakeWebhook.Prefixes.Add($"http://127.0.0.1:{fakePort}/hook/");
+            fakeWebhook.Start();
+            var webhookReceived = Task.Run(async () =>
+            {
+                var ctx = await fakeWebhook.GetContextAsync();
+                using var reader = new StreamReader(ctx.Request.InputStream);
+                var body = await reader.ReadToEndAsync();
+                ctx.Response.ContentType = "application/json";
+                var bytes = System.Text.Encoding.UTF8.GetBytes("""{"errcode":0,"errmsg":"ok"}""");
+                ctx.Response.OutputStream.Write(bytes);
+                ctx.Response.Close();
+                return body;
+            });
+
+            var publishBody = JsonSerializer.Serialize(new
+            {
+                webhook = $"http://127.0.0.1:{fakePort}/hook/",
+            });
+            using (var publish = await http.PostAsync(
+                       $"http://127.0.0.1:{port}/api/sampleext/publish-dingtalk",
+                       new StringContent(publishBody, System.Text.Encoding.UTF8, "application/json")))
+            {
+                publish.EnsureSuccessStatusCode();
+                var json = await publish.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(json);
+                Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
+                Assert.True(doc.RootElement.GetProperty("pngBytes").GetInt32() > 500);
+            }
+
+            var webhookBody = await webhookReceived.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.Contains("msgtype", webhookBody, StringComparison.Ordinal);
+            Assert.Contains("MDKOSS Sample", webhookBody, StringComparison.Ordinal);
+            fakeWebhook.Stop();
 
             await rt.StopAsync();
         }
@@ -180,5 +226,29 @@ public sealed class SampleExtExtensionTests
         {
             try { File.Delete(db); } catch { /* ignore */ }
         }
+    }
+
+    [Fact]
+    public void Run_screenshot_renders_valid_png_from_snapshot()
+    {
+        var snap = new RuntimeSnapshot(
+            ProjectName: "shot-test",
+            Version: "1.1.0",
+            IsRunning: true,
+            Drivers: new Dictionary<string, DriverSnapshot>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["d1"] = new DriverSnapshot("sim", true),
+            },
+            Devices: new Dictionary<string, DeviceSnapshot>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["dev1"] = new DeviceSnapshot("dev1", "Dev", "gpio", "Ready", "sim", true),
+            },
+            Vars: new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase));
+
+        var png = SampleRunScreenshot.RenderPng(snap);
+        Assert.True(SampleRunScreenshot.LooksLikePng(png));
+        var md = SampleRunScreenshot.BuildMarkdown(snap);
+        Assert.Contains("shot-test", md, StringComparison.Ordinal);
+        Assert.Contains("YES", md, StringComparison.Ordinal);
     }
 }
