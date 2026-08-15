@@ -553,6 +553,10 @@ public sealed class MdkRuntime : IDisposable
                 device.Initialize();
                 _devices[config.Id] = device;
             }
+            catch (MdkException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 AppLog.Error(ex, $"Failed to create device '{config.Id}' ({config.Type}). Skipping.");

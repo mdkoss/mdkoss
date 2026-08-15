@@ -71,6 +71,11 @@ public sealed class DrvSimMotionTests
         using var drv = Create();
         Assert.True(drv.EnableAxis(0));
         Assert.True(drv.MoveAxisTrap(0, 800, velocity: 4_000, acceleration: 200_000, deceleration: 200_000));
+        Assert.True(WaitUntil(() =>
+        {
+            drv.TryGetAxisPrfPosition(0, out var pos);
+            return pos > 5;
+        }));
 
         var samples = SamplePositions(drv, 0, count: 8, intervalMs: 20);
         Assert.True(samples.Count >= 3, "timer should publish several positions");
@@ -78,8 +83,6 @@ public sealed class DrvSimMotionTests
         {
             Assert.True(samples[i] >= samples[i - 1] - 1e-6, $"position should not go backwards: {samples[i - 1]} -> {samples[i]}");
         }
-
-        Assert.True(samples[^1] > samples[0], "position must advance over time");
         Assert.True(WaitUntil(() =>
         {
             drv.TryGetAxisState(0, out var s);
@@ -122,9 +125,8 @@ public sealed class DrvSimMotionTests
 
         for (var i = 0; i < 5; i++)
         {
-            Assert.True(drv.TryGetAxisPrfPosition(0, out var prf));
-            Assert.True(drv.TryGetAxisEncPosition(0, out var enc));
-            Assert.Equal(prf, enc, 6);
+            Assert.True(drv.TryGetAxisState(0, out var snap));
+            Assert.Equal(snap.PrfPosition, snap.EncPosition, 6);
             Thread.Sleep(15);
         }
     }
