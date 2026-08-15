@@ -81,10 +81,14 @@
             <TextBlock Text="Motion" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,10,0,6"/>
             <Button Content="axisMoveTo" Tag="motion.axisMoveTo" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="axisEnable" Tag="motion.axisEnable" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="axisJog" Tag="motion.axisJog" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="axisStop" Tag="motion.axisStop" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="platformSetMotion" Tag="motion.platformSetMotion" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="platformStart" Tag="motion.platformStart" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="platformStop" Tag="motion.platformStop" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="platformAxisMoveTo" Tag="motion.platformAxisMoveTo" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="platformAxisJog" Tag="motion.platformAxisJog" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
+            <Button Content="platformAxisStop" Tag="motion.platformAxisStop" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="gpioWrite" Tag="motion.gpioWrite" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="gpioRead" Tag="motion.gpioRead" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>
             <Button Content="deviceSnapshot" Tag="motion.deviceSnapshot" Click="AddNode_Click" Margin="0,0,0,4" HorizontalAlignment="Stretch"/>

@@ -21,12 +21,28 @@ public interface IFlowRuntimeHost
 
     bool TryAxisSetMotionEnabled(string axisDeviceId, bool enabled, out string? error);
 
+    bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error);
+
+    bool TryAxisStopMotion(string axisDeviceId, out string? error);
+
     bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error);
 
     bool TryPlatformAxisMoveTo(
         string platformDeviceId,
         string axisLetter,
         double position,
+        out string? error);
+
+    bool TryPlatformAxisJog(
+        string platformDeviceId,
+        string axisLetter,
+        double direction,
+        double velocity,
+        out string? error);
+
+    bool TryPlatformAxisStopMotion(
+        string platformDeviceId,
+        string axisLetter,
         out string? error);
 
     bool TryGpioWriteOutput(string gpioDeviceId, string alias, bool value, out string? error);
@@ -73,6 +89,18 @@ public sealed class NullFlowRuntimeHost : IFlowRuntimeHost
         return false;
     }
 
+    public bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error)
+    {
+        error = "no_runtime_host";
+        return false;
+    }
+
+    public bool TryAxisStopMotion(string axisDeviceId, out string? error)
+    {
+        error = "no_runtime_host";
+        return false;
+    }
+
     public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error)
     {
         error = "no_runtime_host";
@@ -83,6 +111,26 @@ public sealed class NullFlowRuntimeHost : IFlowRuntimeHost
         string platformDeviceId,
         string axisLetter,
         double position,
+        out string? error)
+    {
+        error = "no_runtime_host";
+        return false;
+    }
+
+    public bool TryPlatformAxisJog(
+        string platformDeviceId,
+        string axisLetter,
+        double direction,
+        double velocity,
+        out string? error)
+    {
+        error = "no_runtime_host";
+        return false;
+    }
+
+    public bool TryPlatformAxisStopMotion(
+        string platformDeviceId,
+        string axisLetter,
         out string? error)
     {
         error = "no_runtime_host";

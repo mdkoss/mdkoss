@@ -303,6 +303,30 @@ public sealed class FlowInterpreter
                 Advance(node.Id, FlowPorts.Next);
                 break;
             }
+            case "motion.axisjog":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var direction = FlowExpr.EvalNumber(Prop(node, "direction", "1"), Resolve);
+                var velocity = FlowExpr.EvalNumber(Prop(node, "velocity", "1"), Resolve);
+                if (!_host.TryAxisJog(deviceId, direction, velocity, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "axis_jog_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.axisstop":
+            {
+                var deviceId = Prop(node, "deviceId");
+                if (!_host.TryAxisStopMotion(deviceId, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "axis_stop_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
             case "motion.platformsetmotion":
             {
                 var deviceId = Prop(node, "deviceId");
@@ -345,6 +369,32 @@ public sealed class FlowInterpreter
                 if (!_host.TryPlatformAxisMoveTo(deviceId, axis, pos, out var err))
                 {
                     throw new InvalidOperationException(err ?? "platform_axis_move_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformaxisjog":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var axis = Prop(node, "axis", "X");
+                var direction = FlowExpr.EvalNumber(Prop(node, "direction", "1"), Resolve);
+                var velocity = FlowExpr.EvalNumber(Prop(node, "velocity", "1"), Resolve);
+                if (!_host.TryPlatformAxisJog(deviceId, axis, direction, velocity, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_axis_jog_failed");
+                }
+
+                Advance(node.Id, FlowPorts.Next);
+                break;
+            }
+            case "motion.platformaxisstop":
+            {
+                var deviceId = Prop(node, "deviceId");
+                var axis = Prop(node, "axis", "X");
+                if (!_host.TryPlatformAxisStopMotion(deviceId, axis, out var err))
+                {
+                    throw new InvalidOperationException(err ?? "platform_axis_stop_failed");
                 }
 
                 Advance(node.Id, FlowPorts.Next);

@@ -111,6 +111,28 @@ public abstract class MotionTask : MTaskBase
         return axis.SetMotionEnabled(enabled);
     }
 
+    /// <summary>Issues a jog command on an axis (signed velocity = direction * velocity).</summary>
+    protected bool AxisJog(string axisDeviceId, double direction, double velocity = 1.0)
+    {
+        if (!TryGetAxisDevice(axisDeviceId, out var axis) || axis is null)
+        {
+            return false;
+        }
+
+        return axis.Jog(direction, velocity);
+    }
+
+    /// <summary>Stops axis motion (clears jog and disables motion enable).</summary>
+    protected bool AxisStopMotion(string axisDeviceId)
+    {
+        if (!TryGetAxisDevice(axisDeviceId, out var axis) || axis is null)
+        {
+            return false;
+        }
+
+        return axis.StopMotion();
+    }
+
     // -----------------------------
     // Platform motion (PlatformDevice)
     // -----------------------------
@@ -140,6 +162,34 @@ public abstract class MotionTask : MTaskBase
         var entry = platform.Axes.FirstOrDefault(a =>
             string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
         return entry?.Axis.MoveTo(position) ?? false;
+    }
+
+    protected bool PlatformAxisJog(
+        string platformDeviceId,
+        string axisLetter,
+        double direction,
+        double velocity = 1.0)
+    {
+        if (!TryGetPlatformDevice(platformDeviceId, out var platform) || platform is null)
+        {
+            return false;
+        }
+
+        var entry = platform.Axes.FirstOrDefault(a =>
+            string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+        return entry?.Axis.Jog(direction, velocity) ?? false;
+    }
+
+    protected bool PlatformAxisStopMotion(string platformDeviceId, string axisLetter)
+    {
+        if (!TryGetPlatformDevice(platformDeviceId, out var platform) || platform is null)
+        {
+            return false;
+        }
+
+        var entry = platform.Axes.FirstOrDefault(a =>
+            string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+        return entry?.Axis.StopMotion() ?? false;
     }
 
     // -----------------------------

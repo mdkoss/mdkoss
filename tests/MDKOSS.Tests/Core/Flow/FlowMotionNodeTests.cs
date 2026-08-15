@@ -48,6 +48,12 @@ public sealed class FlowMotionNodeTests
         public bool TryAxisSetMotionEnabled(string axisDeviceId, bool enabled, out string? error) =>
             Gate($"axisEnable:{axisDeviceId}:{enabled}", out error);
 
+        public bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error) =>
+            Gate($"axisJog:{axisDeviceId}:{direction}:{velocity}", out error);
+
+        public bool TryAxisStopMotion(string axisDeviceId, out string? error) =>
+            Gate($"axisStop:{axisDeviceId}", out error);
+
         public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error) =>
             Gate($"platSet:{platformDeviceId}:{enabled}", out error);
 
@@ -57,6 +63,20 @@ public sealed class FlowMotionNodeTests
             double position,
             out string? error) =>
             Gate($"platAxis:{platformDeviceId}:{axisLetter}:{position}", out error);
+
+        public bool TryPlatformAxisJog(
+            string platformDeviceId,
+            string axisLetter,
+            double direction,
+            double velocity,
+            out string? error) =>
+            Gate($"platAxisJog:{platformDeviceId}:{axisLetter}:{direction}:{velocity}", out error);
+
+        public bool TryPlatformAxisStopMotion(
+            string platformDeviceId,
+            string axisLetter,
+            out string? error) =>
+            Gate($"platAxisStop:{platformDeviceId}:{axisLetter}", out error);
 
         public bool TryGpioWriteOutput(string gpioDeviceId, string alias, bool value, out string? error) =>
             TryWriteDigitalOutput(gpioDeviceId, alias, value, out error);
@@ -130,6 +150,30 @@ public sealed class FlowMotionNodeTests
             return axis.SetMotionEnabled(enabled) || Fail("axis_enable_failed", out error);
         }
 
+        public bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error)
+        {
+            error = null;
+            if (!runtime.TryGetDevice(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            return axis.Jog(direction, velocity) || Fail("axis_jog_failed", out error);
+        }
+
+        public bool TryAxisStopMotion(string axisDeviceId, out string? error)
+        {
+            error = null;
+            if (!runtime.TryGetDevice(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            return axis.StopMotion() || Fail("axis_stop_failed", out error);
+        }
+
         public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error)
         {
             error = null;
@@ -164,6 +208,54 @@ public sealed class FlowMotionNodeTests
             }
 
             return entry.Axis.MoveTo(position) || Fail("platform_axis_move_failed", out error);
+        }
+
+        public bool TryPlatformAxisJog(
+            string platformDeviceId,
+            string axisLetter,
+            double direction,
+            double velocity,
+            out string? error)
+        {
+            error = null;
+            if (!runtime.TryGetDevice(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                error = "platform_axis_not_found";
+                return false;
+            }
+
+            return entry.Axis.Jog(direction, velocity) || Fail("platform_axis_jog_failed", out error);
+        }
+
+        public bool TryPlatformAxisStopMotion(
+            string platformDeviceId,
+            string axisLetter,
+            out string? error)
+        {
+            error = null;
+            if (!runtime.TryGetDevice(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                error = "platform_axis_not_found";
+                return false;
+            }
+
+            return entry.Axis.StopMotion() || Fail("platform_axis_stop_failed", out error);
         }
 
         public bool TryGpioWriteOutput(string gpioDeviceId, string alias, bool value, out string? error) =>
@@ -320,6 +412,26 @@ public sealed class FlowMotionNodeTests
     }
 
     [Fact]
+    public void Motion_axisJog()
+    {
+        var (interp, _, host) = RunNode(
+            FlowNodeKinds.MotionAxisJog,
+            Props(("deviceId", "axis-x"), ("direction", "-1"), ("velocity", "2.5")));
+        Assert.Equal(FlowRunState.Completed, interp.State);
+        Assert.Contains("axisJog:axis-x:-1:2.5", host.Log);
+    }
+
+    [Fact]
+    public void Motion_axisStop()
+    {
+        var (interp, _, host) = RunNode(
+            FlowNodeKinds.MotionAxisStop,
+            Props(("deviceId", "axis-x")));
+        Assert.Equal(FlowRunState.Completed, interp.State);
+        Assert.Contains("axisStop:axis-x", host.Log);
+    }
+
+    [Fact]
     public void Motion_platformSetMotion()
     {
         var (interp, _, host) = RunNode(
@@ -357,6 +469,26 @@ public sealed class FlowMotionNodeTests
             Props(("deviceId", "plat"), ("axis", "Y"), ("position", "7")));
         Assert.Equal(FlowRunState.Completed, interp.State);
         Assert.Contains("platAxis:plat:Y:7", host.Log);
+    }
+
+    [Fact]
+    public void Motion_platformAxisJog()
+    {
+        var (interp, _, host) = RunNode(
+            FlowNodeKinds.MotionPlatformAxisJog,
+            Props(("deviceId", "plat"), ("axis", "X"), ("direction", "1"), ("velocity", "0.5")));
+        Assert.Equal(FlowRunState.Completed, interp.State);
+        Assert.Contains("platAxisJog:plat:X:1:0.5", host.Log);
+    }
+
+    [Fact]
+    public void Motion_platformAxisStop()
+    {
+        var (interp, _, host) = RunNode(
+            FlowNodeKinds.MotionPlatformAxisStop,
+            Props(("deviceId", "plat"), ("axis", "Z")));
+        Assert.Equal(FlowRunState.Completed, interp.State);
+        Assert.Contains("platAxisStop:plat:Z", host.Log);
     }
 
     [Fact]
@@ -552,7 +684,7 @@ public sealed class FlowMotionNodeTests
                 Pump(doc, "ens", vars, host);
             }
 
-            // axisEnable + axisMoveTo
+            // axisEnable + axisMoveTo + axisJog + axisStop
             {
                 var doc = new FlowDocument
                 {
@@ -572,21 +704,36 @@ public sealed class FlowMotionNodeTests
                             Kind = FlowNodeKinds.MotionAxisMoveTo,
                             Props = Props(("deviceId", "axis-x"), ("position", "123")),
                         },
+                        new FlowNode
+                        {
+                            Id = "jog",
+                            Kind = FlowNodeKinds.MotionAxisJog,
+                            Props = Props(("deviceId", "axis-x"), ("direction", "1"), ("velocity", "2")),
+                        },
+                        new FlowNode
+                        {
+                            Id = "stp",
+                            Kind = FlowNodeKinds.MotionAxisStop,
+                            Props = Props(("deviceId", "axis-x")),
+                        },
                         new FlowNode { Id = "e", Kind = FlowNodeKinds.End },
                     ],
                     Edges =
                     [
                         new FlowEdge { From = "s", To = "en", Port = FlowPorts.Next },
                         new FlowEdge { From = "en", To = "mv", Port = FlowPorts.Next },
-                        new FlowEdge { From = "mv", To = "e", Port = FlowPorts.Next },
+                        new FlowEdge { From = "mv", To = "jog", Port = FlowPorts.Next },
+                        new FlowEdge { From = "jog", To = "stp", Port = FlowPorts.Next },
+                        new FlowEdge { From = "stp", To = "e", Port = FlowPorts.Next },
                     ],
                 };
                 Pump(doc, "axis", vars, host);
-                Assert.True(vars.Get<bool>("device.AxisX.axis-x.motionEnabled"));
                 Assert.Equal(123.0, vars.Get<double>("device.AxisX.axis-x.position"));
+                Assert.Equal(0.0, vars.Get<double>("device.AxisX.axis-x.jogCommand"));
+                Assert.False(vars.Get<bool>("device.AxisX.axis-x.motionEnabled"));
             }
 
-            // platformStart / platformAxisMoveTo / platformStop / platformSetMotion
+            // platformStart / platformAxisMoveTo / platformAxisJog / platformAxisStop / platformStop / platformSetMotion
             {
                 var doc = new FlowDocument
                 {
@@ -608,6 +755,18 @@ public sealed class FlowMotionNodeTests
                         },
                         new FlowNode
                         {
+                            Id = "paj",
+                            Kind = FlowNodeKinds.MotionPlatformAxisJog,
+                            Props = Props(("deviceId", "plat"), ("axis", "Y"), ("direction", "-1"), ("velocity", "1.5")),
+                        },
+                        new FlowNode
+                        {
+                            Id = "pas",
+                            Kind = FlowNodeKinds.MotionPlatformAxisStop,
+                            Props = Props(("deviceId", "plat"), ("axis", "Y")),
+                        },
+                        new FlowNode
+                        {
                             Id = "pst",
                             Kind = FlowNodeKinds.MotionPlatformStop,
                             Props = Props(("deviceId", "plat")),
@@ -624,13 +783,16 @@ public sealed class FlowMotionNodeTests
                     [
                         new FlowEdge { From = "s", To = "ps", Port = FlowPorts.Next },
                         new FlowEdge { From = "ps", To = "pam", Port = FlowPorts.Next },
-                        new FlowEdge { From = "pam", To = "pst", Port = FlowPorts.Next },
+                        new FlowEdge { From = "pam", To = "paj", Port = FlowPorts.Next },
+                        new FlowEdge { From = "paj", To = "pas", Port = FlowPorts.Next },
+                        new FlowEdge { From = "pas", To = "pst", Port = FlowPorts.Next },
                         new FlowEdge { From = "pst", To = "pset", Port = FlowPorts.Next },
                         new FlowEdge { From = "pset", To = "e", Port = FlowPorts.Next },
                     ],
                 };
                 Pump(doc, "plat", vars, host);
                 Assert.Equal(45.0, vars.Get<double>("device.Table X.plat.X.position"));
+                Assert.Equal(0.0, vars.Get<double>("device.Table Y.plat.Y.jogCommand"));
                 Assert.True(vars.Get<bool>("device.Table.plat.motionEnabled"));
             }
 

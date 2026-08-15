@@ -13,8 +13,12 @@ public sealed class FlowNodeKindsCoverageTests
         public List<(string DeviceId, string Action, string? ParamsJson)> Actions { get; } = [];
         public List<string> AxisMoves { get; } = [];
         public List<string> AxisEnables { get; } = [];
+        public List<string> AxisJogs { get; } = [];
+        public List<string> AxisStops { get; } = [];
         public List<string> PlatformMotions { get; } = [];
         public List<string> PlatformAxisMoves { get; } = [];
+        public List<string> PlatformAxisJogs { get; } = [];
+        public List<string> PlatformAxisStops { get; } = [];
         public List<string> GpioReads { get; } = [];
         public List<string> Snapshots { get; } = [];
         public List<string> EnsureDrivers { get; } = [];
@@ -64,6 +68,20 @@ public sealed class FlowNodeKindsCoverageTests
             return true;
         }
 
+        public bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error)
+        {
+            AxisJogs.Add($"{axisDeviceId}:{direction}:{velocity}");
+            error = null;
+            return true;
+        }
+
+        public bool TryAxisStopMotion(string axisDeviceId, out string? error)
+        {
+            AxisStops.Add(axisDeviceId);
+            error = null;
+            return true;
+        }
+
         public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error)
         {
             PlatformMotions.Add($"{platformDeviceId}:{enabled}");
@@ -78,6 +96,28 @@ public sealed class FlowNodeKindsCoverageTests
             out string? error)
         {
             PlatformAxisMoves.Add($"{platformDeviceId}:{axisLetter}:{position}");
+            error = null;
+            return true;
+        }
+
+        public bool TryPlatformAxisJog(
+            string platformDeviceId,
+            string axisLetter,
+            double direction,
+            double velocity,
+            out string? error)
+        {
+            PlatformAxisJogs.Add($"{platformDeviceId}:{axisLetter}:{direction}:{velocity}");
+            error = null;
+            return true;
+        }
+
+        public bool TryPlatformAxisStopMotion(
+            string platformDeviceId,
+            string axisLetter,
+            out string? error)
+        {
+            PlatformAxisStops.Add($"{platformDeviceId}:{axisLetter}");
             error = null;
             return true;
         }
@@ -151,7 +191,7 @@ public sealed class FlowNodeKindsCoverageTests
     [Fact]
     public void All_known_kinds_are_listed()
     {
-        Assert.Equal(25, FlowNodeKinds.All.Length);
+        Assert.Equal(29, FlowNodeKinds.All.Length);
         foreach (var kind in FlowNodeKinds.All)
         {
             Assert.True(FlowNodeKinds.IsKnown(kind));
@@ -790,6 +830,18 @@ public sealed class FlowNodeKindsCoverageTests
             },
             new()
             {
+                Id = "jog",
+                Kind = FlowNodeKinds.MotionAxisJog,
+                Props = Props(("deviceId", "axis-x"), ("direction", "1"), ("velocity", "2")),
+            },
+            new()
+            {
+                Id = "stp",
+                Kind = FlowNodeKinds.MotionAxisStop,
+                Props = Props(("deviceId", "axis-x")),
+            },
+            new()
+            {
                 Id = "ps",
                 Kind = FlowNodeKinds.MotionPlatformStart,
                 Props = Props(("deviceId", "plat")),
@@ -805,6 +857,18 @@ public sealed class FlowNodeKindsCoverageTests
                 Id = "pam",
                 Kind = FlowNodeKinds.MotionPlatformAxisMoveTo,
                 Props = Props(("deviceId", "plat"), ("axis", "Y"), ("position", "3")),
+            },
+            new()
+            {
+                Id = "paj",
+                Kind = FlowNodeKinds.MotionPlatformAxisJog,
+                Props = Props(("deviceId", "plat"), ("axis", "X"), ("direction", "-1"), ("velocity", "0.5")),
+            },
+            new()
+            {
+                Id = "pas",
+                Kind = FlowNodeKinds.MotionPlatformAxisStop,
+                Props = Props(("deviceId", "plat"), ("axis", "X")),
             },
             new()
             {
@@ -876,9 +940,13 @@ public sealed class FlowNodeKindsCoverageTests
         Assert.Contains("axis-x", host.EnsureDrivers);
         Assert.Contains("axis-x:True", host.AxisEnables);
         Assert.Contains("axis-x:12.5", host.AxisMoves);
+        Assert.Contains("axis-x:1:2", host.AxisJogs);
+        Assert.Contains("axis-x", host.AxisStops);
         Assert.Contains("plat:True", host.PlatformMotions);
         Assert.Contains("plat:False", host.PlatformMotions);
         Assert.Contains("plat:Y:3", host.PlatformAxisMoves);
+        Assert.Contains("plat:X:-1:0.5", host.PlatformAxisJogs);
+        Assert.Contains("plat:X", host.PlatformAxisStops);
         Assert.Contains(host.Writes, w => w is { DeviceId: "gpio", Alias: "Y0", Value: false });
         Assert.Contains("gpio:X0", host.GpioReads);
         Assert.True(vars.Get<bool>("task.n.flow.var.di"));

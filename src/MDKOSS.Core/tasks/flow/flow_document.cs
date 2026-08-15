@@ -182,10 +182,14 @@ public sealed class FlowDocument
                 case "op.log":
                 case "motion.axismoveto":
                 case "motion.axisenable":
+                case "motion.axisjog":
+                case "motion.axisstop":
                 case "motion.platformsetmotion":
                 case "motion.platformstart":
                 case "motion.platformstop":
                 case "motion.platformaxismoveto":
+                case "motion.platformaxisjog":
+                case "motion.platformaxisstop":
                 case "motion.gpiowrite":
                 case "motion.gpioread":
                 case "motion.devicesnapshot":
@@ -312,10 +316,14 @@ public static class FlowNodeKinds
     // MotionTask function blocks
     public const string MotionAxisMoveTo = "motion.axisMoveTo";
     public const string MotionAxisEnable = "motion.axisEnable";
+    public const string MotionAxisJog = "motion.axisJog";
+    public const string MotionAxisStop = "motion.axisStop";
     public const string MotionPlatformSetMotion = "motion.platformSetMotion";
     public const string MotionPlatformStart = "motion.platformStart";
     public const string MotionPlatformStop = "motion.platformStop";
     public const string MotionPlatformAxisMoveTo = "motion.platformAxisMoveTo";
+    public const string MotionPlatformAxisJog = "motion.platformAxisJog";
+    public const string MotionPlatformAxisStop = "motion.platformAxisStop";
     public const string MotionGpioWrite = "motion.gpioWrite";
     public const string MotionGpioRead = "motion.gpioRead";
     public const string MotionDeviceSnapshot = "motion.deviceSnapshot";
@@ -328,8 +336,10 @@ public static class FlowNodeKinds
     public static readonly string[] All =
     [
         Start, End, DeclareVar, SetVar, If, While, Delay, Call, OpWriteIo, OpDeviceAction, OpLog,
-        MotionAxisMoveTo, MotionAxisEnable, MotionPlatformSetMotion, MotionPlatformStart, MotionPlatformStop,
-        MotionPlatformAxisMoveTo, MotionGpioWrite, MotionGpioRead, MotionDeviceSnapshot, MotionEnsureDriver,
+        MotionAxisMoveTo, MotionAxisEnable, MotionAxisJog, MotionAxisStop,
+        MotionPlatformSetMotion, MotionPlatformStart, MotionPlatformStop,
+        MotionPlatformAxisMoveTo, MotionPlatformAxisJog, MotionPlatformAxisStop,
+        MotionGpioWrite, MotionGpioRead, MotionDeviceSnapshot, MotionEnsureDriver,
         MotionSetParam, MotionGetParam, MotionSetTaskVar, MotionSetGlobalVar,
     ];
 

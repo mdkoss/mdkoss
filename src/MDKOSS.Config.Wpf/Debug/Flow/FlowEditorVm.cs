@@ -824,6 +824,14 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 vm.SetProp("deviceId", "axis-x");
                 vm.SetProp("enabled", "true");
                 break;
+            case "motion.axisjog":
+                vm.SetProp("deviceId", "axis-x");
+                vm.SetProp("direction", "1");
+                vm.SetProp("velocity", "1");
+                break;
+            case "motion.axisstop":
+                vm.SetProp("deviceId", "axis-x");
+                break;
             case "motion.platformsetmotion":
                 vm.SetProp("deviceId", "platform-main");
                 vm.SetProp("enabled", "true");
@@ -837,6 +845,16 @@ public sealed class FlowEditorVm : INotifyPropertyChanged
                 vm.SetProp("deviceId", "platform-main");
                 vm.SetProp("axis", "X");
                 vm.SetProp("position", "0");
+                break;
+            case "motion.platformaxisjog":
+                vm.SetProp("deviceId", "platform-main");
+                vm.SetProp("axis", "X");
+                vm.SetProp("direction", "1");
+                vm.SetProp("velocity", "1");
+                break;
+            case "motion.platformaxisstop":
+                vm.SetProp("deviceId", "platform-main");
+                vm.SetProp("axis", "X");
                 break;
             case "motion.gpiowrite":
                 vm.SetProp("deviceId", "");

@@ -272,6 +272,42 @@ public sealed class MdkRuntime : IDisposable
             return true;
         }
 
+        public bool TryAxisJog(string axisDeviceId, double direction, double velocity, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            if (!axis.Jog(direction, velocity))
+            {
+                error = "axis_jog_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryAxisStopMotion(string axisDeviceId, out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(axisDeviceId, out var raw) || raw is not AxisDevice axis)
+            {
+                error = "axis_not_found";
+                return false;
+            }
+
+            if (!axis.StopMotion())
+            {
+                error = "axis_stop_failed";
+                return false;
+            }
+
+            return true;
+        }
+
         public bool TryPlatformSetMotion(string platformDeviceId, bool enabled, out string? error)
         {
             error = null;
@@ -314,6 +350,66 @@ public sealed class MdkRuntime : IDisposable
             if (!entry.Axis.MoveTo(position))
             {
                 error = "platform_axis_move_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryPlatformAxisJog(
+            string platformDeviceId,
+            string axisLetter,
+            double direction,
+            double velocity,
+            out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                error = "platform_axis_not_found";
+                return false;
+            }
+
+            if (!entry.Axis.Jog(direction, velocity))
+            {
+                error = "platform_axis_jog_failed";
+                return false;
+            }
+
+            return true;
+        }
+
+        public bool TryPlatformAxisStopMotion(
+            string platformDeviceId,
+            string axisLetter,
+            out string? error)
+        {
+            error = null;
+            if (!runtime._devices.TryGetValue(platformDeviceId, out var raw) || raw is not PlatformDevice platform)
+            {
+                error = "platform_not_found";
+                return false;
+            }
+
+            var entry = platform.Axes.FirstOrDefault(a =>
+                string.Equals(a.AxisLetter, axisLetter, StringComparison.OrdinalIgnoreCase));
+            if (entry is null)
+            {
+                error = "platform_axis_not_found";
+                return false;
+            }
+
+            if (!entry.Axis.StopMotion())
+            {
+                error = "platform_axis_stop_failed";
                 return false;
             }
 
