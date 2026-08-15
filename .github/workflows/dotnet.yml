@@ -24,10 +24,13 @@ jobs:
         run: dotnet build MDKOSS.sln -c Release --no-restore
       - name: Test
         run: dotnet test MDKOSS.sln -c Release --no-build --verbosity normal
+      # Publish runnable hosts (not the Cef library alone). Tag must match MdkProduct.ReleaseTag (v*).
       - name: Publish
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          dotnet publish src/MDKOSS.Cef/MDKOSS.Cef.csproj -c Release -o publish/cef
+          dotnet publish src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Release -o publish/cef-sample
+          dotnet publish src/MDKOSS.Sample/MDKOSS.Sample.csproj -c Release -o publish/sample
+          dotnet publish src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj -c Release -o publish/dispenser
           dotnet publish src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -c Release -o publish/config
       - name: Zip publish output
         if: startsWith(github.ref, 'refs/tags/v')
@@ -43,8 +46,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          name: MDKOSS ${{ github.ref_name }}
           files: MDKOSS-${{ github.ref_name }}-win-x64.zip
           generate_release_notes: true
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

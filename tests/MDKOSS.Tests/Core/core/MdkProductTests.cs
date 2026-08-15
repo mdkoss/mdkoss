@@ -11,4 +11,12 @@ public sealed class MdkProductTests
         Assert.Matches(@"^\d+\.\d+\.\d+", MdkProduct.Version);
         Assert.Equal("1.1.0", MdkProduct.Version);
     }
+
+    [Fact]
+    public void ReleaseTag_matches_github_actions_v_prefix()
+    {
+        Assert.Equal("v" + MdkProduct.Version, MdkProduct.ReleaseTag);
+        Assert.Matches(@"^v\d+\.\d+\.\d+", MdkProduct.ReleaseTag);
+        Assert.StartsWith("https://github.com/mdkoss/mdkoss/releases", MdkProduct.GitHubReleasesUrl);
+    }
 }

@@ -143,4 +143,49 @@
       SkipUnchangedFiles="true"
       Condition="'@(_MysqlDepsJson)' != ''" />
   </Target>
+
+  <!-- Build copies plugins into OutputPath only; Publish must copy them into PublishDir
+       or GitHub release zips ship hosts without Drivers.*/Extensions.* plugins. -->
+  <Target Name="CopyMdkPluginsToPublishDir"
+          AfterTargets="Publish"
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(SkipMdkPlugins)' != 'true' AND '$(PublishDir)' != ''">
+    <PropertyGroup>
+      <_HostOutDir>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\$(OutputPath)'))</_HostOutDir>
+      <_SrcPlugins>$(_HostOutDir)plugins\</_SrcPlugins>
+      <_PubRoot>$([System.IO.Path]::GetFullPath('$(PublishDir)'))</_PubRoot>
+      <_PubPlugins>$(_PubRoot)plugins\</_PubPlugins>
+    </PropertyGroup>
+
+    <ItemGroup Condition="Exists('$(_SrcPlugins)')">
+      <_PluginPublishFiles Include="$(_SrcPlugins)**\*.*" />
+    </ItemGroup>
+
+    <MakeDir Directories="$(_PubPlugins)" Condition="'@(_PluginPublishFiles)' != ''" />
+    <Copy
+      SourceFiles="@(_PluginPublishFiles)"
+      DestinationFiles="@(_PluginPublishFiles->'$(_PubPlugins)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(_PluginPublishFiles)' != ''" />
+
+    <!-- Serial / MySQL deps must sit beside the published host exe (same as Build). -->
+    <ItemGroup Condition="Exists('$(_HostOutDir)')">
+      <_HostSidePublishDeps Include="$(_HostOutDir)System.IO.Ports.dll" />
+      <_HostSidePublishDeps Include="$(_HostOutDir)System.IO.Ports.*.dll" />
+      <_HostSidePublishDeps Include="$(_HostOutDir)MySqlConnector.dll" />
+      <_HostSidePublishDeps Include="$(_HostOutDir)MySqlConnector.*.dll" />
+      <_HostSidePublishRuntime Include="$(_HostOutDir)runtimes\win\**\*.*" />
+    </ItemGroup>
+
+    <Copy
+      SourceFiles="@(_HostSidePublishDeps)"
+      DestinationFolder="$(_PubRoot)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_HostSidePublishDeps.Identity)')" />
+
+    <Copy
+      SourceFiles="@(_HostSidePublishRuntime)"
+      DestinationFiles="@(_HostSidePublishRuntime->'$(_PubRoot)runtimes\win\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(_HostSidePublishRuntime)' != ''" />
+  </Target>
 </Project>

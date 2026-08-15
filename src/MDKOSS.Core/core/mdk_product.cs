@@ -10,6 +10,15 @@ public static class MdkProduct
     /// <summary>Semantic product version, e.g. 1.1.0.</summary>
     public static string Version { get; } = ResolveVersion();
 
+    /// <summary>
+    /// GitHub release / Actions tag for this build (<c>v</c> + <see cref="Version"/>),
+    /// matching workflow trigger <c>refs/tags/v*</c>.
+    /// </summary>
+    public static string ReleaseTag => "v" + Version;
+
+    /// <summary>Canonical releases page for this repository.</summary>
+    public const string GitHubReleasesUrl = "https://github.com/mdkoss/mdkoss/releases";
+
     private static string ResolveVersion()
     {
         var asm = typeof(MdkProduct).Assembly;
