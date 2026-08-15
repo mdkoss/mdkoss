@@ -557,10 +557,11 @@ public sealed class VioDevice : MDeviceBase
 /// <summary>Basic motion axis device abstraction.</summary>
 public sealed class AxisDevice : MDeviceBase
 {
-    public AxisDevice(string id, string name, IDriver driver, MVarStore vars, string? configType = null)
+    public AxisDevice(string id, string name, IDriver driver, MVarStore vars, string? configType = null, short axisIndex = 0)
         : base(id, name, MDeviceType.Axis, driver, vars)
     {
         ConfigType = string.IsNullOrWhiteSpace(configType) ? "axis" : configType.Trim().ToLowerInvariant();
+        AxisIndex = axisIndex;
         Vars.Set(BuildVarKey("position"), 0.0);
         Vars.Set(BuildVarKey("motionEnabled"), false);
         Vars.Set(BuildVarKey("kind"), ConfigType);
@@ -569,8 +570,14 @@ public sealed class AxisDevice : MDeviceBase
     /// <summary>Config type token (<c>axis</c> / <c>linear</c> / <c>rotary</c>) for HMI filters.</summary>
     public string ConfigType { get; }
 
-    public override DeviceSnapshot GetSnapshot() =>
-        new(Id, Name, ConfigType, State.ToString(), Driver.Name, Driver.IsConnected);
+    /// <summary>Motion-card channel used by <see cref="IDriver.TryGetAxisState"/>.</summary>
+    public short AxisIndex { get; }
+
+    public override DeviceSnapshot GetSnapshot()
+    {
+        AxisStatus? status = Driver.TryGetAxisState(AxisIndex, out var state) ? state : null;
+        return new DeviceSnapshot(Id, Name, ConfigType, State.ToString(), Driver.Name, Driver.IsConnected, AxisStatus: status);
+    }
 
     public bool MoveTo(double position)
     {
@@ -704,14 +711,20 @@ public sealed class PlatformDevice : MDeviceBase
         {
             var online = entry.Axis.LinkedDriver.IsConnected;
             allConnected &= online;
+            AxisStatus? status = online && entry.Axis.LinkedDriver.TryGetAxisState(entry.AxisIndex, out var state)
+                ? state
+                : null;
             rows.Add(new PlatformAxisSnapshot(
                 entry.AxisLetter,
                 entry.DriverId,
                 online,
                 entry.Axis.Id,
-                ToDouble(entry.Axis.ReadPublished("position")),
-                ToBool(entry.Axis.ReadPublished("motionEnabled")),
-                ToStringValue(entry.Axis.ReadPublished("error"))));
+                status?.PrfPosition ?? ToDouble(entry.Axis.ReadPublished("position")),
+                status?.ServoOn ?? ToBool(entry.Axis.ReadPublished("motionEnabled")),
+                status is { Alarm: true } ? "alarm" : ToStringValue(entry.Axis.ReadPublished("error")),
+                status,
+                status?.EncPosition,
+                status?.Velocity));
         }
 
         return new DeviceSnapshot(
@@ -841,7 +854,10 @@ public sealed record PlatformAxisSnapshot(
     string? AxisDeviceId = null,
     double? Position = null,
     bool? MotionEnabled = null,
-    string? Error = null);
+    string? Error = null,
+    AxisStatus? AxisStatus = null,
+    double? EncPosition = null,
+    double? Velocity = null);
 
 public sealed record DeviceSnapshot(
     string Id,
@@ -853,4 +869,5 @@ public sealed record DeviceSnapshot(
     IReadOnlyList<GpioIoPointSnapshot>? GpioIoPoints = null,
     IReadOnlyList<PlatformAxisSnapshot>? PlatformAxes = null,
     SerialPortSnapshot? SerialPortInfo = null,
-    TcpConnectionSnapshot? TcpConnectionInfo = null);
+    TcpConnectionSnapshot? TcpConnectionInfo = null,
+    AxisStatus? AxisStatus = null);

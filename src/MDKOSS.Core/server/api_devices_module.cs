@@ -117,6 +117,7 @@ public sealed class DevicesApiModule : MonitoringApiModule
             driverConnected = dev.DriverConnected,
             gpioIoPoints = dev.GpioIoPoints,
             platformAxes = dev.PlatformAxes,
+            axisStatus = dev.AxisStatus,
             serialPortInfo = dev.SerialPortInfo != null ? new
             {
                 isOpen = dev.SerialPortInfo.IsOpen,

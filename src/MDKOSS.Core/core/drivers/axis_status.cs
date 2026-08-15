@@ -143,30 +143,39 @@ public readonly record struct AxisStatus
         };
     }
 
+    /// <summary>UI lamp definitions (code, title, reader, fault-when-on).</summary>
+    public static readonly AxisStatusLamp[] Lamps =
+    [
+        new("ALM", "驱动器报警", static s => s.Alarm, Fault: true),
+        new("FE", "跟随误差越限", static s => s.FollowError, Fault: true),
+        new("PLL", "正限位电平", static s => s.PositiveLimitLevel, Fault: false),
+        new("EL+", "正限位", static s => s.PositiveLimit, Fault: true),
+        new("EL-", "负限位", static s => s.NegativeLimit, Fault: true),
+        new("SSTP", "平滑停止", static s => s.SmoothStop, Fault: false),
+        new("ESTP", "急停", static s => s.AbruptStop, Fault: true),
+        new("SVON", "伺服使能", static s => s.ServoOn, Fault: false),
+        new("MOVE", "规划运动", static s => s.Moving, Fault: false),
+        new("INP", "电机到位", static s => s.InPosition, Fault: false),
+        new("ORG", "原点", static s => s.Home, Fault: false),
+    ];
+
     public string FormatFlags()
     {
         Span<char> buffer = stackalloc char[64];
         var n = 0;
-        Append(ref n, buffer, Alarm, "ALM");
-        Append(ref n, buffer, FollowError, "FE");
-        Append(ref n, buffer, PositiveLimit, "EL+");
-        Append(ref n, buffer, NegativeLimit, "EL-");
-        Append(ref n, buffer, SmoothStop, "SSTP");
-        Append(ref n, buffer, AbruptStop, "ESTP");
-        Append(ref n, buffer, ServoOn, "SVON");
-        Append(ref n, buffer, Moving, "MOVE");
-        Append(ref n, buffer, InPosition, "INP");
-        Append(ref n, buffer, Home, "ORG");
+        foreach (var lamp in Lamps)
+        {
+            if (lamp.Read(this))
+            {
+                Append(ref n, buffer, lamp.Code);
+            }
+        }
+
         return n == 0 ? "-" : new string(buffer[..n]);
     }
 
-    private static void Append(ref int n, Span<char> buffer, bool on, string token)
+    private static void Append(ref int n, Span<char> buffer, string token)
     {
-        if (!on)
-        {
-            return;
-        }
-
         if (n > 0)
         {
             buffer[n++] = ' ';
@@ -176,3 +185,10 @@ public readonly record struct AxisStatus
         n += token.Length;
     }
 }
+
+/// <summary>One decoded axis-status lamp for debug / monitor UI.</summary>
+public readonly record struct AxisStatusLamp(
+    string Code,
+    string Title,
+    Func<AxisStatus, bool> Read,
+    bool Fault);

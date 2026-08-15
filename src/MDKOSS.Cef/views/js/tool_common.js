@@ -33,6 +33,55 @@
     return PLATFORM_TYPES.has(String(t || "").toLowerCase());
   }
 
+  const AXIS_FLAGS = [
+    { key: "alarm", code: "ALM", title: "驱动器报警", fault: true },
+    { key: "followError", code: "FE", title: "跟随误差越限", fault: true },
+    { key: "positiveLimitLevel", code: "PLL", title: "正限位电平", fault: false },
+    { key: "positiveLimit", code: "EL+", title: "正限位", fault: true },
+    { key: "negativeLimit", code: "EL-", title: "负限位", fault: true },
+    { key: "smoothStop", code: "SSTP", title: "平滑停止", fault: false },
+    { key: "abruptStop", code: "ESTP", title: "急停", fault: true },
+    { key: "servoOn", code: "SVON", title: "伺服使能", fault: false },
+    { key: "moving", code: "MOVE", title: "规划运动", fault: false },
+    { key: "inPosition", code: "INP", title: "电机到位", fault: false },
+    { key: "home", code: "ORG", title: "原点", fault: false },
+  ];
+
+  function pick(obj, camel, pascal) {
+    if (!obj) return undefined;
+    if (obj[camel] !== undefined && obj[camel] !== null) return obj[camel];
+    if (obj[pascal] !== undefined && obj[pascal] !== null) return obj[pascal];
+    return undefined;
+  }
+
+  function axisStatusOf(obj) {
+    return pick(obj, "axisStatus", "AxisStatus") || null;
+  }
+
+  function flagOn(status, key) {
+    if (!status) return false;
+    const pascal = key.charAt(0).toUpperCase() + key.slice(1);
+    return !!(status[key] ?? status[pascal]);
+  }
+
+  function renderAxisFlags(status) {
+    if (!status) {
+      return AXIS_FLAGS.map((f) => `<span class="flag" title="${esc(f.title)}">${esc(f.code)}</span>`).join("");
+    }
+    return AXIS_FLAGS.map((f) => {
+      const on = flagOn(status, f.key);
+      const cls = on ? (f.fault ? "flag fault" : "flag on") : "flag";
+      return `<span class="${cls}" title="${esc(f.title)}">${esc(f.code)}</span>`;
+    }).join("");
+  }
+
+  function fmtAxisNum(n, digits) {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return "—";
+    const d = digits == null ? (Math.abs(v) >= 100 ? 2 : 3) : digits;
+    return v.toFixed(d);
+  }
+
   async function fetchJson(url, options) {
     const res = await fetch(url, Object.assign({ cache: "no-store" }, options || {}));
     const data = await res.json().catch(() => ({}));
@@ -111,6 +160,10 @@
     qs,
     isAxisType,
     isPlatformType,
+    axisStatusOf,
+    renderAxisFlags,
+    flagOn,
+    fmtAxisNum,
     fetchJson,
     postJson,
     patchJson,

@@ -204,10 +204,11 @@ public partial class AxisDebugWindow : Window
             if (drv.TryGetAxisState(axis, out var state))
             {
                 StEnabled.Text = state.ServoOn ? "ON" : "OFF";
-                StStatus.Text = $"0x{state.Raw:X8} {state.FormatFlags()}";
+                StStatus.Text = $"0x{state.Raw:X8}";
                 StPrfPos.Text = state.PrfPosition.ToString("G6", CultureInfo.InvariantCulture);
                 StEncPos.Text = state.EncPosition.ToString("G6", CultureInfo.InvariantCulture);
                 StVel.Text = state.Velocity.ToString("G6", CultureInfo.InvariantCulture);
+                AxisStatusLamps.Render(FlagPanel, state);
             }
             else
             {
@@ -216,6 +217,7 @@ public partial class AxisDebugWindow : Window
                 StPrfPos.Text = drv.TryGetAxisPrfPosition(axis, out var prf) ? prf.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
                 StEncPos.Text = drv.TryGetAxisEncPosition(axis, out var enc) ? enc.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
                 StVel.Text = drv.TryGetAxisVelocity(axis, out var vel) ? vel.ToString("G6", CultureInfo.InvariantCulture) : "N/A";
+                AxisStatusLamps.Render(FlagPanel, null);
             }
             if (log)
             {

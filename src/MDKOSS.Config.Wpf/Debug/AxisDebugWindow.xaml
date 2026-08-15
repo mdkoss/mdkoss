@@ -71,6 +71,8 @@
               <Button Content="停止" Click="Stop_Click"/>
             </StackPanel>
           </UniformGrid>
+          <TextBlock Text="轴状态位" Foreground="{StaticResource MutedBrush}" Margin="0,8,0,4"/>
+          <WrapPanel x:Name="FlagPanel"/>
         </StackPanel>
       </Border>
 

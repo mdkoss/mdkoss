@@ -45,9 +45,17 @@
 
     <div class="grid">
       <div class="card span-3"><div class="label">位置 <span class="hint" id="unitHint">mm</span></div><div class="value mono" id="vPos">—</div></div>
+      <div class="card span-3"><div class="label">编码器</div><div class="value mono" id="vEnc">—</div></div>
+      <div class="card span-3"><div class="label">速度</div><div class="value mono" id="vVel">—</div></div>
       <div class="card span-3"><div class="label">使能</div><div class="value" id="vEnabled">—</div></div>
       <div class="card span-3"><div class="label">点动指令</div><div class="value mono" id="vJog">—</div></div>
       <div class="card span-3"><div class="label">状态</div><div class="value" id="vState">—</div></div>
+      <div class="card span-3"><div class="label">Status Word</div><div class="value mono" id="vRaw">—</div></div>
+      <div class="card span-3"><div class="label">运动 / 到位</div><div class="value" id="vMoveInpos">—</div></div>
+      <div class="card span-12">
+        <div class="label">轴状态位</div>
+        <div class="flag-row" id="flagRow"></div>
+      </div>
     </div>
 
     <div class="main-layout" style="margin-top:10px">
@@ -137,7 +145,7 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson, postJson, toast, logLine, isAxisType } = MdkTool;
+    const { esc, field, qs, fetchJson, postJson, toast, logLine, isAxisType, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum } = MdkTool;
     const STEP_PRESETS = { continuous: 1, long: 10, medium: 1, short: 0.1 };
     const sel = document.getElementById("selAxis");
     const logBox = document.getElementById("logBox");
@@ -371,9 +379,14 @@
       if (!d) {
         document.getElementById("hdrSubtitle").textContent = "请选择轴设备";
         document.getElementById("vPos").textContent = "—";
+        document.getElementById("vEnc").textContent = "—";
+        document.getElementById("vVel").textContent = "—";
         document.getElementById("vEnabled").innerHTML = "—";
         document.getElementById("vJog").textContent = "—";
         document.getElementById("vState").textContent = "—";
+        document.getElementById("vRaw").textContent = "—";
+        document.getElementById("vMoveInpos").innerHTML = "—";
+        document.getElementById("flagRow").innerHTML = renderAxisFlags(null);
         document.getElementById("badgeKind").textContent = "—";
         document.getElementById("badgeDriver").textContent = "—";
         document.getElementById("badgeOnline").innerHTML = "—";
@@ -391,8 +404,11 @@
       const type = field(d, "type", "Type") || "—";
       const kind = param(cfg, "kind", type);
       const unit = unitOf(id, d);
-      const pos = numVar(id, "position");
-      const enabled = boolVar(id, "motionEnabled");
+      const axisSt = axisStatusOf(d);
+      const pos = Number.isFinite(Number(axisSt?.prfPosition ?? axisSt?.PrfPosition))
+        ? Number(axisSt.prfPosition ?? axisSt.PrfPosition)
+        : numVar(id, "position");
+      const enabled = axisSt ? flagOn(axisSt, "servoOn") : boolVar(id, "motionEnabled");
       const jog = numVar(id, "jogCommand");
       const online = field(d, "driverConnected", "DriverConnected") === true;
       const st = String(field(d, "state", "State") || "—");
@@ -401,9 +417,17 @@
       document.getElementById("hdrSubtitle").textContent = `${name} · ${id}`;
       document.getElementById("unitHint").textContent = unit;
       document.getElementById("vPos").textContent = fmtNum(pos);
+      document.getElementById("vEnc").textContent = axisSt ? fmtAxisNum(axisSt.encPosition ?? axisSt.EncPosition) : "—";
+      document.getElementById("vVel").textContent = axisSt ? fmtAxisNum(axisSt.velocity ?? axisSt.Velocity) : "—";
       document.getElementById("vEnabled").innerHTML = pill(enabled, "ON", "OFF");
       document.getElementById("vJog").textContent = Number.isFinite(jog) ? fmtNum(jog) : "—";
       document.getElementById("vState").textContent = st;
+      const raw = axisSt ? (axisSt.raw ?? axisSt.Raw) : null;
+      document.getElementById("vRaw").textContent = raw == null ? "—" : "0x" + Number(raw).toString(16).toUpperCase().padStart(8, "0");
+      document.getElementById("vMoveInpos").innerHTML = axisSt
+        ? `${pill(flagOn(axisSt, "moving"), "MOVE", "IDLE")} ${pill(flagOn(axisSt, "inPosition"), "INP", "—")}`
+        : "—";
+      document.getElementById("flagRow").innerHTML = renderAxisFlags(axisSt);
       document.getElementById("badgeKind").textContent = kind;
       document.getElementById("badgeDriver").textContent = String(field(d, "driverType", "DriverType") || "—");
       document.getElementById("badgeOnline").innerHTML = pill(online, "在线", "离线");

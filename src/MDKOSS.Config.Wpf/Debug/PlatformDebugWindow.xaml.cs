@@ -16,6 +16,11 @@ public sealed class PlatformAxisRow
     public string DriverId { get; set; } = "";
     public string Online { get; set; } = "-";
     public string Enabled { get; set; } = "-";
+    public string Alarm { get; set; } = "-";
+    public string Moving { get; set; } = "-";
+    public string InPos { get; set; } = "-";
+    public string Home { get; set; } = "-";
+    public string Flags { get; set; } = "-";
     public string PrfPos { get; set; } = "-";
     public string EncPos { get; set; } = "-";
     public string Velocity { get; set; } = "-";
@@ -152,7 +157,11 @@ public partial class PlatformDebugWindow : Window
 
     private PlatformAxisRow? SelectedRow() => AxisGrid.SelectedItem as PlatformAxisRow;
 
-    private void AxisGrid_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateActiveAxisLabel();
+    private void AxisGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        UpdateActiveAxisLabel();
+        RenderSelectedFlags();
+    }
 
     private void UpdateActiveAxisLabel()
     {
@@ -160,6 +169,32 @@ public partial class PlatformDebugWindow : Window
         ActiveAxisLabel.Text = row is null
             ? "选中轴: —"
             : $"选中轴: {row.Letter} (index={row.AxisIndex}, driver={row.DriverId})";
+    }
+
+    private void RenderSelectedFlags()
+    {
+        if (FlagPanel is null)
+        {
+            return;
+        }
+
+        var row = SelectedRow();
+        if (row is null || !_connected)
+        {
+            AxisStatusLamps.Render(FlagPanel, null);
+            return;
+        }
+
+        var axis = _axes.FirstOrDefault(a => a.Letter == row.Letter);
+        if (axis.Letter is null
+            || !_bag.Drivers.TryGetValue(axis.DriverId, out var conn)
+            || !conn.Driver.TryGetAxisState(axis.Index, out var state))
+        {
+            AxisStatusLamps.Render(FlagPanel, null);
+            return;
+        }
+
+        AxisStatusLamps.Render(FlagPanel, state);
     }
 
     private (string Letter, short Index, string DriverId) RequireAxis()
@@ -285,16 +320,34 @@ public partial class PlatformDebugWindow : Window
 
                 var drv = conn.Driver;
                 row.Online = drv.IsConnected ? "Y" : "N";
-                row.Enabled = drv.IsAxisEnabled(axis.Index) ? "ON" : "OFF";
-                row.PrfPos = drv.TryGetAxisPrfPosition(axis.Index, out var prf)
-                    ? prf.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
-                row.EncPos = drv.TryGetAxisEncPosition(axis.Index, out var enc)
-                    ? enc.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
-                row.Velocity = drv.TryGetAxisVelocity(axis.Index, out var vel)
-                    ? vel.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
+                if (drv.TryGetAxisState(axis.Index, out var state))
+                {
+                    row.Enabled = state.ServoOn ? "ON" : "OFF";
+                    row.Alarm = state.Alarm ? "Y" : "N";
+                    row.Moving = state.Moving ? "Y" : "N";
+                    row.InPos = state.InPosition ? "Y" : "N";
+                    row.Home = state.Home ? "Y" : "N";
+                    row.Flags = state.FormatFlags();
+                    row.PrfPos = state.PrfPosition.ToString("G5", CultureInfo.InvariantCulture);
+                    row.EncPos = state.EncPosition.ToString("G5", CultureInfo.InvariantCulture);
+                    row.Velocity = state.Velocity.ToString("G5", CultureInfo.InvariantCulture);
+                }
+                else
+                {
+                    row.Enabled = drv.IsAxisEnabled(axis.Index) ? "ON" : "OFF";
+                    row.Alarm = row.Moving = row.InPos = row.Home = "-";
+                    row.Flags = "-";
+                    row.PrfPos = drv.TryGetAxisPrfPosition(axis.Index, out var prf)
+                        ? prf.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
+                    row.EncPos = drv.TryGetAxisEncPosition(axis.Index, out var enc)
+                        ? enc.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
+                    row.Velocity = drv.TryGetAxisVelocity(axis.Index, out var vel)
+                        ? vel.ToString("G5", CultureInfo.InvariantCulture) : "N/A";
+                }
             }
 
             AxisGrid.Items.Refresh();
+            RenderSelectedFlags();
             if (log)
             {
                 DebugUi.Log(LogBox, "状态已刷新");

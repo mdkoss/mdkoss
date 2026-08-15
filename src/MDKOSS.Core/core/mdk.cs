@@ -538,7 +538,13 @@ public sealed class MdkRuntime : IDisposable
                     device = deviceType switch
                     {
                         _ when AxisDeviceParameterSet.IsAxisFamilyType(deviceType) =>
-                            new AxisDevice(config.Id, deviceName, driver, Vars, deviceType),
+                            new AxisDevice(
+                                config.Id,
+                                deviceName,
+                                driver,
+                                Vars,
+                                deviceType,
+                                AxisDeviceParameterSet.ParseAxisIndex(config.Parameters)),
                         "cameradev" => new CameraDevDevice(config.Id, deviceName, driver, Vars),
                         _ => throw new MdkException(MdkErrorCode.UnsupportedDeviceType, $"Unsupported device type: {config.Type}")
                     };
@@ -642,7 +648,7 @@ public sealed class MdkRuntime : IDisposable
                 config.Parameters, letter, ordinal);
             var axisId = $"{config.Id}.{letter}";
             var axisName = $"{deviceName} {letter}";
-            var axisDevice = new AxisDevice(axisId, axisName, axisDriver, Vars);
+            var axisDevice = new AxisDevice(axisId, axisName, axisDriver, Vars, axisIndex: axisIndexFromDriver);
             axisRefs.Add(new PlatformAxisRef(letter, resolvedDriverId, axisDevice, axisIndexFromDriver));
             ordinal++;
         }

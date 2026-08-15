@@ -49,9 +49,14 @@
               <DataGridTextColumn Header="DriverId" Binding="{Binding DriverId}" Width="*"/>
               <DataGridTextColumn Header="在线" Binding="{Binding Online}" Width="50"/>
               <DataGridTextColumn Header="使能" Binding="{Binding Enabled}" Width="50"/>
-              <DataGridTextColumn Header="指令位" Binding="{Binding PrfPos}" Width="80"/>
-              <DataGridTextColumn Header="编码位" Binding="{Binding EncPos}" Width="80"/>
-              <DataGridTextColumn Header="速度" Binding="{Binding Velocity}" Width="70"/>
+              <DataGridTextColumn Header="报警" Binding="{Binding Alarm}" Width="44"/>
+              <DataGridTextColumn Header="运动" Binding="{Binding Moving}" Width="44"/>
+              <DataGridTextColumn Header="到位" Binding="{Binding InPos}" Width="44"/>
+              <DataGridTextColumn Header="原点" Binding="{Binding Home}" Width="44"/>
+              <DataGridTextColumn Header="指令位" Binding="{Binding PrfPos}" Width="70"/>
+              <DataGridTextColumn Header="编码位" Binding="{Binding EncPos}" Width="70"/>
+              <DataGridTextColumn Header="速度" Binding="{Binding Velocity}" Width="60"/>
+              <DataGridTextColumn Header="状态位" Binding="{Binding Flags}" Width="*"/>
             </DataGrid.Columns>
           </DataGrid>
         </DockPanel>
@@ -62,7 +67,8 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
             <TextBlock Text="当前轴操作" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,8"/>
-            <TextBlock x:Name="ActiveAxisLabel" Text="选中轴: —" Margin="0,0,0,8"/>
+            <TextBlock x:Name="ActiveAxisLabel" Text="选中轴: —" Margin="0,0,0,6"/>
+            <WrapPanel x:Name="FlagPanel" Margin="0,0,0,8"/>
             <Grid Margin="0,0,0,8">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="80"/>
