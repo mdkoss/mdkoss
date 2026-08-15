@@ -112,6 +112,7 @@ public sealed class DieBonderApiModule : MonitoringApiModule
         {
             success = true,
             projectName = snapshot.ProjectName,
+            version = snapshot.Version,
             isRunning = snapshot.IsRunning,
             phase = Phase(),
             message = Message(),

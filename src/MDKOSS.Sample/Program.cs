@@ -40,7 +40,7 @@ internal static class Program
 
     private static void RunCefDesktop(string settingPath)
     {
-        var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+        var version = MdkProduct.Version;
         AppLog.Info($"MDKOSS.Sample (Die Bonder) starting (version: {version})================================================");
 
         ApplicationConfiguration.Initialize();

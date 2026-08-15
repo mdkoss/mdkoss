@@ -20,6 +20,7 @@
   <div class="popup-page">
     <div class="standalone-title" style="font-weight:700;margin-bottom:10px">关于 MDKOSS</div>
     <div class="row"><span>项目</span><span id="aboutProject">—</span></div>
+    <div class="row"><span>版本</span><span id="aboutVersion">—</span></div>
     <div class="row"><span>运行时</span><span id="aboutRuntime">—</span></div>
 
     <div class="sec">监控 monitor_*</div>
@@ -70,6 +71,7 @@
       try{
         const data = await (await fetch("/api/status",{cache:"no-store"})).json();
         document.getElementById("aboutProject").textContent = data.projectName || data.ProjectName || "—";
+        document.getElementById("aboutVersion").textContent = data.version || data.Version || "—";
         document.getElementById("aboutRuntime").textContent = (data.isRunning || data.IsRunning) ? "RUNNING" : "STOPPED";
       }catch{
         document.getElementById("aboutRuntime").textContent = "离线";

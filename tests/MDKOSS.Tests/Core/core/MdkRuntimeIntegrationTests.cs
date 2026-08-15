@@ -62,6 +62,8 @@ public sealed class MdkRuntimeIntegrationTests
         rt.Initialize();
         var snap = rt.GetSnapshot();
         Assert.Equal("unit-test", snap.ProjectName);
+        Assert.False(string.IsNullOrWhiteSpace(snap.Version));
+        Assert.Equal(MdkProduct.Version, snap.Version);
         Assert.False(snap.IsRunning);
         Assert.True(snap.Drivers.ContainsKey("d1"));
         Assert.True(snap.Devices.ContainsKey("g1"));

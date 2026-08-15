@@ -117,6 +117,7 @@ public sealed class FlowTaskLifecycleTests
                 vars,
                 () => new RuntimeSnapshot(
                     loaded.ProjectName,
+                    MdkProduct.Version,
                     false,
                     new Dictionary<string, DriverSnapshot>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, DeviceSnapshot>(StringComparer.OrdinalIgnoreCase),

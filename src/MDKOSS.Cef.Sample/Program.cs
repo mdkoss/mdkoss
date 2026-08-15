@@ -27,7 +27,7 @@ internal static class Program
 
     private static void RunCefDesktop(string settingPath)
     {
-        var version = typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown";
+        var version = MdkProduct.Version;
         AppLog.Info($"MDKOSS.Cef.Sample starting (version: {version})");
 
         ApplicationConfiguration.Initialize();

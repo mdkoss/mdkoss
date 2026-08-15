@@ -45,6 +45,7 @@ public sealed class TaskCycleTask : MTaskBase
         var taskStopped = tasks.Count(t => t.State == MTaskState.Stopped);
 
         _vars.Set("task.cycle.runtime.projectName", snapshot.ProjectName);
+        _vars.Set("task.cycle.runtime.version", snapshot.Version);
         _vars.Set("task.cycle.runtime.isRunning", snapshot.IsRunning);
 
         _vars.Set("task.cycle.io.total", ioTotal);

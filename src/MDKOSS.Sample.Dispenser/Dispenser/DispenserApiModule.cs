@@ -103,6 +103,7 @@ public sealed class DispenserApiModule : MonitoringApiModule
         {
             success = true,
             projectName = snapshot.ProjectName,
+            version = snapshot.Version,
             isRunning = snapshot.IsRunning,
             phase = Pick("task.dispense.phase"),
             message = Pick("task.dispense.message"),

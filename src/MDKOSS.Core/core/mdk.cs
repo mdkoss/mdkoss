@@ -81,7 +81,7 @@ public sealed class MdkRuntime : IDisposable
         BootstrapDevices();
         BootstrapTasks();
 
-        AppLog.Info($"MdkRuntime initialized (project: {Setting.ProjectName}).");
+        AppLog.Info($"MdkRuntime initialized (project: {Setting.ProjectName}, version: {MdkProduct.Version}).");
     }
 
     /// <summary>
@@ -1154,6 +1154,7 @@ public sealed class MdkRuntime : IDisposable
     {
         return new RuntimeSnapshot(
             Setting.ProjectName,
+            MdkProduct.Version,
             IsRunning,
             _drivers.ToDictionary(
                 kv => kv.Key,
@@ -1252,6 +1253,7 @@ public sealed record DriverSnapshot(string Type, bool IsConnected);
 
 public sealed record RuntimeSnapshot(
     string ProjectName,
+    string Version,
     bool IsRunning,
     IReadOnlyDictionary<string, DriverSnapshot> Drivers,
     IReadOnlyDictionary<string, DeviceSnapshot> Devices,
