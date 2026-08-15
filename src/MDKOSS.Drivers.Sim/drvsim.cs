@@ -7,7 +7,8 @@ namespace MDKOSS.Core.Drivers;
 /// Software simulation driver for controller development and testing.
 /// Simulates motion-control operations in memory without hardware.
 /// Digital <c>bit.{n}</c> numbering follows parameter <c>ioBitBase</c> (default 0).
-/// Axis trap/jog/home advance on an internal <see cref="MotionTickMs"/> timer.
+/// Axis trap/jog/home and multi-axis line/arc interpolation advance on an internal
+/// <see cref="MotionTickMs"/> timer.
 /// </summary>
 public sealed class DrvSim : IDriver
 {
@@ -15,6 +16,8 @@ public sealed class DrvSim : IDriver
     private readonly ConcurrentDictionary<short, int> _di = new();
     private readonly ConcurrentDictionary<short, int> _do = new();
     private readonly ConcurrentDictionary<short, SimAxisState> _axes = new();
+    private readonly object _interpGate = new();
+    private SimInterp? _interp;
     private Timer? _motionTimer;
     private int _disposed;
     private short _ioBitBase;
@@ -177,6 +180,7 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        CancelInterpContaining(axis);
         var state = Axis(axis);
         lock (state.Gate)
         {
@@ -304,6 +308,7 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        CancelInterpContaining(axis);
         var state = Axis(axis);
         lock (state.Gate)
         {
@@ -382,6 +387,7 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        CancelInterpContaining(axis);
         var state = Axis(axis);
         lock (state.Gate)
         {
@@ -412,6 +418,7 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        CancelInterpContaining(axis);
         var state = Axis(axis);
         lock (state.Gate)
         {
@@ -442,6 +449,7 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        CancelInterpContaining(axis);
         var state = Axis(axis);
         lock (state.Gate)
         {
@@ -477,6 +485,21 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        lock (_interpGate)
+        {
+            if (_interp != null && DriverInterp.OverlapsMask(_interp.Axes, axisMask))
+            {
+                if (option != 0)
+                {
+                    HaltInterpUnlocked();
+                }
+                else
+                {
+                    _interp.Stopping = true;
+                }
+            }
+        }
+
         foreach (var kvp in _axes)
         {
             if (kvp.Key is < 0 or > 30 || (axisMask & (1 << kvp.Key)) == 0)
@@ -486,6 +509,11 @@ public sealed class DrvSim : IDriver
 
             lock (kvp.Value.Gate)
             {
+                if (kvp.Value.Mode == SimMotionMode.Interp)
+                {
+                    continue;
+                }
+
                 if (option != 0)
                 {
                     Halt(kvp.Value);
@@ -504,6 +532,74 @@ public sealed class DrvSim : IDriver
         return true;
     }
 
+    public bool MoveLine(short[] axes, double[] targets, double velocity, double acceleration, double deceleration, short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected || !DriverInterp.TryValidateLine(axes, targets, velocity, acceleration, deceleration, out error))
+        {
+            _memory["driver.lastCode"] = -1;
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        return StartInterp(axes, targets, velocity, acceleration, deceleration, arc: null);
+    }
+
+    public bool MoveArc(
+        short[] axes,
+        double[] targets,
+        double[] center,
+        bool clockwise,
+        double velocity,
+        double acceleration,
+        double deceleration,
+        short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected
+            || !DriverInterp.TryValidateArc(axes, targets, center, velocity, acceleration, deceleration, out error))
+        {
+            _memory["driver.lastCode"] = -1;
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        return StartInterp(axes, targets, velocity, acceleration, deceleration, new SimArcRequest(center[0], center[1], clockwise));
+    }
+
+    public bool TryGetInterpState(out bool moving, out double progress)
+    {
+        moving = false;
+        progress = 0;
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        lock (_interpGate)
+        {
+            if (_interp == null)
+            {
+                return true;
+            }
+
+            moving = true;
+            progress = _interp.PathLength <= 1e-12
+                ? 1
+                : Math.Clamp(_interp.PathPos / _interp.PathLength, 0, 1);
+        }
+
+        return true;
+    }
+
     // ──────────────────────────────────────────────
     //  IDisposable
     // ──────────────────────────────────────────────
@@ -516,6 +612,11 @@ public sealed class DrvSim : IDriver
         }
 
         IsConnected = false;
+        lock (_interpGate)
+        {
+            _interp = null;
+        }
+
         var timer = _motionTimer;
         _motionTimer = null;
         timer?.Dispose();
@@ -757,10 +858,16 @@ public sealed class DrvSim : IDriver
         }
 
         var dt = MotionTickMs / 1000.0;
+        TickInterp(dt);
         foreach (var kv in _axes)
         {
             lock (kv.Value.Gate)
             {
+                if (kv.Value.Mode == SimMotionMode.Interp)
+                {
+                    continue;
+                }
+
                 TickAxis(kv.Value, dt);
             }
         }
@@ -771,6 +878,11 @@ public sealed class DrvSim : IDriver
         if (!state.Enabled)
         {
             Halt(state);
+            return;
+        }
+
+        if (state.Mode == SimMotionMode.Interp)
+        {
             return;
         }
 
@@ -947,6 +1059,249 @@ public sealed class DrvSim : IDriver
         return false;
     }
 
+    private bool StartInterp(
+        short[] axes,
+        double[] targets,
+        double velocity,
+        double acceleration,
+        double deceleration,
+        SimArcRequest? arc)
+    {
+        var axisCopy = (short[])axes.Clone();
+        var end = (double[])targets.Clone();
+        var start = new double[axisCopy.Length];
+        var states = new SimAxisState[axisCopy.Length];
+        for (var i = 0; i < axisCopy.Length; i++)
+        {
+            states[i] = Axis(axisCopy[i]);
+        }
+
+        lock (_interpGate)
+        {
+            HaltInterpUnlocked();
+
+            for (var i = 0; i < states.Length; i++)
+            {
+                lock (states[i].Gate)
+                {
+                    if (!states[i].Enabled)
+                    {
+                        _memory["driver.lastCode"] = -1;
+                        _memory["interp.error"] = $"Axis {axisCopy[i]} is not enabled.";
+                        return false;
+                    }
+
+                    start[i] = states[i].PrfPosition;
+                }
+            }
+
+            SimInterp interp;
+            if (arc is { } req)
+            {
+                if (!DriverInterp.TryComputeArc(
+                        start[0], start[1], end[0], end[1], req.Cx, req.Cy, req.Clockwise,
+                        out var radius, out var startAngle, out var sweep, out var arcError))
+                {
+                    _memory["driver.lastCode"] = -1;
+                    _memory["interp.error"] = arcError;
+                    return false;
+                }
+
+                var extra = 0.0;
+                for (var i = 2; i < start.Length; i++)
+                {
+                    var d = end[i] - start[i];
+                    extra += d * d;
+                }
+
+                var arcLen = Math.Abs(sweep) * radius;
+                var extraLen = Math.Sqrt(extra);
+                var pathLength = Math.Sqrt((arcLen * arcLen) + (extraLen * extraLen));
+                interp = new SimInterp
+                {
+                    Axes = axisCopy,
+                    Start = start,
+                    End = end,
+                    IsArc = true,
+                    Cx = req.Cx,
+                    Cy = req.Cy,
+                    Radius = radius,
+                    StartAngle = startAngle,
+                    Sweep = sweep,
+                    PathLength = pathLength,
+                    Vel = velocity,
+                    Acc = acceleration,
+                    Dec = deceleration,
+                };
+            }
+            else
+            {
+                interp = new SimInterp
+                {
+                    Axes = axisCopy,
+                    Start = start,
+                    End = end,
+                    PathLength = DriverInterp.Distance(start, end),
+                    Vel = velocity,
+                    Acc = acceleration,
+                    Dec = deceleration,
+                };
+            }
+
+            if (interp.PathLength <= 1e-9)
+            {
+                SnapInterpUnlocked(interp);
+                _memory["driver.lastCode"] = 0;
+                return true;
+            }
+
+            _interp = interp;
+            ApplyInterpPositions(interp, 0, 0, moving: true);
+            _memory["interp.kind"] = interp.IsArc ? "arc" : "line";
+            _memory["interp.pathLength"] = interp.PathLength;
+            _memory["driver.lastCode"] = 0;
+            return true;
+        }
+    }
+
+    private void TickInterp(double dt)
+    {
+        lock (_interpGate)
+        {
+            var interp = _interp;
+            if (interp == null)
+            {
+                return;
+            }
+
+            var remaining = interp.PathLength - interp.PathPos;
+            if (remaining <= 1e-9 && Math.Abs(interp.PathVel) < 1e-6)
+            {
+                SnapInterpUnlocked(interp);
+                return;
+            }
+
+            var cruise = Math.Max(interp.Vel, 1e-6);
+            var dec = Math.Max(interp.Dec, 1e-6);
+            var stopDist = (interp.PathVel * interp.PathVel) / (2.0 * dec);
+            if (interp.Stopping || remaining <= stopDist)
+            {
+                interp.PathVel = ApproachVelocity(interp.PathVel, 0, interp.Acc, dec, dt);
+            }
+            else
+            {
+                interp.PathVel = ApproachVelocity(interp.PathVel, cruise, interp.Acc, dec, dt);
+            }
+
+            var step = interp.PathVel * dt;
+            if (!interp.Stopping && step >= remaining)
+            {
+                SnapInterpUnlocked(interp);
+                return;
+            }
+
+            interp.PathPos = Math.Min(interp.PathLength, interp.PathPos + step);
+            if (interp.Stopping && Math.Abs(interp.PathVel) < 1e-6)
+            {
+                ApplyInterpPositions(interp, interp.PathPos, 0, moving: false);
+                foreach (var axis in interp.Axes)
+                {
+                    var state = Axis(axis);
+                    lock (state.Gate)
+                    {
+                        Halt(state);
+                    }
+                }
+
+                _interp = null;
+                return;
+            }
+
+            ApplyInterpPositions(interp, interp.PathPos, interp.PathVel, moving: true);
+        }
+    }
+
+    private void ApplyInterpPositions(SimInterp interp, double pathPos, double pathVel, bool moving)
+    {
+        var u = interp.PathLength <= 1e-12 ? 1.0 : pathPos / interp.PathLength;
+        for (var i = 0; i < interp.Axes.Length; i++)
+        {
+            SampleInterp(interp, i, u, pathVel, out var pos, out var vel);
+            var state = Axis(interp.Axes[i]);
+            lock (state.Gate)
+            {
+                state.Mode = moving ? SimMotionMode.Interp : SimMotionMode.Idle;
+                state.PrfPosition = pos;
+                state.EncPosition = pos;
+                state.CurrentVelocity = vel;
+                state.Moving = moving;
+            }
+        }
+    }
+
+    private static void SampleInterp(SimInterp interp, int index, double u, double pathVel, out double pos, out double vel)
+    {
+        if (interp.IsArc && index < 2)
+        {
+            var ang = interp.StartAngle + (interp.Sweep * u);
+            var omega = interp.PathLength <= 1e-12 ? 0 : (interp.Sweep / interp.PathLength) * pathVel;
+            if (index == 0)
+            {
+                pos = interp.Cx + (interp.Radius * Math.Cos(ang));
+                vel = -interp.Radius * Math.Sin(ang) * omega;
+            }
+            else
+            {
+                pos = interp.Cy + (interp.Radius * Math.Sin(ang));
+                vel = interp.Radius * Math.Cos(ang) * omega;
+            }
+
+            return;
+        }
+
+        var delta = interp.End[index] - interp.Start[index];
+        pos = interp.Start[index] + (delta * u);
+        vel = interp.PathLength <= 1e-12 ? 0 : pathVel * (delta / interp.PathLength);
+    }
+
+    private void SnapInterpUnlocked(SimInterp interp)
+    {
+        ApplyInterpPositions(interp, interp.PathLength, 0, moving: false);
+        _interp = null;
+    }
+
+    private void CancelInterpContaining(short axis)
+    {
+        lock (_interpGate)
+        {
+            if (_interp == null || Array.IndexOf(_interp.Axes, axis) < 0)
+            {
+                return;
+            }
+
+            HaltInterpUnlocked();
+        }
+    }
+
+    private void HaltInterpUnlocked()
+    {
+        if (_interp == null)
+        {
+            return;
+        }
+
+        foreach (var axis in _interp.Axes)
+        {
+            var state = Axis(axis);
+            lock (state.Gate)
+            {
+                Halt(state);
+            }
+        }
+
+        _interp = null;
+    }
+
     private enum SimMotionMode
     {
         Idle,
@@ -954,6 +1309,29 @@ public sealed class DrvSim : IDriver
         Jog,
         Home,
         Stopping,
+        Interp,
+    }
+
+    private readonly record struct SimArcRequest(double Cx, double Cy, bool Clockwise);
+
+    private sealed class SimInterp
+    {
+        public short[] Axes = [];
+        public double[] Start = [];
+        public double[] End = [];
+        public bool IsArc;
+        public double Cx;
+        public double Cy;
+        public double Radius;
+        public double StartAngle;
+        public double Sweep;
+        public double PathLength;
+        public double PathPos;
+        public double PathVel;
+        public double Vel;
+        public double Acc;
+        public double Dec;
+        public bool Stopping;
     }
 
     /// <summary>

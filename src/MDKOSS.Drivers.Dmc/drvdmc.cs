@@ -21,8 +21,11 @@ public sealed class DrvDmc : IDriver
     private readonly ConcurrentDictionary<short, bool> _axisEnabled = new();
     private readonly ConcurrentDictionary<short, AxisMotionPrm> _motion = new();
     private ushort _cardNo;
+    private ushort _crd;
     private bool _sevonActiveLow = true;
     private bool _ownsBoard;
+    private ushort _interpCrd;
+    private short[]? _interpAxes;
 
     public string Name => "DMC";
 
@@ -31,6 +34,7 @@ public sealed class DrvDmc : IDriver
     public void Initialize(MdkSetting.DriverConfig config)
     {
         _cardNo = GetUShort(config, "card", 0);
+        _crd = GetUShort(config, "crd", 0);
         _sevonActiveLow = GetBool(config, "sevonActiveLow", true);
         var resetOnInit = GetBool(config, "resetOnInit", false);
         config.Parameters.TryGetValue("configPath", out var configPath);
@@ -38,6 +42,7 @@ public sealed class DrvDmc : IDriver
         _memory["driver.id"] = config.Id;
         _memory["driver.type"] = config.Type;
         _memory["driver.card"] = _cardNo;
+        _memory["driver.crd"] = _crd;
 
         try
         {
@@ -421,6 +426,15 @@ public sealed class DrvDmc : IDriver
 
         var stopMode = (ushort)(option != 0 ? 1 : 0);
         var ok = true;
+        if (_interpAxes != null && DriverInterp.OverlapsMask(_interpAxes, axisMask))
+        {
+            ok &= Call(() => LTDMC.dmc_stop_multicoor(_cardNo, _interpCrd, stopMode));
+            if (option != 0)
+            {
+                _interpAxes = null;
+            }
+        }
+
         for (short axis = 0; axis < 32; axis++)
         {
             if ((axisMask & (1 << axis)) == 0)
@@ -432,6 +446,109 @@ public sealed class DrvDmc : IDriver
         }
 
         return ok;
+    }
+
+    public bool MoveLine(short[] axes, double[] targets, double velocity, double acceleration, double deceleration, short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected || !DriverInterp.TryValidateLine(axes, targets, velocity, acceleration, deceleration, out error))
+        {
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        var coord = ResolveCrd(crd);
+        if (!ApplyVectorProfile(coord, velocity, acceleration, deceleration))
+        {
+            return false;
+        }
+
+        var list = ToUShortAxes(axes);
+        var pos = (double[])targets.Clone();
+        if (!Call(() => LTDMC.dmc_line_unit(_cardNo, coord, (ushort)list.Length, list, pos, posi_mode: 1)))
+        {
+            return false;
+        }
+
+        RememberInterp(coord, axes);
+        return true;
+    }
+
+    public bool MoveArc(
+        short[] axes,
+        double[] targets,
+        double[] center,
+        bool clockwise,
+        double velocity,
+        double acceleration,
+        double deceleration,
+        short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected
+            || !DriverInterp.TryValidateArc(axes, targets, center, velocity, acceleration, deceleration, out error))
+        {
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        var coord = ResolveCrd(crd);
+        if (!ApplyVectorProfile(coord, velocity, acceleration, deceleration))
+        {
+            return false;
+        }
+
+        var list = ToUShortAxes(axes);
+        var pos = (double[])targets.Clone();
+        var cen = new[] { center[0], center[1] };
+        var dir = (ushort)(clockwise ? 0 : 1);
+        if (!Call(() => LTDMC.dmc_arc_move_center_unit(
+                _cardNo, coord, (ushort)list.Length, list, pos, cen, dir, Circle: 0, posi_mode: 1)))
+        {
+            return false;
+        }
+
+        RememberInterp(coord, axes);
+        return true;
+    }
+
+    public bool TryGetInterpState(out bool moving, out double progress)
+    {
+        moving = false;
+        progress = 0;
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        if (_interpAxes == null)
+        {
+            return true;
+        }
+
+        var done = LTDMC.dmc_check_done_multicoor(_cardNo, _interpCrd);
+        _memory["driver.lastCode"] = done;
+        if (done < 0)
+        {
+            return false;
+        }
+
+        moving = done == 0;
+        progress = moving ? 0 : 1;
+        if (!moving)
+        {
+            _interpAxes = null;
+        }
+
+        return true;
     }
 
     public void Dispose()
@@ -651,6 +768,34 @@ public sealed class DrvDmc : IDriver
         var tacc = ToRampTime(vel, prm.Acc);
         var tdec = ToRampTime(vel, prm.Dec);
         return Call(() => LTDMC.dmc_set_profile(_cardNo, (ushort)axis, 0, vel, tacc, tdec, 0));
+    }
+
+    private bool ApplyVectorProfile(ushort crd, double velocity, double acceleration, double deceleration)
+    {
+        var vel = Math.Max(1e-6, Math.Abs(velocity));
+        var tacc = ToRampTime(vel, acceleration);
+        var tdec = ToRampTime(vel, deceleration);
+        return Call(() => LTDMC.dmc_set_vector_profile_unit(_cardNo, crd, 0, vel, tacc, tdec, 0));
+    }
+
+    private ushort ResolveCrd(short crd) => crd < 0 ? _crd : (ushort)crd;
+
+    private void RememberInterp(ushort crd, short[] axes)
+    {
+        _interpCrd = crd;
+        _interpAxes = (short[])axes.Clone();
+        _memory["interp.crd"] = crd;
+    }
+
+    private static ushort[] ToUShortAxes(short[] axes)
+    {
+        var list = new ushort[axes.Length];
+        for (var i = 0; i < axes.Length; i++)
+        {
+            list[i] = (ushort)axes[i];
+        }
+
+        return list;
     }
 
     private AxisMotionPrm Motion(short axis) =>

@@ -11,6 +11,8 @@
 - `Initialize(DriverConfig)` — 读取 parameters
 - 连接/在线状态
 - 数字 IO、轴等读写（按驱动能力实现）
+- 单轴 `MoveAxisTrap` / `Jog` / `Home` / `Stop`
+- 多轴插补（默认返回 false）：`MoveLine` / `MoveArc` / `TryGetInterpState`。SIM 在 10ms 定时器上模拟路径；DMC 走 `dmc_line_unit` / `dmc_arc_move_center_unit`；GTS 走坐标系 `GT_LnXY` / `GT_ArcXYC`
 - `Dispose()` — 释放 native/硬件资源
 
 ### DriverFactory

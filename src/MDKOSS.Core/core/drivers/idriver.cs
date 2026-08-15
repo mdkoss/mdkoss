@@ -134,4 +134,41 @@ public interface IDriver : IDisposable
 
     /// <summary>Stops axis(es) by bitmask.</summary>
     bool Stop(int axisMask, int option = 0);
+
+    // ──────────────────────────────────────────────
+    //  Multi-axis interpolation
+    // ──────────────────────────────────────────────
+
+    /// <summary>
+    /// Linear interpolation: all axes move together along a straight path to absolute targets.
+    /// <paramref name="crd"/> is the card coordinate system (DMC 0-based; GTS typically 1; 0 uses the driver default).
+    /// Drivers without interpolation return false.
+    /// </summary>
+    bool MoveLine(short[] axes, double[] targets, double velocity, double acceleration, double deceleration, short crd = 0)
+        => false;
+
+    /// <summary>
+    /// Circular interpolation in the plane of the first two axes (absolute center, CW/CCW).
+    /// Extra axes lerp with the path parameter (helix). Drivers without interpolation return false.
+    /// </summary>
+    bool MoveArc(
+        short[] axes,
+        double[] targets,
+        double[] center,
+        bool clockwise,
+        double velocity,
+        double acceleration,
+        double deceleration,
+        short crd = 0)
+        => false;
+
+    /// <summary>
+    /// Interpolation group state. <paramref name="progress"/> is 0..1 when the driver can estimate it.
+    /// </summary>
+    bool TryGetInterpState(out bool moving, out double progress)
+    {
+        moving = false;
+        progress = 0;
+        return false;
+    }
 }

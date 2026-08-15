@@ -13,6 +13,9 @@ public sealed class DrvGts : IDriver
     private readonly ConcurrentDictionary<short, bool> _axisEnabled = new();
     private short _cardNo = 1;
     private short _channel;
+    private short _crd = 1;
+    private short _interpCrd = 1;
+    private bool _interpArmed;
 
     public string Name => "GTS";
 
@@ -22,6 +25,11 @@ public sealed class DrvGts : IDriver
     {
         _cardNo = GetShort(config, "cardNo", 1);
         _channel = GetShort(config, "channel", 0);
+        _crd = GetShort(config, "crd", 1);
+        if (_crd <= 0)
+        {
+            _crd = 1;
+        }
         var openParam = GetShort(config, "openParam", 0);
         var resetOnInit = GetBool(config, "resetOnInit", false);
 
@@ -29,6 +37,7 @@ public sealed class DrvGts : IDriver
         _memory["driver.type"] = config.Type;
         _memory["driver.cardNo"] = _cardNo;
         _memory["driver.channel"] = _channel;
+        _memory["driver.crd"] = _crd;
 
         var rc = NativeGts.GT_Open(_cardNo, _channel, openParam);
         IsConnected = rc == 0;
@@ -395,6 +404,144 @@ public sealed class DrvGts : IDriver
         return IsConnected && Call(() => NativeGts.GT_Stop(_cardNo, axisMask, option));
     }
 
+    public bool MoveLine(short[] axes, double[] targets, double velocity, double acceleration, double deceleration, short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected || !DriverInterp.TryValidateLine(axes, targets, velocity, acceleration, deceleration, out error))
+        {
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        if (axes.Length is < 2 or > 3)
+        {
+            _memory["interp.error"] = "GTS line interpolation supports 2 or 3 axes.";
+            return false;
+        }
+
+        var coord = ResolveCrd(crd);
+        var vel = Math.Abs(velocity);
+        var acc = Math.Abs(acceleration);
+        if (!EnsureCrd(coord, axes, vel, acc)
+            || !Call(() => NativeGts.GT_CrdClear(_cardNo, coord, 0)))
+        {
+            return false;
+        }
+
+        var ok = axes.Length == 2
+            ? Call(() => NativeGts.GT_LnXY(
+                _cardNo, coord, ToPulse(targets[0]), ToPulse(targets[1]), vel, acc, 0, 0))
+            : Call(() => NativeGts.GT_LnXYZ(
+                _cardNo, coord, ToPulse(targets[0]), ToPulse(targets[1]), ToPulse(targets[2]), vel, acc, 0, 0));
+        if (!ok || !Call(() => NativeGts.GT_CrdStart(_cardNo, coord, 0)))
+        {
+            return false;
+        }
+
+        _interpCrd = coord;
+        _interpArmed = true;
+        return true;
+    }
+
+    public bool MoveArc(
+        short[] axes,
+        double[] targets,
+        double[] center,
+        bool clockwise,
+        double velocity,
+        double acceleration,
+        double deceleration,
+        short crd = 0)
+    {
+        string? error = null;
+        if (!IsConnected
+            || !DriverInterp.TryValidateArc(axes, targets, center, velocity, acceleration, deceleration, out error))
+        {
+            if (error != null)
+            {
+                _memory["interp.error"] = error;
+            }
+
+            return false;
+        }
+
+        if (axes.Length != 2)
+        {
+            _memory["interp.error"] = "GTS arc interpolation supports exactly 2 axes.";
+            return false;
+        }
+
+        if (!TryGetAxisPrfPosition(axes[0], out var x0) || !TryGetAxisPrfPosition(axes[1], out var y0))
+        {
+            return false;
+        }
+
+        var coord = ResolveCrd(crd);
+        var vel = Math.Abs(velocity);
+        var acc = Math.Abs(acceleration);
+        if (!EnsureCrd(coord, axes, vel, acc)
+            || !Call(() => NativeGts.GT_CrdClear(_cardNo, coord, 0)))
+        {
+            return false;
+        }
+
+        // GT_ArcXYC center is an offset from the start point.
+        var ok = Call(() => NativeGts.GT_ArcXYC(
+            _cardNo,
+            coord,
+            ToPulse(targets[0]),
+            ToPulse(targets[1]),
+            center[0] - x0,
+            center[1] - y0,
+            (short)(clockwise ? 0 : 1),
+            vel,
+            acc,
+            0,
+            0));
+        if (!ok || !Call(() => NativeGts.GT_CrdStart(_cardNo, coord, 0)))
+        {
+            return false;
+        }
+
+        _interpCrd = coord;
+        _interpArmed = true;
+        return true;
+    }
+
+    public bool TryGetInterpState(out bool moving, out double progress)
+    {
+        moving = false;
+        progress = 0;
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        if (!_interpArmed)
+        {
+            return true;
+        }
+
+        short run = 0;
+        if (!Call(() => NativeGts.GT_CrdStatus(_cardNo, _interpCrd, out run, out _, 0)))
+        {
+            return false;
+        }
+
+        moving = run != 0;
+        progress = moving ? 0 : 1;
+        if (!moving)
+        {
+            _interpArmed = false;
+        }
+
+        return true;
+    }
+
     // ──────────────────────────────────────────────
     //  IDisposable
     // ──────────────────────────────────────────────
@@ -560,6 +707,26 @@ public sealed class DrvGts : IDriver
         var rc = invoke();
         _memory["driver.lastCode"] = rc;
         return rc == 0;
+    }
+
+    private short ResolveCrd(short crd) => crd <= 0 ? _crd : crd;
+
+    private static int ToPulse(double value) => (int)Math.Round(value);
+
+    private bool EnsureCrd(short crd, short[] axes, double velocity, double acceleration)
+    {
+        var prm = new NativeGts.TCrdPrm
+        {
+            dimension = (short)axes.Length,
+            synVelMax = (short)Math.Clamp(Math.Abs(velocity), 1, short.MaxValue),
+            synAccMax = (short)Math.Clamp(Math.Abs(acceleration), 1, short.MaxValue),
+            evenTime = 0,
+            profile1 = axes[0],
+            profile2 = axes[1],
+            profile3 = axes.Length > 2 ? axes[2] : (short)0,
+            setOriginFlag = 0,
+        };
+        return Call(() => NativeGts.GT_SetCrdPrm(_cardNo, crd, ref prm));
     }
 
     /// <summary>
@@ -763,5 +930,60 @@ public sealed class DrvGts : IDriver
 
         [DllImport("gts.dll")]
         internal static extern short GT_Stop(short cardNum, int mask, int option);
+
+        [StructLayout(LayoutKind.Sequential)]
+        internal struct TCrdPrm
+        {
+            public short dimension;
+            public short synVelMax;
+            public short synAccMax;
+            public short evenTime;
+            public short profile1;
+            public short profile2;
+            public short profile3;
+            public short profile4;
+            public short profile5;
+            public short profile6;
+            public short profile7;
+            public short profile8;
+            public int originPos1;
+            public int originPos2;
+            public int originPos3;
+            public short setOriginFlag;
+        }
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_SetCrdPrm(short cardNum, short crd, ref TCrdPrm pCrdPrm);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_CrdClear(short cardNum, short crd, short fifo);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_LnXY(
+            short cardNum, short crd, int x, int y, double synVel, double synAcc, double velEnd, short fifo);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_LnXYZ(
+            short cardNum, short crd, int x, int y, int z, double synVel, double synAcc, double velEnd, short fifo);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_ArcXYC(
+            short cardNum,
+            short crd,
+            int x,
+            int y,
+            double xCenter,
+            double yCenter,
+            short circleDir,
+            double synVel,
+            double synAcc,
+            double velEnd,
+            short fifo);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_CrdStart(short cardNum, short crd, short fifo);
+
+        [DllImport("gts.dll")]
+        internal static extern short GT_CrdStatus(short cardNum, short crd, out short pRun, out int pSegment, short fifo);
     }
 }
