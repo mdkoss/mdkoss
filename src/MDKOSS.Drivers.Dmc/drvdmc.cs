@@ -225,7 +225,16 @@ public sealed class DrvDmc : IDriver
         return ok;
     }
 
-    public bool IsAxisEnabled(short axis) => _axisEnabled.GetOrAdd(axis, false);
+    public bool IsAxisEnabled(short axis)
+    {
+        if (TryReadSevon(axis, out var on))
+        {
+            _axisEnabled[axis] = on;
+            return on;
+        }
+
+        return _axisEnabled.GetOrAdd(axis, false);
+    }
 
     public bool TryGetAxisStatus(short axis, out int status)
     {
@@ -248,13 +257,15 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        var word = unchecked((uint)native);
-        var servoOn = IsAxisEnabled(axis);
-        var pin = LTDMC.dmc_read_sevon_pin(_cardNo, (ushort)axis);
-        if (pin >= 0)
+        var servoOn = false;
+        if (TryReadSevon(axis, out var sevon))
         {
-            servoOn = _sevonActiveLow ? pin == 0 : pin != 0;
-            _axisEnabled[axis] = servoOn;
+            servoOn = sevon;
+            _axisEnabled[axis] = sevon;
+        }
+        else
+        {
+            servoOn = _axisEnabled.GetOrAdd(axis, false);
         }
 
         var done = LTDMC.dmc_check_done(_cardNo, (ushort)axis);
@@ -264,17 +275,13 @@ public sealed class DrvDmc : IDriver
         TryGetAxisEncPosition(axis, out var enc);
         TryGetAxisVelocity(axis, out var vel);
 
-        status = AxisStatus.Create(
-            alarm: (word & DmcIoMap.AxisAlm) != 0,
-            positiveLimit: (word & DmcIoMap.AxisElP) != 0,
-            negativeLimit: (word & DmcIoMap.AxisElN) != 0,
-            servoOn: servoOn,
-            moving: moving,
-            inPosition: (word & DmcIoMap.AxisInp) != 0,
-            home: (word & DmcIoMap.AxisOrg) != 0,
-            prfPosition: prf,
-            encPosition: enc,
-            velocity: vel);
+        status = DmcIoMap.ToAxisStatus(
+            unchecked((uint)native),
+            servoOn,
+            moving,
+            prf,
+            enc,
+            vel);
         return true;
     }
 
@@ -517,14 +524,11 @@ public sealed class DrvDmc : IDriver
                 return false;
             }
 
-            var pin = LTDMC.dmc_read_sevon_pin(_cardNo, axis);
-            _memory["driver.lastCode"] = pin;
-            if (pin < 0)
+            if (!TryReadSevon((short)axis, out var enabled))
             {
                 return false;
             }
 
-            var enabled = _sevonActiveLow ? pin == 0 : pin != 0;
             value = enabled;
             return true;
         }
@@ -651,6 +655,25 @@ public sealed class DrvDmc : IDriver
 
     private AxisMotionPrm Motion(short axis) =>
         _motion.GetOrAdd(axis, _ => new AxisMotionPrm());
+
+    private bool TryReadSevon(short axis, out bool on)
+    {
+        on = false;
+        if (!IsConnected || axis < 0)
+        {
+            return false;
+        }
+
+        var pin = LTDMC.dmc_read_sevon_pin(_cardNo, (ushort)axis);
+        _memory["driver.lastCode"] = pin;
+        if (pin < 0)
+        {
+            return false;
+        }
+
+        on = _sevonActiveLow ? pin == 0 : pin != 0;
+        return true;
+    }
 
     private bool Call(Func<short> invoke)
     {

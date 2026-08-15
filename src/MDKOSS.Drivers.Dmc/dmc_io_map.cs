@@ -12,8 +12,42 @@ public static class DmcIoMap
     public const uint AxisAlm = 0x0001;
     public const uint AxisElP = 0x0002;
     public const uint AxisElN = 0x0004;
+    public const uint AxisEmg = 0x0008;
     public const uint AxisOrg = 0x0010;
+    public const uint AxisSlP = 0x0020;
+    public const uint AxisSlN = 0x0040;
     public const uint AxisInp = 0x0080;
+    public const uint AxisEz = 0x0100;
+    public const uint AxisRdy = 0x0200;
+    public const uint AxisDstp = 0x0400;
+
+    public static bool Test(uint word, uint mask) => (word & mask) != 0;
+
+    /// <summary>
+    /// Maps a native <c>dmc_axis_io_status</c> word plus motion/servo pins onto
+    /// the GTS-aligned <see cref="AxisStatus"/> snapshot.
+    /// </summary>
+    public static AxisStatus ToAxisStatus(
+        uint ioWord,
+        bool servoOn,
+        bool moving,
+        double prfPosition = 0,
+        double encPosition = 0,
+        double velocity = 0) =>
+        AxisStatus.Create(
+            alarm: Test(ioWord, AxisAlm),
+            positiveLimitLevel: Test(ioWord, AxisElP),
+            positiveLimit: Test(ioWord, AxisElP) || Test(ioWord, AxisSlP),
+            negativeLimit: Test(ioWord, AxisElN) || Test(ioWord, AxisSlN),
+            smoothStop: Test(ioWord, AxisDstp),
+            abruptStop: Test(ioWord, AxisEmg),
+            servoOn: servoOn,
+            moving: moving,
+            inPosition: Test(ioWord, AxisInp),
+            home: Test(ioWord, AxisOrg),
+            prfPosition: prfPosition,
+            encPosition: encPosition,
+            velocity: velocity);
 
     public static bool IsGeneral(short type) =>
         type is GtsIoType.Gpi or GtsIoType.Gpo;

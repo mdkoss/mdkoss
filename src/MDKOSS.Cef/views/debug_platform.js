@@ -584,8 +584,13 @@
         const L = a.axisLetter ?? a.AxisLetter ?? "?";
         const online = !!(a.driverOnline ?? a.DriverOnline);
         state.axisOnline[L] = online;
-        const en = getAxisMotionEnabled(L);
-        const err = getAxisError(L);
+        const st = (window.MdkTool && MdkTool.axisStatusOf) ? MdkTool.axisStatusOf(a) : (a.axisStatus || a.AxisStatus || null);
+        const en = st
+          ? !!(st.servoOn ?? st.ServoOn)
+          : getAxisMotionEnabled(L);
+        const flags = (window.MdkTool && MdkTool.renderAxisFlags)
+          ? MdkTool.renderAxisFlags(st)
+          : (st ? "—" : "—");
         return (
           "<tr><td><strong>" +
           esc(L) +
@@ -599,11 +604,9 @@
           (online ? "在线" : "离线") +
           "</td><td>" +
           (en ? '<span class="pill ok">ON</span>' : '<span class="pill">OFF</span>') +
-          '</td><td class="mono" style="color:' +
-          (err ? "var(--danger)" : "var(--muted)") +
-          '">' +
-          esc(err || "—") +
-          "</td></tr>"
+          '</td><td><div class="flag-row">' +
+          flags +
+          "</div></td></tr>"
         );
       })
       .join("");

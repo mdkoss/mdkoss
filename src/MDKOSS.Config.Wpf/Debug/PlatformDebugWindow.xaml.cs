@@ -153,6 +153,7 @@ public partial class PlatformDebugWindow : Window
         }
 
         UpdateActiveAxisLabel();
+        RenderSelectedFlags();
     }
 
     private PlatformAxisRow? SelectedRow() => AxisGrid.SelectedItem as PlatformAxisRow;

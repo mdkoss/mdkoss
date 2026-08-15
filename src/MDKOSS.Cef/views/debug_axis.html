@@ -117,7 +117,7 @@
         </div>
         <div class="table-wrap dense-table">
           <table>
-            <thead><tr><th>名称</th><th>ID</th><th>位置</th><th>使能</th><th>在线</th><th>状态</th></tr></thead>
+            <thead><tr><th>名称</th><th>ID</th><th>位置</th><th>使能</th><th>在线</th><th>状态位</th></tr></thead>
             <tbody id="axisTableBody"></tbody>
           </table>
         </div>
@@ -470,10 +470,12 @@
       const cur = axisId();
       tbody.innerHTML = rows.map(([id, d]) => {
         const name = field(d, "name", "Name") || id;
-        const pos = numVar(id, "position");
-        const enabled = boolVar(id, "motionEnabled");
+        const axisSt = axisStatusOf(d);
+        const pos = Number.isFinite(Number(axisSt?.prfPosition ?? axisSt?.PrfPosition))
+          ? Number(axisSt.prfPosition ?? axisSt.PrfPosition)
+          : numVar(id, "position");
+        const enabled = axisSt ? flagOn(axisSt, "servoOn") : boolVar(id, "motionEnabled");
         const online = field(d, "driverConnected", "DriverConnected") === true;
-        const st = String(field(d, "state", "State") || "—");
         const selCls = id === cur ? " selected" : "";
         return `<tr class="teach-row${selCls}" data-id="${esc(id)}">
           <td>${esc(name)}</td>
@@ -481,7 +483,7 @@
           <td class="mono">${esc(fmtNum(pos))}</td>
           <td>${pill(enabled, "ON", "OFF")}</td>
           <td>${pill(online, "是", "否")}</td>
-          <td>${esc(st)}</td>
+          <td><div class="flag-row">${renderAxisFlags(axisSt)}</div></td>
         </tr>`;
       }).join("");
       tbody.querySelectorAll("tr[data-id]").forEach((tr) => {

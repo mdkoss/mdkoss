@@ -46,23 +46,22 @@
         <div class="table-scroll">
           <table>
             <thead>
-              <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>位置</th><th>速度</th><th>报警</th></tr>
+              <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>指令位</th><th>编码位</th><th>速度</th><th>状态位</th></tr>
             </thead>
-            <tbody id="axisRows"><tr><td colspan="7" style="color:var(--muted)">请选择平台</td></tr></tbody>
+            <tbody id="axisRows"><tr><td colspan="8" style="color:var(--muted)">请选择平台</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
   </div>
+  <script src="/js/tool_common.js"></script>
   <script>
+    const { esc, field, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum } = MdkTool;
     const PLATFORM = new Set(["platform","x","xy","xyz","xyzu","xyzuv","xyzuvw"]);
     const sel = document.getElementById("selPlatform");
     const lnkTeach = document.getElementById("lnkTeach");
     const q = new URLSearchParams(location.search);
     let preferred = q.get("deviceId") || "";
-
-    function esc(s){return String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-    function field(o,a,b){return o?.[a]??o?.[b];}
 
     function fillSelect(devices){
       const cur = sel.value || preferred;
@@ -93,7 +92,7 @@
         document.getElementById("devState").textContent = "—";
         document.getElementById("devType").textContent = "—";
         document.getElementById("devDriver").textContent = "—";
-        document.getElementById("axisRows").innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无数据</td></tr>';
+        document.getElementById("axisRows").innerHTML = '<tr><td colspan="8" style="color:var(--muted)">无数据</td></tr>';
         return;
       }
       const name = field(d,"name","Name") || id;
@@ -105,7 +104,7 @@
       const axes = field(d,"platformAxes","PlatformAxes") || [];
       const list = Array.isArray(axes) ? axes : Object.entries(axes).map(([letter,ax])=>({letter,...ax}));
       if (!list.length) {
-        document.getElementById("axisRows").innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无 platformAxes</td></tr>';
+        document.getElementById("axisRows").innerHTML = '<tr><td colspan="8" style="color:var(--muted)">无 platformAxes</td></tr>';
         return;
       }
       document.getElementById("axisRows").innerHTML = list.map(ax=>{
@@ -113,15 +112,17 @@
         const driver = ax.driverId ?? ax.DriverId ?? "—";
         const axisId = ax.axisDeviceId ?? ax.AxisDeviceId ?? "";
         const online = ax.driverOnline ?? ax.DriverOnline ?? ax.driverConnected ?? ax.DriverConnected ?? ax.online ?? ax.Online;
-        const enabled = ax.motionEnabled ?? ax.MotionEnabled ?? ax.enabled ?? ax.Enabled;
-        const pos = ax.position ?? ax.Position ?? ax.pos ?? "—";
-        const vel = ax.velocity ?? ax.Velocity ?? ax.speed ?? "—";
-        const alarm = ax.error ?? ax.Error ?? ax.alarm ?? ax.Alarm ?? ax.fault ?? ax.Fault ?? "—";
+        const st = axisStatusOf(ax);
+        const enabled = st ? flagOn(st, "servoOn") : (ax.motionEnabled ?? ax.MotionEnabled ?? ax.enabled ?? ax.Enabled);
+        const pos = st ? fmtAxisNum(st.prfPosition ?? st.PrfPosition) : (ax.position ?? ax.Position ?? ax.pos ?? "—");
+        const enc = st ? fmtAxisNum(st.encPosition ?? st.EncPosition) : (ax.encPosition ?? ax.EncPosition ?? "—");
+        const vel = st ? fmtAxisNum(st.velocity ?? st.Velocity) : (ax.velocity ?? ax.Velocity ?? ax.speed ?? "—");
         return `<tr>
           <td>${esc(letter)}${axisId ? ` <span style="color:var(--muted);font-size:11px">${esc(axisId)}</span>` : ""}</td><td>${esc(driver)}</td>
           <td>${online===true?"是":online===false?"否":esc(online)}</td>
           <td>${enabled===true?"是":enabled===false?"否":esc(enabled)}</td>
-          <td>${esc(pos)}</td><td>${esc(vel)}</td><td>${esc(alarm)}</td>
+          <td>${esc(pos)}</td><td>${esc(enc)}</td><td>${esc(vel)}</td>
+          <td><div class="flag-row">${renderAxisFlags(st)}</div></td>
         </tr>`;
       }).join("");
     }

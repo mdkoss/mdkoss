@@ -40,4 +40,46 @@ public sealed class DmcIoMapTests
         Assert.True(DmcIoMap.IsServoEnable(GtsIoType.Enable));
         Assert.True(DmcIoMap.IsAlarmClear(GtsIoType.Clear));
     }
+
+    [Fact]
+    public void ToAxisStatus_maps_dmc_io_word_onto_gts_flags()
+    {
+        var word = DmcIoMap.AxisAlm
+            | DmcIoMap.AxisElP
+            | DmcIoMap.AxisElN
+            | DmcIoMap.AxisEmg
+            | DmcIoMap.AxisOrg
+            | DmcIoMap.AxisInp
+            | DmcIoMap.AxisDstp;
+
+        var status = DmcIoMap.ToAxisStatus(word, servoOn: true, moving: true, prfPosition: 10, encPosition: 9, velocity: 100);
+
+        Assert.True(status.Alarm);
+        Assert.True(status.PositiveLimit);
+        Assert.True(status.PositiveLimitLevel);
+        Assert.True(status.NegativeLimit);
+        Assert.True(status.AbruptStop);
+        Assert.True(status.SmoothStop);
+        Assert.True(status.Home);
+        Assert.True(status.InPosition);
+        Assert.True(status.ServoOn);
+        Assert.True(status.Moving);
+        Assert.Equal(10, status.PrfPosition);
+        Assert.Equal(9, status.EncPosition);
+        Assert.Equal(100, status.Velocity);
+        Assert.True(AxisStatusBits.Test(status.Raw, AxisStatusBits.Alarm));
+        Assert.True(AxisStatusBits.Test(status.Raw, AxisStatusBits.ServoOn));
+        Assert.True(AxisStatusBits.Test(status.Raw, AxisStatusBits.Moving));
+    }
+
+    [Fact]
+    public void ToAxisStatus_soft_limits_count_as_limit_flags()
+    {
+        var status = DmcIoMap.ToAxisStatus(DmcIoMap.AxisSlP | DmcIoMap.AxisSlN, servoOn: false, moving: false);
+        Assert.True(status.PositiveLimit);
+        Assert.True(status.NegativeLimit);
+        Assert.False(status.PositiveLimitLevel);
+        Assert.False(status.Alarm);
+        Assert.False(status.Home);
+    }
 }

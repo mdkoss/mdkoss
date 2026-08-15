@@ -301,6 +301,41 @@ public sealed class MdkRuntimeIntegrationTests
         Assert.Equal("p1.X", p1.PlatformAxes[0].AxisDeviceId);
         Assert.Equal("p1.Y", p1.PlatformAxes[1].AxisDeviceId);
         Assert.Equal("xy", p1.Type);
+        Assert.NotNull(p1.PlatformAxes[0].AxisStatus);
+        Assert.True(p1.PlatformAxes[0].AxisStatus!.Value.InPosition);
+    }
+
+    [Fact]
+    public void Axis_snapshot_exposes_full_axis_status()
+    {
+        var setting = new MdkSetting
+        {
+            Drivers = [new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "ax1",
+                    Name = "X",
+                    Type = "axis",
+                    DriverId = "d1",
+                    Enabled = true,
+                    Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                    {
+                        ["axis"] = "0",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        var snap = rt.GetSnapshot();
+        Assert.True(snap.Devices.TryGetValue("ax1", out var ax));
+        Assert.NotNull(ax.AxisStatus);
+        Assert.True(ax.AxisStatus!.Value.InPosition);
+        Assert.False(ax.AxisStatus.Value.Moving);
+        Assert.False(ax.AxisStatus.Value.Alarm);
     }
 
     [Fact]
