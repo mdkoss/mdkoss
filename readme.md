@@ -37,7 +37,7 @@
 以最小依赖实现“可编译、可运行、可观测、可扩展”的运行时内核，保留 `mdkruntime` 的核心思想，去掉第一阶段非必需复杂度（桌面容器、复杂服务编排、Redis 同步等）。
 
 ### 1.1 已实现目标
-- 可从 `configs/sample.setting.json`（默认路径 `MdkSetting.DefaultSettingsPath`）创建运行时实例
+- 可从 `configs/` 下第一个 JSON（默认路径 `MdkSetting.DefaultSettingsPath`）创建运行时实例
 - 可按配置注册 Driver / Device / Task
 - 可启动任务循环并更新变量状态
 - 可通过监控接口获取运行时快照
@@ -82,7 +82,7 @@ mdkoss/
     └── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
 ```
 
-宿主仅引用 Core + Extensions；构建时由 `MdkPlugins.targets` 将 Drivers / Extensions 复制到输出目录 `plugins/`，运行时 `DiscoverAndRegister()` 扫描加载。`configs` 与 `views` 会复制到可执行文件同级，默认从 `configs/sample.setting.json` 加载配置。
+宿主仅引用 Core + Extensions；构建时由 `MdkPlugins.targets` 将 Drivers / Extensions 复制到输出目录 `plugins/`，运行时 `DiscoverAndRegister()` 扫描加载。`configs` 与 `views` 会复制到可执行文件同级，默认从 `configs/` 下第一个 JSON 加载配置。
 
 ---
 
@@ -105,7 +105,7 @@ mdkoss/
   Runtime Host。统一管理生命周期：`Initialize -> Start -> StopAsync -> Dispose`。内部完成变量、驱动、设备、任务的注册与编排。产品版本见 `MdkProduct`。
 
 - `src/MDKOSS.Core/core/msetting.cs`  
-  配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
+  配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录 `configs/` 下的第一个 JSON。
 
 - `src/MDKOSS.Core/core/mdev.cs`  
   设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 等。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。串口等通信设备在独立扩展项目中实现。
@@ -161,7 +161,7 @@ mdkoss/
 
 ### 4.2 启动顺序
 
-1. 读取配置（`MdkSetting.Load`，默认文件为 `configs/sample.setting.json`）
+1. 读取配置（`MdkSetting.Load`，默认文件为 `configs/` 下第一个 JSON）
 2. `MdkRuntime.Initialize()`：
    - Seed Vars
    - 初始化 Drivers
@@ -300,7 +300,7 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console
 ```
 
-默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。日志目录为输出目录下的 `logs/yyyyMMdd.log`。
+默认配置路径为可执行文件目录下 `configs/` 中的第一个 JSON。日志目录为输出目录下的 `logs/yyyyMMdd.log`。
 
 控制台模式看到如下输出表示启动成功：
 

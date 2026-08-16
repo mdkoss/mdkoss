@@ -79,8 +79,40 @@ public sealed class MdkSetting
     public static string DefaultDatabasePath =>
         Path.Combine(AppContext.BaseDirectory, "data", "mdk.db");
 
-    /// <summary>Default settings file next to the app: <c>configs/sample.setting.json</c>.</summary>
-    public static string DefaultSettingsPath => Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
+    /// <summary>Settings directory next to the app: <c>configs/</c>.</summary>
+    public static string DefaultConfigsDirectory => Path.Combine(AppContext.BaseDirectory, "configs");
+
+    /// <summary>
+    /// Default settings file: the first JSON in <see cref="DefaultConfigsDirectory"/>
+    /// (filename order). When the folder is empty, falls back to <c>configs/sample.setting.json</c>.
+    /// </summary>
+    public static string DefaultSettingsPath =>
+        FindFirstSettingsFile(DefaultConfigsDirectory)
+        ?? Path.Combine(DefaultConfigsDirectory, "sample.setting.json");
+
+    /// <summary>
+    /// First JSON in <paramref name="configsDirectory"/> (top-level, filename order, ignore case).
+    /// Skips HMI layout files (<c>*.layout.json</c>, <c>*.hmi.json</c>).
+    /// </summary>
+    public static string? FindFirstSettingsFile(string configsDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(configsDirectory) || !Directory.Exists(configsDirectory))
+        {
+            return null;
+        }
+
+        return Directory.EnumerateFiles(configsDirectory, "*.json")
+            .Where(path => !IsAuxiliaryConfigJson(path))
+            .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault();
+    }
+
+    private static bool IsAuxiliaryConfigJson(string path)
+    {
+        var name = Path.GetFileName(path);
+        return name.EndsWith(".layout.json", StringComparison.OrdinalIgnoreCase)
+            || name.EndsWith(".hmi.json", StringComparison.OrdinalIgnoreCase);
+    }
 
     private static JsonSerializerOptions JsonOptions { get; } = new()
     {

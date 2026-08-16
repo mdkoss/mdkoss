@@ -31,17 +31,17 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
 
-    <!-- 扩展示例配置（插件工程未必把 configs 流到宿主） -->
+    <!-- 扩展示例配置放到 configs/ext，避免默认“第一个 json”误加载 camera/modserver -->
     <None Include="..\MDKOSS.Extensions.Camera\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>configs\ext\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\MDKOSS.Extensions.PyScript\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>configs\ext\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Include="..\MDKOSS.Extensions.ModServer\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <Link>configs\ext\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

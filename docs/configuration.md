@@ -1,6 +1,6 @@
 # 配置模型
 
-工程行为由 JSON 配置文件描述，通过 `MdkSetting.Load(path)` 反序列化。默认路径为可执行文件目录下的 `configs/sample.setting.json`（`MdkSetting.DefaultSettingsPath`）。
+工程行为由 JSON 配置文件描述，通过 `MdkSetting.Load(path)` 反序列化。未指定 `--setting` 时，默认加载可执行文件目录下 `configs/` 中按文件名排序的第一个 JSON（`MdkSetting.DefaultSettingsPath` / `RuntimeHost.ResolveDefaultSettingPath`；跳过 `*.layout.json` / `*.hmi.json`）。
 
 ## 顶层字段
 

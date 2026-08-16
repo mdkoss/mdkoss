@@ -9,7 +9,7 @@ namespace MDKOSS.Sample.Pnp;
 
 /// <summary>
 /// CEF host for the pick-and-place sample. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; tray / cycle / API are registered here.
+/// the first JSON in <c>configs/</c>; tray / cycle / API are registered here.
 /// </summary>
 internal static class Program
 {

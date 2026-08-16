@@ -27,7 +27,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Extensions.Serial` / `Tcp` / `Mysql` / `Camera` / `PyScript` / `ModServer` | 可选设备 |
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
 | `MDKOSS.Cef.Extensions` | 主界面监控组态（`index_hmi` / `man_hmi` / `/api/hmi`；控件见 `views/widgets`） |
-| `MDKOSS.Cef.Sample` | 加载并运行 `sample.setting.json` 的 CEF 宿主 |
+| `MDKOSS.Cef.Sample` | 加载并运行 `configs/` 下第一个 JSON 的 CEF 宿主 |
 | `MDKOSS.Sample` | SampleExt 扩展示例宿主 |
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo 宿主 |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |

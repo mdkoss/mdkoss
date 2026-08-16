@@ -42,16 +42,18 @@ public static class RuntimeHost
 
     public static string ResolveDefaultSettingPath()
     {
-        if (File.Exists(MdkSetting.DefaultSettingsPath))
+        var fromBase = MdkSetting.FindFirstSettingsFile(MdkSetting.DefaultConfigsDirectory);
+        if (!string.IsNullOrEmpty(fromBase))
         {
-            return MdkSetting.DefaultSettingsPath;
+            return fromBase;
         }
 
         var current = new DirectoryInfo(AppContext.BaseDirectory);
         while (current is not null)
         {
-            var candidate = Path.Combine(current.FullName, "MDKOSS", "configs", "sample.setting.json");
-            if (File.Exists(candidate))
+            var configsDir = Path.Combine(current.FullName, "MDKOSS", "configs");
+            var candidate = MdkSetting.FindFirstSettingsFile(configsDir);
+            if (!string.IsNullOrEmpty(candidate))
             {
                 return candidate;
             }
@@ -59,7 +61,7 @@ public static class RuntimeHost
             current = current.Parent;
         }
 
-        return Path.Combine(Environment.CurrentDirectory, "MDKOSS", "configs", "sample.setting.json");
+        return MdkSetting.DefaultSettingsPath;
     }
 
     /// <summary>

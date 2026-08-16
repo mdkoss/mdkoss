@@ -9,7 +9,7 @@ namespace MDKOSS.Sample;
 
 /// <summary>
 /// CEF host for the SampleExt demo. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; custom device / MotionTask / API are registered here.
+/// the first JSON in <c>configs/</c>; custom device / MotionTask / API are registered here.
 /// </summary>
 internal static class Program
 {

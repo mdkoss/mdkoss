@@ -10,7 +10,7 @@ namespace MDKOSS.Sample.DieBonder;
 
 /// <summary>
 /// CEF host for the semiconductor die bonder sample. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; machine tasks / API are registered here.
+/// the first JSON in <c>configs/</c>; machine tasks / API are registered here.
 /// </summary>
 internal static class Program
 {

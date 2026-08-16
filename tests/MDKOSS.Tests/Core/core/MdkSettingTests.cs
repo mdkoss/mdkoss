@@ -50,4 +50,50 @@ public sealed class MdkSettingTests
         Assert.NotNull(s);
         Assert.Equal("P", s.ProjectName);
     }
+
+    [Fact]
+    public void FindFirstSettingsFile_picks_first_json_by_filename()
+    {
+        var dir = CreateTempConfigsDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "zeta.setting.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "alpha.setting.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "hmi.layout.json"), "{}");
+            Directory.CreateDirectory(Path.Combine(dir, "ext"));
+            File.WriteAllText(Path.Combine(dir, "ext", "camera.setting.json"), "{}");
+
+            var found = MdkSetting.FindFirstSettingsFile(dir);
+            Assert.Equal("alpha.setting.json", Path.GetFileName(found));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void FindFirstSettingsFile_returns_null_when_only_layout_or_missing()
+    {
+        Assert.Null(MdkSetting.FindFirstSettingsFile(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))));
+
+        var dir = CreateTempConfigsDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "hmi.layout.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "default.hmi.json"), "{}");
+            Assert.Null(MdkSetting.FindFirstSettingsFile(dir));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    private static string CreateTempConfigsDir()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "mdkoss-settings-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
 }

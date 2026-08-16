@@ -71,7 +71,7 @@ src/MDKOSS.Extensions.Camera/
 运行示例配置：
 
 ```bat
-run-src-mdkoss.bat --setting configs\camera.setting.json
+run-src-mdkoss.bat --setting configs\ext\camera.setting.json
 ```
 
 （也可把 `configs/camera.setting.json` 复制到宿主输出目录的 `configs/`。）

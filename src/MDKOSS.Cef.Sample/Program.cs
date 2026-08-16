@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace MDKOSS.Cef.Sample;
 
 /// <summary>
-/// CEF host that loads and runs <c>configs/sample.setting.json</c>.
+/// CEF host that loads and runs the first JSON in <c>configs/</c>.
 /// Start page, devices, and tasks come from the setting file.
 /// </summary>
 internal static class Program
@@ -38,7 +38,7 @@ internal static class Program
         {
             AppLog.Error($"Setting file not found: {settingPath}");
             MessageBox.Show(
-                $"Setting file not found:\n{settingPath}\n\nExpected: configs/sample.setting.json next to the exe.",
+                $"Setting file not found:\n{settingPath}\n\nExpected: a JSON file under configs/ next to the exe.",
                 appTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);

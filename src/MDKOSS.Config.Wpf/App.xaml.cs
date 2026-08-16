@@ -1,6 +1,7 @@
 ﻿using System.Windows;
 using MDKOSS.Core;
 using MDKOSS.Extensions;
+using MDKOSS.Host;
 
 namespace MDKOSS.Config.Wpf;
 
@@ -49,7 +50,6 @@ public partial class App : Application
             }
         }
 
-        var defaultPath = System.IO.Path.Combine(AppContext.BaseDirectory, "configs", "sample.setting.json");
-        return System.IO.File.Exists(defaultPath) ? defaultPath : MdkSetting.DefaultSettingsPath;
+        return RuntimeHost.ResolveDefaultSettingPath();
     }
 }

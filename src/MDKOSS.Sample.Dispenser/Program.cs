@@ -9,7 +9,7 @@ namespace MDKOSS.Sample.Dispenser;
 
 /// <summary>
 /// CEF host for the 3-axis dispenser sample. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; machine tasks / API are registered here.
+/// the first JSON in <c>configs/</c>; machine tasks / API are registered here.
 /// </summary>
 internal static class Program
 {
