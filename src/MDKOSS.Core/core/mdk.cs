@@ -150,11 +150,10 @@ public sealed class MdkRuntime : IDisposable
     {
         AppLog.Info($"SQLite database: {DataStore.DatabasePath}");
         DataStore.SyncRecipesWithSetting(Setting);
-
-        var orders = DataStore.ListOrders();
-        if (orders.Count > 0)
+        var seeded = DataStore.SyncOrdersFromSettingVars(Setting.Vars);
+        if (seeded > 0)
         {
-            Vars.Set(MdkDataStore.OrderListVarKey, DataStore.SerializeOrdersForVar());
+            AppLog.Info($"Seeded {seeded} production order(s) from setting vars into SQLite.");
         }
     }
 
@@ -167,6 +166,12 @@ public sealed class MdkRuntime : IDisposable
         }
 
         RecipeManager.BootstrapActiveRecipe();
+
+        // SQLite is authoritative for orders; refresh after setting vars so demo JSON cannot hide DB rows.
+        if (DataStore.ListOrders().Count > 0)
+        {
+            Vars.Set(MdkDataStore.OrderListVarKey, DataStore.SerializeOrdersForVar());
+        }
     }
 
     // Instantiate and initialize all enabled drivers.

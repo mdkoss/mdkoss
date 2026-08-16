@@ -279,7 +279,7 @@
     "task.operation.alias.yellow": "tower.yellow",
     "task.operation.alias.green": "tower.green",
     "task.operation.command": "lamp:red",
-    "order.list": "[{\"id\":\"ORD-DEMO-001\",\"product\":\"样件 A\",\"qty\":100,\"status\":\"running\",\"progress\":35,\"updatedAt\":\"—\"},{\"id\":\"ORD-DEMO-002\",\"product\":\"样件 B\",\"qty\":50,\"status\":\"pending\",\"progress\":0,\"updatedAt\":\"—\"}]",
+    "order.list": "[{\"id\":\"ORD-DEMO-001\",\"product\":\"样件 A\",\"qty\":100,\"status\":\"running\",\"progress\":35,\"recipeId\":\"rcp-fast\",\"priority\":10,\"notes\":\"演示工单\",\"fields\":{\"lot\":\"L-DEMO\",\"line\":\"A\"}},{\"id\":\"ORD-DEMO-002\",\"product\":\"样件 B\",\"qty\":50,\"status\":\"pending\",\"progress\":0,\"recipeId\":\"rcp-safe\",\"priority\":0,\"fields\":{\"lot\":\"L-DEMO\",\"line\":\"B\"}}]",
     "alarm.test": false,
     "alarm.warn": false,
     "vision.ok": false,

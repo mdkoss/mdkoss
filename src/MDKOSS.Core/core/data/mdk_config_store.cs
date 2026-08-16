@@ -242,6 +242,9 @@ public sealed class MdkConfigStore : IDisposable
                 Visions = Count(conn, "visions"),
                 Logs = Count(conn, "logs"),
                 Langs = Count(conn, "langs"),
+                ProductionOrders = Count(conn, "production_orders"),
+                TeachPointFiles = Count(conn, "teach_point_files"),
+                TeachPoints = Count(conn, "teach_points"),
             };
         });
     }
@@ -296,6 +299,11 @@ public sealed class MdkConfigStore : IDisposable
                 rows.Add(row);
             }
 
+            if (string.Equals(table, "production_orders", StringComparison.OrdinalIgnoreCase))
+            {
+                columns = ExpandProductionOrderCustomFields(columns, rows);
+            }
+
             return new DbTableSnapshot
             {
                 TableName = table,
@@ -313,6 +321,11 @@ public sealed class MdkConfigStore : IDisposable
         var table = RequireEditableTable(tableName);
         var pk = GetPrimaryKeyColumn(table)
                  ?? throw new InvalidOperationException($"表 {table} 没有可识别的主键。");
+
+        if (string.Equals(table, "production_orders", StringComparison.OrdinalIgnoreCase))
+        {
+            values = PackProductionOrderCustomFields(values);
+        }
 
         var cols = values.Keys
             .Where(k => !string.IsNullOrWhiteSpace(k))
@@ -490,12 +503,21 @@ public sealed class MdkConfigStore : IDisposable
 
     private static IReadOnlyList<string> PreferColumnOrder(string table, IReadOnlyList<string> columns)
     {
-        if (!string.Equals(table, "sysconfigs", StringComparison.OrdinalIgnoreCase))
+        string[]? preferred = table.ToLowerInvariant() switch
+        {
+            "sysconfigs" => ["key", "value", "group", "remark", "createtime", "updatetime"],
+            "production_orders" =>
+            [
+                "id", "product", "qty", "status", "progress", "recipe_id", "priority", "notes",
+                "fields_json", "created_at", "updated_at",
+            ],
+            _ => null,
+        };
+        if (preferred is null)
         {
             return columns;
         }
 
-        string[] preferred = ["key", "value", "group", "remark", "createtime", "updatetime"];
         var remaining = columns
             .Where(c => !preferred.Contains(c, StringComparer.OrdinalIgnoreCase))
             .ToList();
@@ -511,6 +533,138 @@ public sealed class MdkConfigStore : IDisposable
 
         ordered.AddRange(remaining);
         return ordered;
+    }
+
+    private static readonly HashSet<string> ProductionOrderSchemaColumns = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "id", "product", "qty", "status", "progress", "recipe_id", "priority", "notes",
+        "fields_json", "created_at", "updated_at",
+    };
+
+    /// <summary>
+    /// Flattens fields_json into editable cells so Config.Wpf can customize any order field.
+    /// </summary>
+    private static IReadOnlyList<string> ExpandProductionOrderCustomFields(
+        IReadOnlyList<string> columns,
+        List<Dictionary<string, string>> rows)
+    {
+        var customKeys = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            if (!row.TryGetValue("fields_json", out var raw) || string.IsNullOrWhiteSpace(raw))
+            {
+                row.Remove("fields_json");
+                continue;
+            }
+
+            Dictionary<string, string>? fields = null;
+            try
+            {
+                fields = JsonSerializer.Deserialize<Dictionary<string, string>>(raw, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                // keep raw blob as a single editable cell
+                continue;
+            }
+
+            row.Remove("fields_json");
+            if (fields is null)
+            {
+                continue;
+            }
+
+            foreach (var (key, value) in fields)
+            {
+                if (string.IsNullOrWhiteSpace(key) || ProductionOrderSchemaColumns.Contains(key))
+                {
+                    continue;
+                }
+
+                row[key] = value ?? "";
+                customKeys.Add(key);
+            }
+        }
+
+        var withoutFieldsJson = columns
+            .Where(c => !c.Equals("fields_json", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        foreach (var key in customKeys)
+        {
+            if (!withoutFieldsJson.Contains(key, StringComparer.OrdinalIgnoreCase))
+            {
+                withoutFieldsJson.Add(key);
+            }
+        }
+
+        return PreferColumnOrder("production_orders", withoutFieldsJson);
+    }
+
+    /// <summary>
+    /// Packs non-schema keys into fields_json so any custom column from the Database editor is persisted.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string> PackProductionOrderCustomFields(
+        IReadOnlyDictionary<string, string> values)
+    {
+        var packed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var custom = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        if (values.TryGetValue("fields_json", out var existingRaw) && !string.IsNullOrWhiteSpace(existingRaw))
+        {
+            try
+            {
+                var existing = JsonSerializer.Deserialize<Dictionary<string, string>>(existingRaw, JsonOptions);
+                if (existing is not null)
+                {
+                    foreach (var (k, v) in existing)
+                    {
+                        if (!string.IsNullOrWhiteSpace(k))
+                        {
+                            custom[k] = v ?? "";
+                        }
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // ignore malformed; rebuilt from expanded cells
+            }
+        }
+
+        foreach (var (key, value) in values)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                continue;
+            }
+
+            if (ProductionOrderSchemaColumns.Contains(key)
+                && !key.Equals("fields_json", StringComparison.OrdinalIgnoreCase))
+            {
+                packed[key] = value ?? "";
+                continue;
+            }
+
+            if (key.Equals("fields_json", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            custom[key.Trim()] = value ?? "";
+        }
+
+        packed["fields_json"] = JsonSerializer.Serialize(custom, JsonOptions);
+        if (!packed.ContainsKey("updated_at") || string.IsNullOrWhiteSpace(packed["updated_at"]))
+        {
+            packed["updated_at"] = DateTime.UtcNow.ToString("O");
+        }
+
+        if (!packed.ContainsKey("created_at") || string.IsNullOrWhiteSpace(packed["created_at"]))
+        {
+            packed["created_at"] = packed["updated_at"];
+        }
+
+        return packed;
     }
 
     public void Dispose()
@@ -1270,6 +1424,9 @@ public sealed class ConfigTableCounts
     public long Visions { get; set; }
     public long Logs { get; set; }
     public long Langs { get; set; }
+    public long ProductionOrders { get; set; }
+    public long TeachPointFiles { get; set; }
+    public long TeachPoints { get; set; }
 }
 
 public sealed class ConfigLogRecord

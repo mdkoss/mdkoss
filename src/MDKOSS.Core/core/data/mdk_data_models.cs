@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
 namespace MDKOSS.Core.Data;
 
 /// <summary>Production order queue entry (排单).</summary>
@@ -13,6 +16,64 @@ public sealed class ProductionOrderRecord
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
+
+    /// <summary>Project-defined extra columns (lot, line, customer, …), stored as fields_json.</summary>
+    public Dictionary<string, string> Fields { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Captures unknown JSON properties on POST so any custom field is accepted.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+
+    /// <summary>Moves <see cref="ExtensionData"/> keys into <see cref="Fields"/> (except reserved names).</summary>
+    public void AbsorbExtensionData()
+    {
+        if (ExtensionData is null || ExtensionData.Count == 0)
+        {
+            ExtensionData = null;
+            return;
+        }
+
+        foreach (var (key, el) in ExtensionData)
+        {
+            if (IsReservedOrderJsonKey(key))
+            {
+                continue;
+            }
+
+            Fields[key] = JsonElementToPlainString(el);
+        }
+
+        ExtensionData = null;
+    }
+
+    private static bool IsReservedOrderJsonKey(string key) =>
+        key.Equals("id", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("product", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("qty", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("quantity", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("status", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("progress", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("recipeId", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("recipe_id", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("priority", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("notes", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("createdAtUtc", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("created_at", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("updatedAtUtc", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("updated_at", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("updatedAt", StringComparison.OrdinalIgnoreCase)
+        || key.Equals("fields", StringComparison.OrdinalIgnoreCase);
+
+    private static string JsonElementToPlainString(JsonElement el) =>
+        el.ValueKind switch
+        {
+            JsonValueKind.String => el.GetString() ?? "",
+            JsonValueKind.Null => "",
+            JsonValueKind.True => "true",
+            JsonValueKind.False => "false",
+            JsonValueKind.Number => el.GetRawText(),
+            _ => el.GetRawText(),
+        };
 }
 
 /// <summary>Persisted recipe (配方).</summary>

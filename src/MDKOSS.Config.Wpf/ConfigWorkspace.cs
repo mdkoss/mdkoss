@@ -3230,8 +3230,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                     "positions" => counts.Positions,
                     "sysconfigs" => counts.SysConfigs,
                     "recipes" => counts.Recipes,
+                    "visions" => counts.Visions,
                     "logs" => counts.Logs,
                     "langs" => counts.Langs,
+                    "production_orders" => counts.ProductionOrders,
+                    "teach_point_files" => counts.TeachPointFiles,
+                    "teach_points" => counts.TeachPoints,
                     _ => 0,
                 };
             }

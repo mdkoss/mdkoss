@@ -310,6 +310,7 @@
     "pnp.bottomCam.y": 100,
     "pnp.place.offsetX": 0,
     "pnp.place.offsetY": 0,
-    "pnp.place.angleOffsetDeg": 0
+    "pnp.place.angleOffsetDeg": 0,
+    "order.list": "[{\"id\":\"ORD-DB-001\",\"product\":\"Die-A\",\"qty\":200,\"status\":\"running\",\"progress\":12,\"recipeId\":\"default\",\"priority\":5,\"notes\":\"贴片演示工单\",\"fields\":{\"wafer\":\"W-001\",\"lot\":\"LOT-A\"}},{\"id\":\"ORD-DB-002\",\"product\":\"Die-B\",\"qty\":80,\"status\":\"pending\",\"progress\":0,\"recipeId\":\"bga-10x10\",\"priority\":0,\"fields\":{\"wafer\":\"W-002\",\"lot\":\"LOT-B\"}}]"
   }
 }

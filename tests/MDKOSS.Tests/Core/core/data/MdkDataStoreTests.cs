@@ -22,6 +22,11 @@ public sealed class MdkDataStoreTests
             Progress = 0,
             RecipeId = "default",
             Priority = 1,
+            Fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["lot"] = "L-100",
+                ["line"] = "A",
+            },
         };
 
         Assert.True(store.TryUpsertOrder(order, out var error), error);
@@ -30,6 +35,127 @@ public sealed class MdkDataStoreTests
         Assert.Equal("Widget-A", loaded!.Product);
         Assert.Equal(100, loaded.Qty);
         Assert.Equal("default", loaded.RecipeId);
+        Assert.Equal("L-100", loaded.Fields["lot"]);
+        Assert.Equal("A", loaded.Fields["line"]);
+    }
+
+    [Fact]
+    public void SerializeOrdersForVar_uses_camel_case_and_fields()
+    {
+        var dbPath = CreateTempDbPath();
+        using var store = new MdkDataStore(dbPath);
+        Assert.True(store.TryUpsertOrder(new ProductionOrderRecord
+        {
+            Id = "ORD-JSON",
+            Product = "P",
+            Qty = 2,
+            Fields = { ["customer"] = "ACME" },
+        }, out var error), error);
+
+        var json = store.SerializeOrdersForVar();
+        Assert.Contains("\"id\"", json);
+        Assert.Contains("\"product\"", json);
+        Assert.DoesNotContain("\"Id\"", json);
+        Assert.Contains("\"customer\":\"ACME\"", json.Replace(" ", ""));
+    }
+
+    [Fact]
+    public void UpsertOrder_absorbs_extension_json_properties()
+    {
+        var dbPath = CreateTempDbPath();
+        using var store = new MdkDataStore(dbPath);
+        var order = System.Text.Json.JsonSerializer.Deserialize<ProductionOrderRecord>(
+            """{"id":"ORD-EXT","product":"X","qty":1,"lotNo":"LOT-9","bay":"B2"}""",
+            new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            })!;
+
+        Assert.True(store.TryUpsertOrder(order, out var error), error);
+        Assert.True(store.TryGetOrder("ORD-EXT", out var loaded));
+        Assert.Equal("LOT-9", loaded!.Fields["lotNo"]);
+        Assert.Equal("B2", loaded.Fields["bay"]);
+    }
+
+    [Fact]
+    public void SyncOrdersFromSettingVars_seeds_empty_db()
+    {
+        var dbPath = CreateTempDbPath();
+        using var store = new MdkDataStore(dbPath);
+        var vars = new Dictionary<string, object?>
+        {
+            [MdkDataStore.OrderListVarKey] =
+                """[{"id":"ORD-SEED","product":"Seed","qty":3,"status":"pending","fields":{"lot":"S1"}}]""",
+        };
+
+        Assert.Equal(1, store.SyncOrdersFromSettingVars(vars));
+        Assert.True(store.TryGetOrder("ORD-SEED", out var loaded));
+        Assert.Equal("Seed", loaded!.Product);
+        Assert.Equal("S1", loaded.Fields["lot"]);
+        Assert.Equal(0, store.SyncOrdersFromSettingVars(vars));
+    }
+
+    [Fact]
+    public void ConfigStore_production_orders_custom_fields_round_trip()
+    {
+        var dbPath = CreateTempDbPath();
+        using (var _ = new MdkDataStore(dbPath)) { }
+
+        using var cfg = new MdkConfigStore(dbPath);
+        var pk = cfg.UpsertTableRow("production_orders", new Dictionary<string, string>
+        {
+            ["id"] = "ORD-CFG",
+            ["product"] = "CfgPart",
+            ["qty"] = "5",
+            ["status"] = "pending",
+            ["progress"] = "0",
+            ["priority"] = "1",
+            ["lot"] = "CFG-LOT",
+            ["operator"] = "alice",
+        });
+        Assert.Equal("ORD-CFG", pk);
+
+        var snap = cfg.QueryTable("production_orders");
+        var row = Assert.Single(snap.Rows);
+        Assert.Equal("CfgPart", row["product"]);
+        Assert.Equal("CFG-LOT", row["lot"]);
+        Assert.Equal("alice", row["operator"]);
+        Assert.False(row.ContainsKey("fields_json"));
+    }
+
+    [Fact]
+    public void Runtime_bootstrap_injects_order_list_var()
+    {
+        var dbPath = CreateTempDbPath();
+        using (var seed = new MdkDataStore(dbPath))
+        {
+            seed.TryUpsertOrder(new ProductionOrderRecord
+            {
+                Id = "ORD-BOOT",
+                Product = "Test",
+                Qty = 1,
+                Status = "running",
+                Progress = 50,
+            }, out _);
+        }
+
+        var setting = new MdkSetting
+        {
+            DatabasePath = dbPath,
+            Vars =
+            {
+                // Would previously hide SQLite orders after BootstrapVars.
+                [MdkDataStore.OrderListVarKey] = "[]",
+            },
+        };
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+
+        var listJson = rt.Vars.Get<string>(MdkDataStore.OrderListVarKey);
+        Assert.NotNull(listJson);
+        Assert.Contains("ORD-BOOT", listJson);
+        Assert.Contains("\"id\"", listJson);
     }
 
     [Fact]
@@ -76,30 +202,5 @@ public sealed class MdkDataStoreTests
         Assert.Single(snapshot!.Points);
         Assert.Equal("P0", snapshot.Points[0].PointId);
         Assert.Equal(10, snapshot.Points[0].Axes["Z"]);
-    }
-
-    [Fact]
-    public void Runtime_bootstrap_injects_order_list_var()
-    {
-        var dbPath = CreateTempDbPath();
-        using (var seed = new MdkDataStore(dbPath))
-        {
-            seed.TryUpsertOrder(new ProductionOrderRecord
-            {
-                Id = "ORD-BOOT",
-                Product = "Test",
-                Qty = 1,
-                Status = "running",
-                Progress = 50,
-            }, out _);
-        }
-
-        var setting = new MdkSetting { DatabasePath = dbPath };
-        using var rt = new MdkRuntime(setting);
-        rt.Initialize();
-
-        var listJson = rt.Vars.Get<string>(MdkDataStore.OrderListVarKey);
-        Assert.NotNull(listJson);
-        Assert.Contains("ORD-BOOT", listJson);
     }
 }

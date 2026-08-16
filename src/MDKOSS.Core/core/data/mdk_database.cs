@@ -5,7 +5,7 @@ namespace MDKOSS.Core.Data;
 /// <summary>SQLite connection holder and schema bootstrap.</summary>
 public sealed class MdkDatabase : IDisposable
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     private readonly string _connectionString;
     private readonly object _gate = new();
@@ -81,6 +81,7 @@ public sealed class MdkDatabase : IDisposable
                     recipe_id TEXT,
                     priority INTEGER NOT NULL DEFAULT 0,
                     notes TEXT,
+                    fields_json TEXT NOT NULL DEFAULT '{}',
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
@@ -131,6 +132,7 @@ public sealed class MdkDatabase : IDisposable
                 """;
             cmd.ExecuteNonQuery();
 
+            EnsureColumn(conn, "production_orders", "fields_json", "TEXT NOT NULL DEFAULT '{}'");
             EnsureConfigTables(conn);
 
             cmd.CommandText = "SELECT COUNT(*) FROM schema_version;";

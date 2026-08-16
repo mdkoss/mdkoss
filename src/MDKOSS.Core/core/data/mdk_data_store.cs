@@ -13,7 +13,9 @@ public sealed class MdkDataStore : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = false,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly MdkDatabase _db;
@@ -39,7 +41,7 @@ public sealed class MdkDataStore : IDisposable
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = """
-                SELECT id, product, qty, status, progress, recipe_id, priority, notes, created_at, updated_at
+                SELECT id, product, qty, status, progress, recipe_id, priority, notes, fields_json, created_at, updated_at
                 FROM production_orders
                 """ + (string.IsNullOrWhiteSpace(status) ? "" : " WHERE status = $status") + """
                  ORDER BY priority DESC, created_at ASC
@@ -66,7 +68,7 @@ public sealed class MdkDataStore : IDisposable
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = """
-                SELECT id, product, qty, status, progress, recipe_id, priority, notes, created_at, updated_at
+                SELECT id, product, qty, status, progress, recipe_id, priority, notes, fields_json, created_at, updated_at
                 FROM production_orders WHERE id = $id
                 """;
             cmd.Parameters.AddWithValue("$id", id);
@@ -86,6 +88,8 @@ public sealed class MdkDataStore : IDisposable
             return false;
         }
 
+        order.AbsorbExtensionData();
+
         var now = DateTime.UtcNow;
         if (order.CreatedAtUtc == default)
         {
@@ -94,15 +98,16 @@ public sealed class MdkDataStore : IDisposable
 
         order.UpdatedAtUtc = now;
         order.Id = order.Id.Trim();
+        order.Fields ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         _db.Execute(conn =>
         {
             using var cmd = conn.CreateCommand();
             cmd.CommandText = """
                 INSERT INTO production_orders
-                    (id, product, qty, status, progress, recipe_id, priority, notes, created_at, updated_at)
+                    (id, product, qty, status, progress, recipe_id, priority, notes, fields_json, created_at, updated_at)
                 VALUES
-                    ($id, $product, $qty, $status, $progress, $recipe_id, $priority, $notes, $created_at, $updated_at)
+                    ($id, $product, $qty, $status, $progress, $recipe_id, $priority, $notes, $fields_json, $created_at, $updated_at)
                 ON CONFLICT(id) DO UPDATE SET
                     product = excluded.product,
                     qty = excluded.qty,
@@ -111,6 +116,7 @@ public sealed class MdkDataStore : IDisposable
                     recipe_id = excluded.recipe_id,
                     priority = excluded.priority,
                     notes = excluded.notes,
+                    fields_json = excluded.fields_json,
                     updated_at = excluded.updated_at
                 """;
             BindOrder(cmd, order);
@@ -148,6 +154,65 @@ public sealed class MdkDataStore : IDisposable
 
     public string SerializeOrdersForVar() =>
         JsonSerializer.Serialize(ListOrders(), JsonOptions);
+
+    /// <summary>
+    /// When the orders table is empty, seeds rows from setting <c>order.list</c> JSON so sample/demo
+    /// configs persist into SQLite on first run.
+    /// </summary>
+    public int SyncOrdersFromSettingVars(IReadOnlyDictionary<string, object?> vars)
+    {
+        if (ListOrders().Count > 0)
+        {
+            return 0;
+        }
+
+        if (!vars.TryGetValue(OrderListVarKey, out var raw) || raw is null)
+        {
+            return 0;
+        }
+
+        var text = raw switch
+        {
+            string s => s,
+            JsonElement je => je.ValueKind == JsonValueKind.String ? je.GetString() ?? "" : je.GetRawText(),
+            _ => raw.ToString() ?? "",
+        };
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return 0;
+        }
+
+        List<ProductionOrderRecord>? list;
+        try
+        {
+            list = JsonSerializer.Deserialize<List<ProductionOrderRecord>>(text, JsonOptions);
+        }
+        catch (JsonException)
+        {
+            return 0;
+        }
+
+        if (list is null || list.Count == 0)
+        {
+            return 0;
+        }
+
+        var seeded = 0;
+        foreach (var order in list)
+        {
+            if (string.IsNullOrWhiteSpace(order.Id))
+            {
+                continue;
+            }
+
+            if (TryUpsertOrder(order, out _))
+            {
+                seeded++;
+            }
+        }
+
+        return seeded;
+    }
 
     // ── Recipes (配方) ───────────────────────────────────────────────────
 
@@ -595,8 +660,9 @@ public sealed class MdkDataStore : IDisposable
             RecipeId = reader.IsDBNull(5) ? null : reader.GetString(5),
             Priority = reader.GetInt32(6),
             Notes = reader.IsDBNull(7) ? null : reader.GetString(7),
-            CreatedAtUtc = ParseUtc(reader.GetString(8)),
-            UpdatedAtUtc = ParseUtc(reader.GetString(9)),
+            Fields = ParseFieldsJson(reader.IsDBNull(8) ? "{}" : reader.GetString(8)),
+            CreatedAtUtc = ParseUtc(reader.GetString(9)),
+            UpdatedAtUtc = ParseUtc(reader.GetString(10)),
         };
 
     private static void BindOrder(SqliteCommand cmd, ProductionOrderRecord order)
@@ -609,8 +675,31 @@ public sealed class MdkDataStore : IDisposable
         cmd.Parameters.AddWithValue("$recipe_id", (object?)order.RecipeId ?? DBNull.Value);
         cmd.Parameters.AddWithValue("$priority", order.Priority);
         cmd.Parameters.AddWithValue("$notes", (object?)order.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue(
+            "$fields_json",
+            JsonSerializer.Serialize(order.Fields ?? new Dictionary<string, string>(), JsonOptions));
         cmd.Parameters.AddWithValue("$created_at", FormatUtc(order.CreatedAtUtc));
         cmd.Parameters.AddWithValue("$updated_at", FormatUtc(order.UpdatedAtUtc));
+    }
+
+    private static Dictionary<string, string> ParseFieldsJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        try
+        {
+            var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json, JsonOptions);
+            return dict is null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(dict, StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
     }
 
     private static RecipeRecord ReadRecipe(SqliteDataReader reader)

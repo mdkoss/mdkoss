@@ -68,6 +68,9 @@
             </div>
             <div class="form-group"><label>关联配方 ID</label><input id="orderRecipeId" placeholder="default" /></div>
             <div class="form-group"><label>备注</label><input id="orderNotes" /></div>
+            <div class="form-group"><label>自定义字段 (JSON 对象)</label>
+              <textarea id="orderFields" rows="3" placeholder='{"lot":"L-001","line":"A"}' style="width:100%;font-family:ui-monospace,Consolas,monospace;font-size:12px"></textarea>
+            </div>
             <div class="btn-group">
               <button type="button" class="btn primary" id="btnSaveOrder">保存</button>
               <button type="button" class="btn" id="btnNewOrder">新建</button>
@@ -235,6 +238,9 @@
     document.getElementById("orderProgress").value = o.progress ?? 0;
     document.getElementById("orderRecipeId").value = o.recipeId || "";
     document.getElementById("orderNotes").value = o.notes || "";
+    const fields = o.fields && typeof o.fields === "object" ? o.fields : {};
+    document.getElementById("orderFields").value = Object.keys(fields).length
+      ? JSON.stringify(fields, null, 2) : "";
   }
 
   function clearOrderForm() {
@@ -247,9 +253,19 @@
     document.getElementById("orderProgress").value = 0;
     document.getElementById("orderRecipeId").value = "";
     document.getElementById("orderNotes").value = "";
+    document.getElementById("orderFields").value = "";
   }
 
   async function saveOrder() {
+    let fields = {};
+    const fieldsRaw = document.getElementById("orderFields").value.trim();
+    if (fieldsRaw) {
+      try { fields = JSON.parse(fieldsRaw); }
+      catch { log("自定义字段 JSON 无效", false); return; }
+      if (!fields || typeof fields !== "object" || Array.isArray(fields)) {
+        log("自定义字段须为 JSON 对象", false); return;
+      }
+    }
     const body = {
       id: document.getElementById("orderId").value.trim(),
       product: document.getElementById("orderProduct").value.trim(),
@@ -259,6 +275,7 @@
       progress: Number(document.getElementById("orderProgress").value) || 0,
       recipeId: document.getElementById("orderRecipeId").value.trim() || null,
       notes: document.getElementById("orderNotes").value.trim() || null,
+      fields,
     };
     if (!body.id) { log("请填写排单 ID", false); return; }
     await api("/api/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

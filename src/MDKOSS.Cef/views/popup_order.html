@@ -26,14 +26,25 @@
     function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
     function vs(vars,k,fb){const x=vars[k]; return (x==null||x==="")?fb:String(x);}
     function vn(vars,k,fb){const n=Number(vars[k]); return Number.isFinite(n)?n:fb;}
+    function fmtTime(v){
+      if(v==null||v==="") return "—";
+      const s=String(v);
+      if(s.length>=19 && s.includes("T")) return s.slice(0,19).replace("T"," ");
+      return s;
+    }
     function normalize(o){
+      const fields = (o.fields && typeof o.fields === "object" && !Array.isArray(o.fields)) ? o.fields : {};
       return {
-        id:o.id??o.orderId??"—",
-        product:o.product??o.name??"—",
-        qty:o.qty??o.quantity??1,
-        status:String(o.status??"pending").toLowerCase(),
-        progress:Math.min(100,Math.max(0,Number(o.progress??0)||0)),
-        updatedAt:o.updatedAt??o.time??"—"
+        id:o.id??o.Id??o.orderId??"—",
+        product:o.product??o.Product??o.name??"—",
+        qty:o.qty??o.Qty??o.quantity??1,
+        status:String(o.status??o.Status??"pending").toLowerCase(),
+        progress:Math.min(100,Math.max(0,Number(o.progress??o.Progress??0)||0)),
+        recipeId:o.recipeId??o.RecipeId??o.recipe_id??"",
+        priority:o.priority??o.Priority??0,
+        notes:o.notes??o.Notes??"",
+        updatedAt:fmtTime(o.updatedAt??o.UpdatedAt??o.updatedAtUtc??o.UpdatedAtUtc??o.time??""),
+        fields
       };
     }
     function parseOrders(vars){
@@ -41,23 +52,32 @@
       if(raw){ try{ const arr=typeof raw==="string"?JSON.parse(raw):raw; if(Array.isArray(arr)&&arr.length) return arr.map(normalize);}catch{} }
       const id=vs(vars,"order.current.id","");
       if(id) return [normalize({id,product:vs(vars,"order.current.product","—"),qty:vn(vars,"order.current.qty",1),status:vs(vars,"order.current.status","running"),progress:vn(vars,"order.current.progress",0),updatedAt:vs(vars,"order.current.updatedAt","—")})];
-      return [
-        {id:"ORD-20260521-001",product:"样件 A",qty:120,status:"running",progress:45,updatedAt:"—"},
-        {id:"ORD-20260521-002",product:"样件 B",qty:80,status:"pending",progress:0,updatedAt:"—"}
+      return [];
+    }
+    function rowsFor(order){
+      const rows=[
+        ["订单号",order.id],["产品",order.product],["数量",order.qty],
+        ["状态",order.status],["进度",order.progress+"%"],["优先级",order.priority],
+        ["配方",order.recipeId||"—"],["备注",order.notes||"—"],["更新时间",order.updatedAt]
       ];
+      Object.keys(order.fields||{}).sort().forEach(k=>rows.push([k, order.fields[k]]));
+      return rows;
     }
     async function tick(){
       try{
         const data = await (await fetch("/api/status",{cache:"no-store"})).json();
         const vars = data.vars || data.Vars || {};
-        const orders = parseOrders(vars);
+        let orders = parseOrders(vars);
+        if(!orders.length){
+          try{
+            const apiOrders = await (await fetch("/api/orders",{cache:"no-store"})).json();
+            if(Array.isArray(apiOrders)&&apiOrders.length) orders = apiOrders.map(normalize);
+          }catch{}
+        }
         const order = (qid && orders.find(o=>String(o.id)===qid)) || orders[0];
         const el = document.getElementById("body");
         if(!order){ el.innerHTML='<div class="empty">无工单</div>'; return; }
-        el.innerHTML = [
-          ["订单号",order.id],["产品",order.product],["数量",order.qty],
-          ["状态",order.status],["进度",order.progress+"%"],["更新时间",order.updatedAt]
-        ].map(([k,v])=>`<div class="row"><span>${esc(k)}</span><span>${esc(String(v))}</span></div>`).join("");
+        el.innerHTML = rowsFor(order).map(([k,v])=>`<div class="row"><span>${esc(k)}</span><span>${esc(String(v))}</span></div>`).join("");
       }catch{
         document.getElementById("body").innerHTML='<div class="empty">无法连接</div>';
       }
