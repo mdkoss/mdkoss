@@ -24,6 +24,7 @@
       <button class="nav-btn" type="button" data-popup="popup_order" data-title="工单详情" data-wide="1"><span class="ico">☰</span>工单</button>
       <button class="nav-btn" type="button" data-popup="popup_user" data-title="当前用户"><span class="ico">👤</span>用户</button>
       <button class="nav-btn" type="button" data-popup="popup_about" data-title="关于 / 工具目录" data-wide="1"><span class="ico">ℹ</span>关于</button>
+      <button class="nav-btn" type="button" id="btnHmi" hidden title="主界面监控组态"><span class="ico">▦</span>组态</button>
 
       <div class="alarm-lamp-wrap" title="三色报警灯（来自 task.operation.lamp）">
         <span class="alarm-lamp-label">报警灯</span>
@@ -192,6 +193,12 @@
     document.getElementById("btnPickRecipe").addEventListener("click", () => {
       openPopup("popup_recipe", "选择配方", {});
     });
+
+    const btnHmi = document.getElementById("btnHmi");
+    btnHmi.addEventListener("click", () => { location.href = "/index_hmi.html"; });
+    fetch("/api/hmi/widgets", { cache: "no-store" })
+      .then((r) => { if (r.ok) btnHmi.hidden = false; })
+      .catch(() => {});
 
     function parseOrders(vars) {
       const raw = vars["order.list"] ?? vars["order.list.json"];

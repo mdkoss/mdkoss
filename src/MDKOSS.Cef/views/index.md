@@ -6,7 +6,7 @@
 
 | 区域 | 内容 |
 |------|------|
-| 顶部控制栏（居中） | 图标、设备名称、组件 / 任务 / 变量 / 报警 / 工单 / 用户 / 关于；点击后打开 `popup_*.html` 二级弹窗 |
+| 顶部控制栏（居中） | 图标、设备名称、组件 / 任务 / 变量 / 报警 / 工单 / 用户 / 关于；扩展已加载时显示「组态」进入 `index_hmi.html` |
 | 主内容区 | 订单列表（可点击行选中当前订单；双击打开工单详情 popup） |
 | 底部状态栏 | 当前订单摘要、重要状态监控、**右下角当前排单与选择按钮**、启动 / 停止 / 复位 |
 
@@ -42,3 +42,4 @@
 - `src/MDKOSS.Core/server/indexpage.cs` — 嵌入/加载 HTML
 - `src/MDKOSS.Core/server/monitoringserver.cs` — 路由、静态资源与任务 API
 - 详细监控页：`/monitor_runtime.html`
+- 监控组态：`/index_hmi.html`（编辑 `/man_hmi.html`），见 `MDKOSS.Cef.Extensions`

@@ -24,7 +24,8 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Drivers.Sim` / `Gts` / `Dmc` | 仿真 / 固高 / 雷赛驱动插件 |
 | `MDKOSS.Extensions.Serial` / `Tcp` / `Mysql` / `Camera` / `PyScript` / `ModServer` | 可选设备扩展 |
 | `MDKOSS.Cef` | CefSharp 界面库 + `views/` HMI |
-| `MDKOSS.Cef.Sample` | 通用 CEF 宿主（加载 `sample.setting.json`） |
+| `MDKOSS.Cef.Extensions` | 主界面监控组态（控件扩展包 + `/api/hmi`） |
+| `MDKOSS.Cef.Sample` | 通用 CEF 宿主（`startPage`=`index_hmi.html`） |
 | `MDKOSS.Sample` | DieBonder 机型 Demo |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |

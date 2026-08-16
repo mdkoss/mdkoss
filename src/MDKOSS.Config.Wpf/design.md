@@ -68,10 +68,11 @@
 | `Tasks` | `setting.Tasks` | Name, Type, DriverId, IntervalMs |
 | `Vars` | `setting.Vars` | Key, Value |
 | `Recipes` | `setting.Recipes` | Id, Name, Description |
+| `Hmi` | 同目录 `hmi.layout.json` 控件 | Id, Type, Desc, XY, Size, 绑定 |
 | `SysConfig` | 工程顶层键 | Key, Value |
 | `Database` | 左树选表 → 中部显示该表行（可编辑）→ 右侧列属性 Key/Value；应用写回 SQLite |
 
-树叶子为组件实例；`Gpios` / `Vios` / `Vars` / `SysConfig` / `Database` 以派生行或键值作为“组件”。
+树叶子为组件实例；`Gpios` / `Vios` / `Vars` / `SysConfig` / `Database` 以派生行或键值作为“组件”；`Hmi` 叶子为组态控件。
 
 ## 交互链路
 
@@ -112,7 +113,9 @@
 
 中部列表支持 **查找**（Ctrl+F）：按 Name / Desc / 驱动 / Port / Alias 等即时筛选；切换模块时清空筛选。
 
-左侧树按 **硬件 / 逻辑 / 系统** 分组。右侧参数区下方有参数预览。
+左侧树按 **硬件 / 逻辑 / 系统** 分组（Hmi 在系统组）。右侧参数区下方有参数预览。
+
+HMI 组态与 setting 同目录的 `hmi.layout.json` 一起打开/保存。列表编辑控件属性；**调试 → HMI 主界面组态** 或属性区「编辑画布…」打开拖放编辑器。运行页见 `MDKOSS.Cef.Extensions` 的 `/index_hmi.html`。
 
 ## 属性编辑策略
 

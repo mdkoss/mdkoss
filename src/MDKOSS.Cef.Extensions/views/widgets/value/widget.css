@@ -1,0 +1,38 @@
+.hmi-w-value {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 1px solid var(--line, #2a4570);
+  border-radius: 10px;
+  background: rgba(8, 16, 32, .35);
+  min-width: 0;
+}
+
+.hmi-canvas.edit .hmi-w-value {
+  background: #fff;
+  border-color: #c5ced8;
+  color: #1b2430;
+}
+
+.hmi-w-value .cap {
+  font-size: 12px;
+  color: var(--muted, #8ea0b8);
+  font-weight: 600;
+}
+
+.hmi-w-value .val {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hmi-w-value .unit {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--muted, #8ea0b8);
+  font-weight: 600;
+}

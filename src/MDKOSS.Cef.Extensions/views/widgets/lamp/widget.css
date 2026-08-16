@@ -1,0 +1,26 @@
+.hmi-w-lamp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.hmi-w-lamp .bulb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #8a93a3;
+  box-shadow: 0 0 10px rgba(0, 0, 0, .25);
+}
+
+.hmi-w-lamp .bulb.red { background: #ff5d5d; box-shadow: 0 0 14px rgba(255, 93, 93, .7); }
+.hmi-w-lamp .bulb.yellow { background: #ffcc66; box-shadow: 0 0 14px rgba(255, 204, 102, .7); }
+.hmi-w-lamp .bulb.green { background: #35d08f; box-shadow: 0 0 14px rgba(53, 208, 143, .7); }
+.hmi-w-lamp .bulb.gray { background: #8a93a3; box-shadow: none; }
+
+.hmi-w-lamp .cap {
+  font-size: 12px;
+  color: var(--muted, #8ea0b8);
+  font-weight: 600;
+}

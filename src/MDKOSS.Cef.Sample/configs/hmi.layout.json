@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "title": "CEF HMI Demo",
+  "canvasWidth": 1180,
+  "canvasHeight": 520,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 280, "h": 36, "props": { "text": "CEF HMI Demo", "align": "left", "fontSize": 22 } },
+    { "id": "w-state", "type": "value", "x": 24, "y": 72, "w": 220, "h": 72, "props": { "var": "task.operation.state", "label": "操作状态" } },
+    { "id": "w-recipe", "type": "value", "x": 260, "y": 72, "w": 220, "h": 72, "props": { "var": "recipe.activeName", "label": "当前配方" } },
+    { "id": "w-speed", "type": "value", "x": 496, "y": 72, "w": 200, "h": 72, "props": { "var": "process.speed", "label": "工艺速度", "unit": "x" } },
+    { "id": "w-lamp", "type": "lamp", "x": 720, "y": 72, "w": 120, "h": 72, "props": { "var": "task.operation.lamp", "label": "塔灯" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 816, "h": 56, "props": { "var": "order.current.progress", "label": "工单进度", "min": 0, "max": 100 } },
+    { "id": "w-io", "type": "status", "x": 24, "y": 240, "w": 200, "h": 44, "props": { "var": "task.cycle.io.offline", "label": "驱动 IO", "okWhen": "zero" } },
+    { "id": "w-dev", "type": "status", "x": 240, "y": 240, "w": 200, "h": 44, "props": { "var": "task.cycle.dev.fault", "label": "设备故障", "okWhen": "zero" } },
+    { "id": "w-vision", "type": "status", "x": 456, "y": 240, "w": 200, "h": 44, "props": { "var": "vision.ok", "label": "视觉", "okWhen": "truthy" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 308, "w": 120, "h": 44, "props": { "text": "启动", "method": "POST", "url": "/api/task/start", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 156, "y": 308, "w": 120, "h": 44, "props": { "text": "停止", "method": "POST", "url": "/api/task/stop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 288, "y": 308, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/task/reset", "style": "reset" } }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "type": "status",
+  "displayName": "状态灯",
+  "category": "显示",
+  "defaultW": 200,
+  "defaultH": 44,
+  "props": [
+    { "key": "var", "label": "变量", "kind": "var", "default": "task.operation.running" },
+    { "key": "label", "label": "标题", "kind": "text", "default": "状态" },
+    { "key": "okWhen", "label": "正常条件", "kind": "select", "default": "truthy", "options": ["truthy", "falsy", "zero", "equals"] },
+    { "key": "okValue", "label": "比较值", "kind": "text", "default": "" }
+  ]
+}

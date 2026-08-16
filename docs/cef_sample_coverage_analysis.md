@@ -13,7 +13,7 @@
 | 项 | 实际 |
 |---|---|
 | 宿主 | WinForms + CefSharp（`CefMainForm`） |
-| 入口页 | JSON `startPage`（默认 `index.html`，`MDKOSS.Cef/views` 经 ProjectReference 复制） |
+| 入口页 | JSON `startPage`（`index_hmi.html`，`MDKOSS.Cef.Extensions` 组态页；通用 `index.html` 仍可用） |
 | 配置 | `configs/sample.setting.json`，监控前缀 `http://127.0.0.1:5081/` |
 | 扩展发现 | `MdkExtensionHost.DiscoverAndRegister` |
 | 插件构建 | 导入 `MdkPlugins.targets`（构建后复制到 `plugins/`） |

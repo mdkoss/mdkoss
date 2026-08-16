@@ -1,0 +1,13 @@
+{
+  "type": "button",
+  "displayName": "按钮",
+  "category": "操作",
+  "defaultW": 120,
+  "defaultH": 44,
+  "props": [
+    { "key": "text", "label": "文本", "kind": "text", "default": "按钮" },
+    { "key": "method", "label": "方法", "kind": "select", "default": "POST", "options": ["GET", "POST"] },
+    { "key": "url", "label": "接口", "kind": "text", "default": "/api/task/start" },
+    { "key": "style", "label": "样式", "kind": "select", "default": "default", "options": ["default", "start", "stop", "reset"] }
+  ]
+}

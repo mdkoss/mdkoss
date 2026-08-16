@@ -26,6 +26,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Drivers.Sim` / `Gts` / `Dmc` | 仿真 / 固高 / 雷赛 |
 | `MDKOSS.Extensions.Serial` / `Tcp` / `Mysql` / `Camera` / `PyScript` / `ModServer` | 可选设备 |
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
+| `MDKOSS.Cef.Extensions` | 主界面监控组态（`index_hmi` / `man_hmi` / `/api/hmi`；控件见 `views/widgets`） |
 | `MDKOSS.Cef.Sample` | 加载并运行 `sample.setting.json` 的 CEF 宿主 |
 | `MDKOSS.Sample` | DieBonder 机型 Demo 宿主 |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
@@ -42,8 +43,8 @@ Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视�
 | 串口/TCP/MySQL | 对应 `Extensions.*`，不要改 Core 生命周期去硬接协议 |
 | 视觉/相机 | `Core/vision`、`Extensions.Camera` |
 | 任务/流程 | `Core/tasks`、`Core/tasks/flow` |
-| 监控 API / HMI | `Core/server`、`Cef/views` |
-| 配置 JSON / 编辑器 | `MdkSetting`、`Config.Wpf` |
+| 监控 API / HMI | `Core/server`、`Cef/views`、`Cef.Extensions`（主界面组态） |
+| 配置 JSON / 编辑器 | `MdkSetting`、`Config.Wpf`（HMI 组态在系统组 `Hmi`） |
 | 配方/工单 | `Core/core/data`、`api_orders_module` |
 
 `Cef/views` 命名：小写+下划线。`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*` 分层不要混用。公共脚本用已有的 `tool_common.js` / `tool_nav.js` / `man_editor.js`。

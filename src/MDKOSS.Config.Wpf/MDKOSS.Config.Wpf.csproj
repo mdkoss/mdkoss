@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\MDKOSS.Core\MDKOSS.Core.csproj" />
     <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
+    <ProjectReference Include="..\MDKOSS.Cef.Extensions\MDKOSS.Cef.Extensions.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">

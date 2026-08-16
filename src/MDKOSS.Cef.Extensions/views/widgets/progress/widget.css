@@ -1,0 +1,35 @@
+.hmi-w-progress {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+
+.hmi-w-progress .row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted, #8ea0b8);
+  font-weight: 600;
+}
+
+.hmi-w-progress .bar {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  overflow: hidden;
+  border: 1px solid var(--line, #2a4570);
+}
+
+.hmi-canvas.edit .hmi-w-progress .bar {
+  background: #e8edf3;
+  border-color: #c5ced8;
+}
+
+.hmi-w-progress .fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, #2f6fe0, #35d08f);
+  transition: width .2s;
+}

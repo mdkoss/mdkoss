@@ -1,0 +1,11 @@
+{
+  "type": "lamp",
+  "displayName": "指示灯",
+  "category": "显示",
+  "defaultW": 100,
+  "defaultH": 72,
+  "props": [
+    { "key": "var", "label": "变量", "kind": "var", "default": "task.operation.lamp" },
+    { "key": "label", "label": "标题", "kind": "text", "default": "指示灯" }
+  ]
+}

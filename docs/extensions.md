@@ -62,6 +62,7 @@ Extensions 提供统一接入接口 `IMdkExtension` / `IExtensionRegistration` /
 | **MDKOSS.Core** | gpio / vio / axis / platform / cameradev、驱动、任务、监控内核、SQLite、三类注册表定义 | 串口/TCP 实现、`System.IO.Ports`、扩展接入 facade |
 | **MDKOSS.Extensions** | `IMdkExtension` / `MdkExtensionHost` 接入层 | GUI、`Program` 入口 |
 | **设备扩展 DLL** | `Extensions.Serial` / `Tcp` / `Camera` 等 | 内核逻辑 |
+| **HMI 组态 DLL** | `MDKOSS.Cef.Extensions`（主界面组态宿主 + 内置控件包） | CefSharp、机型流程 |
 | **宿主** | `Program`、WinForms/CEF、配置编辑 | 业务设备逻辑本身 |
 
 Core 中的扩展 **插槽**：
@@ -393,7 +394,21 @@ DriverFactory.Register(string type, Func<IDriver> factory);
 
 ---
 
-## 8. 延伸阅读
+## 8. HMI 控件扩展（不改核心代码）
+
+主界面组态控件由 `MDKOSS.Cef.Extensions` 的 `HmiWidgetRegistry` 载入。内置 `label` / `value` / `lamp` / `progress` / `status` / `button` 与第三方同一路径。
+
+加一种控件（三选一）：
+
+1. 拷文件夹到宿主 `views/widgets/{type}/`（`widget.json` + `widget.js` + 可选 `widget.css`）
+2. 随插件放 `plugins/{包名}/widgets/{type}/`
+3. DLL 实现 `IHmiWidgetPackage`，或在 `IMdkExtension.Register` 里调用 `HmiWidgetRegistry.Register`（程序集名 `MDKOSS.Cef.Extensions.*.dll` 或 `MDKOSS.Extensions.*.dll`）
+
+运行页通过 `GET /api/hmi/widgets` 拉取目录并动态加载 `script` / `css`。不必改 `hmi_runtime.js`。详见 `src/MDKOSS.Cef.Extensions/README.md`。
+
+---
+
+## 9. 延伸阅读
 
 - [architecture.md](./architecture.md) — 总体分层与启动时序
 - [project-layout.md](./project-layout.md) — 解决方案与目录职责
@@ -401,4 +416,5 @@ DriverFactory.Register(string type, Func<IDriver> factory);
 - [monitoring-api.md](./monitoring-api.md) — `/api/serial/*`、`/api/tcp/*`、`/api/extcamera/*`
 - [core-subsystems.md](./core-subsystems.md) — 设备层与调度
 - `src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md` — 设备命令语义
+- `src/MDKOSS.Cef.Extensions/README.md` — HMI 控件扩展（文件夹包 / `IHmiWidgetPackage`）
 - `src/MDKOSS.Extensions.Camera/README.md` — 独立扩展包示例

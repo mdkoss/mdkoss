@@ -1,0 +1,23 @@
+.hmi-w-button {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line, #2a4570);
+  background: #1a2c4e;
+  color: #e8eef8;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.hmi-w-button:hover { filter: brightness(1.12); }
+.hmi-w-button.start { background: rgba(53, 208, 143, .18); border-color: rgba(53, 208, 143, .45); color: #35d08f; }
+.hmi-w-button.stop { background: rgba(255, 93, 93, .16); border-color: rgba(255, 93, 93, .45); color: #ff8a8a; }
+.hmi-w-button.reset { background: rgba(255, 204, 102, .14); border-color: rgba(255, 204, 102, .4); color: #ffcc66; }
+
+.hmi-canvas.edit .hmi-w-button {
+  pointer-events: none;
+  background: #eef3f8;
+  color: #1b2430;
+  border-color: #c5ced8;
+}

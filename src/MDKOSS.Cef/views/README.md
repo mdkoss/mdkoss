@@ -13,6 +13,7 @@
 | `man_*.html` | 设备/组件配置管理（运行时侧） | 配置读写 | 工程师 |
 
 机型扩展页（如 PNP 的 `indexPnp.html`）由 `StaticPageRegistry` 注册，不纳入核心改名。
+主界面监控组态页 `index_hmi.html` / `man_hmi.html` 由 `MDKOSS.Cef.Extensions` 注册。
 
 `monitor_*` / `debug_*` / `man_*` 共用顶部工具栏 [`js/tool_nav.js`](js/tool_nav.js)（`.tool-chrome` 样式在 `css/debug.css`）：同组页面互相跳转，右侧切换「监控 / 调试 / 配置」，左侧回主界面。`index.html` 顶栏通过 iframe 打开 `popup_*.html?embedded=1`。
 
@@ -129,6 +130,7 @@ index ──popup_*──► monitor_* ──► debug_*
 | `man_recipe.html` | 排单增删与 Vars |
 | `man_vision.html` | 视觉流程增删与默认相机（管线仍用 Config.Wpf） |
 | `man_alarm.html` | 报警定义增删与条件 |
+| `man_hmi.html` | 主界面监控组态（`MDKOSS.Cef.Extensions`） |
 
 ---
 

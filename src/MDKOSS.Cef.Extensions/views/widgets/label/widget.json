@@ -1,0 +1,12 @@
+{
+  "type": "label",
+  "displayName": "文本",
+  "category": "显示",
+  "defaultW": 200,
+  "defaultH": 36,
+  "props": [
+    { "key": "text", "label": "文本", "kind": "text", "default": "文本" },
+    { "key": "align", "label": "对齐", "kind": "select", "default": "left", "options": ["left", "center", "right"] },
+    { "key": "fontSize", "label": "字号", "kind": "number", "default": "16" }
+  ]
+}

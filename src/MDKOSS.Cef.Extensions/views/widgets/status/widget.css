@@ -1,0 +1,29 @@
+.hmi-w-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--line, #2a4570);
+  border-radius: 999px;
+  background: rgba(8, 16, 32, .28);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hmi-canvas.edit .hmi-w-status {
+  background: #fff;
+  border-color: #c5ced8;
+  color: #1b2430;
+}
+
+.hmi-w-status .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #8a93a3;
+  flex-shrink: 0;
+}
+
+.hmi-w-status .dot.ok { background: #35d08f; }
+.hmi-w-status .dot.warn { background: #ffcc66; }
+.hmi-w-status .dot.bad { background: #ff5d5d; }

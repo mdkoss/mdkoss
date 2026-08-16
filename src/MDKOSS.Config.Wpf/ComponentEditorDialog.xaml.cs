@@ -125,6 +125,11 @@ public partial class ComponentEditorDialog : Window
                 Show(IdPanel, true);
                 Show(ValuePanel, true);
                 break;
+            case ConfigModule.Hmi:
+                Show(IdPanel, true);
+                Show(TypePanel, true);
+                Show(ParamsPanel, true);
+                break;
             default:
                 break;
         }
@@ -388,6 +393,7 @@ public partial class ComponentEditorDialog : Window
             case ConfigModule.Visions:
             case ConfigModule.Alarms:
             case ConfigModule.Vars:
+            case ConfigModule.Hmi:
                 if (string.IsNullOrWhiteSpace(Request.Id))
                 {
                     throw new InvalidOperationException("Id / Key 不能为空。");

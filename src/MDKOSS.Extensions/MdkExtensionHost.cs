@@ -48,6 +48,8 @@ public static class MdkExtensionHost
     [
         "MDKOSS.Drivers.*.dll",
         "MDKOSS.Extensions.*.dll",
+        "MDKOSS.Cef.Extensions.dll",
+        "MDKOSS.Cef.Extensions.*.dll",
         "MDKOSS.Pnp.dll",
     ];
 

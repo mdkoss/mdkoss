@@ -14,7 +14,11 @@ dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Debug
 
 或 Visual Studio 将 `MDKOSS.Cef.Sample` 设为启动项目。
 
-默认监控地址见 JSON 的 `monitoringPrefix`（当前为 `http://127.0.0.1:5081/`）。启动页见 `startPage`（当前为 `index.html`）。
+默认监控地址见 JSON 的 `monitoringPrefix`（当前为 `http://127.0.0.1:5081/`）。
+
+**启动页**是组态运行页 `index_hmi.html`（`startPage`）。布局在同目录 [`configs/hmi.layout.json`](configs/hmi.layout.json)，由 `MDKOSS.Cef.Extensions` 插件提供页面与 `/api/hmi`。编辑：运行页「编辑组态」→ `/man_hmi.html`，或 Config.Wpf 的 HMI 模块。订单列表等通用页仍在 `/index.html`。
+
+改回旧主界面：把 `startPage` 设为 `index.html`。
 
 **views**：通过 `ProjectReference` 引用 `MDKOSS.Cef`，构建时 Content 落到输出目录 `views/`，不要再 Link 一遍。
 

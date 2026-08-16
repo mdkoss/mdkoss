@@ -1,0 +1,13 @@
+{
+  "type": "progress",
+  "displayName": "进度条",
+  "category": "显示",
+  "defaultW": 320,
+  "defaultH": 56,
+  "props": [
+    { "key": "var", "label": "变量", "kind": "var", "default": "order.current.progress" },
+    { "key": "label", "label": "标题", "kind": "text", "default": "进度" },
+    { "key": "min", "label": "最小", "kind": "number", "default": "0" },
+    { "key": "max", "label": "最大", "kind": "number", "default": "100" }
+  ]
+}

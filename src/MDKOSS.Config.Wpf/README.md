@@ -37,3 +37,4 @@ dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --db data
 | 调试 → CameraDev | [Debug/CameraDevDebug.md](./Debug/CameraDevDebug.md) |
 | 调试 → Task 编辑 | [Debug/TaskDebug.md](./Debug/TaskDebug.md) |
 | 调试 → Flow 流程编辑 | [Debug/Flow/FlowEditor.md](./Debug/Flow/FlowEditor.md) |
+| 调试 → HMI 主界面组态 | 画布拖放，写回 `hmi.layout.json`（随 setting 保存） |

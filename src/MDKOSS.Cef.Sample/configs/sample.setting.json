@@ -1,6 +1,6 @@
 {
   "projectName": "CEF HMI Demo",
-  "startPage": "index.html",
+  "startPage": "index_hmi.html",
   "monitoringPrefix": "http://127.0.0.1:5081/",
   "cycleMs": 20,
   "databasePath": "data/mdk.db",

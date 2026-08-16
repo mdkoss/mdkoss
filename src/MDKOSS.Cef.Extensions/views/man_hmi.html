@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>主界面组态</title>
+  <link rel="stylesheet" href="/css/theme-white.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+  <link rel="stylesheet" href="/css/hmi.css" />
+</head>
+<body data-tool-group="man" data-tool-page="man_hmi">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">主界面组态 <span class="pill warn">配置</span></div>
+        <div class="sub" id="hmiMeta">控件拖到画布 · 绑定变量 · 保存为 hmi.layout.json</div>
+      </div>
+      <div class="btn-group compact-btns">
+        <input id="hmiTitle" type="text" class="filter" style="width:200px" placeholder="画布标题" />
+        <button type="button" class="btn primary" id="btnSave">保存</button>
+        <button type="button" class="btn" id="btnPreview">预览运行页</button>
+        <button type="button" class="btn danger" id="btnReset">恢复默认</button>
+      </div>
+    </div>
+    <p class="man-note">控件从扩展包载入（内置在 views/widgets）。Delete 删除选中项。</p>
+    <div class="hmi-editor">
+      <div class="hmi-palette">
+        <div class="label">控件</div>
+        <div id="hmiPalette"></div>
+      </div>
+      <div class="card" style="padding:10px;overflow:auto;min-height:560px">
+        <div id="hmiCanvas" class="hmi-canvas edit"></div>
+      </div>
+      <div class="hmi-props">
+        <div class="label">属性</div>
+        <div id="hmiProps"></div>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script src="/js/hmi_runtime.js"></script>
+  <script src="/js/hmi_editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "type": "value",
+  "displayName": "数值",
+  "category": "显示",
+  "defaultW": 220,
+  "defaultH": 72,
+  "props": [
+    { "key": "var", "label": "变量", "kind": "var", "default": "task.operation.state" },
+    { "key": "label", "label": "标题", "kind": "text", "default": "数值" },
+    { "key": "unit", "label": "单位", "kind": "text", "default": "" }
+  ]
+}

@@ -24,6 +24,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\MDKOSS.Extensions.PyScript.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\MDKOSS.Extensions.ModServer.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Cef.Extensions\MDKOSS.Cef.Extensions.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)..\examples\pnp\MDKOSS.Pnp.csproj" Condition="'$(IncludeMdkPnpPlugin)' == 'true'" />
   </ItemGroup>
 
@@ -37,6 +38,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Camera\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Camera.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.PyScript\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.PyScript.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.ModServer.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Cef.Extensions\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Cef.Extensions.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)..\examples\pnp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Pnp.dll" Condition="'$(IncludeMdkPnpPlugin)' == 'true'" />
   </ItemGroup>
 
@@ -142,6 +144,16 @@
       DestinationFolder="$(MdkPluginsOutputDir)"
       SkipUnchangedFiles="true"
       Condition="'@(_MysqlDepsJson)' != ''" />
+
+    <!-- HMI 组态页 / 控件脚本落到宿主 views/，供 MonitoringServer 静态资源服务 -->
+    <ItemGroup>
+      <_CefHmiViews Include="$(MdkPluginsRoot)MDKOSS.Cef.Extensions\views\**\*.*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_CefHmiViews)"
+      DestinationFiles="@(_CefHmiViews->'$(_HostOutDir)views\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(_CefHmiViews)' != ''" />
   </Target>
 
   <!-- Build copies plugins into OutputPath only; Publish must copy them into PublishDir
@@ -187,5 +199,14 @@
       DestinationFiles="@(_HostSidePublishRuntime->'$(_PubRoot)runtimes\win\%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
       Condition="'@(_HostSidePublishRuntime)' != ''" />
+
+    <ItemGroup>
+      <_CefHmiViewsPub Include="$(MdkPluginsRoot)MDKOSS.Cef.Extensions\views\**\*.*" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(_CefHmiViewsPub)"
+      DestinationFiles="@(_CefHmiViewsPub->'$(_PubRoot)views\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(_CefHmiViewsPub)' != ''" />
   </Target>
 </Project>

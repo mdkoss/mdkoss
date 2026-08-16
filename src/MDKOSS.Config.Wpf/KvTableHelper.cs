@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using MDKOSS.Cef.Extensions;
 using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
@@ -65,6 +66,7 @@ public static class ConfigTypeCatalog
         ConfigModule.Tasks => TaskTypes,
         ConfigModule.Gpios => GpioDirections,
         ConfigModule.Vios => ["vio"],
+        ConfigModule.Hmi => HmiWidgetCatalog.All.Select(w => w.Type).ToList(),
         _ => [],
     };
 
@@ -77,6 +79,7 @@ public static class ConfigTypeCatalog
         ConfigModule.Tasks => "pollDriver",
         ConfigModule.Gpios => "in",
         ConfigModule.Vios => "vio",
+        ConfigModule.Hmi => "value",
         _ => "",
     };
 

@@ -115,6 +115,21 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 | `/api/modserver/stop` | POST | 停止监听 |
 | `/api/modserver/readHolding` 等 | POST | 本机读写保持/输入寄存器、线圈、离散量 |
 
+### 主界面组态（MDKOSS.Cef.Extensions）
+
+| 路由 | 方法 | 说明 |
+|------|------|------|
+| `/index_hmi.html` | GET | 组态运行页（可作 `startPage`） |
+| `/man_hmi.html` | GET | 组态编辑页 |
+| `/api/hmi/layout` | GET | 当前布局（无文件时返回默认） |
+| `/api/hmi/layout` | PUT | 保存 `hmi.layout.json` |
+| `/api/hmi/widgets` | GET | 已注册控件目录（含 `script` / `css`） |
+| `/api/hmi/widget/{type}.js` | GET | 控件脚本 |
+| `/api/hmi/widget/{type}.css` | GET | 控件样式 |
+| `/api/hmi/reset` | POST | 恢复默认布局 |
+
+控件从 `views/widgets/{type}/` 与 `IHmiWidgetPackage` 载入（内置 `label` / `value` / `lamp` / `progress` / `status` / `button` 也是扩展包）。说明见 `src/MDKOSS.Cef.Extensions/README.md`。
+
 ### 配方
 
 | 路由 | 方法 | 说明 |

@@ -47,6 +47,7 @@
         { id: "man_recipe", href: "/man_recipe.html", label: "配方" },
         { id: "man_vision", href: "/man_vision.html", label: "视觉" },
         { id: "man_alarm", href: "/man_alarm.html", label: "报警" },
+        { id: "man_hmi", href: "/man_hmi.html", label: "主界面组态" },
       ],
     },
   };

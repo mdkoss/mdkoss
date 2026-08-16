@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 监控组态</title>
+  <link rel="stylesheet" href="/css/theme-navy.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/hmi.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon" title="MDKOSS">M</div>
+        <div class="brand-name" id="deviceName" title="设备名称">—</div>
+      </div>
+      <button class="nav-btn" type="button" id="btnHome"><span class="ico">⌂</span>主界面</button>
+      <button class="nav-btn" type="button" id="btnEdit"><span class="ico">✎</span>编辑组态</button>
+      <div class="alarm-lamp-wrap" title="三色报警灯（来自 task.operation.lamp）">
+        <span class="alarm-lamp-label">报警灯</span>
+        <div class="alarm-lamp" id="alarmLamp"></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title" id="hmiTitle">主界面监控</div>
+      <div class="main-sub" id="hmiSub">组态画布 · 1s 刷新</div>
+    </div>
+    <div class="order-panel" style="padding:0;background:transparent;border:none">
+      <div id="hmiCanvas" class="hmi-canvas"></div>
+    </div>
+  </main>
+
+  <footer class="bottombar">
+    <div class="bottom-section bottom-status">
+      <div class="bottom-label">重要状态监控</div>
+      <div class="status-grid">
+        <div class="status-chip"><span class="dot" id="dotRuntime"></span><span id="lblRuntime">运行时 —</span></div>
+        <div class="status-chip"><span class="dot" id="dotTask"></span><span id="lblTaskOp">任务 —</span></div>
+      </div>
+    </div>
+    <div class="bottom-right">
+      <div class="bottom-ctrl">
+        <button class="ctrl-btn start" type="button" id="btnStart">启动</button>
+        <button class="ctrl-btn stop" type="button" id="btnStop">停止</button>
+        <button class="ctrl-btn reset" type="button" id="btnReset">复位</button>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/hmi_runtime.js"></script>
+  <script>
+    const canvas = document.getElementById("hmiCanvas");
+    const deviceName = document.getElementById("deviceName");
+    const alarmLamp = document.getElementById("alarmLamp");
+
+    function snapshotField(data, camel, pascal) {
+      const a = data[camel];
+      if (a !== undefined && a !== null) return a;
+      return data[pascal];
+    }
+
+    function varStr(vars, key, fallback) {
+      const v = window.MdkHmi.varVal(vars, key);
+      if (v === null || v === undefined || v === "") return fallback;
+      return String(v);
+    }
+
+    function setDot(el, mode) {
+      el.className = "dot";
+      if (mode === "ok") el.classList.add("ok");
+      else if (mode === "warn") el.classList.add("warn");
+      else if (mode === "bad") el.classList.add("bad");
+    }
+
+    function setLamp(lamp) {
+      alarmLamp.className = "alarm-lamp";
+      const c = String(lamp || "red").toLowerCase();
+      if (c === "green") alarmLamp.classList.add("green");
+      else if (c === "yellow") alarmLamp.classList.add("yellow");
+    }
+
+    document.getElementById("btnHome").addEventListener("click", () => { location.href = "/index.html"; });
+    document.getElementById("btnEdit").addEventListener("click", () => { location.href = "/man_hmi.html"; });
+
+    async function sendTaskAction(url) {
+      try {
+        const res = await fetch(url, { method: "POST" });
+        if (!res.ok) throw new Error("http " + res.status);
+      } catch {
+        document.getElementById("lblTaskOp").textContent = "操作失败";
+        setDot(document.getElementById("dotTask"), "bad");
+      }
+    }
+
+    document.getElementById("btnStart").addEventListener("click", () => sendTaskAction("/api/task/start"));
+    document.getElementById("btnStop").addEventListener("click", () => sendTaskAction("/api/task/stop"));
+    document.getElementById("btnReset").addEventListener("click", () => sendTaskAction("/api/task/reset"));
+
+    async function loadLayout() {
+      const res = await fetch("/api/hmi/layout", { cache: "no-store" });
+      if (!res.ok) throw new Error("http " + res.status);
+      const data = await res.json();
+      const layout = data.layout || {};
+      document.getElementById("hmiTitle").textContent = layout.title || "主界面监控";
+      window.MdkHmi.render(canvas, layout, "run");
+      window.MdkHmi.bindLayout(canvas, layout);
+    }
+
+    async function tick() {
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        if (!res.ok) throw new Error("http " + res.status);
+        const data = await res.json();
+        const vars = snapshotField(data, "vars", "Vars") || {};
+        const project = snapshotField(data, "projectName", "ProjectName") || "MDKOSS";
+        deviceName.textContent = varStr(vars, "machine.name", project);
+        const isRunning = !!snapshotField(data, "isRunning", "IsRunning");
+        setDot(document.getElementById("dotRuntime"), isRunning ? "ok" : "warn");
+        document.getElementById("lblRuntime").textContent = isRunning ? "运行时 运行中" : "运行时 已停止";
+        const opState = varStr(vars, "task.operation.state", "—");
+        const opRun = vars["task.operation.running"];
+        setDot(document.getElementById("dotTask"), opState === "fault" ? "bad" : opRun ? "ok" : "warn");
+        document.getElementById("lblTaskOp").textContent = "操作 " + opState;
+        setLamp(vars["task.operation.lamp"] ?? "red");
+        window.MdkHmi.update(canvas, vars);
+      } catch {
+        deviceName.textContent = "未连接";
+        setDot(document.getElementById("dotRuntime"), "bad");
+        document.getElementById("lblRuntime").textContent = "无法连接 /api/status";
+      }
+    }
+
+    window.MdkHmi.ready()
+      .then(() => loadLayout())
+      .then(() => { tick(); setInterval(tick, 1000); })
+      .catch(() => {
+        document.getElementById("hmiSub").textContent = "组态扩展未加载（缺少 /api/hmi）";
+      });
+  </script>
+</body>
+</html>

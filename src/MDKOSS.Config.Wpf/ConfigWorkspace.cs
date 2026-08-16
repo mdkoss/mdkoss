@@ -8,6 +8,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows.Data;
+using MDKOSS.Cef.Extensions;
 using MDKOSS.Core;
 using MDKOSS.Core.Data;
 
@@ -34,6 +35,7 @@ public enum ConfigModule
     Recipes,
     Visions,
     Alarms,
+    Hmi,
     SysConfig,
     Database,
 }
@@ -154,6 +156,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
     private bool _showComposeAxes;
     private bool _showPickRecipeVars;
     private bool _showEditVisionPipeline;
+    private bool _showEditHmiCanvas;
     private string _headline = "未选择组件";
     private string _labelId = "Name (Id)";
     private string _labelName = "Desc (描述)";
@@ -264,6 +267,12 @@ public sealed class PropertyDraft : INotifyPropertyChanged
         get => _showEditVisionPipeline;
         set { if (_showEditVisionPipeline == value) return; _showEditVisionPipeline = value; OnPropertyChanged(); }
     }
+    /// <summary>Show「编辑画布…」button on the Hmi module.</summary>
+    public bool ShowEditHmiCanvas
+    {
+        get => _showEditHmiCanvas;
+        set { if (_showEditHmiCanvas == value) return; _showEditHmiCanvas = value; OnPropertyChanged(); }
+    }
     public bool IsReadOnly { get => _isReadOnly; set { _isReadOnly = value; OnPropertyChanged(); } }
     public bool ParametersAsObject { get => _parametersAsObject; set { _parametersAsObject = value; OnPropertyChanged(); } }
     public bool IsDirty
@@ -314,6 +323,7 @@ public sealed class PropertyDraft : INotifyPropertyChanged
             ShowComposeAxes = false;
             ShowPickRecipeVars = false;
             ShowEditVisionPipeline = false;
+            ShowEditHmiCanvas = false;
             ResetFieldLabels();
             FieldId = FieldName = FieldType = FieldDriverId = FieldDescription = FieldValue = string.Empty;
             FieldParameters = "{}";
@@ -581,6 +591,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
     };
 
     private MdkSetting _setting = new();
+    private HmiLayout _hmi = HmiLayout.CreateDefault();
     private string _jsonPath = string.Empty;
     private string _dbPath = string.Empty;
     private ConfigDocumentKind _documentKind = ConfigDocumentKind.None;
@@ -667,6 +678,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     public string ProjectName => _setting.ProjectName;
     public MdkSetting Setting => _setting;
+    public HmiLayout Hmi => _hmi;
+    public string HmiPath => HmiLayoutStore.ResolvePath(
+        !string.IsNullOrWhiteSpace(_jsonPath) ? _jsonPath : _dbPath);
     public ConfigModule CurrentModule => _module;
     public ComponentItem? SelectedItem => _selected;
     public ConfigDocumentKind DocumentKind => _documentKind;
@@ -812,6 +826,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 }
 
                 _setting.Save(_jsonPath);
+                SaveHmiBeside(_jsonPath);
                 StatusLine = $"已保存 JSON {_jsonPath}";
                 break;
             case ConfigDocumentKind.Database:
@@ -821,6 +836,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 }
 
                 WriteDatabase(_dbPath, sourceHint: _jsonPath);
+                SaveHmiBeside(!string.IsNullOrWhiteSpace(_jsonPath) ? _jsonPath : _dbPath);
                 StatusLine = $"已保存到数据库 {_dbPath}";
                 break;
             default:
@@ -836,6 +852,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         _setting.Save(full);
         _jsonPath = full;
         _documentKind = ConfigDocumentKind.Json;
+        SaveHmiBeside(full);
         NotifyDocumentChanged();
         StatusLine = $"已另存为 JSON {_jsonPath}";
     }
@@ -848,6 +865,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         WriteDatabase(full, sourceHint: _jsonPath);
         _dbPath = full;
         _documentKind = ConfigDocumentKind.Database;
+        SaveHmiBeside(!string.IsNullOrWhiteSpace(_jsonPath) ? _jsonPath : full);
         NotifyDocumentChanged();
         StatusLine = $"已另存为数据库 {_dbPath}";
     }
@@ -859,6 +877,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         var full = System.IO.Path.GetFullPath(path);
         _setting.Save(full);
         _jsonPath = full;
+        SaveHmiBeside(full);
         OnPropertyChanged(nameof(JsonPath));
         StatusLine = $"已导出 JSON {_jsonPath}（主文档仍为 {DocumentKindLabel}）";
     }
@@ -923,6 +942,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             _documentKind = ConfigDocumentKind.Json;
         }
 
+        LoadHmiBeside(_jsonPath);
         NotifyDocumentChanged();
         StatusLine = $"已打开 JSON {_jsonPath}";
         SelectModule(_module, keepSelectionKey: null);
@@ -940,6 +960,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             _documentKind = ConfigDocumentKind.Database;
         }
 
+        LoadHmiBeside(!string.IsNullOrWhiteSpace(_jsonPath) ? _jsonPath : _dbPath);
         NotifyDocumentChanged();
         StatusLine = $"已打开数据库 {_dbPath}";
         SelectModule(_module, keepSelectionKey: null);
@@ -963,6 +984,32 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         OnPropertyChanged(nameof(SettingPath));
         OnPropertyChanged(nameof(JsonPath));
         OnPropertyChanged(nameof(DatabasePath));
+        OnPropertyChanged(nameof(HmiPath));
+    }
+
+    private void LoadHmiBeside(string? settingPath)
+    {
+        _hmi = HmiLayoutStore.LoadOrDefault(settingPath);
+        OnPropertyChanged(nameof(Hmi));
+        OnPropertyChanged(nameof(HmiPath));
+    }
+
+    private void SaveHmiBeside(string? settingPath)
+    {
+        HmiLayoutStore.SaveToFile(HmiLayoutStore.ResolvePath(settingPath), _hmi);
+        OnPropertyChanged(nameof(HmiPath));
+    }
+
+    /// <summary>Replace the in-memory HMI layout (canvas editor apply / reset).</summary>
+    public void ReplaceHmi(HmiLayout layout, string? keepSelectionKey = null)
+    {
+        _hmi = layout ?? HmiLayout.CreateDefault();
+        HmiLayoutStore.Normalize(_hmi);
+        OnPropertyChanged(nameof(Hmi));
+        if (_module == ConfigModule.Hmi)
+        {
+            SelectModule(ConfigModule.Hmi, keepSelectionKey);
+        }
     }
 
     private string ResolveExportDbPath(string? overridePath)
@@ -1374,6 +1421,21 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 req.Id = UniqueId(_setting.Vars.Keys, "var.new");
                 req.Value = "";
                 break;
+            case ConfigModule.Hmi:
+            {
+                var widgetType = string.IsNullOrWhiteSpace(req.Type) ? "value" : req.Type;
+                if (!HmiWidgetCatalog.IsKnown(widgetType))
+                {
+                    widgetType = "value";
+                }
+
+                req.Type = widgetType;
+                req.TypeOptions = HmiWidgetCatalog.All.Select(w => w.Type).ToList();
+                var seed = HmiWidgetCatalog.CreateInstance(widgetType, 24, 24);
+                req.Id = UniqueId(_hmi.Widgets.Select(w => w.Id), seed.Id);
+                req.Parameters = HmiDraftMapper.ToParamBook(seed);
+                break;
+            }
             default:
                 throw new InvalidOperationException("当前模块不支持新建。");
         }
@@ -1399,6 +1461,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Recipes => CommitRecipe(req),
             ConfigModule.Visions => CommitVision(req),
             ConfigModule.Alarms => CommitAlarm(req),
+            ConfigModule.Hmi => CommitHmiWidget(req),
             _ => throw new InvalidOperationException("当前模块不支持新建。"),
         };
 
@@ -1428,6 +1491,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.Recipes => _setting.Recipes,
             ConfigModule.Visions => _setting.Visions,
             ConfigModule.Alarms => _setting.Alarms,
+            ConfigModule.Hmi => _hmi,
             ConfigModule.Vars => _setting.Vars,
             ConfigModule.SysConfig => new Dictionary<string, object?>
             {
@@ -2295,6 +2359,34 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 });
                 break;
             }
+            case ConfigModule.Hmi:
+            {
+                var imported = HmiLayoutStore.Parse(json) ?? throw new InvalidOperationException("HMI 布局 JSON 无效。");
+                if (replace)
+                {
+                    _hmi = imported;
+                }
+                else
+                {
+                    foreach (var widget in imported.Widgets)
+                    {
+                        if (_hmi.Widgets.Any(w => string.Equals(w.Id, widget.Id, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            widget.Id = UniqueId(_hmi.Widgets.Select(w => w.Id), widget.Id);
+                        }
+
+                        _hmi.Widgets.Add(widget);
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(imported.Title))
+                    {
+                        _hmi.Title = imported.Title;
+                    }
+                }
+
+                HmiLayoutStore.Normalize(_hmi);
+                break;
+            }
             case ConfigModule.Vars:
             {
                 var rows = JsonSerializer.Deserialize<Dictionary<string, object?>>(json, JsonOptions)
@@ -2538,6 +2630,27 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         return new ComponentItem { Key = a.Key, Source = a, Module = ConfigModule.Alarms, Title = a.Key };
     }
 
+    private ComponentItem CommitHmiWidget(CreateComponentRequest req)
+    {
+        var type = string.IsNullOrWhiteSpace(req.Type) ? "value" : req.Type.Trim();
+        if (!HmiWidgetCatalog.IsKnown(type))
+        {
+            throw new InvalidOperationException($"未知 HMI 控件类型: {type}");
+        }
+
+        var id = UniqueId(_hmi.Widgets.Select(w => w.Id), string.IsNullOrWhiteSpace(req.Id) ? "w-new" : req.Id.Trim());
+        var widget = HmiWidgetCatalog.CreateInstance(type, 24, 24, id);
+        if (req.Parameters.Count > 0)
+        {
+            HmiDraftMapper.ApplyParamBook(widget, req.Parameters);
+        }
+
+        widget.Id = id;
+        widget.Type = type;
+        _hmi.Widgets.Add(widget);
+        return new ComponentItem { Key = widget.Id, Source = widget, Module = ConfigModule.Hmi, Title = widget.Id };
+    }
+
     public void DuplicateSelected()
     {
         if (_selected is null)
@@ -2590,6 +2703,16 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 _setting.Vars[newKey] = kv.Value;
                 SelectModule(_module, newKey);
                 break;
+            case ConfigModule.Hmi when _selected.Source is HmiWidgetInstance hw:
+            {
+                var copy = HmiLayoutStore.Clone(new HmiLayout { Widgets = [hw] }).Widgets[0];
+                copy.Id = UniqueId(_hmi.Widgets.Select(w => w.Id), hw.Id + "_copy");
+                copy.X += 16;
+                copy.Y += 16;
+                _hmi.Widgets.Add(copy);
+                SelectModule(_module, copy.Id);
+                break;
+            }
             default:
                 throw new InvalidOperationException("当前项不支持复制。");
         }
@@ -2625,6 +2748,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Vars:
                 _setting.Vars.Remove(_selected.Key);
+                break;
+            case ConfigModule.Hmi when _selected.Source is HmiWidgetInstance hw:
+                _hmi.Widgets.Remove(hw);
                 break;
             case ConfigModule.SysConfig:
                 throw new InvalidOperationException("系统配置项不可删除。");
@@ -2671,6 +2797,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Alarms:
                 MoveInList(_setting.Alarms, _selected.Source as MdkSetting.AlarmConfig, delta);
+                break;
+            case ConfigModule.Hmi:
+                MoveInList(_hmi.Widgets, _selected.Source as HmiWidgetInstance, delta);
                 break;
             default:
                 throw new InvalidOperationException("当前模块不支持排序。");
@@ -2719,6 +2848,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 break;
             case ConfigModule.Vars:
                 ApplyVar(_selected.Key);
+                break;
+            case ConfigModule.Hmi when _selected.Source is HmiWidgetInstance hw:
+                ApplyHmiWidget(hw);
                 break;
             case ConfigModule.SysConfig:
                 ApplySysConfig(_selected.Key);
@@ -2943,6 +3075,20 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                 Col5 = a.Display ? "是" : "否",
                 Col6 = a.Module ?? "",
                 Col7 = a.TriggerTime ?? "",
+            }).ToList(),
+            ConfigModule.Hmi => _hmi.Widgets.Select(w => new ComponentItem
+            {
+                Module = module,
+                Source = w,
+                Key = w.Id,
+                Title = string.IsNullOrWhiteSpace(HmiDraftMapper.Describe(w)) ? w.Id : $"{w.Id} · {HmiDraftMapper.Describe(w)}",
+                Subtitle = w.Type,
+                Col2 = w.Id,
+                Col3 = w.Type,
+                Col4 = HmiDraftMapper.Describe(w),
+                Col5 = $"{w.X:0},{w.Y:0}",
+                Col6 = $"{w.W:0}×{w.H:0}",
+                Col7 = HmiProps.GetString(w.Props, "var", HmiProps.GetString(w.Props, "url", "")),
             }).ToList(),
             ConfigModule.SysConfig => BuildSysItems(),
             ConfigModule.Database => BuildDbItems(),
@@ -3261,6 +3407,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             Draft.Clear($"模块 {ModuleTitle} · 点击类型快速新建组件");
             Draft.SetQuickAddTypes(types);
+            if (_module == ConfigModule.Hmi)
+            {
+                Draft.ShowEditHmiCanvas = true;
+            }
+
             return;
         }
 
@@ -3288,6 +3439,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             Draft.ShowComposeAxes = false;
             Draft.ShowPickRecipeVars = false;
             Draft.ShowEditVisionPipeline = false;
+            Draft.ShowEditHmiCanvas = false;
             Draft.QuickAddTypes.Clear();
             Draft.ResetFieldLabels();
             Draft.Headline = $"{ModuleDisplayName(item.Module)} / {item.Title}";
@@ -3371,6 +3523,18 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
                         ["pipeline"] = $"(nodes={v.Pipeline?.Nodes.Count ?? 0})",
                     });
                     Draft.SetParamKeySuggestions(["cameraDeviceId"]);
+                    break;
+                case ConfigModule.Hmi when item.Source is HmiWidgetInstance hw:
+                    SetDraftVisibility(id: true, type: true, parameters: true);
+                    Draft.ShowEnabled = false;
+                    Draft.ShowEditHmiCanvas = true;
+                    Draft.LabelId = "控件 Id";
+                    Draft.LabelType = "控件类型";
+                    Draft.FieldId = hw.Id;
+                    Draft.FieldType = hw.Type;
+                    Draft.SetTypeOptions(HmiWidgetCatalog.All.Select(w => w.Type));
+                    Draft.LoadStringParameters(HmiDraftMapper.ToParamBook(hw));
+                    Draft.SetParamKeySuggestions(HmiDraftMapper.ParamKeysFor(hw.Type));
                     break;
                 case ConfigModule.Alarms when item.Source is MdkSetting.AlarmConfig alarm:
                     SetDraftVisibility(
@@ -4236,6 +4400,26 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         alarm.Display = Draft.FieldEnabled;
     }
 
+    private void ApplyHmiWidget(HmiWidgetInstance widget)
+    {
+        var newId = RequireId(Draft.FieldId, "控件 Id");
+        if (!string.Equals(newId, widget.Id, StringComparison.OrdinalIgnoreCase)
+            && _hmi.Widgets.Any(w => string.Equals(w.Id, newId, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException($"HMI 控件 Id 已存在: {newId}");
+        }
+
+        var type = (Draft.FieldType ?? widget.Type).Trim().ToLowerInvariant();
+        if (!HmiWidgetCatalog.IsKnown(type))
+        {
+            throw new InvalidOperationException($"未知 HMI 控件类型: {type}");
+        }
+
+        widget.Id = newId;
+        widget.Type = type;
+        HmiDraftMapper.ApplyParamBook(widget, Draft.CollectStringParameters());
+    }
+
     private void ApplyVar(string oldKey)
     {
         var newKey = RequireId(Draft.FieldId, "变量 Key");
@@ -4606,6 +4790,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case ConfigModule.Tasks:
                 ColHeader5 = "";
                 break;
+            case ConfigModule.Hmi:
+                ColHeader5 = "XY";
+                ColHeader6 = "Size";
+                ColHeader7 = "绑定";
+                break;
         }
 
         if (module == ConfigModule.Alarms)
@@ -4633,6 +4822,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         ConfigModule.Recipes => "Recipes",
         ConfigModule.Visions => "Visions",
         ConfigModule.Alarms => "Alarms",
+        ConfigModule.Hmi => "Hmi",
         ConfigModule.SysConfig => "SysConfig",
         ConfigModule.Database => "Database",
         _ => m.ToString(),

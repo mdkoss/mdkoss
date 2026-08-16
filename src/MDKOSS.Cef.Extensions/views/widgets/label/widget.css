@@ -1,0 +1,11 @@
+.hmi-w-label {
+  display: flex;
+  align-items: center;
+  color: var(--text, #e8eef8);
+  font-weight: 700;
+  padding: 0 4px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hmi-canvas.edit .hmi-w-label { color: #1b2430; }

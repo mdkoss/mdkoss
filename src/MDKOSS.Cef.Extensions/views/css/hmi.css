@@ -1,0 +1,72 @@
+/* Main-HMI 组态画布与编辑器。控件样式在 views/widgets/{type}/widget.css。 */
+
+.hmi-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 240px;
+  overflow: auto;
+  background:
+    linear-gradient(180deg, rgba(18, 38, 72, .35), transparent 40%),
+    var(--panel, #122038);
+  border: 1px solid var(--line, #2a4570);
+  border-radius: 10px;
+}
+
+.hmi-canvas.edit {
+  background-color: #f4f6f8;
+  background-image:
+    linear-gradient(rgba(20, 40, 70, .06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(20, 40, 70, .06) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-color: #c5ced8;
+}
+
+.hmi-widget {
+  position: absolute;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.hmi-widget.edit {
+  cursor: move;
+  outline: 1px dashed rgba(47, 111, 224, .45);
+}
+
+.hmi-widget.edit.selected {
+  outline: 2px solid #2f6fe0;
+  z-index: 4;
+}
+
+.hmi-editor {
+  display: grid;
+  grid-template-columns: 200px 1fr 280px;
+  gap: 12px;
+  min-height: 560px;
+}
+
+.hmi-palette, .hmi-props {
+  background: var(--panel2, #fff);
+  border: 1px solid var(--line, #d5dde6);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.hmi-palette button {
+  display: block;
+  width: 100%;
+  margin: 0 0 8px;
+  text-align: left;
+}
+
+.hmi-prop-row { margin-bottom: 10px; }
+.hmi-prop-row label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted, #667);
+  margin-bottom: 4px;
+}
+.hmi-prop-row input, .hmi-prop-row select {
+  width: 100%;
+  box-sizing: border-box;
+}

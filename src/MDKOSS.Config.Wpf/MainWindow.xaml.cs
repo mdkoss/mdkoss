@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using MDKOSS.Config.Wpf.Debug;
 using MDKOSS.Config.Wpf.Debug.Flow;
 using MDKOSS.Config.Wpf.Debug.Vision;
+using MDKOSS.Config.Wpf.Hmi;
 using MDKOSS.Core;
 
 namespace MDKOSS.Config.Wpf;
@@ -134,7 +135,7 @@ public partial class MainWindow : Window
         {
             ("硬件", [ConfigModule.Drivers, ConfigModule.Devices, ConfigModule.Axis, ConfigModule.Platform, ConfigModule.Gpios, ConfigModule.Vios]),
             ("逻辑", [ConfigModule.Tasks, ConfigModule.Vars, ConfigModule.Recipes, ConfigModule.Visions, ConfigModule.Alarms]),
-            ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
+            ("系统", [ConfigModule.Hmi, ConfigModule.SysConfig, ConfigModule.Database]),
         };
 
         var entries = _workspace.BuildNavTreeSnapshot().ToDictionary(e => e.Module, e => e);
@@ -1456,6 +1457,7 @@ public partial class MainWindow : Window
     private void NavRecipes_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Recipes);
     private void NavVisions_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Visions);
     private void NavAlarms_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Alarms);
+    private void NavHmi_Click(object sender, RoutedEventArgs e) => JumpTo(ConfigModule.Hmi);
 
     private void JumpTo(ConfigModule module)
     {
@@ -1525,6 +1527,11 @@ public partial class MainWindow : Window
             PreferKeyIfModule(ConfigModule.Visions),
             RefreshTreeKeepingSelection));
 
+    private void EditHmiCanvas_Click(object sender, RoutedEventArgs e)
+    {
+        OpenDebugWindow(new HmiEditorWindow(_workspace, RefreshTreeKeepingSelection));
+    }
+
     private void EditVisionPipeline_Click(object sender, RoutedEventArgs e)
     {
         if (!_workspace.Draft.ShowEditVisionPipeline || _workspace.Draft.IsReadOnly)
@@ -1581,6 +1588,9 @@ public partial class MainWindow : Window
             }
             case ConfigModule.Visions:
                 OpenDebugWindow(new VisionEditorWindow(_workspace, item.Key, RefreshTreeKeepingSelection));
+                return;
+            case ConfigModule.Hmi:
+                OpenDebugWindow(new HmiEditorWindow(_workspace, RefreshTreeKeepingSelection));
                 return;
             case ConfigModule.Devices:
             {

@@ -16,6 +16,7 @@ src/
 ├── MDKOSS.Extensions.PyScript/
 ├── MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Cef/
+├── MDKOSS.Cef.Extensions/       # 主界面监控组态（控件扩展包 + 布局 API）
 ├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
 ├── MDKOSS.Sample/
 ├── MDKOSS.Sample.Dispenser/
@@ -44,6 +45,12 @@ src/
 | `MDKOSS.Extensions.Camera` | `extcamera` | `CameraExtensionBootstrap` |
 | `MDKOSS.Extensions.ModServer` | `devmodserver` | `ModServerExtensionBootstrap` |
 | `MDKOSS.Extensions.PyScript` | `devpyscript` | `PyScriptExtensionBootstrap` |
+
+## HMI 组态
+
+| 项目 | 页面 / API | Bootstrap |
+|------|------------|-----------|
+| `MDKOSS.Cef.Extensions` | `index_hmi.html` / `man_hmi.html` / `/api/hmi` | `CefHmiExtensionBootstrap` |
 
 ## Android
 
