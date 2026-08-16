@@ -64,6 +64,27 @@ public static class DmcIoMap
         return true;
     }
 
+    /// <summary>
+    /// Splits a native 0-based bit number into a 32-bit port index and shift.
+    /// Used so many bit reads share one <c>dmc_read_inport</c> / <c>dmc_read_outport</c>.
+    /// </summary>
+    public static bool TrySplitPortBit(short addressBit, out ushort port, out int shift)
+    {
+        port = 0;
+        shift = 0;
+        if (!TryNativeBit(addressBit, out var bitno))
+        {
+            return false;
+        }
+
+        port = (ushort)(bitno / 32);
+        shift = bitno % 32;
+        return true;
+    }
+
+    public static bool TestPortBit(int word, int shift) =>
+        shift is >= 0 and <= 31 && (word & (1 << shift)) != 0;
+
     public static bool TryAxisStatusMask(short type, out uint mask)
     {
         mask = type switch

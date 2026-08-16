@@ -171,4 +171,26 @@ public interface IDriver : IDisposable
         progress = 0;
         return false;
     }
+
+    /// <summary>
+    /// Reads axis snapshots in one pass. Default loops <see cref="TryGetAxisState"/>.
+    /// Drivers may batch consecutive channels (GTS <c>count</c>) and share a home-port read.
+    /// </summary>
+    bool TryGetAxisStates(short[] axes, AxisStatus[] statuses)
+    {
+        if (axes is null || statuses is null || axes.Length == 0 || statuses.Length < axes.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < axes.Length; i++)
+        {
+            if (!TryGetAxisState(axes[i], out statuses[i]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }

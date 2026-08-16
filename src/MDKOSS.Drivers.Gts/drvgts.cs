@@ -9,13 +9,19 @@ namespace MDKOSS.Core.Drivers;
 /// </summary>
 public sealed class DrvGts : IDriver
 {
+    private static readonly ConcurrentDictionary<short, object> CardLocks = new();
+
     private readonly ConcurrentDictionary<string, object?> _memory = new();
     private readonly ConcurrentDictionary<short, bool> _axisEnabled = new();
+    private readonly DriverIoPortCache _ioCache = new();
+    private readonly DriverAxisStateCache _axisCache = new();
     private short _cardNo = 1;
     private short _channel;
     private short _crd = 1;
     private short _interpCrd = 1;
     private bool _interpArmed;
+
+    private object NativeLock => CardLocks.GetOrAdd(_cardNo, static _ => new object());
 
     public string Name => "GTS";
 
@@ -39,7 +45,12 @@ public sealed class DrvGts : IDriver
         _memory["driver.channel"] = _channel;
         _memory["driver.crd"] = _crd;
 
-        var rc = NativeGts.GT_Open(_cardNo, _channel, openParam);
+        short rc;
+        lock (NativeLock)
+        {
+            rc = NativeGts.GT_Open(_cardNo, _channel, openParam);
+        }
+
         IsConnected = rc == 0;
         _memory["driver.lastCode"] = rc;
 
@@ -50,7 +61,10 @@ public sealed class DrvGts : IDriver
 
         if (resetOnInit)
         {
-            _ = NativeGts.GT_Reset(_cardNo);
+            lock (NativeLock)
+            {
+                _ = NativeGts.GT_Reset(_cardNo);
+            }
         }
     }
 
@@ -120,10 +134,29 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetDi(_cardNo, diType, out var nativeValue);
-        _memory["driver.lastCode"] = rc;
-        value = nativeValue;
-        return rc == 0;
+        if (_ioCache.TryGet(false, diType, out value))
+        {
+            return true;
+        }
+
+        lock (NativeLock)
+        {
+            if (_ioCache.TryGet(false, diType, out value))
+            {
+                return true;
+            }
+
+            var rc = NativeGts.GT_GetDi(_cardNo, diType, out var nativeValue);
+            _memory["driver.lastCode"] = rc;
+            value = nativeValue;
+            if (rc != 0)
+            {
+                return false;
+            }
+
+            _ioCache.Set(false, diType, value);
+            return true;
+        }
     }
 
     public bool TryReadDo(short doType, out int value)
@@ -134,15 +167,40 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetDo(_cardNo, doType, out var nativeValue);
-        _memory["driver.lastCode"] = rc;
-        value = nativeValue;
-        return rc == 0;
+        if (_ioCache.TryGet(true, doType, out value))
+        {
+            return true;
+        }
+
+        lock (NativeLock)
+        {
+            if (_ioCache.TryGet(true, doType, out value))
+            {
+                return true;
+            }
+
+            var rc = NativeGts.GT_GetDo(_cardNo, doType, out var nativeValue);
+            _memory["driver.lastCode"] = rc;
+            value = nativeValue;
+            if (rc != 0)
+            {
+                return false;
+            }
+
+            _ioCache.Set(true, doType, value);
+            return true;
+        }
     }
 
     public bool WriteDo(short doType, int value)
     {
-        return IsConnected && Call(() => NativeGts.GT_SetDo(_cardNo, doType, value));
+        var ok = IsConnected && Call(() => NativeGts.GT_SetDo(_cardNo, doType, value));
+        if (ok)
+        {
+            _ioCache.Invalidate(true, doType);
+        }
+
+        return ok;
     }
 
     public bool WriteDoBit(short doType, short doIndex, bool value)
@@ -153,7 +211,13 @@ public sealed class DrvGts : IDriver
         }
 
         var bit = value ? (short)1 : (short)0;
-        return IsConnected && Call(() => NativeGts.GT_SetDoBit(_cardNo, doType, doIndex, bit));
+        var ok = IsConnected && Call(() => NativeGts.GT_SetDoBit(_cardNo, doType, doIndex, bit));
+        if (ok)
+        {
+            _ioCache.Invalidate(true, doType);
+        }
+
+        return ok;
     }
 
     // ──────────────────────────────────────────────
@@ -163,14 +227,24 @@ public sealed class DrvGts : IDriver
     public bool EnableAxis(short axis)
     {
         var ok = IsConnected && Call(() => NativeGts.GT_AxisOn(_cardNo, axis));
-        if (ok) _axisEnabled[axis] = true;
+        if (ok)
+        {
+            _axisEnabled[axis] = true;
+            _axisCache.Invalidate(axis);
+        }
+
         return ok;
     }
 
     public bool DisableAxis(short axis)
     {
         var ok = IsConnected && Call(() => NativeGts.GT_AxisOff(_cardNo, axis));
-        if (ok) _axisEnabled[axis] = false;
+        if (ok)
+        {
+            _axisEnabled[axis] = false;
+            _axisCache.Invalidate(axis);
+        }
+
         return ok;
     }
 
@@ -198,33 +272,149 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetSts(_cardNo, axis, out var nativeStatus, 1, out _);
-        _memory["driver.lastCode"] = rc;
-        status = nativeStatus;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = NativeGts.GT_GetSts(_cardNo, axis, out var nativeStatus, 1, out _);
+            _memory["driver.lastCode"] = rc;
+            status = nativeStatus;
+            return rc == 0;
+        }
     }
 
     public bool TryGetAxisState(short axis, out AxisStatus status)
     {
         status = default;
-        if (!TryGetAxisStatus(axis, out var raw))
+        if (!IsConnected)
         {
             return false;
         }
 
-        var home = false;
-        if (TryReadDi(GtsIoType.Home, out var homeWord))
+        if (_axisCache.TryGet(axis, out status))
         {
-            home = DriverIoAddress.TestBit(homeWord, axis);
+            return true;
         }
 
-        TryGetAxisPrfPosition(axis, out var prf);
-        TryGetAxisEncPosition(axis, out var enc);
-        TryGetAxisVelocity(axis, out var vel);
+        lock (NativeLock)
+        {
+            if (_axisCache.TryGet(axis, out status))
+            {
+                return true;
+            }
 
-        status = AxisStatus.FromGts(raw, home, prf, enc, vel);
-        _axisEnabled[axis] = status.ServoOn;
-        return true;
+            if (!TryGetAxisStatus(axis, out var raw))
+            {
+                return false;
+            }
+
+            var home = false;
+            if (TryReadDi(GtsIoType.Home, out var homeWord))
+            {
+                home = DriverIoAddress.TestBit(homeWord, axis);
+            }
+
+            TryGetAxisPrfPosition(axis, out var prf);
+            TryGetAxisEncPosition(axis, out var enc);
+            TryGetAxisVelocity(axis, out var vel);
+
+            status = AxisStatus.FromGts(raw, home, prf, enc, vel);
+            _axisEnabled[axis] = status.ServoOn;
+            _axisCache.Set(axis, status);
+            return true;
+        }
+    }
+
+    public bool TryGetAxisStates(short[] axes, AxisStatus[] statuses)
+    {
+        if (axes is null || statuses is null || axes.Length == 0 || statuses.Length < axes.Length)
+        {
+            return false;
+        }
+
+        if (!IsConnected)
+        {
+            return false;
+        }
+
+        lock (NativeLock)
+        {
+            var allCached = true;
+            for (var i = 0; i < axes.Length; i++)
+            {
+                if (!_axisCache.TryGet(axes[i], out statuses[i]))
+                {
+                    allCached = false;
+                    break;
+                }
+            }
+
+            if (allCached)
+            {
+                return true;
+            }
+
+            short min = axes[0];
+            short max = axes[0];
+            for (var i = 1; i < axes.Length; i++)
+            {
+                if (axes[i] < min)
+                {
+                    min = axes[i];
+                }
+
+                if (axes[i] > max)
+                {
+                    max = axes[i];
+                }
+            }
+
+            var span = max - min + 1;
+            if (min < 1 || span is < 1 or > 16)
+            {
+                for (var i = 0; i < axes.Length; i++)
+                {
+                    if (!TryGetAxisState(axes[i], out statuses[i]))
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+
+            var sts = new int[span];
+            var prf = new double[span];
+            var enc = new double[span];
+            var rc = NativeGts.GT_GetStsN(_cardNo, min, sts, (short)span, out _);
+            _memory["driver.lastCode"] = rc;
+            if (rc != 0
+                || NativeGts.GT_GetPrfPosN(_cardNo, min, prf, (short)span, out _) != 0
+                || NativeGts.GT_GetEncPosN(_cardNo, min, enc, (short)span, out _) != 0)
+            {
+                return false;
+            }
+
+            var homeWord = 0;
+            _ = TryReadDi(GtsIoType.Home, out homeWord);
+
+            for (var i = 0; i < axes.Length; i++)
+            {
+                var axis = axes[i];
+                var idx = axis - min;
+                if (idx < 0 || idx >= span)
+                {
+                    return false;
+                }
+
+                TryGetAxisVelocity(axis, out var vel);
+                var home = DriverIoAddress.TestBit(homeWord, axis);
+                var state = AxisStatus.FromGts(sts[idx], home, prf[idx], enc[idx], vel);
+                statuses[i] = state;
+                _axisEnabled[axis] = state.ServoOn;
+                _axisCache.Set(axis, state);
+            }
+
+            return true;
+        }
     }
 
     public bool TryGetAxisPrfPosition(short axis, out double position)
@@ -235,10 +425,13 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetPrfPos(_cardNo, axis, out var nativePos, 1, out _);
-        _memory["driver.lastCode"] = rc;
-        position = nativePos;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = NativeGts.GT_GetPrfPos(_cardNo, axis, out var nativePos, 1, out _);
+            _memory["driver.lastCode"] = rc;
+            position = nativePos;
+            return rc == 0;
+        }
     }
 
     public bool TryGetAxisEncPosition(short axis, out double position)
@@ -249,10 +442,13 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetEncPos(_cardNo, axis, out var nativePos, 1, out _);
-        _memory["driver.lastCode"] = rc;
-        position = nativePos;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = NativeGts.GT_GetEncPos(_cardNo, axis, out var nativePos, 1, out _);
+            _memory["driver.lastCode"] = rc;
+            position = nativePos;
+            return rc == 0;
+        }
     }
 
     public bool TryGetAxisVelocity(short axis, out double velocity)
@@ -263,10 +459,13 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        var rc = NativeGts.GT_GetVel(_cardNo, axis, out var nativeVel);
-        _memory["driver.lastCode"] = rc;
-        velocity = nativeVel;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = NativeGts.GT_GetVel(_cardNo, axis, out var nativeVel);
+            _memory["driver.lastCode"] = rc;
+            velocity = nativeVel;
+            return rc == 0;
+        }
     }
 
     // ──────────────────────────────────────────────
@@ -280,7 +479,7 @@ public sealed class DrvGts : IDriver
             return false;
         }
 
-        return Call(() => NativeGts.GT_SetPrfPos(_cardNo, axis, (int)position));
+        return CallAxis(axis, () => NativeGts.GT_SetPrfPos(_cardNo, axis, (int)position));
     }
 
     // ──────────────────────────────────────────────
@@ -289,7 +488,7 @@ public sealed class DrvGts : IDriver
 
     public bool SetAxisVelocity(short axis, double velocity)
     {
-        return IsConnected && Call(() => NativeGts.GT_SetVel(_cardNo, axis, velocity));
+        return IsConnected && CallAxis(axis, () => NativeGts.GT_SetVel(_cardNo, axis, velocity));
     }
 
     public bool SetAxisAcceleration(short axis, double acceleration)
@@ -300,7 +499,7 @@ public sealed class DrvGts : IDriver
         }
 
         var trap = new NativeGts.TTrapPrm { acc = acceleration, dec = 0, velStart = 0, smoothTime = 0 };
-        return Call(() => NativeGts.GT_SetTrapPrm(_cardNo, axis, ref trap));
+        return CallAxis(axis, () => NativeGts.GT_SetTrapPrm(_cardNo, axis, ref trap));
     }
 
     public bool SetAxisDeceleration(short axis, double deceleration)
@@ -311,7 +510,7 @@ public sealed class DrvGts : IDriver
         }
 
         var trap = new NativeGts.TTrapPrm { acc = 0, dec = deceleration, velStart = 0, smoothTime = 0 };
-        return Call(() => NativeGts.GT_SetTrapPrm(_cardNo, axis, ref trap));
+        return CallAxis(axis, () => NativeGts.GT_SetTrapPrm(_cardNo, axis, ref trap));
     }
 
     // ──────────────────────────────────────────────
@@ -342,7 +541,13 @@ public sealed class DrvGts : IDriver
         }
 
         var mask = 1 << (axis - 1);
-        return Call(() => NativeGts.GT_Update(_cardNo, mask));
+        var ok = Call(() => NativeGts.GT_Update(_cardNo, mask));
+        if (ok)
+        {
+            _axisCache.Invalidate(axis);
+        }
+
+        return ok;
     }
 
     public bool MoveAxisJog(short axis, double velocity, double acceleration, double deceleration)
@@ -367,7 +572,13 @@ public sealed class DrvGts : IDriver
         }
 
         var mask = 1 << (axis - 1);
-        return Call(() => NativeGts.GT_Update(_cardNo, mask));
+        var ok = Call(() => NativeGts.GT_Update(_cardNo, mask));
+        if (ok)
+        {
+            _axisCache.Invalidate(axis);
+        }
+
+        return ok;
     }
 
     public bool MoveAxisHome(short axis, short homeMode, double velocity, double acceleration, double deceleration)
@@ -396,12 +607,24 @@ public sealed class DrvGts : IDriver
         }
 
         var mask = 1 << (axis - 1);
-        return Call(() => NativeGts.GT_Update(_cardNo, mask));
+        var ok = Call(() => NativeGts.GT_Update(_cardNo, mask));
+        if (ok)
+        {
+            _axisCache.Invalidate(axis);
+        }
+
+        return ok;
     }
 
     public bool Stop(int axisMask, int option = 0)
     {
-        return IsConnected && Call(() => NativeGts.GT_Stop(_cardNo, axisMask, option));
+        var ok = IsConnected && Call(() => NativeGts.GT_Stop(_cardNo, axisMask, option));
+        if (ok)
+        {
+            _axisCache.InvalidateAll();
+        }
+
+        return ok;
     }
 
     public bool MoveLine(short[] axes, double[] targets, double velocity, double acceleration, double deceleration, short crd = 0)
@@ -444,6 +667,7 @@ public sealed class DrvGts : IDriver
 
         _interpCrd = coord;
         _interpArmed = true;
+        _axisCache.InvalidateAll();
         return true;
     }
 
@@ -509,6 +733,7 @@ public sealed class DrvGts : IDriver
 
         _interpCrd = coord;
         _interpArmed = true;
+        _axisCache.InvalidateAll();
         return true;
     }
 
@@ -550,12 +775,17 @@ public sealed class DrvGts : IDriver
     {
         if (IsConnected)
         {
-            _ = NativeGts.GT_Close(_cardNo);
+            lock (NativeLock)
+            {
+                _ = NativeGts.GT_Close(_cardNo);
+            }
         }
 
         IsConnected = false;
         _memory.Clear();
         _axisEnabled.Clear();
+        _ioCache.Clear();
+        _axisCache.InvalidateAll();
     }
 
     // ──────────────────────────────────────────────
@@ -704,9 +934,23 @@ public sealed class DrvGts : IDriver
 
     private bool Call(Func<short> invoke)
     {
-        var rc = invoke();
-        _memory["driver.lastCode"] = rc;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = invoke();
+            _memory["driver.lastCode"] = rc;
+            return rc == 0;
+        }
+    }
+
+    private bool CallAxis(short axis, Func<short> invoke)
+    {
+        var ok = Call(invoke);
+        if (ok)
+        {
+            _axisCache.Invalidate(axis);
+        }
+
+        return ok;
     }
 
     private short ResolveCrd(short crd) => crd <= 0 ? _crd : crd;
@@ -885,11 +1129,20 @@ public sealed class DrvGts : IDriver
         [DllImport("gts.dll")]
         internal static extern short GT_GetSts(short cardNum, short axis, out int pStatus, short count, out uint pClock);
 
+        [DllImport("gts.dll", EntryPoint = "GT_GetSts")]
+        internal static extern short GT_GetStsN(short cardNum, short axis, [Out] int[] pStatus, short count, out uint pClock);
+
         [DllImport("gts.dll")]
         internal static extern short GT_GetPrfPos(short cardNum, short profile, out double pValue, short count, out uint pClock);
 
+        [DllImport("gts.dll", EntryPoint = "GT_GetPrfPos")]
+        internal static extern short GT_GetPrfPosN(short cardNum, short profile, [Out] double[] pValue, short count, out uint pClock);
+
         [DllImport("gts.dll")]
         internal static extern short GT_GetEncPos(short cardNum, short profile, out double pValue, short count, out uint pClock);
+
+        [DllImport("gts.dll", EntryPoint = "GT_GetEncPos")]
+        internal static extern short GT_GetEncPosN(short cardNum, short profile, [Out] double[] pValue, short count, out uint pClock);
 
         [DllImport("gts.dll")]
         internal static extern short GT_GetVel(short cardNum, short profile, out double pValue);

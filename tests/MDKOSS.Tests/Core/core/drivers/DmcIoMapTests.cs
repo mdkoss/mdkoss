@@ -20,6 +20,22 @@ public sealed class DmcIoMapTests
     }
 
     [Fact]
+    public void Split_port_bit_uses_32_bits_per_port()
+    {
+        Assert.True(DmcIoMap.TrySplitPortBit(0, out var port0, out var shift0));
+        Assert.Equal((ushort)0, port0);
+        Assert.Equal(0, shift0);
+        Assert.True(DmcIoMap.TrySplitPortBit(31, out var port31, out var shift31));
+        Assert.Equal((ushort)0, port31);
+        Assert.Equal(31, shift31);
+        Assert.True(DmcIoMap.TrySplitPortBit(32, out var port32, out var shift32));
+        Assert.Equal((ushort)1, port32);
+        Assert.Equal(0, shift32);
+        Assert.True(DmcIoMap.TestPortBit(1 << 3, 3));
+        Assert.False(DmcIoMap.TestPortBit(1 << 3, 2));
+    }
+
+    [Fact]
     public void Address_do_gpo_bit_0_is_first_dmc_output()
     {
         Assert.True(DriverIoAddress.TryParse("do.gpo.bit.0", out var io));

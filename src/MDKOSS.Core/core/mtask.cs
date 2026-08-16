@@ -1,4 +1,5 @@
 using MDKOSS.Core.Drivers;
+using System.Diagnostics;
 
 namespace MDKOSS.Core;
 
@@ -98,7 +99,13 @@ public sealed class MTaskScheduler : IDisposable
         _cts = new CancellationTokenSource();
         foreach (var task in _tasks)
         {
-            _workers.Add(RunLoopAsync(task, _cts.Token));
+            var captured = task;
+            _workers.Add(Task.Factory.StartNew(
+                    () => RunLoopAsync(captured, _cts.Token),
+                    _cts.Token,
+                    TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach,
+                    TaskScheduler.Default)
+                .Unwrap());
         }
     }
 
@@ -134,10 +141,15 @@ public sealed class MTaskScheduler : IDisposable
     {
         while (!cancellationToken.IsCancellationRequested)
         {
+            var started = Stopwatch.GetTimestamp();
             try
             {
                 await task.ExecuteOnceAsync(cancellationToken).ConfigureAwait(false);
-                await Task.Delay(task.IntervalMs, cancellationToken).ConfigureAwait(false);
+                var remaining = task.IntervalMs - (int)Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+                if (remaining > 0)
+                {
+                    await Task.Delay(remaining, cancellationToken).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {

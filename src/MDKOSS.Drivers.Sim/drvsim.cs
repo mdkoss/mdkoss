@@ -16,6 +16,7 @@ public sealed class DrvSim : IDriver
     private readonly ConcurrentDictionary<short, int> _di = new();
     private readonly ConcurrentDictionary<short, int> _do = new();
     private readonly ConcurrentDictionary<short, SimAxisState> _axes = new();
+    private readonly DriverIoPortCache _ioCache = new();
     private readonly object _interpGate = new();
     private SimInterp? _interp;
     private Timer? _motionTimer;
@@ -106,7 +107,13 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        if (_ioCache.TryGet(false, diType, out value))
+        {
+            return true;
+        }
+
         value = _di.GetOrAdd(diType, 0);
+        _ioCache.Set(false, diType, value);
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -119,7 +126,13 @@ public sealed class DrvSim : IDriver
             return false;
         }
 
+        if (_ioCache.TryGet(true, doType, out value))
+        {
+            return true;
+        }
+
         value = _do.GetOrAdd(doType, 0);
+        _ioCache.Set(true, doType, value);
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -132,6 +145,7 @@ public sealed class DrvSim : IDriver
         }
 
         _do[doType] = value;
+        _ioCache.Invalidate(true, doType);
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -148,6 +162,7 @@ public sealed class DrvSim : IDriver
         var bitMask = 1 << doIndex;
         var next = value ? (current | bitMask) : (current & ~bitMask);
         _do[doType] = next;
+        _ioCache.Invalidate(true, doType);
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -624,6 +639,7 @@ public sealed class DrvSim : IDriver
         _di.Clear();
         _do.Clear();
         _axes.Clear();
+        _ioCache.Clear();
     }
 
     // ──────────────────────────────────────────────
@@ -706,6 +722,7 @@ public sealed class DrvSim : IDriver
         }
 
         _di[io.Type] = word;
+        _ioCache.Invalidate(false, io.Type);
         _memory["driver.lastCode"] = 0;
         return true;
     }
@@ -719,6 +736,7 @@ public sealed class DrvSim : IDriver
 
         var current = port.GetOrAdd(type, 0);
         port[type] = ApplyPortBit(current, shift, value);
+        _ioCache.Invalidate(ReferenceEquals(port, _do), type);
         _memory["driver.lastCode"] = 0;
         return true;
     }

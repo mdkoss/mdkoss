@@ -10,22 +10,27 @@ namespace MDKOSS.Drivers.Dmc;
 /// <summary>
 /// Leadshine LTDMC driver. GPIO addresses use the same <see cref="DriverIoAddress"/> form as GTS/SIM
 /// (<c>di.gpi.bit.n</c> / <c>do.gpo.bit.n</c>, DMC-native 0-based). Mapped 1:1 to
-/// <c>dmc_read_inbit</c> / <c>dmc_write_outbit</c>.
+/// <c>dmc_read_inport</c> / <c>dmc_write_outbit</c> (bit reads share a port-word cache).
 /// </summary>
 public sealed class DrvDmc : IDriver
 {
     private static readonly object BoardLock = new();
+    private static readonly ConcurrentDictionary<ushort, object> CardLocks = new();
     private static int BoardRefCount;
 
     private readonly ConcurrentDictionary<string, object?> _memory = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<short, bool> _axisEnabled = new();
     private readonly ConcurrentDictionary<short, AxisMotionPrm> _motion = new();
+    private readonly DriverIoPortCache _ioCache = new();
+    private readonly DriverAxisStateCache _axisCache = new();
     private ushort _cardNo;
     private ushort _crd;
     private bool _sevonActiveLow = true;
     private bool _ownsBoard;
     private ushort _interpCrd;
     private short[]? _interpAxes;
+
+    private object NativeLock => CardLocks.GetOrAdd(_cardNo, static _ => new object());
 
     public string Name => "DMC";
 
@@ -155,9 +160,23 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        value = unchecked((int)LTDMC.dmc_read_inport(_cardNo, (ushort)diType));
-        _memory["driver.lastCode"] = 0;
-        return true;
+        if (_ioCache.TryGet(false, diType, out value))
+        {
+            return true;
+        }
+
+        lock (NativeLock)
+        {
+            if (_ioCache.TryGet(false, diType, out value))
+            {
+                return true;
+            }
+
+            value = unchecked((int)LTDMC.dmc_read_inport(_cardNo, (ushort)diType));
+            _memory["driver.lastCode"] = 0;
+            _ioCache.Set(false, diType, value);
+            return true;
+        }
     }
 
     public bool TryReadDo(short doType, out int value)
@@ -168,16 +187,36 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        value = unchecked((int)LTDMC.dmc_read_outport(_cardNo, (ushort)doType));
-        _memory["driver.lastCode"] = 0;
-        return true;
+        if (_ioCache.TryGet(true, doType, out value))
+        {
+            return true;
+        }
+
+        lock (NativeLock)
+        {
+            if (_ioCache.TryGet(true, doType, out value))
+            {
+                return true;
+            }
+
+            value = unchecked((int)LTDMC.dmc_read_outport(_cardNo, (ushort)doType));
+            _memory["driver.lastCode"] = 0;
+            _ioCache.Set(true, doType, value);
+            return true;
+        }
     }
 
     public bool WriteDo(short doType, int value)
     {
-        return IsConnected
+        var ok = IsConnected
             && doType >= 0
             && Call(() => LTDMC.dmc_write_outport(_cardNo, (ushort)doType, unchecked((uint)value)));
+        if (ok)
+        {
+            _ioCache.Invalidate(true, doType);
+        }
+
+        return ok;
     }
 
     public bool WriteDoBit(short doType, short doIndex, bool value)
@@ -208,6 +247,7 @@ public sealed class DrvDmc : IDriver
         if (ok)
         {
             _axisEnabled[axis] = true;
+            _axisCache.Invalidate(axis);
         }
 
         return ok;
@@ -225,6 +265,7 @@ public sealed class DrvDmc : IDriver
         if (ok)
         {
             _axisEnabled[axis] = false;
+            _axisCache.Invalidate(axis);
         }
 
         return ok;
@@ -249,45 +290,67 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        status = unchecked((int)LTDMC.dmc_axis_io_status(_cardNo, (ushort)axis));
-        _memory["driver.lastCode"] = 0;
-        return true;
+        lock (NativeLock)
+        {
+            status = unchecked((int)LTDMC.dmc_axis_io_status(_cardNo, (ushort)axis));
+            _memory["driver.lastCode"] = 0;
+            return true;
+        }
     }
 
     public bool TryGetAxisState(short axis, out AxisStatus status)
     {
         status = default;
-        if (!TryGetAxisStatus(axis, out var native))
+        if (!IsConnected || axis < 0)
         {
             return false;
         }
 
-        var servoOn = false;
-        if (TryReadSevon(axis, out var sevon))
+        if (_axisCache.TryGet(axis, out status))
         {
-            servoOn = sevon;
-            _axisEnabled[axis] = sevon;
-        }
-        else
-        {
-            servoOn = _axisEnabled.GetOrAdd(axis, false);
+            return true;
         }
 
-        var done = LTDMC.dmc_check_done(_cardNo, (ushort)axis);
-        var moving = done == 0;
+        lock (NativeLock)
+        {
+            if (_axisCache.TryGet(axis, out status))
+            {
+                return true;
+            }
 
-        TryGetAxisPrfPosition(axis, out var prf);
-        TryGetAxisEncPosition(axis, out var enc);
-        TryGetAxisVelocity(axis, out var vel);
+            if (!TryGetAxisStatus(axis, out var native))
+            {
+                return false;
+            }
 
-        status = DmcIoMap.ToAxisStatus(
-            unchecked((uint)native),
-            servoOn,
-            moving,
-            prf,
-            enc,
-            vel);
-        return true;
+            var servoOn = false;
+            if (TryReadSevon(axis, out var sevon))
+            {
+                servoOn = sevon;
+                _axisEnabled[axis] = sevon;
+            }
+            else
+            {
+                servoOn = _axisEnabled.GetOrAdd(axis, false);
+            }
+
+            var done = LTDMC.dmc_check_done(_cardNo, (ushort)axis);
+            var moving = done == 0;
+
+            TryGetAxisPrfPosition(axis, out var prf);
+            TryGetAxisEncPosition(axis, out var enc);
+            TryGetAxisVelocity(axis, out var vel);
+
+            status = DmcIoMap.ToAxisStatus(
+                unchecked((uint)native),
+                servoOn,
+                moving,
+                prf,
+                enc,
+                vel);
+            _axisCache.Set(axis, status);
+            return true;
+        }
     }
 
     public bool TryGetAxisPrfPosition(short axis, out double position)
@@ -298,9 +361,12 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        position = LTDMC.dmc_get_position(_cardNo, (ushort)axis);
-        _memory["driver.lastCode"] = 0;
-        return true;
+        lock (NativeLock)
+        {
+            position = LTDMC.dmc_get_position(_cardNo, (ushort)axis);
+            _memory["driver.lastCode"] = 0;
+            return true;
+        }
     }
 
     public bool TryGetAxisEncPosition(short axis, out double position)
@@ -311,9 +377,12 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        position = LTDMC.dmc_get_encoder(_cardNo, (ushort)axis);
-        _memory["driver.lastCode"] = 0;
-        return true;
+        lock (NativeLock)
+        {
+            position = LTDMC.dmc_get_encoder(_cardNo, (ushort)axis);
+            _memory["driver.lastCode"] = 0;
+            return true;
+        }
     }
 
     public bool TryGetAxisVelocity(short axis, out double velocity)
@@ -324,16 +393,19 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        velocity = LTDMC.dmc_read_current_speed(_cardNo, (ushort)axis);
-        _memory["driver.lastCode"] = 0;
-        return true;
+        lock (NativeLock)
+        {
+            velocity = LTDMC.dmc_read_current_speed(_cardNo, (ushort)axis);
+            _memory["driver.lastCode"] = 0;
+            return true;
+        }
     }
 
     public bool SetAxisPosition(short axis, double position)
     {
         return IsConnected
             && axis >= 0
-            && Call(() => LTDMC.dmc_set_position(_cardNo, (ushort)axis, (int)position));
+            && CallAxis(axis, () => LTDMC.dmc_set_position(_cardNo, (ushort)axis, (int)position));
     }
 
     public bool SetAxisVelocity(short axis, double velocity)
@@ -381,7 +453,7 @@ public sealed class DrvDmc : IDriver
         prm.Acc = acceleration;
         prm.Dec = deceleration;
         return ApplyProfile(axis)
-            && Call(() => LTDMC.dmc_pmove(_cardNo, (ushort)axis, targetPosition, posi_mode: 1));
+            && CallAxis(axis, () => LTDMC.dmc_pmove(_cardNo, (ushort)axis, targetPosition, posi_mode: 1));
     }
 
     public bool MoveAxisJog(short axis, double velocity, double acceleration, double deceleration)
@@ -397,7 +469,7 @@ public sealed class DrvDmc : IDriver
         prm.Dec = deceleration;
         var dir = (ushort)(velocity >= 0 ? 1 : 0);
         return ApplyProfile(axis)
-            && Call(() => LTDMC.dmc_vmove(_cardNo, (ushort)axis, dir));
+            && CallAxis(axis, () => LTDMC.dmc_vmove(_cardNo, (ushort)axis, dir));
     }
 
     public bool MoveAxisHome(short axis, short homeMode, double velocity, double acceleration, double deceleration)
@@ -414,7 +486,7 @@ public sealed class DrvDmc : IDriver
         var dir = (ushort)(velocity >= 0 ? 1 : 0);
         return ApplyProfile(axis)
             && Call(() => LTDMC.dmc_set_homemode(_cardNo, (ushort)axis, dir, Math.Abs(velocity), (ushort)homeMode, 0))
-            && Call(() => LTDMC.dmc_home_move(_cardNo, (ushort)axis));
+            && CallAxis(axis, () => LTDMC.dmc_home_move(_cardNo, (ushort)axis));
     }
 
     public bool Stop(int axisMask, int option = 0)
@@ -443,6 +515,10 @@ public sealed class DrvDmc : IDriver
             }
 
             ok &= Call(() => LTDMC.dmc_stop(_cardNo, (ushort)axis, stopMode));
+            if (ok)
+            {
+                _axisCache.Invalidate(axis);
+            }
         }
 
         return ok;
@@ -475,6 +551,7 @@ public sealed class DrvDmc : IDriver
         }
 
         RememberInterp(coord, axes);
+        _axisCache.InvalidateAll();
         return true;
     }
 
@@ -517,6 +594,7 @@ public sealed class DrvDmc : IDriver
         }
 
         RememberInterp(coord, axes);
+        _axisCache.InvalidateAll();
         return true;
     }
 
@@ -534,21 +612,24 @@ public sealed class DrvDmc : IDriver
             return true;
         }
 
-        var done = LTDMC.dmc_check_done_multicoor(_cardNo, _interpCrd);
-        _memory["driver.lastCode"] = done;
-        if (done < 0)
+        lock (NativeLock)
         {
-            return false;
-        }
+            var done = LTDMC.dmc_check_done_multicoor(_cardNo, _interpCrd);
+            _memory["driver.lastCode"] = done;
+            if (done < 0)
+            {
+                return false;
+            }
 
-        moving = done == 0;
-        progress = moving ? 0 : 1;
-        if (!moving)
-        {
-            _interpAxes = null;
-        }
+            moving = done == 0;
+            progress = moving ? 0 : 1;
+            if (!moving)
+            {
+                _interpAxes = null;
+            }
 
-        return true;
+            return true;
+        }
     }
 
     public void Dispose()
@@ -562,6 +643,8 @@ public sealed class DrvDmc : IDriver
         _memory.Clear();
         _axisEnabled.Clear();
         _motion.Clear();
+        _ioCache.Clear();
+        _axisCache.InvalidateAll();
     }
 
     // ──────────────────────────────────────────────
@@ -580,21 +663,28 @@ public sealed class DrvDmc : IDriver
         {
             if (io.IsBit)
             {
-                if (!DmcIoMap.TryNativeBit(io.BitIndex!.Value, out var bitno))
+                if (!DmcIoMap.TrySplitPortBit(io.BitIndex!.Value, out var port, out var shift))
                 {
                     return false;
                 }
 
-                var state = io.IsOutput
-                    ? LTDMC.dmc_read_outbit(_cardNo, bitno)
-                    : LTDMC.dmc_read_inbit(_cardNo, bitno);
-                _memory["driver.lastCode"] = state;
-                if (state < 0)
+                if (io.IsOutput)
+                {
+                    if (!TryReadDo((short)port, out var doWord))
+                    {
+                        return false;
+                    }
+
+                    value = DmcIoMap.TestPortBit(doWord, shift);
+                    return true;
+                }
+
+                if (!TryReadDi((short)port, out var diBitWord))
                 {
                     return false;
                 }
 
-                value = state != 0;
+                value = DmcIoMap.TestPortBit(diBitWord, shift);
                 return true;
             }
 
@@ -709,7 +799,13 @@ public sealed class DrvDmc : IDriver
     private bool WriteOutBit(ushort bitno, bool value)
     {
         var onOff = value ? (ushort)1 : (ushort)0;
-        return Call(() => LTDMC.dmc_write_outbit(_cardNo, bitno, onOff));
+        var ok = Call(() => LTDMC.dmc_write_outbit(_cardNo, bitno, onOff));
+        if (ok)
+        {
+            _ioCache.Invalidate(true, (short)(bitno / 32));
+        }
+
+        return ok;
     }
 
     private bool TryReadAxisAddress(string address, out object? value)
@@ -767,7 +863,7 @@ public sealed class DrvDmc : IDriver
         var vel = Math.Max(1, Math.Abs(prm.Vel));
         var tacc = ToRampTime(vel, prm.Acc);
         var tdec = ToRampTime(vel, prm.Dec);
-        return Call(() => LTDMC.dmc_set_profile(_cardNo, (ushort)axis, 0, vel, tacc, tdec, 0));
+        return CallAxis(axis, () => LTDMC.dmc_set_profile(_cardNo, (ushort)axis, 0, vel, tacc, tdec, 0));
     }
 
     private bool ApplyVectorProfile(ushort crd, double velocity, double acceleration, double deceleration)
@@ -809,22 +905,39 @@ public sealed class DrvDmc : IDriver
             return false;
         }
 
-        var pin = LTDMC.dmc_read_sevon_pin(_cardNo, (ushort)axis);
-        _memory["driver.lastCode"] = pin;
-        if (pin < 0)
+        lock (NativeLock)
         {
-            return false;
-        }
+            var pin = LTDMC.dmc_read_sevon_pin(_cardNo, (ushort)axis);
+            _memory["driver.lastCode"] = pin;
+            if (pin < 0)
+            {
+                return false;
+            }
 
-        on = _sevonActiveLow ? pin == 0 : pin != 0;
-        return true;
+            on = _sevonActiveLow ? pin == 0 : pin != 0;
+            return true;
+        }
     }
 
     private bool Call(Func<short> invoke)
     {
-        var rc = invoke();
-        _memory["driver.lastCode"] = rc;
-        return rc == 0;
+        lock (NativeLock)
+        {
+            var rc = invoke();
+            _memory["driver.lastCode"] = rc;
+            return rc == 0;
+        }
+    }
+
+    private bool CallAxis(short axis, Func<short> invoke)
+    {
+        var ok = Call(invoke);
+        if (ok)
+        {
+            _axisCache.Invalidate(axis);
+        }
+
+        return ok;
     }
 
     private void ReleaseBoard()

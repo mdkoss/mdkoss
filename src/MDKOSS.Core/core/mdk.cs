@@ -16,8 +16,11 @@ public sealed class MdkRuntime : IDisposable
     private readonly Dictionary<string, MDeviceBase> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, MTaskBase> _tasks = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _graphLock = new();
+    private readonly object _snapshotGate = new();
     private readonly MTaskScheduler _scheduler = new();
     private MonitoringServer? _monitoringServer;
+    private bool _snapshotBuilding;
+    private RuntimeSnapshot? _inflightSnapshot;
 
     public MdkSetting Setting { get; }
 
@@ -185,7 +188,7 @@ public sealed class MdkRuntime : IDisposable
         }
     }
 
-    // Register tasks from runtime setting.
+    // Register tasks from runtime setting, then ensure the system machine task exists.
     private void BootstrapTasks()
     {
         foreach (var config in Setting.Tasks)
@@ -196,6 +199,32 @@ public sealed class MdkRuntime : IDisposable
                 continue;
             }
 
+            RegisterTask(task);
+        }
+
+        EnsureSystemMachineTask();
+    }
+
+    /// <summary>
+    /// Registers the always-on machine task (start / stop / reset → <c>machine.state</c>)
+    /// unless config already created one.
+    /// </summary>
+    private void EnsureSystemMachineTask()
+    {
+        if (_tasks.ContainsKey("task-machine"))
+        {
+            return;
+        }
+
+        var intervalMs = Setting.CycleMs > 0 ? Math.Clamp(Setting.CycleMs, 20, 200) : 50;
+        var task = CreateTaskFromConfig(new MdkSetting.TaskConfig
+        {
+            Name = "task-machine",
+            Type = "machine",
+            IntervalMs = intervalMs,
+        });
+        if (task is not null)
+        {
             RegisterTask(task);
         }
     }
@@ -1158,8 +1187,57 @@ public sealed class MdkRuntime : IDisposable
 
     /// <summary>
     /// Exposes a snapshot for monitoring APIs/UI.
+    /// Concurrent callers share one in-flight hardware scan so HMI, cycle, and alarms
+    /// do not multiply card IO; the next call after it completes is a fresh scan.
     /// </summary>
     public RuntimeSnapshot GetSnapshot()
+    {
+        lock (_snapshotGate)
+        {
+            if (_snapshotBuilding)
+            {
+                do
+                {
+                    System.Threading.Monitor.Wait(_snapshotGate);
+                }
+                while (_snapshotBuilding);
+
+                if (_inflightSnapshot is not null)
+                {
+                    return _inflightSnapshot;
+                }
+            }
+
+            _snapshotBuilding = true;
+        }
+
+        RuntimeSnapshot snap;
+        try
+        {
+            snap = BuildSnapshot();
+        }
+        catch
+        {
+            lock (_snapshotGate)
+            {
+                _snapshotBuilding = false;
+                System.Threading.Monitor.PulseAll(_snapshotGate);
+            }
+
+            throw;
+        }
+
+        lock (_snapshotGate)
+        {
+            _inflightSnapshot = snap;
+            _snapshotBuilding = false;
+            System.Threading.Monitor.PulseAll(_snapshotGate);
+        }
+
+        return snap;
+    }
+
+    private RuntimeSnapshot BuildSnapshot()
     {
         return new RuntimeSnapshot(
             Setting.ProjectName,

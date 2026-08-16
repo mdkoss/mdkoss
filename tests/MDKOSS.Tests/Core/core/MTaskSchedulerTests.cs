@@ -20,5 +20,6 @@ public sealed class MTaskSchedulerTests
         await scheduler.StopAsync();
         scheduler.Dispose();
         driver.Dispose();
+        Assert.True(vars.TryGet<bool>("tick.alive", out var alive) && alive);
     }
 }

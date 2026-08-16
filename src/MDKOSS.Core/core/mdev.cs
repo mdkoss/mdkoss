@@ -167,6 +167,7 @@ public sealed class GpioDevice : MDeviceBase
 {
     private readonly IReadOnlyDictionary<string, IDriver> _drivers;
     private readonly Dictionary<string, GpioPoint> _points = new(StringComparer.OrdinalIgnoreCase);
+    private GpioPoint[]? _orderedPoints;
 
     public GpioDevice(string id, string name, IReadOnlyDictionary<string, IDriver> drivers, MVarStore vars)
         : base(id, name, MDeviceType.Gpio, SelectPrimaryDriver(drivers), vars)
@@ -246,14 +247,17 @@ public sealed class GpioDevice : MDeviceBase
         Vars.Set(BuildVarKey("lastOutputAddress"), point.Address);
         Vars.Set(BuildVarKey("lastOutputDriverId"), point.DriverId);
         Vars.Set(BuildVarKey("lastOutputValue"), value);
-        WriteState(State.ToString().ToLowerInvariant());
+        Vars.Set(BuildVarKey("lastUpdateUtc"), DateTime.UtcNow);
         return ok;
     }
 
     public override DeviceSnapshot GetSnapshot()
     {
-        var rows = new List<GpioIoPointSnapshot>();
-        foreach (var point in _points.Values.OrderBy(p => p.Alias, StringComparer.OrdinalIgnoreCase))
+        var points = _orderedPoints ??= _points.Values
+            .OrderBy(p => p.Alias, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var rows = new List<GpioIoPointSnapshot>(points.Length);
+        foreach (var point in points)
         {
             string? value = null;
             var driverOnline = false;
@@ -335,6 +339,7 @@ public sealed class GpioDevice : MDeviceBase
         }
 
         _points[alias] = new GpioPoint(alias, driverId, address, isOutput);
+        _orderedPoints = null;
         Vars.Set(BuildVarKey("pointCount"), _points.Count);
     }
 
@@ -705,15 +710,43 @@ public sealed class PlatformDevice : MDeviceBase
 
     public override DeviceSnapshot GetSnapshot()
     {
-        var rows = new List<PlatformAxisSnapshot>();
+        var statusByIndex = new AxisStatus?[_axes.Count];
+        var connectedByIndex = new bool[_axes.Count];
         var allConnected = true;
-        foreach (var entry in _axes)
+        foreach (var group in _axes
+                     .Select((entry, index) => (entry, index))
+                     .GroupBy(x => x.entry.Axis.LinkedDriver))
         {
-            var online = entry.Axis.LinkedDriver.IsConnected;
+            var items = group.ToList();
+            var driver = group.Key;
+            var online = driver.IsConnected;
             allConnected &= online;
-            AxisStatus? status = online && entry.Axis.LinkedDriver.TryGetAxisState(entry.AxisIndex, out var state)
-                ? state
-                : null;
+            var axes = new short[items.Count];
+            var states = new AxisStatus[items.Count];
+            for (var i = 0; i < items.Count; i++)
+            {
+                axes[i] = items[i].entry.AxisIndex;
+                connectedByIndex[items[i].index] = online;
+            }
+
+            var ok = online && driver.TryGetAxisStates(axes, states);
+            if (!ok)
+            {
+                continue;
+            }
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                statusByIndex[items[i].index] = states[i];
+            }
+        }
+
+        var rows = new List<PlatformAxisSnapshot>(_axes.Count);
+        for (var i = 0; i < _axes.Count; i++)
+        {
+            var entry = _axes[i];
+            var status = statusByIndex[i];
+            var online = connectedByIndex[i];
             rows.Add(new PlatformAxisSnapshot(
                 entry.AxisLetter,
                 entry.DriverId,
