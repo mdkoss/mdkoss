@@ -5,7 +5,7 @@ using MDKOSS.Pnp;
 namespace MDKOSS.Tests.Extensions;
 
 /// <summary>
-/// Sample DieBonder casts tray devices to <see cref="TrayDevice"/>. That fails when
+/// DieBonder casts tray devices to <see cref="TrayDevice"/>. That fails when
 /// MDKOSS.Pnp is loaded once via ProjectReference and again via PluginLoadContext.
 /// </summary>
 public sealed class PnpTrayTypeIdentityTests

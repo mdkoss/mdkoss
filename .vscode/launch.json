@@ -24,6 +24,17 @@
             "stopAtEntry": false
         },
         {
+            "name": ".NET Core Launch (DieBonder / CEF)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/src/MDKOSS.Sample.DieBonder/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.Sample.DieBonder.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/MDKOSS.Sample.DieBonder/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": ".NET Core Launch (Dispenser / CEF)",
             "type": "coreclr",
             "request": "launch",

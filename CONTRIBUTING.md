@@ -22,7 +22,7 @@ Thanks for helping improve MDKOSS.
 
 ```bash
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj
-dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj
 dotnet test MDKOSS.sln -c Release
 ```
 

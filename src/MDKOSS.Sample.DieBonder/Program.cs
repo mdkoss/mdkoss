@@ -2,14 +2,15 @@ using MDKOSS.Core;
 using MDKOSS.Extensions;
 using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
-using MDKOSS.Sample.SampleExt;
+using MDKOSS.Pnp;
+using MDKOSS.Sample.DieBonder.Machine;
 using System.Windows.Forms;
 
-namespace MDKOSS.Sample;
+namespace MDKOSS.Sample.DieBonder;
 
 /// <summary>
-/// CEF host for the SampleExt demo. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; custom device / MotionTask / API are registered here.
+/// CEF host for the semiconductor die bonder sample. Devices and the start page come from
+/// <c>configs/sample.setting.json</c>; machine tasks / API are registered here.
 /// </summary>
 internal static class Program
 {
@@ -17,13 +18,15 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         AppLog.Configure();
+        // Force ProjectReference MDKOSS.Pnp into Default ALC before plugin scan so
+        // DieBonder `TryGetDevice<TrayDevice>` matches devices created by the Pnp extension.
+        _ = typeof(TrayDevice);
 
         MdkExtensionHost.DiscoverAndRegister(new ExtensionDiscoveryOptions
         {
             Log = msg => AppLog.Info(msg),
         });
-        // Sample 扩展示例：自定义设备 / MotionTask / API / 自定义页（见 SampleExt/）。
-        MdkExtensionHost.Register(new SampleExtExtension());
+        MdkExtensionHost.Register(new DieBonderExtension());
 
         var settingPath = RuntimeHost.ResolveSettingPath(args);
         if (args.Any(a => string.Equals(a, "--console", StringComparison.OrdinalIgnoreCase)))
@@ -38,11 +41,11 @@ internal static class Program
     private static void RunCefDesktop(string settingPath)
     {
         var version = MdkProduct.Version;
-        AppLog.Info($"MDKOSS.Sample starting (version: {version})================================================");
+        AppLog.Info($"MDKOSS.Sample.DieBonder starting (version: {version})================================================");
 
         ApplicationConfiguration.Initialize();
 
-        const string appTitle = "MDKOSS Sample — 扩展示例";
+        const string appTitle = "MDKOSS Sample — 半导体贴片机";
 
         if (!File.Exists(settingPath))
         {

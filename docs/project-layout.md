@@ -18,7 +18,8 @@ src/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Cef.Extensions/       # 主界面监控组态（控件扩展包 + 布局 API）
 ├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
-├── MDKOSS.Sample/
+├── MDKOSS.Sample/               # SampleExt 扩展示例宿主
+├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
 ├── MDKOSS.Sample.Dispenser/
 └── MDKOSS.Config.Wpf/
 ```

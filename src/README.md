@@ -5,7 +5,7 @@
 ## 分层
 
 ```text
-宿主（Sample / Cef.Sample / Sample.Dispenser / Config.Wpf）
+宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 DiscoverAndRegister）
@@ -26,7 +26,8 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Cef` | CefSharp 界面库 + `views/` HMI |
 | `MDKOSS.Cef.Extensions` | 主界面监控组态（控件扩展包 + `/api/hmi`） |
 | `MDKOSS.Cef.Sample` | 通用 CEF 宿主（`startPage`=`index_hmi.html`） |
-| `MDKOSS.Sample` | DieBonder 机型 Demo |
+| `MDKOSS.Sample` | SampleExt 扩展示例宿主 |
+| `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 

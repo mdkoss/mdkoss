@@ -1,7 +1,7 @@
 {
-  "projectName": "半导体贴片机-DieBonder",
-  "startPage": "indexDieBonder.html",
-  "monitoringPrefix": "http://127.0.0.1:5080/",
+  "projectName": "Sample 扩展示例",
+  "startPage": "demo_sample_ext.html",
+  "monitoringPrefix": "http://127.0.0.1:5083/",
   "cycleMs": 20,
   "drivers": [
     {
@@ -11,107 +11,12 @@
       "parameters": {
         "ip": "127.0.0.1",
         "port": "5000",
-        "note": "运动控制卡：贴装头 XYZU + 相机触发",
-        "ioBitBase": "0"
-      }
-    },
-    {
-      "id": "drv-io",
-      "type": "sim",
-      "enabled": true,
-      "parameters": {
-        "ip": "127.0.0.1",
-        "port": "5001",
-        "note": "IO 卡：真空/顶针/传送带/塔灯/安全",
+        "note": "仿真驱动：扩展示例点动轴",
         "ioBitBase": "0"
       }
     }
   ],
   "devices": [
-    {
-      "id": "gpio-machine",
-      "name": "整机 IO",
-      "type": "gpio",
-      "enabled": true,
-      "parameters": {
-        "in.startButton": "drv-io|di.gpi.bit.0|启动",
-        "in.stopButton": "drv-io|di.gpi.bit.1|停止",
-        "in.resetButton": "drv-io|di.gpi.bit.2|复位",
-        "in.safetyDoor": "drv-io|di.gpi.bit.3|安全门",
-        "in.wafer.present": "drv-io|di.gpi.bit.10|晶圆到位",
-        "in.substrate.present": "drv-io|di.gpi.bit.11|基板到位",
-        "in.vacuum.ok": "drv-io|di.gpi.bit.12|真空OK",
-        "out.tower.red": "drv-io|do.gpo.bit.0|红灯",
-        "out.tower.yellow": "drv-io|do.gpo.bit.1|黄灯",
-        "out.tower.green": "drv-io|do.gpo.bit.2|绿灯",
-        "out.buzzer": "drv-io|do.gpo.bit.3|蜂鸣器",
-        "out.vacuum": "drv-io|do.gpo.bit.10|真空",
-        "out.ejector": "drv-io|do.gpo.bit.11|顶针",
-        "out.dispenser": "drv-io|do.gpo.bit.12|点胶",
-        "out.wafer.conveyorRun": "drv-io|do.gpo.bit.20|晶圆传送",
-        "out.substrate.conveyorRun": "drv-io|do.gpo.bit.21|基板传送"
-      }
-    },
-    {
-      "id": "cam-downlook",
-      "name": "下视相机",
-      "type": "cameradev",
-      "driverId": "drv-motion",
-      "enabled": true,
-      "parameters": {
-        "role": "downlook",
-        "note": "定位晶圆 Die / 基板焊盘 XY"
-      }
-    },
-    {
-      "id": "cam-uplook",
-      "name": "上视相机",
-      "type": "cameradev",
-      "driverId": "drv-motion",
-      "enabled": true,
-      "parameters": {
-        "role": "uplook",
-        "note": "吸嘴下方 Die 角度测量，供 U 轴补偿"
-      }
-    },
-    {
-      "id": "tray-wafer",
-      "name": "晶圆源盘",
-      "type": "tray",
-      "enabled": true,
-      "parameters": {
-        "role": "source",
-        "rows": "8",
-        "cols": "8",
-        "originX": "20",
-        "originY": "20",
-        "pitchX": "5",
-        "pitchY": "5",
-        "pickZ": "-8",
-        "safeZ": "0",
-        "startIndex": "0",
-        "note": "Waffle / Gel-Pak 源料盘，仿真 8×8 Die"
-      }
-    },
-    {
-      "id": "tray-substrate",
-      "name": "基板目标盘",
-      "type": "tray",
-      "enabled": true,
-      "parameters": {
-        "role": "target",
-        "rows": "2",
-        "cols": "8",
-        "originX": "280",
-        "originY": "30",
-        "pitchX": "15",
-        "pitchY": "20",
-        "pickZ": "-6",
-        "safeZ": "0",
-        "startIndex": "0",
-        "note": "Leadframe / PCB 贴装 nest"
-      }
-    },
     {
       "id": "sample-beacon",
       "name": "Sample Beacon",
@@ -125,88 +30,24 @@
   ],
   "platforms": [
     {
-      "id": "head-bond",
-      "name": "贴装头 XYZU",
-      "type": "xyzu",
+      "id": "head-demo",
+      "name": "演示轴 XYZ",
+      "type": "xyz",
       "driverId": "drv-motion",
       "enabled": true,
       "parameters": {
-        "note": "Bond Head：X/Y 平面、Z 升降、U 旋转补偿"
+        "note": "SampleExt MotionTask 点动目标"
       }
     }
   ],
   "tasks": [
-    {
-      "name": "task-operation",
-      "type": "operation",
-      "intervalMs": 200,
-      "parameters": {
-        "gpioDeviceId": "gpio-machine"
-      }
-    },
-    {
-      "name": "task-cycle",
-      "type": "cycle",
-      "intervalMs": 1000,
-      "parameters": {}
-    },
-    {
-      "name": "poll-motion",
-      "type": "pollDriver",
-      "driverId": "drv-motion",
-      "intervalMs": 500,
-      "parameters": {}
-    },
-    {
-      "name": "poll-io",
-      "type": "pollDriver",
-      "driverId": "drv-io",
-      "intervalMs": 500,
-      "parameters": {}
-    },
-    {
-      "name": "bond-cycle",
-      "type": "bond",
-      "driverId": "drv-motion",
-      "intervalMs": 100,
-      "parameters": {
-        "platformDeviceId": "head-bond",
-        "gpioDeviceId": "gpio-machine",
-        "sourceTrayDeviceId": "tray-wafer",
-        "targetTrayDeviceId": "tray-substrate",
-        "downlookCameraDeviceId": "cam-downlook",
-        "uplookCameraDeviceId": "cam-uplook",
-        "vacuumAlias": "vacuum",
-        "ejectorAlias": "ejector",
-        "dispenserAlias": "dispenser",
-        "safetyDoorAlias": "safetyDoor",
-        "useEjector": "true",
-        "useDispenser": "false",
-        "checkSafetyDoor": "false",
-        "dwellTicks": "2"
-      }
-    },
-    {
-      "name": "material-conveyor",
-      "type": "materialConveyor",
-      "driverId": "drv-io",
-      "intervalMs": 100,
-      "parameters": {
-        "gpioDeviceId": "gpio-machine",
-        "sourceTrayDeviceId": "tray-wafer",
-        "targetTrayDeviceId": "tray-substrate",
-        "sourceRunAlias": "wafer.conveyorRun",
-        "targetRunAlias": "substrate.conveyorRun",
-        "runTicks": "5"
-      }
-    },
     {
       "name": "sample-motion-demo",
       "type": "samplemotion",
       "driverId": "drv-motion",
       "intervalMs": 100,
       "parameters": {
-        "platformDeviceId": "head-bond",
+        "platformDeviceId": "head-demo",
         "axisLetter": "X",
         "beaconDeviceId": "sample-beacon",
         "targetPos": "5",
@@ -216,113 +57,8 @@
       }
     }
   ],
-  "recipeVarKeys": [
-    "machine.mode",
-    "task.operation.command",
-    "pnp.bottomCam.x",
-    "pnp.bottomCam.y",
-    "pnp.place.offsetX",
-    "pnp.place.offsetY",
-    "pnp.place.angleOffsetDeg",
-    "pnp.vision.top.recipe",
-    "pnp.vision.bottom.recipe",
-    "pnp.vision.top.noiseMm",
-    "pnp.vision.bottom.angleRangeDeg",
-    "pnp.vision.top.ngRate",
-    "pnp.vision.bottom.ngRate",
-    "task.bond-cycle.dwellTicks",
-    "device.tray-wafer.pickZ",
-    "platform.head-bond.note"
-  ],
-  "activeRecipeId": "qfn-3x3",
-  "recipes": [
-    {
-      "id": "qfn-3x3",
-      "name": "QFN 3×3mm",
-      "description": "标准 Die Attach：小角度补偿、低视觉噪声",
-      "vars": {
-        "machine.mode": "AUTO",
-        "task.operation.command": "lamp:green",
-        "pnp.bottomCam.x": "180",
-        "pnp.bottomCam.y": "100",
-        "pnp.place.offsetX": "0",
-        "pnp.place.offsetY": "0",
-        "pnp.place.angleOffsetDeg": "0",
-        "pnp.vision.top.recipe": "wafer-die-locate",
-        "pnp.vision.bottom.recipe": "die-angle",
-        "pnp.vision.top.noiseMm": "0.2",
-        "pnp.vision.bottom.angleRangeDeg": "10",
-        "pnp.vision.top.ngRate": "0.01",
-        "pnp.vision.bottom.ngRate": "0.01",
-        "task.bond-cycle.dwellTicks": "2",
-        "device.tray-wafer.pickZ": "-8",
-        "platform.head-bond.note": "Bond Head：QFN 标准行程"
-      }
-    },
-    {
-      "id": "bga-10x10",
-      "name": "BGA 10×10mm",
-      "description": "大 Die 贴装：更大角度范围与放置偏置",
-      "vars": {
-        "machine.mode": "AUTO",
-        "task.operation.command": "lamp:green",
-        "pnp.bottomCam.x": "180",
-        "pnp.bottomCam.y": "100",
-        "pnp.place.offsetX": "0.3",
-        "pnp.place.offsetY": "-0.2",
-        "pnp.place.angleOffsetDeg": "0.5",
-        "pnp.vision.top.recipe": "wafer-die-locate-bga",
-        "pnp.vision.bottom.recipe": "die-angle-bga",
-        "pnp.vision.top.noiseMm": "0.4",
-        "pnp.vision.bottom.angleRangeDeg": "20",
-        "pnp.vision.top.ngRate": "0.02",
-        "pnp.vision.bottom.ngRate": "0.02",
-        "task.bond-cycle.dwellTicks": "4",
-        "device.tray-wafer.pickZ": "-10",
-        "platform.head-bond.note": "Bond Head：BGA 加深取料"
-      }
-    },
-    {
-      "id": "flipchip",
-      "name": "Flip-Chip",
-      "description": "倒装贴片：U 轴预偏置 + 严格角度窗口",
-      "vars": {
-        "machine.mode": "AUTO",
-        "task.operation.command": "lamp:green",
-        "pnp.bottomCam.x": "180",
-        "pnp.bottomCam.y": "100",
-        "pnp.place.offsetX": "0",
-        "pnp.place.offsetY": "0",
-        "pnp.place.angleOffsetDeg": "180",
-        "pnp.vision.top.recipe": "pad-locate",
-        "pnp.vision.bottom.recipe": "bump-angle",
-        "pnp.vision.top.noiseMm": "0.15",
-        "pnp.vision.bottom.angleRangeDeg": "5",
-        "pnp.vision.top.ngRate": "0.015",
-        "pnp.vision.bottom.ngRate": "0.015",
-        "task.bond-cycle.dwellTicks": "3",
-        "device.tray-wafer.pickZ": "-7",
-        "platform.head-bond.note": "Bond Head：Flip-Chip U=180"
-      }
-    }
-  ],
   "vars": {
     "machine.mode": "AUTO",
-    "machine.ready": true,
-    "task.operation.alias.red": "tower.red",
-    "task.operation.alias.yellow": "tower.yellow",
-    "task.operation.alias.green": "tower.green",
-    "task.operation.command": "lamp:yellow",
-    "task.pnp.run": false,
-    "task.pnp.command": "",
-    "task.pnp.srcTrayPresent": true,
-    "task.pnp.tgtTrayPresent": true,
-    "task.pnp.trayChangeRequest": false,
-    "pnp.bottomCam.x": 180,
-    "pnp.bottomCam.y": 100,
-    "pnp.place.offsetX": 0,
-    "pnp.place.offsetY": 0,
-    "pnp.place.angleOffsetDeg": 0,
-    "order.list": "[{\"id\":\"ORD-DB-001\",\"product\":\"Die-A\",\"qty\":200,\"status\":\"running\",\"progress\":12,\"recipeId\":\"default\",\"priority\":5,\"notes\":\"贴片演示工单\",\"fields\":{\"wafer\":\"W-001\",\"lot\":\"LOT-A\"}},{\"id\":\"ORD-DB-002\",\"product\":\"Die-B\",\"qty\":80,\"status\":\"pending\",\"progress\":0,\"recipeId\":\"bga-10x10\",\"priority\":0,\"fields\":{\"wafer\":\"W-002\",\"lot\":\"LOT-B\"}}]"
+    "machine.ready": true
   }
 }

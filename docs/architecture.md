@@ -74,7 +74,8 @@ flowchart TB
 
 ```text
 MDKOSS.sln
-├── src/MDKOSS.Sample/         # Demo / console 可执行入口（嵌入 CEF）
+├── src/MDKOSS.Sample/         # SampleExt 扩展示例宿主（嵌入 CEF）
+├── src/MDKOSS.Sample.DieBonder/ # 半导体贴片机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Sample.Dispenser/ # 三轴点胶机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Cef/            # CefSharp 界面库 + views
 ├── src/MDKOSS.Config.Wpf/     # WPF 配置界面可执行入口
@@ -161,7 +162,8 @@ flowchart LR
 | 项目 / 参数 | 说明 |
 |-------------|------|
 | `MDKOSS.Config.Wpf` | WPF 离线配置编辑（JSON / SQLite） |
-| `MDKOSS.Sample` | Demo / PNP 宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
+| `MDKOSS.Sample` | SampleExt 扩展示例宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
+| `MDKOSS.Sample.DieBonder` | 半导体贴片机宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
 | `MDKOSS.Cef` | CefSharp 界面库（`CefMainForm` / `views`），由 Sample 引用 |
 
 详见 [gui.md](./gui.md)。

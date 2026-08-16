@@ -1,4 +1,4 @@
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.DieBonder.Machine;
 
 /// <summary>Loads Die Bonder HTML views from the output <c>views/</c> folder.</summary>
 internal static class DieBonderViewPages

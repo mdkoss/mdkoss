@@ -3,7 +3,7 @@ using System.Text.Json;
 using MDKOSS.Core;
 using MDKOSS.Core.Monitor;
 
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.DieBonder.Machine;
 
 /// <summary>Handles /api/bond/* — cycle control, dashboard, and logs for the die bonder.</summary>
 public sealed class DieBonderApiModule : MonitoringApiModule

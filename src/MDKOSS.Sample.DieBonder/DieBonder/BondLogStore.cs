@@ -1,4 +1,4 @@
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.DieBonder.Machine;
 
 /// <summary>One execution-log line for the Die Bonder HMI.</summary>
 public sealed record BondLogEntry(DateTime TimestampUtc, string Level, string Source, string Message);

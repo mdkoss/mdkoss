@@ -30,6 +30,7 @@ jobs:
         run: |
           dotnet publish src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Release -o publish/cef-sample
           dotnet publish src/MDKOSS.Sample/MDKOSS.Sample.csproj -c Release -o publish/sample
+          dotnet publish src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -c Release -o publish/diebonder
           dotnet publish src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj -c Release -o publish/dispenser
           dotnet publish src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -c Release -o publish/config
       - name: Zip publish output

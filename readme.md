@@ -8,7 +8,7 @@
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）与 SQLite 持久化（排单 / 示教 / 配方）
 - 基础监控界面（`HttpListener + HTML Dashboard`），含主界面 HMI、IO / 平台 / 串口等监控与调试页
-- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（DieBonder）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
+- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（扩展示例）、**MDKOSS.Sample.DieBonder**（贴片机）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
 
 源码目录索引见 [src/README.md](./src/README.md)。
 
@@ -76,7 +76,8 @@ mdkoss/
     ├── MDKOSS.Extensions.ModServer/
     ├── MDKOSS.Cef/               # CefSharp 界面库 + views
     ├── MDKOSS.Cef.Sample/        # 通用 CEF 宿主 + configs
-    ├── MDKOSS.Sample/            # DieBonder Demo 宿主 + configs
+    ├── MDKOSS.Sample/            # SampleExt 扩展示例宿主 + configs
+    ├── MDKOSS.Sample.DieBonder/  # 半导体贴片机 Demo 宿主 + configs
     ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs
     └── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
 ```
@@ -92,7 +93,8 @@ mdkoss/
 - 宿主与 CEF 界面：
   - **MDKOSS.Config.Wpf**：WPF 离线配置（`MainWindow`）与调试窗
   - **MDKOSS.Cef.Sample**：通用 CEF 宿主，按 JSON 跑机型，无业务硬编码
-  - **MDKOSS.Sample**：DieBonder Demo；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample**：SampleExt 扩展示例；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample.DieBonder**：半导体贴片机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
@@ -277,10 +279,13 @@ CEF 宿主：
 dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj
 
 # DieBonder
-dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj
 
 # 三轴点胶机
 dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
+
+# SampleExt 扩展示例
+dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 ```
 
 也可使用根目录脚本 `run-src-mdkoss.bat` / `run-src-mdkoss-cef.bat`。
@@ -288,7 +293,7 @@ dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
 控制台模式（无 GUI，使用默认配置文件）：
 
 ```bash
-dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console
 ```
 
 默认配置路径为可执行文件目录下的 `configs/sample.setting.json`。日志目录为输出目录下的 `logs/yyyyMMdd.log`。

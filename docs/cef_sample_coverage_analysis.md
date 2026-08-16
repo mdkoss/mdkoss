@@ -18,7 +18,7 @@
 | 扩展发现 | `MdkExtensionHost.DiscoverAndRegister` |
 | 插件构建 | 导入 `MdkPlugins.targets`（构建后复制到 `plugins/`） |
 
-与 `MDKOSS.Sample`（DieBonder，5080）分工：Cef.Sample 只跑 `sample.setting.json`；机型工程负责业务场景。PNP 见 `examples/pnp`，不进入本 Sample 的 `plugins/`。
+与 `MDKOSS.Sample.DieBonder`（5080）分工：Cef.Sample 只跑 `sample.setting.json`；机型工程负责业务场景。PNP 见 `examples/pnp`，不进入本 Sample 的 `plugins/`。
 
 ---
 
@@ -113,7 +113,7 @@
 
 | 能力 | 何处有 | Cef.Sample |
 |---|---|---|
-| DieBonder 机型 HMI / bond 任务 / `/api/bond` | `MDKOSS.Sample` | 刻意不做 |
+| DieBonder 机型 HMI / bond 任务 / `/api/bond` | `MDKOSS.Sample.DieBonder` | 刻意不做 |
 | Tray / PNP 循环与监控 | `examples/pnp` | 刻意不做 |
 | 真机驱动 GTS / DMC | Drivers.* | 仅仿真 |
 | VIO 驱动别名实例 | Sim 注册 `vio` | 未配 |
@@ -160,4 +160,4 @@
 - `src/MDKOSS.Cef/views/index.html` / `popup_about.html` / `popup_devices.html` / `popup_alarms.html`
 - `src/MDKOSS.Core/server/monitoringserver.cs`
 - `src/MdkPlugins.targets`
-- 对照：`src/MDKOSS.Sample/`、`examples/pnp/`
+- 对照：`src/MDKOSS.Sample.DieBonder/`、`examples/pnp/`

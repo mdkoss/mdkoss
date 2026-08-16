@@ -6,6 +6,7 @@
 
 | 文档 | 说明 |
 |------|------|
+| [learning-path.md](./learning-path.md) | 学习成本、分角色路径、两周课表（新人从这里开始） |
 | [architecture.md](./architecture.md) | 总体架构：分层、生命周期、数据流、与 mdkruntime 的关系 |
 | [project-layout.md](./project-layout.md) | 解决方案结构、项目拆分、目录与模块职责 |
 | [configuration.md](./configuration.md) | JSON 配置模型（drivers / devices / axes / platforms / tasks / vars / recipes） |
@@ -20,13 +21,14 @@
 
 ## 阅读顺序建议
 
-1. **新人 onboarding**：architecture → project-layout → configuration → monitoring-api  
+1. **新人 onboarding**：learning-path → architecture → project-layout → configuration → monitoring-api  
 2. **扩展新设备类型**：extensions → core-subsystems（设备层）→ monitoring-api  
 3. **改配置 UI**：gui → [MDKOSS.Config.Wpf/design.md](../src/MDKOSS.Config.Wpf/design.md)  
+4. **做新机型**：learning-path 第 6.2 节 → Sample.Dispenser → Sample.DieBonder → examples/pnp  
 
 ## 相关资源
 
-- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`
+- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.DieBonder/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`
 - 配置模块说明：`src/MDKOSS.Config.Wpf/README.md`、`src/MDKOSS.Config.Wpf/design.md`
 - 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`、`src/MDKOSS.Extensions.Mysql/mysqldev.md`
 - 平台示教页设计：`src/MDKOSS.Cef/views/_docs/debug_platform.md`

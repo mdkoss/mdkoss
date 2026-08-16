@@ -1,9 +1,9 @@
 @echo off
 setlocal
 
-set "PROJECT=src\MDKOSS.Sample\MDKOSS.Sample.csproj"
+set "PROJECT=src\MDKOSS.Sample.DieBonder\MDKOSS.Sample.DieBonder.csproj"
 
-echo [INFO] Running %PROJECT% (Sample + CEF UI)
+echo [INFO] Running %PROJECT% (DieBonder + CEF UI)
 dotnet run --project "%PROJECT%"
 set "EXIT_CODE=%ERRORLEVEL%"
 

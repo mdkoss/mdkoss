@@ -2,10 +2,10 @@ using MDKOSS.Core;
 using MDKOSS.Core.Drivers;
 using MDKOSS.Extensions;
 
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.DieBonder.Machine;
 
 /// <summary>
-/// Sample 内半导体贴片机扩展：任务 <c>bond</c> / <c>materialConveyor</c>、
+/// 半导体贴片机扩展：任务 <c>bond</c> / <c>materialConveyor</c>、
 /// API <c>/api/bond</c>、页面 <c>indexDieBonder.html</c> / <c>monitorDieBonder.html</c>。
 /// Tray 设备仍由 plugins 中的 <c>MDKOSS.Pnp</c> 提供。
 /// </summary>

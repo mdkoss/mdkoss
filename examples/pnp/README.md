@@ -91,11 +91,11 @@ MdkExtensionHost.DiscoverAndRegister(); // 自动加载 plugins 下驱动/设备
 使用 PNP 配置启动：
 
 ```bash
-# 无 GUI 控制台（MDKOSS.Sample + --console）
-dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console --setting configs/pnp.setting.json
+# 无 GUI 控制台（MDKOSS.Sample.DieBonder + --console）
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console --setting configs/pnp.setting.json
 
 # CEF HMI（读取配置 startPage → indexPnp.html）
-dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --setting configs/pnp.setting.json
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --setting configs/pnp.setting.json
 
 # WPF 配置
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --setting configs/pnp.setting.json

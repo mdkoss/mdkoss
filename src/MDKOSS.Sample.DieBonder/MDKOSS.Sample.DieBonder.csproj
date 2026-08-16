@@ -5,12 +5,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>MDKOSS.Sample</RootNamespace>
-    <AssemblyName>MDKOSS.Sample</AssemblyName>
+    <RootNamespace>MDKOSS.Sample.DieBonder</RootNamespace>
+    <AssemblyName>MDKOSS.Sample.DieBonder</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
-    <IncludeMdkPnpPlugin>false</IncludeMdkPnpPlugin>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NLog" Version="6.1.2" />
@@ -20,28 +18,14 @@
     <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
     <!-- Cef Content views/** 经 ProjectReference 复制到输出 views/，勿再 Link 一遍以免 views\views 嵌套 -->
     <ProjectReference Include="..\MDKOSS.Cef\MDKOSS.Cef.csproj" />
+    <!-- Pnp 的 views/configs 同样经 ProjectReference 流出；勿再对 examples/pnp/views 做 Link -->
+    <ProjectReference Include="..\..\examples\pnp\MDKOSS.Pnp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-
-    <!-- 仅扩展示例页；核心 HMI 复用 MDKOSS.Cef/views -->
     <None Update="views\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-
-    <!-- 扩展示例配置（插件工程未必把 configs 流到宿主） -->
-    <None Include="..\MDKOSS.Extensions.Camera\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\MDKOSS.Extensions.PyScript\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\MDKOSS.Extensions.ModServer\configs\**\*">
-      <Link>configs\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

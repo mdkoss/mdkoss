@@ -502,6 +502,8 @@ public static class MdkExtensionHost
                || fileName.Equals("MDKOSS.Extensions.dll", StringComparison.OrdinalIgnoreCase)
                || fileName.Equals("MDKOSS.Cef.dll", StringComparison.OrdinalIgnoreCase)
                || fileName.Equals("MDKOSS.Sample.dll", StringComparison.OrdinalIgnoreCase)
+               || fileName.Equals("MDKOSS.Sample.DieBonder.dll", StringComparison.OrdinalIgnoreCase)
+               || fileName.Equals("MDKOSS.Sample.Dispenser.dll", StringComparison.OrdinalIgnoreCase)
                || fileName.Equals("MDKOSS.Cef.Sample.dll", StringComparison.OrdinalIgnoreCase)
                || fileName.Equals("MDKOSS.Config.dll", StringComparison.OrdinalIgnoreCase)
                || fileName.StartsWith("System.", StringComparison.OrdinalIgnoreCase)

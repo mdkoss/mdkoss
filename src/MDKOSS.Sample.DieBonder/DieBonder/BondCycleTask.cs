@@ -4,7 +4,7 @@ using MDKOSS.Core.Drivers;
 using MDKOSS.Pnp;
 using MDKOSS.Tasks;
 
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.DieBonder.Machine;
 
 /// <summary>
 /// 半导体贴片主循环：
