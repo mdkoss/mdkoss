@@ -4,10 +4,11 @@ namespace MDKOSS.Core;
 
 /// <summary>
 /// Product identity for MDKOSS runtime assemblies (shared across hosts and APIs).
+/// Keep in sync with <c>src/Directory.Build.props</c> and the version called out in root <c>readme.md</c> / <c>src/README.md</c>.
 /// </summary>
 public static class MdkProduct
 {
-    /// <summary>Semantic product version, e.g. 1.1.0.</summary>
+    /// <summary>Semantic product version (e.g. 1.1.0); exposed on <c>/api/status</c> and About UI.</summary>
     public static string Version { get; } = ResolveVersion();
 
     /// <summary>

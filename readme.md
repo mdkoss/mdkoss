@@ -1,14 +1,16 @@
 # MDKOSS（Open Source Simplified Runtime）
 
-`MDKOSS` 是从 `MDKSYS/mdkruntime` 提炼出的开源简化运行时。当前版本已形成可运行闭环：
+`MDKOSS` 是从 `MDKSYS/mdkruntime` 提炼出的开源简化运行时。当前产品版本 **1.1.0**（`MdkProduct.Version` / `src/Directory.Build.props`），已形成可运行闭环：
 
 - 配置加载（JSON -> Runtime）
-- 驱动抽象与实例化（`IDriver` + `DrvGts` / `DrvSim`）
-- 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `serialdev` / `cameradev`）
+- 驱动插件化（`IDriver` + `DriverFactory`；`sim` / `gts` / `dmc` 独立 DLL，运行时扫 `plugins/`）
+- 设备组件体系（`gpio` / `vio` / `axis` / `platform`（XY…XYZUVW 多轴）/ `cameradev`；串口/TCP/相机等走 Extensions）
 - 任务调度与心跳更新（`MTaskScheduler`）
-- 变量中心（`MVarStore`）
-- 基础监控界面（`HttpListener + HTML Dashboard`），含 **主界面 HMI**（`index.html`）、**IO 专用页**（DI/DO 分栏、筛选、DO 写入）、**串口调试页**
-- 桌面壳：独立项目 **MDKOSS.Config.Wpf**（WPF 配置）、**MDKOSS.Sample**（Demo 宿主 + CEF HMI）；**MDKOSS.Cef** 仅为 CefSharp 界面库
+- 变量中心（`MVarStore`）与 SQLite 持久化（排单 / 示教 / 配方）
+- 基础监控界面（`HttpListener + HTML Dashboard`），含主界面 HMI、IO / 平台 / 串口等监控与调试页
+- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（DieBonder）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
+
+源码目录索引见 [src/README.md](./src/README.md)。
 
 ---
 
@@ -50,24 +52,36 @@
 
 ## 2. 项目结构（当前实现）
 
-> 完整说明见 [docs/project-layout.md](./docs/project-layout.md)。
+> 完整说明见 [docs/project-layout.md](./docs/project-layout.md)、[src/README.md](./src/README.md)。
 
 ```text
 mdkoss/
 ├── MDKOSS.sln
 ├── readme.md
 ├── docs/                         # 架构与设计文档
+├── examples/pnp/                 # PNP 插件示例（MDKOSS.Pnp）
 ├── tests/MDKOSS.Tests/
 └── src/
-    ├── MDKOSS.Sample/            # Demo / console 宿主 + configs（引用 Cef）
-    ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs（引用 Cef）
+    ├── README.md                 # 源码目录索引
+    ├── MDKOSS.Core/              # 运行时内核（无内置板卡实现）
+    ├── MDKOSS.Extensions/        # IMdkExtension 接入层
+    ├── MDKOSS.Drivers.Sim/       # sim 驱动插件
+    ├── MDKOSS.Drivers.Gts/       # gts 驱动插件
+    ├── MDKOSS.Drivers.Dmc/       # 雷赛 DMC 驱动插件
+    ├── MDKOSS.Extensions.Serial/ # serialdev
+    ├── MDKOSS.Extensions.Tcp/    # tcpdev
+    ├── MDKOSS.Extensions.Mysql/  # mysqldev
+    ├── MDKOSS.Extensions.Camera/ # extcamera
+    ├── MDKOSS.Extensions.PyScript/
+    ├── MDKOSS.Extensions.ModServer/
     ├── MDKOSS.Cef/               # CefSharp 界面库 + views
-    ├── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
-    ├── MDKOSS.Core/              # 运行时内核（core/server/tasks/host）
-    └── MDKOSS.Extensions/        # serialdev、tcpdev 扩展
+    ├── MDKOSS.Cef.Sample/        # 通用 CEF 宿主 + configs
+    ├── MDKOSS.Sample/            # DieBonder Demo 宿主 + configs
+    ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs
+    └── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
 ```
 
-构建后，`configs` 与 `views` 会复制到输出目录（与可执行文件同级），运行时默认从 `configs/sample.setting.json` 加载配置。
+宿主仅引用 Core + Extensions；构建时由 `MdkPlugins.targets` 将 Drivers / Extensions 复制到输出目录 `plugins/`，运行时 `DiscoverAndRegister()` 扫描加载。`configs` 与 `views` 会复制到可执行文件同级，默认从 `configs/sample.setting.json` 加载配置。
 
 ---
 
@@ -75,26 +89,26 @@ mdkoss/
 
 > 详见 [docs/core-subsystems.md](./docs/core-subsystems.md)、[docs/extensions.md](./docs/extensions.md)。
 
-- `MDKOSS.Config.Wpf` / `MDKOSS.Sample` / `MDKOSS.Sample.Dispenser` / `MDKOSS.Cef`  
-  宿主与 CEF 界面拆分（共用 `host/RuntimeHost.cs`）：
-  - **MDKOSS.Config.Wpf**：WPF 离线配置（`MainWindow`）
-  - **MDKOSS.Sample**：Demo / PNP 可执行入口；嵌入 CEF；可选 `--console` 无 GUI
-  - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo 宿主；嵌入 CEF；可选 `--console` 无 GUI
+- 宿主与 CEF 界面：
+  - **MDKOSS.Config.Wpf**：WPF 离线配置（`MainWindow`）与调试窗
+  - **MDKOSS.Cef.Sample**：通用 CEF 宿主，按 JSON 跑机型，无业务硬编码
+  - **MDKOSS.Sample**：DieBonder Demo；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
   均在入口中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
 
 - `src/MDKOSS.Core/core/mdk.cs`  
-  Runtime Host。统一管理生命周期：`Initialize -> Start -> StopAsync -> Dispose`。内部完成变量、驱动、设备、任务的注册与编排。
+  Runtime Host。统一管理生命周期：`Initialize -> Start -> StopAsync -> Dispose`。内部完成变量、驱动、设备、任务的注册与编排。产品版本见 `MdkProduct`。
 
 - `src/MDKOSS.Core/core/msetting.cs`  
   配置模型与加载器。定义 `DriverConfig`、`DeviceConfig`、`TaskConfig`，支持从 JSON 反序列化；`DefaultSettingsPath` 指向与程序同目录的 `configs/sample.setting.json`。
 
-- `src/MDKOSS.Core/core/mdev.cs`
-  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `SerialDevice` / `CameraDevDevice` 子类。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。
+- `src/MDKOSS.Core/core/mdev.cs`  
+  设备体系。包含设备基类 `MDeviceBase` 及 `GpioDevice` / `VioDevice` / `AxisDevice` / `PlatformDevice` / `CameraDevDevice` 等。`PlatformDevice` 由多条 `AxisDevice` 组成，轴布局由 `MPlatformKind`（XY、XYZ、XYZU、XYZUV、XYZUVW）描述。串口等通信设备在独立扩展项目中实现。
 
-- `src/MDKOSS.Extensions/serialdev.cs`
-  串口设备（`SerialDevice`）。提供 RS-232C 串口通信能力：打开/关闭端口、配置参数（波特率/数据位/校验位/停止位）、文本与二进制读写、缓冲区管理。
+- `src/MDKOSS.Extensions.Serial/`  
+  串口设备（`serialdev`）。打开/关闭端口、波特率等参数、文本与二进制读写；HTTP 模块挂到监控服务。
 
 - `src/MDKOSS.Core/core/gpio_device_parameters.cs`  
   解析 GPIO 的 `in.*` / `out.*` 与可选 `driverIds` 作用域。
@@ -111,53 +125,17 @@ mdkoss/
 - `src/MDKOSS.Core/core/mvar.cs`  
   线程安全变量中心。提供 `Set/Get/TryGet/Snapshot`，用于模块间状态共享与监控导出。
 
-- `src/MDKOSS.Core/core/drivers/idriver.cs`  
-  驱动统一接口，约束驱动初始化、连接状态、读写行为。
+- `src/MDKOSS.Core/core/drivers/idriver.cs` + `driver_factory.cs`  
+  驱动统一接口与工厂；具体实现不在 Core 内，由插件 Bootstrap 注册 `type`。
 
-- `src/MDKOSS.Core/core/drivers/drvgts.cs`  
-  GTS 示例驱动（内存映射模拟），用于本地联调和端到端流程验证。
+- `src/MDKOSS.Drivers.Sim` / `Gts` / `Dmc`  
+  仿真、固高、雷赛板卡插件（`DrvSim` / `DrvGts` / `DrvDmc`），构建产物进入 `plugins/`。
 
-- `src/MDKOSS.Core/core/drivers/drvsim.cs`  
-  软件仿真驱动：内存键值、DI/DO、轴运动等，常用于无硬件开发与 `vio` 虚拟 IO。
+- `src/MDKOSS.Core/server/monitoringserver.cs`  
+  轻量监控服务，提供主界面、IO/平台/串口等监控与调试页，以及 `/api/status`、`/api/devices`、`/api/io/write` 等；串口等扩展 API 由对应 Extensions HTTP 模块注册。详见 [docs/monitoring-api.md](./docs/monitoring-api.md) 与 `src/MDKOSS.Cef/views/README.md`。
 
-- `src/MDKOSS.Core/server/monitoringserver.cs`
-  轻量监控服务，提供：
-  - `GET /`、`GET /index.html`：主界面（HMI）
-  - `GET /monitor_io.html`：IO 监控页（DI/DO 分栏、本地筛选；写操作见 `debug_io`；旧路径 `/monitorIO.html` 别名）
-  - `GET /debug_serial.html`：串口调试页（端口配置、文本/十六进制收发、实时状态；旧路径 `/debugSerialDev.html` 别名）
-  - `GET /debug_platform.html`：平台步进示教页（`PlatformDevice` 点动、位置监视、示教点；旧路径 `/monitorPlatform.html` 别名）
-  - `GET /monitor_platform.html`：平台状态只读监控
-  - `GET /monitor_runtime.html`：运行时总览（旧路径 `/monitoringpage.html` 别名）
-  - 界面分组说明：`src/MDKOSS.Cef/views/README.md`
-  - `GET /api/status`：运行时快照 JSON
-  - `POST /api/io/write`：写入数字输出（仅 `gpio` / `vio` 设备）
-  - `GET /api/devices`：列出所有设备
-  - `GET /api/devices/{id}`：获取单个设备详情
-  - `POST /api/devices/{id}/action`：执行设备操作
-  - `GET /api/serial/status?deviceId=xxx`：串口状态
-  - `POST /api/serial/open`：打开串口
-  - `POST /api/serial/close`：关闭串口
-  - `POST /api/serial/write`：发送文本
-  - `POST /api/serial/writeBin`：发送二进制
-  - `POST /api/serial/read`：读取数据
-
-- `src/MDKOSS.Core/server/monitoringpage.cs`  
-  从输出目录旁 `views/monitor_runtime.html` 加载综合监控页 HTML。
-
-- `src/MDKOSS.Core/server/monitoriopage.cs`  
-  从 `views/monitor_io.html` 加载 IO 监控页 HTML（与上相同复制规则）。
-
-- `src/MDKOSS.Core/server/monitorplatformpage.cs`  
-  从 `views/debug_platform.html` 加载平台步进示教页（设计说明见 `views/_docs/debug_platform.md`）。
-
-- `src/MDKOSS.Core/server/indexpage.cs`  
-  从 `views/index.html` 加载主界面 HTML。
-
-- `src/MDKOSS.Core/server/debugserialdevpage.cs`  
-  从 `views/debug_serial.html` 加载串口调试页 HTML。
-
-- `src/MDKOSS.Cef/views/README.md`  
-  界面分层：`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*`。
+- `src/MDKOSS.Core/server/*page.cs`  
+  从输出目录旁 `views/` 加载对应 HTML（`index` / `monitor_*` / `debug_*` 等）。
 
 - `src/MDKOSS.Core/core/mdk.cs`（`TryWriteDigitalOutput`）  
   供监控 HTTP 调用：在已注册设备中查找 `GpioDevice` 或 `VioDevice`，按别名执行 `WriteOutput`。
@@ -172,11 +150,11 @@ mdkoss/
 
 1. **Configuration Layer**：`MdkSetting`
 2. **Runtime Orchestration Layer**：`MdkRuntime`
-3. **Driver Layer**：`IDriver` / `DrvGts` / `DrvSim`
-4. **Device Layer**：`MDeviceBase` + 设备子类
+3. **Driver Layer**：`IDriver` / `DriverFactory` + 插件（`DrvSim` / `DrvGts` / `DrvDmc`）
+4. **Device Layer**：`MDeviceBase` + 设备子类（通信类走 Extensions）
 5. **Task Layer**：`MTaskScheduler` + `MTaskBase`
-6. **State Layer**：`MVarStore`
-7. **Monitoring Layer**：`MonitoringServer` + `MonitoringPage` + `MonitorIoPage`
+6. **State Layer**：`MVarStore` + SQLite DataStore
+7. **Monitoring Layer**：`MonitoringServer` + views HMI / REST API
 
 ### 4.2 启动顺序
 
@@ -264,6 +242,7 @@ mdkoss/
 | `/api/serial/discard` | POST | 清空缓冲区 |
 
 `/api/status` 返回：
+- `Version`（`MdkProduct.Version`，当前 1.1.0）
 - `ProjectName`
 - `IsRunning`
 - `Drivers`
@@ -276,7 +255,7 @@ mdkoss/
 
 ## 7. 本地运行
 
-**环境**：Windows x64；CEF 模式需安装 [Visual C++ 2019+ 可再发行组件](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。主工程目标为 `win-x64`，输出在各自项目目录 `bin/{Configuration}/net8.0-windows10.0.22621.0/win-x64/`。
+**环境**：Windows x64；CEF 模式需安装 [Visual C++ 2019+ 可再发行组件](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)。主工程目标为 `win-x64`，输出在各自项目目录 `bin/{Configuration}/net8.0-windows10.0.22621.0/win-x64/`（含 `plugins/`）。
 
 在仓库根目录构建与测试：
 
@@ -285,15 +264,19 @@ dotnet build MDKOSS.sln -c Release
 dotnet test MDKOSS.sln -c Release --no-build
 ```
 
-WinForms 配置界面：
+WPF 配置界面：
 
 ```bash
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj
 ```
 
-Sample + CEF 桌面壳：
+CEF 宿主：
 
 ```bash
+# 通用 CEF（按 sample.setting.json）
+dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj
+
+# DieBonder
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 
 # 三轴点胶机
@@ -315,13 +298,13 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console
 - `MDKOSS runtime started.`
 - `Monitor UI: http://127.0.0.1:5080/`（或 `http://localhost:5080/`）
 
-CEF / WinForms 模式请查看 `logs/` 与窗体；浏览器亦可直接访问上述 Monitor URL。
+CEF / WPF 模式请查看 `logs/` 与窗体；浏览器亦可直接访问上述 Monitor URL。
 
 ---
 
 ## 8. 下一步建议
 
-近期已补齐：HMI 主界面 `index.html`、`server/` 监控服务模块、宿主 **MDKOSS.Sample** / **MDKOSS.Config.Wpf**（CEF 界面库 **MDKOSS.Cef**）、`RuntimeHost` 统一运行时启停与 **NLog** 日志（`AppLog`，Debug 下每次启动清空当日日志）、WinForms 配置、`DriverFactory` / `RuntimeTaskFactory`、GPIO / 平台 / VIO 参数解析、`PlatformDevice` / `VioDevice`、`tests/MDKOSS.Tests`（xUnit）与 GitHub Actions 构建测试。
+近期已补齐：产品版本 1.1.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.Dispenser** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
 
 可选后续方向：
 

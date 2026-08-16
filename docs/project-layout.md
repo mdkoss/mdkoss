@@ -16,6 +16,7 @@ src/
 ├── MDKOSS.Extensions.PyScript/
 ├── MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Cef/
+├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
 ├── MDKOSS.Sample/
 ├── MDKOSS.Sample.Dispenser/
 └── MDKOSS.Config.Wpf/

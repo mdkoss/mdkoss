@@ -1,6 +1,6 @@
 # MDKOSS.Cef.Sample
 
-CEF 宿主，用来加载并运行 [`configs/sample.setting.json`](configs/sample.setting.json)。
+CEF 宿主，用来加载并运行 [`configs/sample.setting.json`](configs/sample.setting.json)。产品版本与仓库说明见根目录 [readme.md](../../readme.md) 与 [src/README.md](../README.md)（当前 **1.1.0**）。
 
 驱动、设备、轴、平台、任务、排单、报警、视觉、启动页都来自这份 JSON；本工程不写机型流程，也不覆盖配置。
 

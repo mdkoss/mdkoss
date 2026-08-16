@@ -1,6 +1,6 @@
 <Project>
   <PropertyGroup>
-    <!-- Product release version for all src assemblies.
+    <!-- Product release version for all src assemblies (keep README / MdkProduct docs in sync).
          GitHub Actions creates a Release when tag v$(Version) is pushed (see MdkProduct.ReleaseTag). -->
     <Version>1.1.0</Version>
     <AssemblyVersion>1.1.0.0</AssemblyVersion>
