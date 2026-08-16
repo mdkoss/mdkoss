@@ -446,7 +446,7 @@
           <span>${esc(meta.paramTitle || "Parameters (Key / Value)")}</span>
           <div class="btn-group compact-btns">
             ${meta.catalog ? '<button type="button" class="btn btn-sm" id="btnFillTpl">补全模板</button><button type="button" class="btn btn-sm" id="btnResetTpl">重置模板</button>' : ""}
-            ${kind === "recipes" ? '<button type="button" class="btn btn-sm" id="btnApplyRecipe">应用排单</button>' : ""}
+            ${kind === "recipes" ? '<button type="button" class="btn btn-sm" id="btnApplyRecipe">应用配方</button>' : ""}
             <button type="button" class="btn btn-sm" id="btnAddRow">+ 行</button>
             <button type="button" class="btn btn-sm" id="btnDelRow">删行</button>
           </div>
@@ -757,9 +757,9 @@
       if (!selectedId) return;
       try {
         await postJson(`/api/recipe/apply?id=${encodeURIComponent(selectedId)}`);
-        toast("已切换排单", true);
+        toast("已切换配方", true);
       } catch (e) {
-        toast(e.message || "应用排单失败", false);
+        toast(e.message || "应用配方失败", false);
       }
     }
 

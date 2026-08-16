@@ -229,7 +229,10 @@
     "pnp.vision.top.noiseMm",
     "pnp.vision.bottom.angleRangeDeg",
     "pnp.vision.top.ngRate",
-    "pnp.vision.bottom.ngRate"
+    "pnp.vision.bottom.ngRate",
+    "task.bond-cycle.dwellTicks",
+    "device.tray-wafer.pickZ",
+    "platform.head-bond.note"
   ],
   "activeRecipeId": "qfn-3x3",
   "recipes": [
@@ -250,7 +253,10 @@
         "pnp.vision.top.noiseMm": "0.2",
         "pnp.vision.bottom.angleRangeDeg": "10",
         "pnp.vision.top.ngRate": "0.01",
-        "pnp.vision.bottom.ngRate": "0.01"
+        "pnp.vision.bottom.ngRate": "0.01",
+        "task.bond-cycle.dwellTicks": "2",
+        "device.tray-wafer.pickZ": "-8",
+        "platform.head-bond.note": "Bond Head：QFN 标准行程"
       }
     },
     {
@@ -270,7 +276,10 @@
         "pnp.vision.top.noiseMm": "0.4",
         "pnp.vision.bottom.angleRangeDeg": "20",
         "pnp.vision.top.ngRate": "0.02",
-        "pnp.vision.bottom.ngRate": "0.02"
+        "pnp.vision.bottom.ngRate": "0.02",
+        "task.bond-cycle.dwellTicks": "4",
+        "device.tray-wafer.pickZ": "-10",
+        "platform.head-bond.note": "Bond Head：BGA 加深取料"
       }
     },
     {
@@ -290,7 +299,10 @@
         "pnp.vision.top.noiseMm": "0.15",
         "pnp.vision.bottom.angleRangeDeg": "5",
         "pnp.vision.top.ngRate": "0.015",
-        "pnp.vision.bottom.ngRate": "0.015"
+        "pnp.vision.bottom.ngRate": "0.015",
+        "task.bond-cycle.dwellTicks": "3",
+        "device.tray-wafer.pickZ": "-7",
+        "platform.head-bond.note": "Bond Head：Flip-Chip U=180"
       }
     }
   ],

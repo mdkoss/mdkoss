@@ -73,13 +73,13 @@
     </div>
     <div class="bottom-right">
       <div class="bottom-section bottom-recipe">
-        <div class="bottom-label">当前排单</div>
+        <div class="bottom-label">当前配方</div>
         <div class="recipe-row">
           <div class="recipe-info">
             <div class="bottom-value" id="currentRecipeName">—</div>
             <div class="bottom-meta" id="currentRecipeId">—</div>
           </div>
-          <button class="recipe-pick-btn" type="button" id="btnPickRecipe">选择排单</button>
+          <button class="recipe-pick-btn" type="button" id="btnPickRecipe">选择配方</button>
         </div>
       </div>
       <div class="bottom-ctrl">
@@ -190,7 +190,7 @@
     });
 
     document.getElementById("btnPickRecipe").addEventListener("click", () => {
-      openPopup("popup_recipe", "选择排单", {});
+      openPopup("popup_recipe", "选择配方", {});
     });
 
     function parseOrders(vars) {

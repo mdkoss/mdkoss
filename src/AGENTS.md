@@ -31,7 +31,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 
-Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视觉/相机，`recipe`→配方/排单，`driver`→`IDriver`/板卡，`other`→先搜再改。
+Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视觉/相机，`recipe`→配方（参数组；排单指生产工单），`driver`→`IDriver`/板卡，`other`→先搜再改。
 
 ## 改哪里
 

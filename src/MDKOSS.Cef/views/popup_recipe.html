@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>选择排单</title>
+  <title>选择配方</title>
   <link rel="stylesheet" href="/css/theme-navy.css" />
   <link rel="stylesheet" href="/css/main.css" />
   <style>
@@ -14,9 +14,9 @@
 </head>
 <body>
   <div class="popup-page">
-    <div class="standalone-title" style="font-weight:700;margin:8px 8px 12px">选择排单</div>
+    <div class="standalone-title" style="font-weight:700;margin:8px 8px 12px">选择配方</div>
     <div id="body"><div class="recipe-dialog-empty">加载中…</div></div>
-    <div style="padding:8px;font-size:12px"><a href="/man_recipe.html" target="_blank" style="color:var(--accent)">排单配置管理 →</a></div>
+    <div style="padding:8px;font-size:12px"><a href="/man_recipe.html" target="_blank" style="color:var(--accent)">配方配置管理 →</a></div>
   </div>
   <script>
     if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
@@ -35,7 +35,7 @@
         const activeId = field(data,"activeRecipeId","ActiveRecipeId") || "";
         const recipes = field(data,"recipes","Recipes") || [];
         if (!recipes.length) {
-          body.innerHTML = '<div class="recipe-dialog-empty">暂无排单（请在 setting.json 中配置 recipes）</div>';
+          body.innerHTML = '<div class="recipe-dialog-empty">暂无配方（请在 setting.json 中配置 recipes）</div>';
           return;
         }
         body.innerHTML = recipes.map(r=>{
@@ -53,7 +53,7 @@
           btn.addEventListener("click",()=>apply(btn.getAttribute("data-id")));
         });
       }catch{
-        body.innerHTML='<div class="recipe-dialog-empty">无法加载排单列表</div>';
+        body.innerHTML='<div class="recipe-dialog-empty">无法加载配方列表</div>';
       }
     }
     async function apply(id){
@@ -65,7 +65,7 @@
         if(!res.ok || data.success===false) throw new Error("fail");
         notifyClose();
       }catch{
-        document.getElementById("body").innerHTML='<div class="recipe-dialog-empty">切换排单失败</div>';
+        document.getElementById("body").innerHTML='<div class="recipe-dialog-empty">切换配方失败</div>';
         setTimeout(load, 1000);
       }
     }

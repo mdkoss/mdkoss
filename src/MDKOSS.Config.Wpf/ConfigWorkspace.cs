@@ -3607,14 +3607,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.ParamValueSuggestions.Clear();
     }
 
-    /// <summary>Key suggestions for recipe vars: all Vars ∪ all SysConfig ∪ other recipes.</summary>
+    /// <summary>Key suggestions: Vars ∪ SysConfig ∪ task/platform/device/axis params ∪ other recipes.</summary>
     public void RefreshRecipeParamSuggestions()
     {
         Draft.SetParamKeySuggestions(EnumerateRecipeKeyCandidates().Select(c => c.Key));
         RefreshParamValueSuggestions(ConfigModule.Recipes);
     }
 
-    /// <summary>Candidates for the recipe vars picker (all Vars + all SysConfig entries + existing recipe keys).</summary>
+    /// <summary>Candidates for the recipe parameter picker (vars / settings / tasks / platforms / …).</summary>
     public IReadOnlyList<RecipeVarCandidate> GetRecipeVarCandidates() =>
         EnumerateRecipeKeyCandidates()
             .OrderBy(c => c.Key, StringComparer.OrdinalIgnoreCase)
@@ -3622,14 +3622,14 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
     /// <summary>
     /// Merge selected keys into the current recipe draft.
-    /// Existing keys keep their draft values; new keys take Vars / SysConfig current values when available.
+    /// Existing keys keep their draft values; new keys take Vars / SysConfig / task / platform values when available.
     /// Also expands <see cref="MdkSetting.RecipeVarKeys"/> so runtime apply accepts the new keys.
     /// </summary>
     public void ApplyRecipeVarSelection(IEnumerable<string> keys)
     {
         if (_module != ConfigModule.Recipes || Draft.IsReadOnly || !Draft.ShowParameters)
         {
-            throw new InvalidOperationException("仅 Recipe 组件支持从 Vars / SysConfig 选择键。");
+            throw new InvalidOperationException("仅配方组件支持从 Vars / 设置 / 任务 / 平台等选择键。");
         }
 
         var selected = keys
@@ -3663,11 +3663,11 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.LoadObjectParameters(book);
         Draft.MarkDirty();
         RefreshRecipeParamSuggestions();
-        StatusLine = $"已加入 {selected.Count} 个配方变量键";
+        StatusLine = $"已加入 {selected.Count} 个配方参数键";
     }
 
     /// <summary>
-    /// One-click push of every Vars / SysConfig / recipe candidate key into the current recipe draft.
+    /// One-click push of every Vars / SysConfig / task / platform / recipe candidate into the draft.
     /// </summary>
     public int PushAllRecipeVars()
     {
@@ -3732,7 +3732,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             AddSource(kv.Key, "vars", FormatRecipeVarValue(kv.Value));
         }
 
-        // All SysConfig parameters (not only recipeVarKeys).
+        // All SysConfig parameters (设置参数).
         foreach (var entry in BuildSysConfigEntries())
         {
             var tag = string.IsNullOrWhiteSpace(entry.Group)
@@ -3747,6 +3747,57 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             AddSource(key, "sysconfig.recipeVarKeys");
         }
 
+        // Task parameters → task.{name}.{param}.
+        foreach (var task in _setting.Tasks)
+        {
+            if (string.IsNullOrWhiteSpace(task.Name))
+            {
+                continue;
+            }
+
+            foreach (var kv in task.Parameters)
+            {
+                if (string.IsNullOrWhiteSpace(kv.Key))
+                {
+                    continue;
+                }
+
+                AddSource(
+                    $"{MdkRecipeManager.TaskKeyPrefix}{task.Name.Trim()}.{kv.Key.Trim()}",
+                    $"task:{task.Name.Trim()}",
+                    kv.Value);
+            }
+        }
+
+        void AddDeviceParams(string prefix, string sourceTag, IEnumerable<MdkSetting.DeviceConfig> devices)
+        {
+            foreach (var device in devices)
+            {
+                if (string.IsNullOrWhiteSpace(device.Id))
+                {
+                    continue;
+                }
+
+                foreach (var kv in device.Parameters)
+                {
+                    if (string.IsNullOrWhiteSpace(kv.Key))
+                    {
+                        continue;
+                    }
+
+                    AddSource(
+                        $"{prefix}{device.Id.Trim()}.{kv.Key.Trim()}",
+                        $"{sourceTag}:{device.Id.Trim()}",
+                        kv.Value);
+                }
+            }
+        }
+
+        // Platform parameters / 平台点位键.
+        AddDeviceParams(MdkRecipeManager.PlatformKeyPrefix, "platform", _setting.Platforms);
+        AddDeviceParams(MdkRecipeManager.DeviceKeyPrefix, "device", _setting.Devices);
+        AddDeviceParams(MdkRecipeManager.AxisKeyPrefix, "axis", _setting.Axes);
+
         // Keys already used by other recipes.
         foreach (var recipe in _setting.Recipes)
         {
@@ -3760,7 +3811,9 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         {
             var ordered = tags
                 .OrderBy(t => t.Equals("vars", StringComparison.OrdinalIgnoreCase) ? 0
-                    : t.StartsWith("sysconfig", StringComparison.OrdinalIgnoreCase) ? 1 : 2)
+                    : t.StartsWith("sysconfig", StringComparison.OrdinalIgnoreCase) ? 1
+                    : t.StartsWith("task", StringComparison.OrdinalIgnoreCase) ? 2
+                    : t.StartsWith("platform", StringComparison.OrdinalIgnoreCase) ? 3 : 4)
                 .ThenBy(t => t, StringComparer.OrdinalIgnoreCase);
             yield return new RecipeVarCandidate
             {
@@ -3781,6 +3834,31 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         if (sysValues.TryGetValue(key, out var fromSys))
         {
             return fromSys;
+        }
+
+        if (MdkRecipeManager.TrySplitOwnerParamKey(key, out var kind, out var ownerId, out var paramKey))
+        {
+            Dictionary<string, string>? bag = kind switch
+            {
+                "task" => _setting.Tasks
+                    .FirstOrDefault(t => string.Equals(t.Name, ownerId, StringComparison.OrdinalIgnoreCase))
+                    ?.Parameters,
+                "platform" => _setting.Platforms
+                    .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                    ?.Parameters,
+                "device" => _setting.Devices
+                    .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                    ?.Parameters,
+                "axis" => _setting.Axes
+                    .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                    ?.Parameters,
+                _ => null,
+            };
+
+            if (bag is not null && bag.TryGetValue(paramKey, out var fromBag))
+            {
+                return fromBag;
+            }
         }
 
         return "";

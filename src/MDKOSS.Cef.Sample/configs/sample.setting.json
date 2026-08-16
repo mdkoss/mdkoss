@@ -294,7 +294,7 @@
     {
       "id": "rcp-fast",
       "name": "快速模式",
-      "description": "演示排单 A",
+      "description": "演示配方 A",
       "vars": {
         "process.speed": 1.0,
         "process.dwellMs": 50
@@ -303,7 +303,7 @@
     {
       "id": "rcp-safe",
       "name": "安全模式",
-      "description": "演示排单 B",
+      "description": "演示配方 B",
       "vars": {
         "process.speed": 0.3,
         "process.dwellMs": 200

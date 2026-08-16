@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>排单配置</title>
+  <title>配方配置</title>
   <link rel="stylesheet" href="/css/theme-white.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
@@ -12,8 +12,8 @@
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">排单 / 配方 <span class="pill warn">配置</span></div>
-        <div class="sub" id="manMeta">Id / 名称 / Vars</div>
+        <div class="title">配方 <span class="pill warn">配置</span></div>
+        <div class="sub" id="manMeta">Id / 名称 / 参数组</div>
       </div>
       <div class="btn-group compact-btns">
         <button type="button" class="btn" id="btnAdd">新建</button>
@@ -22,7 +22,7 @@
         <button type="button" class="btn primary" id="btnApplyPatch">应用属性</button>
       </div>
     </div>
-    <p class="man-note">简化配置：增删配方并编辑 Vars。应用属性写入配方库；可用「应用排单」切换当前配方。</p>
+    <p class="man-note">配方是一组参数（可来自 Vars、设置、任务、平台点位等）。应用属性写入配方库；用「应用配方」切换当前配方并更新系统内部对应参数。</p>
     <div class="man-toolbar">
       <input type="search" id="manFilter" class="filter" placeholder="查找 Id / 名称 / 变量键…" autocomplete="off" />
     </div>

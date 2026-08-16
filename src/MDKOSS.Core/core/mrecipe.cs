@@ -1,13 +1,19 @@
 namespace MDKOSS.Core;
 
 /// <summary>
-/// Manages named recipe presets: a subset of <see cref="MdkSetting.Vars"/> keys defined by
-/// <see cref="MdkSetting.RecipeVarKeys"/>, stored in <see cref="MdkSetting.Recipes"/>.
+/// Manages named recipes: each recipe is a parameter group selected from vars, SysConfig,
+/// task parameters, device/platform parameters, etc. Applying a recipe writes values into
+/// <see cref="MVarStore"/> and matching setting parameter bags.
 /// </summary>
 public sealed class MdkRecipeManager
 {
     public const string ActiveIdVarKey = "recipe.activeId";
     public const string ActiveNameVarKey = "recipe.activeName";
+
+    public const string TaskKeyPrefix = "task.";
+    public const string PlatformKeyPrefix = "platform.";
+    public const string DeviceKeyPrefix = "device.";
+    public const string AxisKeyPrefix = "axis.";
 
     private readonly MdkSetting _setting;
     private readonly MVarStore _vars;
@@ -231,7 +237,9 @@ public sealed class MdkRecipeManager
                 continue;
             }
 
-            _vars.Set(kv.Key.Trim(), kv.Value);
+            var key = kv.Key.Trim();
+            _vars.Set(key, kv.Value);
+            TryApplyStructuredParameter(key, kv.Value);
         }
 
         // Declared recipe keys missing from this recipe fall back to base setting vars.
@@ -245,6 +253,7 @@ public sealed class MdkRecipeManager
             if (_setting.Vars.TryGetValue(key, out var baseValue))
             {
                 _vars.Set(key, baseValue);
+                TryApplyStructuredParameter(key, baseValue);
             }
         }
     }
@@ -256,9 +265,114 @@ public sealed class MdkRecipeManager
             if (_setting.Vars.TryGetValue(key, out var baseValue))
             {
                 _vars.Set(key, baseValue);
+                TryApplyStructuredParameter(key, baseValue);
             }
         }
     }
+
+    /// <summary>
+    /// Writes structured keys (<c>task.*</c> / <c>platform.*</c> / <c>device.*</c> / <c>axis.*</c>)
+    /// into the matching setting parameter dictionary so runtime config stays in sync with vars.
+    /// </summary>
+    private void TryApplyStructuredParameter(string key, object? value)
+    {
+        if (!TrySplitOwnerParamKey(key, out var kind, out var ownerId, out var paramKey))
+        {
+            return;
+        }
+
+        var text = FormatParameterValue(value);
+        Dictionary<string, string>? bag = kind switch
+        {
+            "task" => _setting.Tasks
+                .FirstOrDefault(t => string.Equals(t.Name, ownerId, StringComparison.OrdinalIgnoreCase))
+                ?.Parameters,
+            "platform" => _setting.Platforms
+                .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                ?.Parameters,
+            "device" => _setting.Devices
+                .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                ?.Parameters,
+            "axis" => _setting.Axes
+                .FirstOrDefault(d => string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase))
+                ?.Parameters,
+            _ => null,
+        };
+
+        if (bag is null)
+        {
+            return;
+        }
+
+        bag[paramKey] = text;
+    }
+
+    /// <summary>
+    /// Parses <c>{kind}.{owner}.{param…}</c> where kind is task/platform/device/axis.
+    /// Param may contain dots (e.g. <c>task.bond-cycle.dwellTicks</c>).
+    /// </summary>
+    public static bool TrySplitOwnerParamKey(
+        string key,
+        out string kind,
+        out string ownerId,
+        out string paramKey)
+    {
+        kind = "";
+        ownerId = "";
+        paramKey = "";
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        var trimmed = key.Trim();
+        string? prefix = null;
+        if (trimmed.StartsWith(TaskKeyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            prefix = TaskKeyPrefix;
+            kind = "task";
+        }
+        else if (trimmed.StartsWith(PlatformKeyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            prefix = PlatformKeyPrefix;
+            kind = "platform";
+        }
+        else if (trimmed.StartsWith(DeviceKeyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            prefix = DeviceKeyPrefix;
+            kind = "device";
+        }
+        else if (trimmed.StartsWith(AxisKeyPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            prefix = AxisKeyPrefix;
+            kind = "axis";
+        }
+
+        if (prefix is null)
+        {
+            return false;
+        }
+
+        var rest = trimmed[prefix.Length..];
+        var dot = rest.IndexOf('.');
+        if (dot <= 0 || dot >= rest.Length - 1)
+        {
+            return false;
+        }
+
+        ownerId = rest[..dot].Trim();
+        paramKey = rest[(dot + 1)..].Trim();
+        return ownerId.Length > 0 && paramKey.Length > 0;
+    }
+
+    private static string FormatParameterValue(object? value) => value switch
+    {
+        null => "",
+        string s => s,
+        bool b => b ? "true" : "false",
+        IFormattable f => f.ToString(null, System.Globalization.CultureInfo.InvariantCulture) ?? "",
+        _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "",
+    };
 
     private IReadOnlyList<string> ResolveRecipeVarKeys()
     {
@@ -303,30 +417,9 @@ public sealed class MdkRecipeManager
     private bool ValidateRecipeVars(IReadOnlyDictionary<string, object?> vars, out string? error)
     {
         error = null;
-        var allowed = RecipeVarKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var allowed = CollectAllowedRecipeKeys();
 
-        // Allow any seed Vars key so Config「推送所有 / 从 Vars」选中的项可写入并应用.
-        foreach (var key in _setting.Vars.Keys)
-        {
-            if (!string.IsNullOrWhiteSpace(key))
-            {
-                allowed.Add(key.Trim());
-            }
-        }
-
-        // Keys already used by other recipes remain valid.
-        foreach (var recipe in _setting.Recipes)
-        {
-            foreach (var key in recipe.Vars.Keys)
-            {
-                if (!string.IsNullOrWhiteSpace(key))
-                {
-                    allowed.Add(key.Trim());
-                }
-            }
-        }
-
-        // First recipe may define its own keys when recipeVarKeys / Vars are still empty.
+        // First recipe may define its own keys when no candidates exist yet.
         if (allowed.Count == 0)
         {
             foreach (var key in vars.Keys)
@@ -346,14 +439,110 @@ public sealed class MdkRecipeManager
 
         foreach (var key in vars.Keys)
         {
-            if (string.IsNullOrWhiteSpace(key) || !allowed.Contains(key.Trim()))
+            if (string.IsNullOrWhiteSpace(key))
             {
                 error = $"recipe_var_key_invalid:{key}";
                 return false;
             }
+
+            var trimmed = key.Trim();
+            if (allowed.Contains(trimmed))
+            {
+                continue;
+            }
+
+            // Allow any param under an existing task / platform / device / axis owner.
+            if (TrySplitOwnerParamKey(trimmed, out var kind, out var ownerId, out _)
+                && OwnerExists(kind, ownerId))
+            {
+                continue;
+            }
+
+            error = $"recipe_var_key_invalid:{key}";
+            return false;
         }
 
         return true;
+    }
+
+    private bool OwnerExists(string kind, string ownerId) => kind switch
+    {
+        "task" => _setting.Tasks.Any(t =>
+            string.Equals(t.Name, ownerId, StringComparison.OrdinalIgnoreCase)),
+        "platform" => _setting.Platforms.Any(d =>
+            string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase)),
+        "device" => _setting.Devices.Any(d =>
+            string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase)),
+        "axis" => _setting.Axes.Any(d =>
+            string.Equals(d.Id, ownerId, StringComparison.OrdinalIgnoreCase)),
+        _ => false,
+    };
+
+    /// <summary>
+    /// Allowed recipe keys: recipeVarKeys ∪ Vars ∪ other recipes ∪ task/platform/device/axis params.
+    /// </summary>
+    private HashSet<string> CollectAllowedRecipeKeys()
+    {
+        var allowed = RecipeVarKeys.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var key in _setting.Vars.Keys)
+        {
+            if (!string.IsNullOrWhiteSpace(key))
+            {
+                allowed.Add(key.Trim());
+            }
+        }
+
+        foreach (var recipe in _setting.Recipes)
+        {
+            foreach (var key in recipe.Vars.Keys)
+            {
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    allowed.Add(key.Trim());
+                }
+            }
+        }
+
+        foreach (var task in _setting.Tasks)
+        {
+            if (string.IsNullOrWhiteSpace(task.Name))
+            {
+                continue;
+            }
+
+            foreach (var paramKey in task.Parameters.Keys)
+            {
+                if (!string.IsNullOrWhiteSpace(paramKey))
+                {
+                    allowed.Add($"{TaskKeyPrefix}{task.Name.Trim()}.{paramKey.Trim()}");
+                }
+            }
+        }
+
+        void AddDeviceKeys(string prefix, IEnumerable<MdkSetting.DeviceConfig> devices)
+        {
+            foreach (var device in devices)
+            {
+                if (string.IsNullOrWhiteSpace(device.Id))
+                {
+                    continue;
+                }
+
+                foreach (var paramKey in device.Parameters.Keys)
+                {
+                    if (!string.IsNullOrWhiteSpace(paramKey))
+                    {
+                        allowed.Add($"{prefix}{device.Id.Trim()}.{paramKey.Trim()}");
+                    }
+                }
+            }
+        }
+
+        AddDeviceKeys(PlatformKeyPrefix, _setting.Platforms);
+        AddDeviceKeys(DeviceKeyPrefix, _setting.Devices);
+        AddDeviceKeys(AxisKeyPrefix, _setting.Axes);
+        return allowed;
     }
 
     private static MdkSetting.RecipeConfig CloneRecipe(MdkSetting.RecipeConfig recipe) =>

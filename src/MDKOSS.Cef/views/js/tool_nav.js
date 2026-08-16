@@ -44,7 +44,7 @@
         { id: "man_gpio", href: "/man_gpio.html", label: "GPIO" },
         { id: "man_task", href: "/man_task.html", label: "任务" },
         { id: "man_vars", href: "/man_vars.html", label: "变量" },
-        { id: "man_recipe", href: "/man_recipe.html", label: "排单" },
+        { id: "man_recipe", href: "/man_recipe.html", label: "配方" },
         { id: "man_vision", href: "/man_vision.html", label: "视觉" },
         { id: "man_alarm", href: "/man_alarm.html", label: "报警" },
       ],

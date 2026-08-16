@@ -50,6 +50,87 @@ public sealed class MdkRecipeTests
     }
 
     [Fact]
+    public void TryApplyRecipe_updates_task_platform_and_device_parameters()
+    {
+        var setting = BuildSettingWithRecipes();
+        setting.Tasks =
+        [
+            new MdkSetting.TaskConfig
+            {
+                Name = "bond-cycle",
+                Type = "bond",
+                Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["dwellTicks"] = "1",
+                },
+            },
+        ];
+        setting.Platforms =
+        [
+            new MdkSetting.DeviceConfig
+            {
+                Id = "head-bond",
+                Type = "xyzu",
+                Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["note"] = "base",
+                },
+            },
+        ];
+        setting.Devices =
+        [
+            new MdkSetting.DeviceConfig
+            {
+                Id = "tray-wafer",
+                Type = "tray",
+                Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["pickZ"] = "-1",
+                },
+            },
+        ];
+        setting.RecipeVarKeys.Add("task.bond-cycle.dwellTicks");
+        setting.RecipeVarKeys.Add("platform.head-bond.note");
+        setting.RecipeVarKeys.Add("device.tray-wafer.pickZ");
+        setting.Recipes.First(r => r.Id == "manual").Vars["task.bond-cycle.dwellTicks"] = "9";
+        setting.Recipes.First(r => r.Id == "manual").Vars["platform.head-bond.note"] = "manual-head";
+        setting.Recipes.First(r => r.Id == "manual").Vars["device.tray-wafer.pickZ"] = "-12";
+
+        var vars = new MVarStore();
+        foreach (var kv in setting.Vars)
+        {
+            vars.Set(kv.Key, kv.Value);
+        }
+
+        var mgr = new MdkRecipeManager(setting, vars);
+        Assert.True(mgr.TryApplyRecipe("manual", out var error), error);
+        Assert.Equal("9", setting.Tasks[0].Parameters["dwellTicks"]);
+        Assert.Equal("manual-head", setting.Platforms[0].Parameters["note"]);
+        Assert.Equal("-12", setting.Devices[0].Parameters["pickZ"]);
+        Assert.Equal("9", vars.Get<string>("task.bond-cycle.dwellTicks"));
+        Assert.Equal("manual-head", vars.Get<string>("platform.head-bond.note"));
+        Assert.Equal("-12", vars.Get<string>("device.tray-wafer.pickZ"));
+    }
+
+    [Fact]
+    public void TrySplitOwnerParamKey_parses_structured_recipe_keys()
+    {
+        Assert.True(MdkRecipeManager.TrySplitOwnerParamKey(
+            "task.bond-cycle.dwellTicks", out var kind, out var owner, out var param));
+        Assert.Equal("task", kind);
+        Assert.Equal("bond-cycle", owner);
+        Assert.Equal("dwellTicks", param);
+
+        Assert.True(MdkRecipeManager.TrySplitOwnerParamKey(
+            "platform.head-bond.note", out kind, out owner, out param));
+        Assert.Equal("platform", kind);
+        Assert.Equal("head-bond", owner);
+        Assert.Equal("note", param);
+
+        Assert.False(MdkRecipeManager.TrySplitOwnerParamKey("machine.mode", out _, out _, out _));
+    }
+
+    [Fact]
     public void TryCaptureFromRuntime_updates_existing_recipe()
     {
         var setting = BuildSettingWithRecipes();

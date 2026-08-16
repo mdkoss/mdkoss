@@ -55,7 +55,7 @@ public sealed class MdkSetting
     /// <summary>Recipe applied automatically during runtime bootstrap.</summary>
     public string? ActiveRecipeId { get; set; }
 
-    /// <summary>Named presets for <see cref="RecipeVarKeys"/>.</summary>
+    /// <summary>Named recipes: each is a parameter group applied onto vars / task / platform params.</summary>
     public List<RecipeConfig> Recipes { get; set; } = [];
 
     /// <summary>Named industrial vision pipelines (see <see cref="Vision.VisionDocument"/>).</summary>
@@ -217,7 +217,10 @@ public sealed class MdkSetting
         public Dictionary<string, string> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     }
 
-    /// <summary>Named values for the recipe-scoped subset of <see cref="Vars"/>.</summary>
+    /// <summary>
+    /// One recipe = one parameter group. Keys may be plain vars, or structured
+    /// <c>task.*</c> / <c>platform.*</c> / <c>device.*</c> / <c>axis.*</c> owners.
+    /// </summary>
     public sealed class RecipeConfig
     {
         public string Id { get; set; } = string.Empty;
