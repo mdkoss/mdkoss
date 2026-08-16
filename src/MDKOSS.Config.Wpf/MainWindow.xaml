@@ -101,11 +101,20 @@
         <ColumnDefinition Width="360" MinWidth="300"/>
       </Grid.ColumnDefinitions>
 
-      <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="4">
+      <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="1" CornerRadius="4" Padding="0">
         <DockPanel>
-          <TextBlock DockPanel.Dock="Top" Text="模块 / 组件" FontWeight="SemiBold" Margin="6,4,6,8"
-                     Foreground="{StaticResource AccentBrush}"/>
-          <TreeView x:Name="NavTree" BorderThickness="0" Background="Transparent"
+          <Border DockPanel.Dock="Top" Background="{StaticResource AccentSoftBrush}"
+                  BorderBrush="{StaticResource BorderBrushKey}" BorderThickness="0,0,0,1"
+                  Padding="10,8">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Right" Text="导航" FontSize="11"
+                         Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center"/>
+              <TextBlock Text="模块 / 组件" FontWeight="SemiBold"
+                         Foreground="{StaticResource AccentBrush}"/>
+            </DockPanel>
+          </Border>
+          <TreeView x:Name="NavTree"
+                    Margin="4,6,4,4"
                     SelectedItemChanged="NavTree_SelectedItemChanged"/>
         </DockPanel>
       </Border>
@@ -157,10 +166,8 @@
                       SelectionUnit="FullRow"
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal"
-                      AlternatingRowBackground="#FAFBFC"
                       BorderBrush="{StaticResource BorderBrushKey}"
                       BorderThickness="1"
-                      RowHeaderWidth="0"
                       SelectionChanged="CenterGrid_SelectionChanged"
                       MouseDoubleClick="CenterGrid_MouseDoubleClick">
               <DataGrid.Style>

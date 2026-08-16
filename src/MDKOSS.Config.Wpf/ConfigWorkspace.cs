@@ -4556,6 +4556,30 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         _ => m.ToString(),
     };
 
+    /// <summary>
+    /// Snapshot of module → component titles for the left nav tree.
+    /// Does not change <see cref="CurrentModule"/>, selection, draft, or list filter.
+    /// </summary>
+    public IReadOnlyList<(ConfigModule Module, string Title, IReadOnlyList<(string Key, string Title)> Components)>
+        BuildNavTreeSnapshot()
+    {
+        var result = new List<(ConfigModule, string, IReadOnlyList<(string, string)>)>();
+        foreach (ConfigModule m in Enum.GetValues<ConfigModule>())
+        {
+            if (m == ConfigModule.Machine)
+            {
+                continue;
+            }
+
+            var comps = BuildItemsFor(m)
+                .Select(i => (i.Key, i.Title))
+                .ToList();
+            result.Add((m, ModuleDisplayName(m), comps));
+        }
+
+        return result;
+    }
+
     /// <summary>Platform 族不归属 Devices 模块（独立 Platform 树节点）。</summary>
     private static bool IsPlatformModuleEntry(MdkSetting.DeviceConfig d) =>
         PlatformDeviceParameterSet.IsPlatformFamilyType((d.Type ?? "").ToLowerInvariant());

@@ -116,6 +116,7 @@ public partial class MainWindow : Window
     private void RebuildNavTree(ConfigModule? selectModule, string? selectKey)
     {
         _suppressTreeSelection = true;
+        var expansion = CaptureTreeExpansion();
         NavTree.Items.Clear();
 
         var machineTitle = string.IsNullOrWhiteSpace(_workspace.ProjectName)
@@ -123,8 +124,8 @@ public partial class MainWindow : Window
             : $"Machine · {_workspace.ProjectName}";
         var machine = new TreeViewItem
         {
-            Header = machineTitle,
-            IsExpanded = true,
+            Header = CreateNavHeader(machineTitle, NavKind.Project),
+            IsExpanded = expansion.GetValueOrDefault("project", true),
             Tag = new NavTag(NavKind.Project, ConfigModule.Machine, "machine"),
         };
         NavTree.Items.Add(machine);
@@ -136,7 +137,7 @@ public partial class MainWindow : Window
             ("系统", [ConfigModule.SysConfig, ConfigModule.Database]),
         };
 
-        var entries = BuildModuleEntries().ToDictionary(e => e.Module, e => e);
+        var entries = _workspace.BuildNavTreeSnapshot().ToDictionary(e => e.Module, e => e);
         TreeViewItem? toSelect = null;
 
         if (selectModule is ConfigModule.Machine || selectModule is null)
@@ -146,11 +147,12 @@ public partial class MainWindow : Window
 
         foreach (var (groupTitle, modules) in groups)
         {
+            var groupPath = $"group:{groupTitle}";
             var groupNode = new TreeViewItem
             {
-                Header = groupTitle,
-                IsExpanded = true,
-                Tag = new NavTag(NavKind.Group, null, null),
+                Header = CreateNavHeader(groupTitle, NavKind.Group),
+                IsExpanded = expansion.GetValueOrDefault(groupPath, true),
+                Tag = new NavTag(NavKind.Group, null, groupTitle),
             };
             machine.Items.Add(groupNode);
 
@@ -161,10 +163,14 @@ public partial class MainWindow : Window
                     continue;
                 }
 
+                var modulePath = $"module:{module}";
+                var expandDefault = module is ConfigModule.Drivers or ConfigModule.Devices
+                    or ConfigModule.Tasks or ConfigModule.Database
+                    || (selectModule == module);
                 var moduleNode = new TreeViewItem
                 {
-                    Header = $"{entry.Title} ({entry.Components.Count})",
-                    IsExpanded = module is ConfigModule.Drivers or ConfigModule.Devices or ConfigModule.Tasks or ConfigModule.Database,
+                    Header = CreateNavHeader($"{entry.Title} ({entry.Components.Count})", NavKind.Module),
+                    IsExpanded = expansion.GetValueOrDefault(modulePath, expandDefault),
                     Tag = new NavTag(NavKind.Module, module, null),
                 };
                 groupNode.Items.Add(moduleNode);
@@ -178,8 +184,9 @@ public partial class MainWindow : Window
                 {
                     var leaf = new TreeViewItem
                     {
-                        Header = compTitle,
+                        Header = CreateNavHeader(compTitle, NavKind.Component),
                         Tag = new NavTag(NavKind.Component, module, key),
+                        ToolTip = compTitle,
                     };
                     moduleNode.Items.Add(leaf);
                     if (selectModule == module && string.Equals(selectKey, key, StringComparison.OrdinalIgnoreCase))
@@ -199,28 +206,79 @@ public partial class MainWindow : Window
         _suppressTreeSelection = false;
     }
 
-    private List<(ConfigModule Module, string Title, List<(string Key, string Title)> Components)> BuildModuleEntries()
+    private Dictionary<string, bool> CaptureTreeExpansion()
     {
-        var result = new List<(ConfigModule, string, List<(string, string)>)>();
-        var current = _workspace.CurrentModule;
-        var selectedKey = _workspace.IsBrowsingDbTable
-            ? _workspace.SelectedDbTable
-            : _workspace.SelectedItem?.Key;
-
-        foreach (ConfigModule m in Enum.GetValues<ConfigModule>())
+        var map = new Dictionary<string, bool>(StringComparer.Ordinal);
+        foreach (TreeViewItem project in NavTree.Items.OfType<TreeViewItem>())
         {
-            _workspace.SelectModule(m, null);
-            var comps = _workspace.Items.Select(i => (i.Key, i.Title)).ToList();
-            result.Add((m, ConfigWorkspace.ModuleDisplayName(m), comps));
+            map["project"] = project.IsExpanded;
+            foreach (TreeViewItem group in project.Items.OfType<TreeViewItem>())
+            {
+                if (group.Tag is NavTag { Kind: NavKind.Group, Key: { } groupKey })
+                {
+                    map[$"group:{groupKey}"] = group.IsExpanded;
+                }
+
+                foreach (TreeViewItem moduleNode in group.Items.OfType<TreeViewItem>())
+                {
+                    if (moduleNode.Tag is NavTag { Kind: NavKind.Module, Module: { } module })
+                    {
+                        map[$"module:{module}"] = moduleNode.IsExpanded;
+                    }
+                }
+            }
         }
 
-        _workspace.SelectModule(current, selectedKey);
-        return result;
+        return map;
+    }
+
+    private FrameworkElement CreateNavHeader(string text, NavKind kind)
+    {
+        var accent = (System.Windows.Media.Brush)FindResource("AccentBrush");
+        var muted = (System.Windows.Media.Brush)FindResource("MutedBrush");
+        var leaf = (System.Windows.Media.Brush)FindResource("TreeLeafBrush");
+        var group = (System.Windows.Media.Brush)FindResource("TreeGroupBrush");
+
+        var (glyph, glyphBrush, fontWeight, textBrush, fontSize) = kind switch
+        {
+            NavKind.Project => ("◆", accent, FontWeights.SemiBold, accent, 13.0),
+            NavKind.Group => ("▸", group, FontWeights.SemiBold, group, 12.0),
+            NavKind.Module => ("●", accent, FontWeights.Normal, (System.Windows.Media.Brush)FindResource("TextBrush"), 12.5),
+            _ => ("·", muted, FontWeights.Normal, leaf, 12.0),
+        };
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(new TextBlock
+        {
+            Text = glyph,
+            Foreground = glyphBrush,
+            FontSize = fontSize - 1,
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Width = 12,
+            TextAlignment = TextAlignment.Center,
+        });
+        row.Children.Add(new TextBlock
+        {
+            Text = text,
+            FontWeight = fontWeight,
+            Foreground = textBrush,
+            FontSize = fontSize,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        return row;
     }
 
     private void NavTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
         if (_suppressTreeSelection || e.NewValue is not TreeViewItem { Tag: NavTag tag })
+        {
+            return;
+        }
+
+        // Group headers are visual only — do not flush draft or switch modules.
+        if (tag.Kind == NavKind.Group)
         {
             return;
         }
