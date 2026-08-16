@@ -8,7 +8,7 @@ namespace MDKOSS.Core;
 /// </summary>
 public static class MdkProduct
 {
-    /// <summary>Semantic product version (e.g. 1.1.0); exposed on <c>/api/status</c> and About UI.</summary>
+    /// <summary>Semantic product version (e.g. 1.2.0); exposed on <c>/api/status</c> and About UI.</summary>
     public static string Version { get; } = ResolveVersion();
 
     /// <summary>

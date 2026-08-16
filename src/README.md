@@ -1,6 +1,6 @@
 # src/ — MDKOSS 源码
 
-当前产品版本 **1.1.0**（见 `Directory.Build.props` / `MdkProduct.Version`）。更完整的上手说明见仓库根目录 [readme.md](../readme.md)；架构细项见 [docs/](../docs/README.md)。
+当前产品版本 **1.2.0**（见 `Directory.Build.props` / `MdkProduct.Version`）。更完整的上手说明见仓库根目录 [readme.md](../readme.md)；架构细项见 [docs/](../docs/README.md)。
 
 ## 分层
 

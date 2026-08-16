@@ -1,6 +1,6 @@
 # MDKOSS（Open Source Simplified Runtime）
 
-`MDKOSS` 是从 `MDKSYS/mdkruntime` 提炼出的开源简化运行时。当前产品版本 **1.1.0**（`MdkProduct.Version` / `src/Directory.Build.props`），已形成可运行闭环：
+`MDKOSS` 是从 `MDKSYS/mdkruntime` 提炼出的开源简化运行时。当前产品版本 **1.2.0**（`MdkProduct.Version` / `src/Directory.Build.props`），已形成可运行闭环：
 
 - 配置加载（JSON -> Runtime）
 - 驱动插件化（`IDriver` + `DriverFactory`；`sim` / `gts` / `dmc` 独立 DLL，运行时扫 `plugins/`）
@@ -245,7 +245,7 @@ mdkoss/
 | `/api/serial/discard` | POST | 清空缓冲区 |
 
 `/api/status` 返回：
-- `Version`（`MdkProduct.Version`，当前 1.1.0）
+- `Version`（`MdkProduct.Version`，当前 1.2.0）
 - `ProjectName`
 - `IsRunning`
 - `Drivers`
@@ -313,7 +313,7 @@ CEF / WPF 模式请查看 `logs/` 与窗体；浏览器亦可直接访问上述 
 
 ## 8. 下一步建议
 
-近期已补齐：产品版本 1.1.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.Dispenser** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
+近期已补齐：产品版本 1.2.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.DieBonder** / **Sample.Dispenser** / **Sample.Pnp** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
 
 可选后续方向：
 
