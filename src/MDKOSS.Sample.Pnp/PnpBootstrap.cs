@@ -1,7 +1,6 @@
 using System.Text.Json;
 using MDKOSS.Core;
 using MDKOSS.Core.Drivers;
-using MDKOSS.Core.Monitor;
 using MDKOSS.Extensions;
 
 namespace MDKOSS.Pnp;

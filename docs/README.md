@@ -24,11 +24,11 @@
 1. **新人 onboarding**：learning-path → architecture → project-layout → configuration → monitoring-api  
 2. **扩展新设备类型**：extensions → core-subsystems（设备层）→ monitoring-api  
 3. **改配置 UI**：gui → [MDKOSS.Config.Wpf/design.md](../src/MDKOSS.Config.Wpf/design.md)  
-4. **做新机型**：learning-path 第 6.2 节 → Sample.Dispenser → Sample.DieBonder → examples/pnp  
+4. **做新机型**：learning-path 第 6.2 节 → Sample.Dispenser → Sample.DieBonder → Sample.Pnp  
 
 ## 相关资源
 
-- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.DieBonder/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`
+- 示例配置：`src/MDKOSS.Config.Wpf/configs/sample.setting.json`、`src/MDKOSS.Sample/configs/sample.setting.json`、`src/MDKOSS.Sample.DieBonder/configs/sample.setting.json`、`src/MDKOSS.Sample.Dispenser/configs/sample.setting.json`、`src/MDKOSS.Sample.Pnp/configs/sample.setting.json`
 - 配置模块说明：`src/MDKOSS.Config.Wpf/README.md`、`src/MDKOSS.Config.Wpf/design.md`
 - 设备扩展说明：`src/MDKOSS.Extensions.Serial/serialdev.md`、`src/MDKOSS.Extensions.Tcp/tcpdev.md`、`src/MDKOSS.Extensions.Mysql/mysqldev.md`
 - 平台示教页设计：`src/MDKOSS.Cef/views/_docs/debug_platform.md`

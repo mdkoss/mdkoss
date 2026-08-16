@@ -287,7 +287,7 @@ dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --setting
 阅读顺序：
 
 1. `MDKOSS.Sample.Dispenser`（最小完整机型）  
-2. `examples/pnp`（设备 + 任务 + API + 静态页注册齐全）  
+2. `MDKOSS.Sample.Pnp`（设备 + 任务 + API + 静态页注册齐全）  
 3. `MDKOSS.Sample.DieBonder`（更复杂：Tray、视觉、换盘）  
 4. [extensions.md](./extensions.md) 第 2、4 节（注册时机与检查清单）
 
@@ -434,4 +434,4 @@ dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj -- --setting
 - [monitoring-api.md](./monitoring-api.md) — HMI 与 REST  
 - [gui.md](./gui.md) — 宿主与 Config.Wpf  
 - [src/AGENTS.md](../src/AGENTS.md) — 改代码时的模块对照  
-- 样板机型：`src/MDKOSS.Sample.Dispenser/README.md`、`examples/pnp/README.md`、`src/MDKOSS.Sample.DieBonder/README.md`
+- 样板机型：`src/MDKOSS.Sample.Dispenser/README.md`、`src/MDKOSS.Sample.Pnp/README.md`、`src/MDKOSS.Sample.DieBonder/README.md`

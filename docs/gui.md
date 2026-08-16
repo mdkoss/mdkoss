@@ -10,6 +10,7 @@ MDKOSS 将桌面宿主拆成独立可执行项目，CEF 仅为界面库，共享
 | **MDKOSS.Sample** | `src/MDKOSS.Sample/MDKOSS.Sample.csproj` | `MDKOSS.Sample/Program.cs` → `CefMainForm` | SampleExt 扩展示例宿主；嵌入 CEF HMI；支持 `--console` |
 | **MDKOSS.Sample.DieBonder** | `src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj` | `MDKOSS.Sample.DieBonder/Program.cs` → `CefMainForm` | 半导体贴片机宿主；嵌入 CEF HMI；支持 `--console` |
 | **MDKOSS.Sample.Dispenser** | `src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj` | `MDKOSS.Sample.Dispenser/Program.cs` → `CefMainForm` | 三轴点胶机宿主；嵌入 CEF HMI；支持 `--console` |
+| **MDKOSS.Sample.Pnp** | `src/MDKOSS.Sample.Pnp/MDKOSS.Sample.Pnp.csproj` | `MDKOSS.Sample.Pnp/Program.cs` → `CefMainForm` | 拾取放置宿主；嵌入 CEF HMI；支持 `--console` |
 | **MDKOSS.Cef** | `src/MDKOSS.Cef/MDKOSS.Cef.csproj` | `CefMainForm` / `CefRuntimeBootstrap` | CefSharp 界面库 + `views/*.html`（非可执行） |
 
 共用启动逻辑在 `src/MDKOSS.Core/host/RuntimeHost.cs`（配置路径解析、Load / Initialize / Start / Stop）。
@@ -24,13 +25,15 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 
 # DieBonder
 dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj
-dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --setting configs/pnp.setting.json
 
 # 无 GUI 控制台
-dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console --setting configs/pnp.setting.json
+dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console
 
 # 三轴点胶机
 dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
+
+# PNP
+dotnet run --project src/MDKOSS.Sample.Pnp/MDKOSS.Sample.Pnp.csproj
 ```
 
 桌面模式流程：

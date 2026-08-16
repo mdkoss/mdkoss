@@ -84,7 +84,7 @@ Core 中的扩展 **插槽**：
 `Program.Main` **第一行**（创建 `MdkRuntime` 之前）：
 
 ```csharp
-// 扫描 BaseDirectory / plugins / extensions，自动加载 MDKOSS.Drivers.* / MDKOSS.Extensions.* / MDKOSS.Pnp
+// 扫描 BaseDirectory / plugins / extensions，自动加载 MDKOSS.Drivers.* / MDKOSS.Extensions.* / MDKOSS.Sample.Pnp
 MdkExtensionHost.DiscoverAndRegister(new ExtensionDiscoveryOptions
 {
     Log = msg => AppLog.Info(msg),

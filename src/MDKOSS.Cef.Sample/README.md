@@ -25,4 +25,4 @@ dotnet run --project src/MDKOSS.Cef.Sample/MDKOSS.Cef.Sample.csproj -c Debug
 ## 依赖
 
 - `MDKOSS.Core` / `MDKOSS.Extensions` / `MDKOSS.Cef`
-- `MdkPlugins.targets` 复制 Drivers / Extensions 到 `plugins/`（不含 `MDKOSS.Pnp`）
+- `MdkPlugins.targets` 复制 Drivers / Extensions 到 `plugins/`（不含 `MDKOSS.Sample.Pnp`）

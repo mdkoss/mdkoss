@@ -3,14 +3,13 @@ using MDKOSS.Extensions;
 using MDKOSS.Gui.CefUi;
 using MDKOSS.Host;
 using MDKOSS.Pnp;
-using MDKOSS.Sample.DieBonder.Machine;
 using System.Windows.Forms;
 
-namespace MDKOSS.Sample.DieBonder;
+namespace MDKOSS.Sample.Pnp;
 
 /// <summary>
-/// CEF host for the semiconductor die bonder sample. Devices and the start page come from
-/// <c>configs/sample.setting.json</c>; machine tasks / API are registered here.
+/// CEF host for the pick-and-place sample. Devices and the start page come from
+/// <c>configs/sample.setting.json</c>; tray / cycle / API are registered here.
 /// </summary>
 internal static class Program
 {
@@ -18,15 +17,13 @@ internal static class Program
     private static async Task Main(string[] args)
     {
         AppLog.Configure();
-        // Force ProjectReference MDKOSS.Sample.Pnp into Default ALC before plugin scan so
-        // DieBonder `TryGetDevice<TrayDevice>` matches devices created by the Pnp extension.
         _ = typeof(TrayDevice);
 
         MdkExtensionHost.DiscoverAndRegister(new ExtensionDiscoveryOptions
         {
             Log = msg => AppLog.Info(msg),
         });
-        MdkExtensionHost.Register(new DieBonderExtension());
+        MdkExtensionHost.Register(new PnpExtension());
 
         var settingPath = RuntimeHost.ResolveSettingPath(args);
         if (args.Any(a => string.Equals(a, "--console", StringComparison.OrdinalIgnoreCase)))
@@ -41,11 +38,11 @@ internal static class Program
     private static void RunCefDesktop(string settingPath)
     {
         var version = MdkProduct.Version;
-        AppLog.Info($"MDKOSS.Sample.DieBonder starting (version: {version})================================================");
+        AppLog.Info($"MDKOSS.Sample.Pnp starting (version: {version})================================================");
 
         ApplicationConfiguration.Initialize();
 
-        const string appTitle = "MDKOSS Sample — 半导体贴片机";
+        const string appTitle = "MDKOSS Sample — Pick and Place";
 
         if (!File.Exists(settingPath))
         {

@@ -5,10 +5,11 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <RootNamespace>MDKOSS.Sample.DieBonder</RootNamespace>
-    <AssemblyName>MDKOSS.Sample.DieBonder</AssemblyName>
+    <RootNamespace>MDKOSS.Sample.Pnp</RootNamespace>
+    <AssemblyName>MDKOSS.Sample.Pnp</AssemblyName>
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <IncludeMdkPnpPlugin>false</IncludeMdkPnpPlugin>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NLog" Version="6.1.2" />
@@ -18,8 +19,6 @@
     <ProjectReference Include="..\MDKOSS.Extensions\MDKOSS.Extensions.csproj" />
     <!-- Cef Content views/** 经 ProjectReference 复制到输出 views/，勿再 Link 一遍以免 views\views 嵌套 -->
     <ProjectReference Include="..\MDKOSS.Cef\MDKOSS.Cef.csproj" />
-    <!-- TrayDevice 类型与 Default ALC 对齐；勿再对 Sample.Pnp 的 views 做 Link -->
-    <ProjectReference Include="..\MDKOSS.Sample.Pnp\MDKOSS.Sample.Pnp.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Update="configs\**\*">
@@ -30,4 +29,6 @@
     </None>
   </ItemGroup>
   <Import Project="..\MdkPlugins.targets" />
+  <!-- 引用方（DieBonder / Tests）只需 TrayDevice 程序集，不要带走本机型 configs/views。 -->
+  <Target Name="GetCopyToOutputDirectoryItems" Returns="@(AllItemsFullPathWithTargetPath)" />
 </Project>

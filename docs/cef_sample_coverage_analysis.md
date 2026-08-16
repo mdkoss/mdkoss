@@ -18,7 +18,7 @@
 | 扩展发现 | `MdkExtensionHost.DiscoverAndRegister` |
 | 插件构建 | 导入 `MdkPlugins.targets`（构建后复制到 `plugins/`） |
 
-与 `MDKOSS.Sample.DieBonder`（5080）分工：Cef.Sample 只跑 `sample.setting.json`；机型工程负责业务场景。PNP 见 `examples/pnp`，不进入本 Sample 的 `plugins/`。
+与 `MDKOSS.Sample.DieBonder`（5080）分工：Cef.Sample 只跑 `sample.setting.json`；机型工程负责业务场景。PNP 见 `MDKOSS.Sample.Pnp`，不进入本 Sample 的 `plugins/`。
 
 ---
 
@@ -114,7 +114,7 @@
 | 能力 | 何处有 | Cef.Sample |
 |---|---|---|
 | DieBonder 机型 HMI / bond 任务 / `/api/bond` | `MDKOSS.Sample.DieBonder` | 刻意不做 |
-| Tray / PNP 循环与监控 | `examples/pnp` | 刻意不做 |
+| Tray / PNP 循环与监控 | `MDKOSS.Sample.Pnp` | 刻意不做 |
 | 真机驱动 GTS / DMC | Drivers.* | 仅仿真 |
 | VIO 驱动别名实例 | Sim 注册 `vio` | 未配 |
 | Console 无 UI 模式 | `RuntimeHost.RunConsoleRuntimeAsync` | 无 `--console` |
@@ -144,7 +144,7 @@
 1. **扩展设备最小集**：已加 `serialdev` / `tcpdev` / `devmodserver` + `devmodclient` / `devpyscript` / `extcamera`。
 2. **数据库**：`databasePath` = `data/mdk.db`。
 3. **视觉与报警**：2 条 `visions` + `visiondev`；2 条 `alarms`（`alarm.test` / `alarm.warn`）+ `/api/alarms`。
-4. **PNP**：不构建、不复制 `MDKOSS.Pnp`；关于页无 PNP 入口。
+4. **PNP**：不构建、不复制 `MDKOSS.Sample.Pnp`；关于页无 PNP 入口。
 5. **平台族**：额外 `xyz` / `xyzu`（仍用 sim）。
 6. **文档**：README 插件列表与覆盖边界已更新。
 7. **未塞入**：DieBonder、GTS/DMC 真机、Config.Wpf。
@@ -160,4 +160,4 @@
 - `src/MDKOSS.Cef/views/index.html` / `popup_about.html` / `popup_devices.html` / `popup_alarms.html`
 - `src/MDKOSS.Core/server/monitoringserver.cs`
 - `src/MdkPlugins.targets`
-- 对照：`src/MDKOSS.Sample.DieBonder/`、`examples/pnp/`
+- 对照：`src/MDKOSS.Sample.DieBonder/`、`src/MDKOSS.Sample.Pnp/`

@@ -5,7 +5,7 @@
 ## 分层
 
 ```text
-宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Config.Wpf）
+宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 DiscoverAndRegister）
@@ -29,6 +29,7 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Sample` | SampleExt 扩展示例宿主 |
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo |
+| `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 
 各宿主 / 扩展若带 `README.md`，以项目内说明为准。

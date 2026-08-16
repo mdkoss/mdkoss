@@ -50,7 +50,7 @@ public static class MdkExtensionHost
         "MDKOSS.Extensions.*.dll",
         "MDKOSS.Cef.Extensions.dll",
         "MDKOSS.Cef.Extensions.*.dll",
-        "MDKOSS.Pnp.dll",
+        "MDKOSS.Sample.Pnp.dll",
     ];
 
     /// <summary>Registers an extension once (idempotent by <see cref="IMdkExtension.Id"/>).</summary>
@@ -127,7 +127,9 @@ public static class MdkExtensionHost
                 }
 
                 var fileName = Path.GetFileName(assembly.Location);
-                if (!MatchesAnyPattern(fileName, patterns) || IsFrameworkOrHostAssembly(fileName))
+                if (!MatchesAnyPattern(fileName, patterns)
+                    || IsFrameworkOrHostAssembly(fileName)
+                    || IsEntryAssembly(fileName))
                 {
                     continue;
                 }
@@ -240,7 +242,7 @@ public static class MdkExtensionHost
     {
         var fullPath = Path.GetFullPath(dllPath);
         var fileName = Path.GetFileName(fullPath);
-        if (IsFrameworkOrHostAssembly(fileName))
+        if (IsFrameworkOrHostAssembly(fileName) || IsEntryAssembly(fileName))
         {
             return;
         }
@@ -494,6 +496,13 @@ public static class MdkExtensionHost
         }
 
         return parts[^1].Length == 0 || remaining.Length == 0 || fileName.EndsWith(parts[^1], StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsEntryAssembly(string fileName)
+    {
+        var entry = Assembly.GetEntryAssembly()?.Location;
+        return !string.IsNullOrEmpty(entry)
+               && fileName.Equals(Path.GetFileName(entry), StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsFrameworkOrHostAssembly(string fileName)

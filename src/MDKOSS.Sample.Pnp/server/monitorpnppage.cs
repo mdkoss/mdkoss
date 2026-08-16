@@ -1,4 +1,4 @@
-namespace MDKOSS.Core.Monitor;
+namespace MDKOSS.Pnp;
 
 /// <summary>Loads PNP HTML views from the output <c>views/</c> folder.</summary>
 internal static class PnpViewPages
@@ -13,6 +13,7 @@ internal static class PnpViewPages
         {
             Path.Combine(AppContext.BaseDirectory, "views", fileName),
             Path.Combine(AppContext.BaseDirectory, "pnp", "views", fileName),
+            Path.Combine(AppContext.BaseDirectory, "Sample.Pnp", "views", fileName),
         };
 
         foreach (var fullPath in candidates)

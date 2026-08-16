@@ -9,7 +9,7 @@
 ## 分层与依赖
 
 ```
-宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Config.Wpf）
+宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
@@ -31,6 +31,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample` | SampleExt 扩展示例宿主 |
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo 宿主 |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
+| `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo 宿主 |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 
 Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视觉/相机，`recipe`→配方（参数组；排单指生产工单），`driver`→`IDriver`/板卡，`other`→先搜再改。

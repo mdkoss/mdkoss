@@ -21,6 +21,7 @@ src/
 ├── MDKOSS.Sample/               # SampleExt 扩展示例宿主
 ├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
 ├── MDKOSS.Sample.Dispenser/
+├── MDKOSS.Sample.Pnp/           # 拾取放置 Demo 宿主
 └── MDKOSS.Config.Wpf/
 ```
 

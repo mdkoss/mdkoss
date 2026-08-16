@@ -478,9 +478,9 @@ public partial class TaskDebugWindow : Window
         "motion" or "motiontask" =>
             "motion\n  运动任务基类默认实现（心跳 alive）。\n  必需：DriverId。\n  参数键值会写入任务 SetParam。",
         "pnpcycle" =>
-            "pnpCycle\n  PNP 扩展周期任务（需 MDKOSS.Pnp 插件）。",
+            "pnpCycle\n  PNP 扩展周期任务（需 MDKOSS.Sample.Pnp）。",
         "pnpconveyor" =>
-            "pnpConveyor\n  PNP 传送带任务（需 MDKOSS.Pnp 插件）。",
+            "pnpConveyor\n  PNP 传送带任务（需 MDKOSS.Sample.Pnp）。",
         "flow" or "script" =>
             "flow\n  节点图流程任务。parameters.flowJson 存流程图。\n  请用菜单「调试 → Flow 流程编辑…」图形化编辑。",
         _ => $"类型「{type}」\n  若为扩展任务，请确认 plugins 已注册对应 RuntimeTaskFactory。",

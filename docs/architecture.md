@@ -77,6 +77,7 @@ MDKOSS.sln
 ├── src/MDKOSS.Sample/         # SampleExt 扩展示例宿主（嵌入 CEF）
 ├── src/MDKOSS.Sample.DieBonder/ # 半导体贴片机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Sample.Dispenser/ # 三轴点胶机 Demo 宿主（嵌入 CEF）
+├── src/MDKOSS.Sample.Pnp/         # 拾取放置 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Cef/            # CefSharp 界面库 + views
 ├── src/MDKOSS.Config.Wpf/     # WPF 配置界面可执行入口
 ├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）
@@ -89,7 +90,6 @@ MDKOSS.sln
 ├── src/MDKOSS.Extensions.Mysql/     # mysqldev
 ├── src/MDKOSS.Extensions.Camera/    # extcamera
 ├── src/MDKOSS.Extensions.PyScript/  # devpyscript
-├── examples/pnp/                    # PNP 机型示例
 └── tests/MDKOSS.Tests/              # xUnit（按 Core/Config 等项目分子目录）
 ```
 
@@ -164,6 +164,7 @@ flowchart LR
 | `MDKOSS.Config.Wpf` | WPF 离线配置编辑（JSON / SQLite） |
 | `MDKOSS.Sample` | SampleExt 扩展示例宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
+| `MDKOSS.Sample.Pnp` | 拾取放置宿主；嵌入 CEF HMI；可选 `--console` 无 GUI |
 | `MDKOSS.Cef` | CefSharp 界面库（`CefMainForm` / `views`），由 Sample 引用 |
 
 详见 [gui.md](./gui.md)。

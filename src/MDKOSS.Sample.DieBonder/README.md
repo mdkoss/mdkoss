@@ -1,6 +1,6 @@
 # MDKOSS.Sample.DieBonder — 半导体贴片机（Die Bonder）
 
-本 Sample 以 **半导体贴片机 / Die Bonder** 为机型：配置驱动/设备/任务，在本项目内实现贴装任务与定制 HMI；Tray 设备复用 `MDKOSS.Pnp` 插件。
+本 Sample 以 **半导体贴片机 / Die Bonder** 为机型：配置驱动/设备/任务，在本项目内实现贴装任务与定制 HMI；Tray 设备复用 `MDKOSS.Sample.Pnp`。
 
 ## 1. 机型组件
 
@@ -61,7 +61,6 @@
 |------|------|------|
 | `MDKOSS.Cef` | `ProjectReference` → Content | 核心：`index` / `popup_*` / `monitor_*` / `debug_*` / `man_*` / `css` / `js` |
 | `MDKOSS.Sample.DieBonder/views/**` | 本项目 `None` | 机型：`indexDieBonder.html` / `monitorDieBonder.html` |
-| `MDKOSS.Pnp` | `ProjectReference` → None | 可选 PNP 演示页 |
 
 | 能力 | 路径 |
 |------|------|
@@ -76,7 +75,7 @@
 | 启停复位换盘 | `POST /api/bond/start\|stop\|reset\|traychange\|clearlogs` |
 
 `Program.Main` 在插件发现后 `Register(new DieBonderExtension())`。  
-Tray 仍由 `MDKOSS.Pnp` 提供；协调变量继续写 `task.pnp.*`，同时发布 `task.bond.*`。
+Tray 仍由 `MDKOSS.Sample.Pnp` 提供；协调变量继续写 `task.pnp.*`，同时发布 `task.bond.*`。
 
 ## 4. 配方
 
@@ -91,7 +90,6 @@ Tray 仍由 `MDKOSS.Pnp` 提供；协调变量继续写 `task.pnp.*`，同时发
 | 文件 | 说明 |
 |------|------|
 | `configs/sample.setting.json` | **默认**：半导体贴片机 |
-| `configs/pnp.setting.json` | 通用 PNP（`examples/pnp` 经 ProjectReference 流出） |
 
 ```bash
 # CEF → startPage（sample.setting.json → indexDieBonder.html）
@@ -99,9 +97,6 @@ dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj
 
 # 控制台
 dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --console
-
-# 通用 PNP 配置（startPage → indexPnp.html）
-dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj -- --setting configs/pnp.setting.json
 ```
 
 监控入口：

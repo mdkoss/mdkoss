@@ -1,8 +1,9 @@
 using System.Net;
 using System.Text.Json;
-using MDKOSS.Pnp;
+using MDKOSS.Core;
+using MDKOSS.Core.Monitor;
 
-namespace MDKOSS.Core.Monitor;
+namespace MDKOSS.Pnp;
 
 /// <summary>Handles /api/pnp/* — cycle control, dashboard, and logs for the PNP machine type.</summary>
 public sealed class PnpApiModule : MonitoringApiModule

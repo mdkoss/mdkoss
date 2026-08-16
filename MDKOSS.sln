@@ -21,7 +21,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDKOSS.Extensions.Tcp", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDKOSS.Extensions.Mysql", "src\MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj", "{8F4C1A2B-3D5E-4F67-8901-A2B3C4D5E6F7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDKOSS.Pnp", "examples\pnp\MDKOSS.Pnp.csproj", "{E3F4A5B6-C7D8-9012-EF01-345678901CDE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDKOSS.Sample.Pnp", "src\MDKOSS.Sample.Pnp\MDKOSS.Sample.Pnp.csproj", "{E3F4A5B6-C7D8-9012-EF01-345678901CDE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MDKOSS.Extensions.Camera", "src\MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj", "{A4B5C6D7-E8F9-0123-ABCD-456789012EF0}"
 EndProject
