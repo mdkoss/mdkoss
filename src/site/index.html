@@ -177,6 +177,7 @@
       background: linear-gradient(180deg, #071018 0%, #0a1a24 100%);
     }
     .section-inner { max-width: 42rem; }
+    .section-wide { max-width: 68rem; }
     .section h2 {
       font-family: var(--display);
       font-weight: 700;
@@ -189,6 +190,51 @@
       line-height: 1.65;
       font-size: 1.05rem;
     }
+    .section-note {
+      margin-top: 1.5rem !important;
+      font-size: 0.95rem !important;
+    }
+    .section-note a {
+      color: var(--teal-bright);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(45, 184, 164, 0.35);
+    }
+    .section-note a:hover { color: var(--amber); border-color: var(--amber); }
+
+    .steps {
+      list-style: none;
+      margin: 1.75rem 0 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+    }
+    .steps li {
+      padding: 1.2rem 1.15rem 1.3rem;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.7rem;
+      height: 1.7rem;
+      border-radius: 999px;
+      background: rgba(45, 184, 164, 0.18);
+      color: var(--teal-bright);
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: 0.85rem;
+    }
+    .steps h3 {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: 1.05rem;
+      margin: 0.7rem 0 0.4rem;
+    }
+    .steps p { font-size: 0.92rem; }
 
     @keyframes wash {
       from { filter: saturate(1); }
@@ -222,6 +268,10 @@
       }
       .hero { align-items: start; padding-top: 2rem; }
       .hero-copy { order: 2; }
+      .steps { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .steps { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -250,6 +300,36 @@
       <div class="section-inner">
         <h2>从配置到现场闭环</h2>
         <p>MDKOSS 把驱动插件、设备组件、任务调度、变量中心与 HTTP/CEF 监控收成一条可运行链路。机型差异主要落在 JSON 与少量扩展代码，而不是从零搭运动与 HMI。</p>
+      </div>
+    </section>
+
+    <section class="section" aria-label="配置流程">
+      <div class="section-inner section-wide">
+        <h2>配置流程</h2>
+        <p>一份 setting.json 描述整机。离线用 Config.Wpf 编辑，启动时按 变量 → 驱动 → 设备 → 任务 实例化；改驱动或设备后需重启运行时。</p>
+        <ol class="steps">
+          <li>
+            <span class="step-num">1</span>
+            <h3>写工程</h3>
+            <p>Config.Wpf 或直接改 JSON：工程名、监控端口、启动页。</p>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <h3>挂硬件</h3>
+            <p>drivers 选 sim / gts / dmc，再配 GPIO、轴与平台。</p>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <h3>编排动作</h3>
+            <p>tasks 写周期任务，recipes 管换型参数，vars 给初值。</p>
+          </li>
+          <li>
+            <span class="step-num">4</span>
+            <h3>运行观测</h3>
+            <p>加载配置启动宿主，CEF / 浏览器监控、点动与调试。</p>
+          </li>
+        </ol>
+        <p class="section-note"><a href="https://github.com/mdkoss/mdkoss/blob/master/docs/configuration.md">配置字段说明</a></p>
       </div>
     </section>
   </main>

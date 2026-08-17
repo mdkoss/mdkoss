@@ -16,6 +16,7 @@ public sealed class PromoSiteTests
         Assert.Contains(MdkProduct.GitHubRepoUrl, html, StringComparison.Ordinal);
         Assert.Contains(MdkProduct.GitHubReleasesUrl, html, StringComparison.Ordinal);
         Assert.Contains("开源简化设备运行时", html, StringComparison.Ordinal);
+        Assert.Contains("配置流程", html, StringComparison.Ordinal);
         Assert.Contains("hero", html, StringComparison.Ordinal);
     }
 
