@@ -15,6 +15,9 @@ public interface IVisionAlgorithmBackend
     bool IsAvailable { get; }
 
     VisionRunResult Run(VisionDocument document, string? inputImagePath = null, string? debugImagePath = null);
+
+    VisionRunResult Run(VisionDocument document, VisionRunRequest request) =>
+        Run(document, request.InputImagePath, request.DebugImagePath);
 }
 
 /// <summary>Global registry of vision algorithm backends. Hosts may <see cref="Register"/> custom platforms.</summary>

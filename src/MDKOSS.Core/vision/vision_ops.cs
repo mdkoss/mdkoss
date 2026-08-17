@@ -470,15 +470,110 @@ internal static class VisionOps
     }
 }
 
-/// <summary>Mutable execution state for a vision pipeline run.</summary>
+/// <summary>Mutable execution state for a vision pipeline run (explicit per-node image/pose slots).</summary>
 internal sealed class VisionContext : IDisposable
 {
+    private readonly Dictionary<string, VisionImageSlot> _images = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, VisionPose> _poses = new(StringComparer.OrdinalIgnoreCase);
+
     public Mat? Image { get; private set; }
+    public Mat? OriginalImage { get; private set; }
+    public Mat? LastPublishedImage { get; private set; }
+    public bool KeepIntermediates { get; set; }
     public int RoiOffsetX { get; set; }
     public int RoiOffsetY { get; set; }
     public VisionPose Pose { get; set; } = new();
     public Dictionary<string, object?> Vars { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Messages { get; } = [];
+
+    public void SetOriginal(Mat image)
+    {
+        OriginalImage?.Dispose();
+        OriginalImage = image;
+    }
+
+    public void PublishPinned(string nodeId, Mat image)
+    {
+        _images[nodeId] = new VisionImageSlot
+        {
+            Mat = image,
+            RoiX = 0,
+            RoiY = 0,
+            Pinned = true,
+        };
+        _poses[nodeId] = new VisionPose();
+        LastPublishedImage = image;
+    }
+
+    public bool TryBindImageFrom(string nodeId)
+    {
+        if (!_images.TryGetValue(nodeId, out var slot) || slot.Mat is null || slot.Mat.Empty())
+        {
+            return false;
+        }
+
+        ReplaceImage(slot.Mat.Clone());
+        RoiOffsetX = slot.RoiX;
+        RoiOffsetY = slot.RoiY;
+        return true;
+    }
+
+    public bool TryBindPoseFrom(string nodeId)
+    {
+        if (!_poses.TryGetValue(nodeId, out var pose))
+        {
+            return false;
+        }
+
+        Pose = pose.Clone();
+        return true;
+    }
+
+    public void CommitOutput(string nodeId)
+    {
+        _poses[nodeId] = Pose.Clone();
+        if (Image is null || Image.Empty())
+        {
+            return;
+        }
+
+        _images[nodeId] = new VisionImageSlot
+        {
+            Mat = Image,
+            RoiX = RoiOffsetX,
+            RoiY = RoiOffsetY,
+            Pinned = KeepIntermediates,
+        };
+        LastPublishedImage = Image;
+        Image = null;
+    }
+
+    public Mat? GetPublishedImage(string nodeId) =>
+        _images.TryGetValue(nodeId, out var slot) ? slot.Mat : null;
+
+    public VisionPose? GetPublishedPose(string nodeId) =>
+        _poses.TryGetValue(nodeId, out var pose) ? pose : null;
+
+    public void ReleaseIfUnused(string nodeId, int remainingConsumers)
+    {
+        if (KeepIntermediates || remainingConsumers > 0)
+        {
+            return;
+        }
+
+        if (!_images.TryGetValue(nodeId, out var slot) || slot.Pinned)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(slot.Mat, OriginalImage) || ReferenceEquals(slot.Mat, LastPublishedImage))
+        {
+            return;
+        }
+
+        slot.Mat.Dispose();
+        _images.Remove(nodeId);
+    }
 
     public void ReplaceImage(Mat next)
     {
@@ -494,5 +589,25 @@ internal sealed class VisionContext : IDisposable
     {
         Image?.Dispose();
         Image = null;
+        foreach (var slot in _images.Values)
+        {
+            if (!ReferenceEquals(slot.Mat, OriginalImage))
+            {
+                slot.Mat.Dispose();
+            }
+        }
+
+        _images.Clear();
+        OriginalImage?.Dispose();
+        OriginalImage = null;
+        LastPublishedImage = null;
+    }
+
+    private sealed class VisionImageSlot
+    {
+        public required Mat Mat { get; init; }
+        public int RoiX { get; init; }
+        public int RoiY { get; init; }
+        public bool Pinned { get; init; }
     }
 }

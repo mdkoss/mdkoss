@@ -312,8 +312,15 @@ public partial class VisionEditorWindow : Window
 
     private void DrawConnectors()
     {
+        var drawn = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var edge in _vm.Edges)
         {
+            var pairKey = $"{edge.From}->{edge.To}";
+            if (!drawn.Add(pairKey))
+            {
+                continue;
+            }
+
             if (!_nodeVisuals.TryGetValue(edge.From, out var from)
                 || !_nodeVisuals.TryGetValue(edge.To, out var to))
             {
@@ -359,6 +366,7 @@ public partial class VisionEditorWindow : Window
     {
         _vm.Selected = node;
         RefreshCanvas();
+        ShowSelectedNodeImage(preferOutput: true);
         RefreshRoiOverlay();
     }
 
@@ -451,7 +459,18 @@ public partial class VisionEditorWindow : Window
         var debugPath = System.IO.Path.Combine(
             System.IO.Path.GetTempPath(),
             "mdkoss-vision-debug.png");
-        var result = new VisionExecutor().Run(doc, dlg.FileName, debugPath);
+        var traceDir = System.IO.Path.Combine(
+            System.IO.Path.GetTempPath(),
+            "mdkoss-vision-trace",
+            DateTime.Now.ToString("yyyyMMdd-HHmmss"));
+        var result = new VisionExecutor().Run(doc, new VisionRunRequest
+        {
+            InputImagePath = dlg.FileName,
+            DebugImagePath = debugPath,
+            KeepIntermediates = true,
+            TraceDirectory = traceDir,
+        });
+        _vm.ApplyRunResult(result);
         var lines = new List<string>();
         lines.Add($"algorithm={doc.Algorithm}");
         if (!string.IsNullOrWhiteSpace(result.Error))
@@ -472,12 +491,38 @@ public partial class VisionEditorWindow : Window
         }
 
         _vm.SetStatusText(string.Join(Environment.NewLine, lines));
+        if (_vm.Selected is not null)
+        {
+            ShowSelectedNodeImage(preferOutput: true);
+        }
+
         MessageBox.Show(
             this,
             result.Ok ? "试运行完成，效果图已更新。" : ("试运行失败：\n" + (result.Error ?? "unknown")),
             "视觉试运行",
             MessageBoxButton.OK,
             result.Ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
+    }
+
+    private void ShowNodeInput_Click(object sender, RoutedEventArgs e) => ShowSelectedNodeImage(preferOutput: false);
+
+    private void ShowNodeOutput_Click(object sender, RoutedEventArgs e) => ShowSelectedNodeImage(preferOutput: true);
+
+    private void ShowSelectedNodeImage(bool preferOutput)
+    {
+        var trace = _vm.SelectedTrace;
+        var path = preferOutput ? trace?.OutputImagePath : trace?.InputImagePath;
+        if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
+        {
+            path = preferOutput ? trace?.InputImagePath : trace?.OutputImagePath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
+        {
+            ShowPreviewImage(path);
+        }
+
+        RefreshRoiOverlay();
     }
 
     private void ShowPreviewImage(string path)

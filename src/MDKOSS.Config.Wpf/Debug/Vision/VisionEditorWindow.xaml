@@ -29,7 +29,7 @@
         <ComboBox x:Name="AlgorithmCombo" Width="110" SelectionChanged="AlgorithmCombo_SelectionChanged"/>
         <TextBlock x:Name="HintText" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="360"
                    Foreground="{StaticResource MutedBrush}"
-                   Text="试运行后可看效果图；在效果图上拖拽矩形设置 ROI"/>
+                   Text="试运行后点选节点可查看该步输入图/输出图/变量；效果图上可拖拽 ROI"/>
       </StackPanel>
     </DockPanel>
 
@@ -147,6 +147,12 @@
                 <DataGridTextColumn Header="Value" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="1.4*"/>
               </DataGrid.Columns>
             </DataGrid>
+            <TextBlock Text="试运行中间结果" FontWeight="SemiBold" Margin="0,12,0,4" Foreground="{StaticResource AccentBrush}"/>
+            <TextBlock Text="{Binding SelectedTraceSummary}" TextWrapping="Wrap" Foreground="{StaticResource MutedBrush}" Margin="0,0,0,8"/>
+            <StackPanel Orientation="Horizontal">
+              <Button Content="输入图" Click="ShowNodeInput_Click" Margin="0,0,8,0" Padding="10,4"/>
+              <Button Content="输出图" Click="ShowNodeOutput_Click" Padding="10,4"/>
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>

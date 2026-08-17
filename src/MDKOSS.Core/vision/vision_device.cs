@@ -141,9 +141,17 @@ public sealed class VisionDevice : MDeviceBase
         return Run(imagePath, visionIdOverride);
     }
 
-    /// <summary>Run the configured (or overridden) vision pipeline on an image file.</summary>
-    public VisionRunResult Run(string? imagePath = null, string? visionIdOverride = null)
+    /// <summary>Run the configured (or overridden) vision algorithm on an image file.</summary>
+    public VisionRunResult Run(string? imagePath = null, string? visionIdOverride = null) =>
+        Execute(visionIdOverride, new VisionRunRequest { InputImagePath = imagePath });
+
+    /// <summary>
+    /// External contract: <c>Execute(visionId, original image) → result</c>.
+    /// Original image may be a file path or in-memory encoded bytes. Caller does not touch pipeline JSON.
+    /// </summary>
+    public VisionRunResult Execute(string? visionIdOverride, VisionRunRequest request)
     {
+        ArgumentNullException.ThrowIfNull(request);
         lock (_sync)
         {
             var visionId = string.IsNullOrWhiteSpace(visionIdOverride)
@@ -166,20 +174,28 @@ public sealed class VisionDevice : MDeviceBase
                 doc = VisionDocument.CreateBasicInspectPipeline();
             }
 
-            var input = string.IsNullOrWhiteSpace(imagePath)
-                ? ResolveImagePath(null)
-                : imagePath.Trim();
-            if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
+            if (request.InputImageBytes is not { Length: > 0 })
             {
-                return FailLocked($"image_not_found:{input}");
+                var input = string.IsNullOrWhiteSpace(request.InputImagePath)
+                    ? ResolveImagePath(null)
+                    : request.InputImagePath.Trim();
+                if (string.IsNullOrWhiteSpace(input) || !File.Exists(input))
+                {
+                    return FailLocked($"image_not_found:{input}");
+                }
+
+                request.InputImagePath = input;
             }
 
-            var debugPath = string.IsNullOrWhiteSpace(Parameters.DebugImagePath)
-                ? Path.Combine(Path.GetTempPath(), $"mdkoss-vision-{Id}-debug.png")
-                : Parameters.DebugImagePath;
+            if (string.IsNullOrWhiteSpace(request.DebugImagePath))
+            {
+                request.DebugImagePath = string.IsNullOrWhiteSpace(Parameters.DebugImagePath)
+                    ? Path.Combine(Path.GetTempPath(), $"mdkoss-vision-{Id}-debug.png")
+                    : Parameters.DebugImagePath;
+            }
 
-            var result = _executor.Run(doc, input, debugPath);
-            _lastImagePath = input;
+            var result = _executor.Run(doc, request);
+            _lastImagePath = request.InputImagePath;
             _lastResult = result;
             _runCount++;
             PublishResultVarsUnlocked(result);

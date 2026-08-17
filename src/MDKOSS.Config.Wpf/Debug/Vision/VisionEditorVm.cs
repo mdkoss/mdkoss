@@ -22,6 +22,7 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
     private string? _previewImagePath;
     private int _previewImageWidth;
     private int _previewImageHeight;
+    private List<VisionNodeTrace> _traces = [];
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -95,25 +96,74 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
             }
 
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedTrace));
+            OnPropertyChanged(nameof(SelectedTraceSummary));
         }
+    }
+
+    public VisionNodeTrace? SelectedTrace =>
+        Selected is null
+            ? null
+            : _traces.FirstOrDefault(t => string.Equals(t.NodeId, Selected.Id, StringComparison.OrdinalIgnoreCase));
+
+    public string SelectedTraceSummary
+    {
+        get
+        {
+            var t = SelectedTrace;
+            if (t is null)
+            {
+                return _traces.Count == 0
+                    ? "试运行后选择节点可查看输入图、输出图与输出变量"
+                    : "该节点无试运行快照";
+            }
+
+            var vars = t.OutputVars.Count == 0
+                ? "(无输出变量)"
+                : string.Join("  ", t.OutputVars.Select(kv => $"{kv.Key}={kv.Value}"));
+            return $"输入 {t.InputWidth}x{t.InputHeight}  输出 {t.OutputWidth}x{t.OutputHeight}\n{vars}";
+        }
+    }
+
+    public void ApplyRunResult(VisionRunResult result)
+    {
+        _traces = result.NodeTraces ?? [];
+        OnPropertyChanged(nameof(SelectedTrace));
+        OnPropertyChanged(nameof(SelectedTraceSummary));
     }
 
     public void Load(VisionDocument doc, string? cameraDeviceId = null)
     {
+        ArgumentNullException.ThrowIfNull(doc);
+        doc.EnsureDataflow();
         Nodes.Clear();
         Edges.Clear();
         CameraDeviceId = cameraDeviceId ?? "";
         Algorithm = string.IsNullOrWhiteSpace(doc.Algorithm)
             ? VisionAlgorithmRegistry.DefaultId
             : doc.Algorithm.Trim();
+        _traces = [];
         foreach (var n in doc.Nodes.OrderBy(x => x.Order).ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase))
         {
             Nodes.Add(VisionNodeVm.FromModel(n));
         }
 
         EnsureStartEnd();
-        RelayoutAndAutoWire();
+        if (doc.HasDataEdges())
+        {
+            foreach (var e in doc.Edges)
+            {
+                Edges.Add(VisionEdgeVm.FromModel(e));
+            }
+        }
+        else
+        {
+            RelayoutAndAutoWire();
+        }
+
         RefreshPreview();
+        OnPropertyChanged(nameof(SelectedTrace));
+        OnPropertyChanged(nameof(SelectedTraceSummary));
     }
 
     public VisionDocument ToDocument()
@@ -126,13 +176,22 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
 
         var doc = new VisionDocument
         {
-            Version = 1,
+            Version = VisionVersions.Dataflow,
             Algorithm = string.IsNullOrWhiteSpace(Algorithm)
                 ? VisionAlgorithmRegistry.DefaultId
                 : Algorithm.Trim(),
             Nodes = nodes,
+            Edges = Edges.Select(e => e.ToModel()).ToList(),
         };
-        doc.RebuildLinearEdges();
+        if (!doc.HasDataEdges())
+        {
+            doc.RebuildLinearEdges();
+        }
+        else
+        {
+            doc.EnsureDataflow();
+        }
+
         return doc;
     }
 
@@ -501,4 +560,27 @@ public sealed class VisionEdgeVm
     public string From { get; set; } = "";
     public string To { get; set; } = "";
     public string Port { get; set; } = VisionPorts.Next;
+    public string? FromPort { get; set; }
+    public string? ToPort { get; set; }
+
+    public bool IsData =>
+        !string.IsNullOrWhiteSpace(FromPort) || !string.IsNullOrWhiteSpace(ToPort);
+
+    public static VisionEdgeVm FromModel(VisionEdge e) => new()
+    {
+        From = e.From,
+        To = e.To,
+        Port = e.Port,
+        FromPort = e.FromPort,
+        ToPort = e.ToPort,
+    };
+
+    public VisionEdge ToModel() => new()
+    {
+        From = From,
+        To = To,
+        Port = string.IsNullOrWhiteSpace(Port) ? VisionPorts.Next : Port,
+        FromPort = FromPort,
+        ToPort = ToPort,
+    };
 }

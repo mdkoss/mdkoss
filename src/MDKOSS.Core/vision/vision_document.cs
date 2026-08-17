@@ -4,10 +4,11 @@ using System.Text.Json.Serialization;
 
 namespace MDKOSS.Core.Vision;
 
-/// <summary>Serialized vision pipeline stored in <see cref="MdkSetting.VisionConfig.Pipeline"/>.</summary>
+/// <summary>Serialized vision algorithm (pipeline) stored in <see cref="MdkSetting.VisionConfig.Pipeline"/>.</summary>
 public sealed class VisionDocument
 {
-    public int Version { get; set; } = 1;
+    /// <summary>1 = linear implicit image slot; 2 = explicit dataflow ports/edges.</summary>
+    public int Version { get; set; } = VisionVersions.Dataflow;
 
     /// <summary>
     /// Algorithm platform id (<c>opencv</c> default; <c>halcon</c> or custom via
@@ -33,20 +34,18 @@ public sealed class VisionDocument
         const string startId = "n-start";
         const string endId = "n-end";
         const double left = 300;
-        return new VisionDocument
+        var doc = new VisionDocument
         {
-            Version = 1,
+            Version = VisionVersions.Dataflow,
             Algorithm = VisionAlgorithmRegistry.DefaultId,
             Nodes =
             [
                 new VisionNode { Id = startId, Kind = VisionNodeKinds.Start, X = left, Y = 40, Order = 0 },
                 new VisionNode { Id = endId, Kind = VisionNodeKinds.End, X = left, Y = 152, Order = 1 },
             ],
-            Edges =
-            [
-                new VisionEdge { From = startId, To = endId, Port = VisionPorts.Next },
-            ],
         };
+        doc.RebuildLinearEdges();
+        return doc;
     }
 
     /// <summary>
@@ -128,7 +127,12 @@ public sealed class VisionDocument
             new() { Id = "n-end", Kind = VisionNodeKinds.End, X = left, Y = 600, Order = 7 },
         };
 
-        var doc = new VisionDocument { Version = 1, Algorithm = VisionAlgorithmRegistry.DefaultId, Nodes = nodes };
+        var doc = new VisionDocument
+        {
+            Version = VisionVersions.Dataflow,
+            Algorithm = VisionAlgorithmRegistry.DefaultId,
+            Nodes = nodes,
+        };
         doc.RebuildLinearEdges();
         return doc;
     }
@@ -142,6 +146,7 @@ public sealed class VisionDocument
 
         var doc = JsonSerializer.Deserialize<VisionDocument>(json, JsonOptions)
                   ?? throw new InvalidOperationException("pipelineJson deserialize returned null.");
+        doc.EnsureDataflow();
         return doc;
     }
 
@@ -169,19 +174,27 @@ public sealed class VisionDocument
 
     public string ToJson() => JsonSerializer.Serialize(this, JsonOptions);
 
-    /// <summary>Rebuild linear next-edges from node <see cref="VisionNode.Order"/>.</summary>
-    public void RebuildLinearEdges()
+    /// <summary>
+    /// Upgrade Version 1 (implicit current-image) graphs to Version 2 explicit image/pose data edges.
+    /// Idempotent when already migrated.
+    /// </summary>
+    public void EnsureDataflow()
     {
-        var ordered = Nodes
-            .OrderBy(n => n.Order)
-            .ThenBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        for (var i = 0; i < ordered.Count; i++)
+        NormalizeOrders();
+        if (Version >= VisionVersions.Dataflow && HasDataEdges())
         {
-            ordered[i].Order = i;
+            return;
         }
 
+        MigrateLinearToDataflow();
+    }
+
+    /// <summary>Rebuild control (next) + linear image/pose data edges from <see cref="VisionNode.Order"/>.</summary>
+    public void RebuildLinearEdges()
+    {
+        NormalizeOrders();
         Edges.Clear();
+        var ordered = OrderedNodes();
         for (var i = 0; i < ordered.Count - 1; i++)
         {
             Edges.Add(new VisionEdge
@@ -191,11 +204,180 @@ public sealed class VisionDocument
                 Port = VisionPorts.Next,
             });
         }
+
+        WireLinearDataEdges(ordered);
+        Version = VisionVersions.Dataflow;
+    }
+
+    private void MigrateLinearToDataflow()
+    {
+        var ordered = OrderedNodes();
+        // Preserve existing control edges when present; otherwise rebuild spine.
+        if (Edges.Count == 0 || !Edges.Any(e => e.IsControl))
+        {
+            Edges.RemoveAll(e => e.IsControl);
+            for (var i = 0; i < ordered.Count - 1; i++)
+            {
+                Edges.Add(new VisionEdge
+                {
+                    From = ordered[i].Id,
+                    To = ordered[i + 1].Id,
+                    Port = VisionPorts.Next,
+                });
+            }
+        }
+
+        Edges.RemoveAll(e => e.IsData);
+        WireLinearDataEdges(ordered);
+        Version = VisionVersions.Dataflow;
+    }
+
+    private void WireLinearDataEdges(IReadOnlyList<VisionNode> ordered)
+    {
+        string? lastImage = null;
+        string? lastPose = null;
+        foreach (var node in ordered)
+        {
+            var kind = (node.Kind ?? "").Trim();
+            if (string.Equals(kind, VisionNodeKinds.Start, StringComparison.OrdinalIgnoreCase))
+            {
+                lastImage = node.Id;
+                continue;
+            }
+
+            if (string.Equals(kind, VisionNodeKinds.End, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (VisionPortCatalog.AcceptsImage(kind) && !string.IsNullOrWhiteSpace(lastImage))
+            {
+                Edges.Add(VisionEdge.Data(lastImage!, VisionPorts.Image, node.Id, VisionPorts.Image));
+            }
+
+            if (VisionPortCatalog.AcceptsPose(kind) && !string.IsNullOrWhiteSpace(lastPose))
+            {
+                Edges.Add(VisionEdge.Data(lastPose!, VisionPorts.Pose, node.Id, VisionPorts.Pose));
+            }
+
+            if (VisionPortCatalog.ProducesImage(kind))
+            {
+                lastImage = node.Id;
+            }
+
+            if (VisionPortCatalog.ProducesPose(kind))
+            {
+                lastPose = node.Id;
+            }
+        }
+    }
+
+    public bool HasDataEdges() => Edges.Any(e => e.IsData);
+
+    private void NormalizeOrders()
+    {
+        var ordered = OrderedNodes();
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            ordered[i].Order = i;
+        }
+    }
+
+    public List<VisionNode> OrderedNodes() =>
+        Nodes
+            .OrderBy(n => n.Order)
+            .ThenBy(n => n.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    /// <summary>Topological order from control + data edges; falls back to <see cref="OrderedNodes"/> on cycles.</summary>
+    public List<VisionNode> ExecutionOrder()
+    {
+        EnsureDataflow();
+        if (Nodes.Count == 0)
+        {
+            return [];
+        }
+
+        var byId = new Dictionary<string, VisionNode>(StringComparer.OrdinalIgnoreCase);
+        var indeg = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var adj = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var node in Nodes)
+        {
+            if (string.IsNullOrWhiteSpace(node.Id))
+            {
+                continue;
+            }
+
+            var id = node.Id.Trim();
+            byId[id] = node;
+            indeg[id] = 0;
+            adj[id] = [];
+        }
+
+        foreach (var edge in Edges)
+        {
+            var from = (edge.From ?? "").Trim();
+            var to = (edge.To ?? "").Trim();
+            if (!byId.ContainsKey(from) || !byId.ContainsKey(to) || string.Equals(from, to, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            adj[from].Add(to);
+            indeg[to]++;
+        }
+
+        var ready = OrderedNodes()
+            .Where(n => !string.IsNullOrWhiteSpace(n.Id) && indeg.TryGetValue(n.Id.Trim(), out var d) && d == 0)
+            .ToList();
+        var result = new List<VisionNode>(Nodes.Count);
+        while (ready.Count > 0)
+        {
+            var next = ready[0];
+            ready.RemoveAt(0);
+            result.Add(next);
+            var fromId = next.Id.Trim();
+            foreach (var to in adj[fromId])
+            {
+                indeg[to]--;
+                if (indeg[to] == 0)
+                {
+                    ready.Add(byId[to]);
+                    ready.Sort((a, b) =>
+                    {
+                        var c = a.Order.CompareTo(b.Order);
+                        return c != 0 ? c : string.Compare(a.Id, b.Id, StringComparison.OrdinalIgnoreCase);
+                    });
+                }
+            }
+        }
+
+        return result.Count == byId.Count ? result : OrderedNodes();
+    }
+
+    public VisionEdge? FindIncomingData(string nodeId, string port)
+    {
+        foreach (var edge in Edges)
+        {
+            if (!edge.IsData)
+            {
+                continue;
+            }
+
+            if (string.Equals(edge.To, nodeId, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(edge.EffectiveToPort, port, StringComparison.OrdinalIgnoreCase))
+            {
+                return edge;
+            }
+        }
+
+        return null;
     }
 
     /// <summary>Structural validation. Returns empty list when OK.</summary>
     public IReadOnlyList<string> Validate()
     {
+        EnsureDataflow();
         var errors = new List<string>();
         if (Version < 1)
         {
@@ -261,6 +443,12 @@ public sealed class VisionDocument
     }
 }
 
+public static class VisionVersions
+{
+    public const int Linear = 1;
+    public const int Dataflow = 2;
+}
+
 public sealed class VisionNode
 {
     public string Id { get; set; } = string.Empty;
@@ -269,7 +457,7 @@ public sealed class VisionNode
     public double Y { get; set; }
     public Dictionary<string, string> Props { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Order along the linear pipeline spine.</summary>
+    /// <summary>Execution / layout order (also used as fallback when data edges are incomplete).</summary>
     public int Order { get; set; }
 }
 
@@ -277,7 +465,47 @@ public sealed class VisionEdge
 {
     public string From { get; set; } = string.Empty;
     public string To { get; set; } = string.Empty;
+
+    /// <summary>Legacy control port (<see cref="VisionPorts.Next"/>) or destination data port name.</summary>
     public string Port { get; set; } = VisionPorts.Next;
+
+    /// <summary>Source data port (image/pose). Null on pure control edges.</summary>
+    public string? FromPort { get; set; }
+
+    /// <summary>Destination data port. When set (with <see cref="FromPort"/>), marks a data edge.</summary>
+    public string? ToPort { get; set; }
+
+    [JsonIgnore]
+    public bool IsControl =>
+        string.IsNullOrWhiteSpace(FromPort)
+        && string.IsNullOrWhiteSpace(ToPort)
+        && string.Equals(Port, VisionPorts.Next, StringComparison.OrdinalIgnoreCase);
+
+    [JsonIgnore]
+    public bool IsData => !IsControl;
+
+    [JsonIgnore]
+    public string EffectiveFromPort =>
+        !string.IsNullOrWhiteSpace(FromPort)
+            ? FromPort.Trim()
+            : VisionPorts.Image;
+
+    [JsonIgnore]
+    public string EffectiveToPort =>
+        !string.IsNullOrWhiteSpace(ToPort)
+            ? ToPort.Trim()
+            : (!string.IsNullOrWhiteSpace(Port) && !string.Equals(Port, VisionPorts.Next, StringComparison.OrdinalIgnoreCase)
+                ? Port.Trim()
+                : VisionPorts.Image);
+
+    public static VisionEdge Data(string from, string fromPort, string to, string toPort) => new()
+    {
+        From = from,
+        FromPort = fromPort,
+        To = to,
+        ToPort = toPort,
+        Port = toPort,
+    };
 }
 
 public static class VisionNodeKinds
@@ -343,4 +571,36 @@ public static class VisionNodeKinds
 public static class VisionPorts
 {
     public const string Next = "next";
+    public const string Image = "image";
+    public const string Pose = "pose";
+}
+
+/// <summary>Declares which ports each op kind consumes / produces.</summary>
+public static class VisionPortCatalog
+{
+    public static bool AcceptsImage(string? kind) => kind?.Trim().ToLowerInvariant() switch
+    {
+        "vision.loadimage" => false,
+        "vision.outputpose" => false,
+        "start" or "end" => false,
+        _ => VisionNodeKinds.IsKnown(kind) && !VisionNodeKinds.IsTerminal(kind),
+    };
+
+    public static bool ProducesImage(string? kind) => kind?.Trim().ToLowerInvariant() switch
+    {
+        "start" => true,
+        "vision.loadimage" => true,
+        "vision.togray" or "vision.threshold" or "vision.blur" or "vision.morphology" or "vision.roi" => true,
+        "vision.templatematch" or "vision.findcontours" or "vision.findcircles" or "vision.findlines" => true,
+        _ => false,
+    };
+
+    public static bool AcceptsPose(string? kind) =>
+        string.Equals(kind, VisionNodeKinds.OutputPose, StringComparison.OrdinalIgnoreCase);
+
+    public static bool ProducesPose(string? kind) => kind?.Trim().ToLowerInvariant() switch
+    {
+        "vision.templatematch" or "vision.findcontours" or "vision.findcircles" or "vision.findlines" => true,
+        _ => false,
+    };
 }
