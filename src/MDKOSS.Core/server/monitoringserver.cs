@@ -93,6 +93,7 @@ public sealed class MonitoringServer : IDisposable
         RegisterViewsPage(_staticPages, "/popup_recipe.html");
         RegisterViewsPage(_staticPages, "/popup_user.html");
         RegisterViewsPage(_staticPages, "/popup_about.html");
+        RegisterViewsPage(_staticPages, "/promo.html");
         foreach (var (path, html) in StaticPageRegistry.CreatePages())
         {
             _staticPages[path] = html;

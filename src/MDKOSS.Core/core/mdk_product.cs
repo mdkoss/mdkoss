@@ -17,8 +17,14 @@ public static class MdkProduct
     /// </summary>
     public static string ReleaseTag => "v" + Version;
 
+    /// <summary>Canonical repository URL for the mdkoss organization project.</summary>
+    public const string GitHubRepoUrl = "https://github.com/mdkoss/mdkoss";
+
     /// <summary>Canonical releases page for this repository.</summary>
     public const string GitHubReleasesUrl = "https://github.com/mdkoss/mdkoss/releases";
+
+    /// <summary>Org promo landing path served by <c>MonitoringServer</c> (see <c>src/site/index.html</c>).</summary>
+    public const string PromoPagePath = "/promo.html";
 
     private static string ResolveVersion()
     {

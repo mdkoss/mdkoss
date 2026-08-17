@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="MDKOSS — 开源简化设备运行时：配置驱动、可编译、可观测、可扩展。" />
+  <title>MDKOSS — Open Source Simplified Runtime</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #071018;
+      --fog: #d7e6ef;
+      --muted: #8aa3b5;
+      --teal: #1f8a7a;
+      --teal-bright: #2db8a4;
+      --amber: #e8a54b;
+      --panel: rgba(10, 28, 36, 0.72);
+      --line: rgba(215, 230, 239, 0.14);
+      --display: "Outfit", "Segoe UI", sans-serif;
+      --body: "Source Sans 3", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--body);
+      color: var(--fog);
+      background: var(--ink);
+      overflow-x: hidden;
+    }
+    a { color: inherit; }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: grid;
+      align-items: end;
+      padding: clamp(28px, 5vw, 64px);
+      isolation: isolate;
+    }
+
+    .hero-visual {
+      position: absolute;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(ellipse 80% 55% at 78% 28%, rgba(45, 184, 164, 0.28), transparent 58%),
+        radial-gradient(ellipse 55% 45% at 12% 82%, rgba(232, 165, 75, 0.16), transparent 60%),
+        linear-gradient(155deg, #061018 0%, #0b2430 42%, #12263a 100%);
+      animation: wash 12s ease-in-out infinite alternate;
+    }
+
+    .hero-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(215, 230, 239, 0.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(215, 230, 239, 0.045) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 70% 60% at 70% 40%, #000 20%, transparent 75%);
+      animation: grid-drift 18s linear infinite;
+    }
+
+    .stack {
+      position: absolute;
+      right: clamp(4%, 8vw, 12%);
+      top: 18%;
+      width: min(42vw, 520px);
+      aspect-ratio: 5 / 4;
+      z-index: -1;
+      filter: drop-shadow(0 28px 50px rgba(0, 0, 0, 0.45));
+      animation: float-in 1.1s cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .stack-layer {
+      position: absolute;
+      width: 78%;
+      height: 18%;
+      border: 1px solid rgba(215, 230, 239, 0.28);
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(31, 138, 122, 0.35), rgba(10, 28, 36, 0.85));
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      padding: 0 1.2rem;
+      font-family: var(--display);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: clamp(0.75rem, 1.4vw, 0.95rem);
+      color: var(--fog);
+      animation: layer-rise 1.2s cubic-bezier(.2,.8,.2,1) both;
+    }
+    .stack-layer:nth-child(1) { bottom: 8%; left: 8%; animation-delay: 0.15s; }
+    .stack-layer:nth-child(2) { bottom: 30%; left: 12%; animation-delay: 0.28s; }
+    .stack-layer:nth-child(3) { bottom: 52%; left: 16%; animation-delay: 0.4s; }
+    .stack-layer:nth-child(4) { bottom: 74%; left: 20%; animation-delay: 0.52s; background: linear-gradient(135deg, rgba(232, 165, 75, 0.4), rgba(10, 28, 36, 0.9)); }
+
+    .hero-copy {
+      max-width: 34rem;
+      animation: copy-in 0.9s cubic-bezier(.2,.8,.2,1) both;
+    }
+
+    .brand {
+      font-family: var(--display);
+      font-weight: 800;
+      font-size: clamp(2.8rem, 8vw, 5.2rem);
+      line-height: 0.95;
+      letter-spacing: -0.03em;
+      margin: 0 0 1.1rem;
+    }
+    .brand span {
+      display: inline-block;
+      background: linear-gradient(120deg, var(--fog) 0%, var(--teal-bright) 55%, var(--amber) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .headline {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(1.35rem, 3.2vw, 2rem);
+      line-height: 1.25;
+      margin: 0 0 0.85rem;
+      max-width: 18ch;
+    }
+
+    .lede {
+      margin: 0 0 1.6rem;
+      font-size: clamp(1rem, 2vw, 1.15rem);
+      line-height: 1.55;
+      color: var(--muted);
+      max-width: 34ch;
+    }
+
+    .ctas {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem 1rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 2.85rem;
+      padding: 0 1.25rem;
+      border-radius: 999px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: transform 0.25s ease, background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: var(--teal-bright);
+      color: #04221d;
+    }
+    .btn-primary:hover { background: #45d0bb; }
+    .btn-ghost {
+      border: 1px solid rgba(215, 230, 239, 0.35);
+      color: var(--fog);
+      background: transparent;
+    }
+    .btn-ghost:hover {
+      border-color: var(--amber);
+      color: var(--amber);
+    }
+
+    .section {
+      padding: clamp(56px, 9vw, 96px) clamp(28px, 5vw, 64px);
+      border-top: 1px solid var(--line);
+      background: linear-gradient(180deg, #071018 0%, #0a1a24 100%);
+    }
+    .section-inner { max-width: 42rem; }
+    .section h2 {
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(1.4rem, 3vw, 1.85rem);
+      margin: 0 0 0.75rem;
+    }
+    .section p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 1.05rem;
+    }
+
+    @keyframes wash {
+      from { filter: saturate(1); }
+      to { filter: saturate(1.15) brightness(1.04); }
+    }
+    @keyframes grid-drift {
+      from { background-position: 0 0, 0 0; }
+      to { background-position: 48px 24px, 24px 48px; }
+    }
+    @keyframes float-in {
+      from { opacity: 0; transform: translateY(24px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes layer-rise {
+      from { opacity: 0; transform: translateY(28px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes copy-in {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    @media (max-width: 860px) {
+      .stack {
+        position: relative;
+        right: auto;
+        top: auto;
+        width: min(88vw, 420px);
+        margin: 0 0 2rem;
+        animation: float-in 1s cubic-bezier(.2,.8,.2,1) both;
+      }
+      .hero { align-items: start; padding-top: 2rem; }
+      .hero-copy { order: 2; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero" aria-label="MDKOSS 推广首屏">
+      <div class="hero-visual" aria-hidden="true"></div>
+      <div class="stack" aria-hidden="true">
+        <div class="stack-layer">HMI / Monitor</div>
+        <div class="stack-layer">Task / Recipe</div>
+        <div class="stack-layer">Device / Axis</div>
+        <div class="stack-layer">Driver Plugin</div>
+      </div>
+      <div class="hero-copy">
+        <p class="brand"><span>MDKOSS</span></p>
+        <h1 class="headline">开源简化设备运行时</h1>
+        <p class="lede">配置驱动、可编译、可观测、可扩展 — 面向轴控、IO、视觉与机型任务的工业运行时内核。</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="https://github.com/mdkoss/mdkoss">查看仓库</a>
+          <a class="btn btn-ghost" href="https://github.com/mdkoss/mdkoss/releases">下载 Release</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="项目简介">
+      <div class="section-inner">
+        <h2>从配置到现场闭环</h2>
+        <p>MDKOSS 把驱动插件、设备组件、任务调度、变量中心与 HTTP/CEF 监控收成一条可运行链路。机型差异主要落在 JSON 与少量扩展代码，而不是从零搭运动与 HMI。</p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
