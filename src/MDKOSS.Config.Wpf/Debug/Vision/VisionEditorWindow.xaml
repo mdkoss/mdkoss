@@ -2,8 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="视觉流程编辑器"
-        Height="820" Width="1280"
-        MinHeight="640" MinWidth="1000"
+        Height="860" Width="1360"
+        MinHeight="680" MinWidth="1100"
         Background="{StaticResource BgBrush}"
         FontFamily="Segoe UI" FontSize="13"
         WindowStartupLocation="CenterOwner">
@@ -13,6 +13,7 @@
         <Button Content="上移" Click="MoveUp_Click" ToolTip="Ctrl+Up"/>
         <Button Content="下移" Click="MoveDown_Click" ToolTip="Ctrl+Down"/>
         <Button Content="重新排布" Click="Relayout_Click"/>
+        <Button Content="载入预览图…" Click="LoadPreview_Click"/>
         <Button Content="试运行…" Click="TryRun_Click"/>
         <Button Content="校验" Click="Validate_Click"/>
         <Button Content="删除节点" Click="DeleteNode_Click"/>
@@ -21,18 +22,22 @@
       </StackPanel>
       <StackPanel Orientation="Horizontal">
         <TextBlock Text="Vision" VerticalAlignment="Center" Foreground="{StaticResource MutedBrush}" Margin="0,0,8,0"/>
-        <ComboBox x:Name="VisionCombo" Width="260" SelectionChanged="VisionCombo_SelectionChanged"/>
-        <TextBlock Text="Camera" VerticalAlignment="Center" Margin="16,0,6,0" Foreground="{StaticResource MutedBrush}"/>
-        <TextBox Width="160" Text="{Binding CameraDeviceId, UpdateSourceTrigger=PropertyChanged}"/>
-        <TextBlock x:Name="HintText" Margin="16,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="420"
+        <ComboBox x:Name="VisionCombo" Width="220" SelectionChanged="VisionCombo_SelectionChanged"/>
+        <TextBlock Text="Camera" VerticalAlignment="Center" Margin="12,0,6,0" Foreground="{StaticResource MutedBrush}"/>
+        <TextBox Width="120" Text="{Binding CameraDeviceId, UpdateSourceTrigger=PropertyChanged}"/>
+        <TextBlock Text="算法" VerticalAlignment="Center" Margin="12,0,6,0" Foreground="{StaticResource MutedBrush}"/>
+        <ComboBox x:Name="AlgorithmCombo" Width="110" SelectionChanged="AlgorithmCombo_SelectionChanged"/>
+        <TextBlock x:Name="HintText" Margin="12,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="360"
                    Foreground="{StaticResource MutedBrush}"
-                   Text="线性视觉流水线：从工具箱插入预处理 / 定位 / 输出块"/>
+                   Text="试运行后可看效果图；在效果图上拖拽矩形设置 ROI"/>
       </StackPanel>
     </DockPanel>
 
-    <Grid DockPanel.Dock="Bottom" Height="140" Margin="0,8,0,0">
+    <Grid DockPanel.Dock="Bottom" Height="220" Margin="0,8,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="8"/>
+        <ColumnDefinition Width="1.4*"/>
         <ColumnDefinition Width="8"/>
         <ColumnDefinition Width="*"/>
       </Grid.ColumnDefinitions>
@@ -45,6 +50,35 @@
         </DockPanel>
       </Border>
       <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
+              BorderThickness="1" CornerRadius="4" Padding="8">
+        <DockPanel>
+          <DockPanel DockPanel.Dock="Top" Margin="0,0,0,4">
+            <TextBlock Text="运行结果效果图 / ROI" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}"/>
+            <TextBlock x:Name="RoiHintText" DockPanel.Dock="Right" HorizontalAlignment="Right"
+                       Foreground="{StaticResource MutedBrush}" FontSize="11"
+                       Text="拖拽绘制或移动 ROI"/>
+          </DockPanel>
+          <Border Background="#111827" CornerRadius="2" ClipToBounds="True">
+            <Grid x:Name="PreviewHost" Background="Transparent"
+                  MouseLeftButtonDown="Preview_MouseLeftButtonDown"
+                  MouseMove="Preview_MouseMove"
+                  MouseLeftButtonUp="Preview_MouseLeftButtonUp"
+                  MouseLeave="Preview_MouseLeave"
+                  SizeChanged="PreviewHost_SizeChanged">
+              <Image x:Name="ResultImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     IsHitTestVisible="False"/>
+              <Canvas x:Name="RoiOverlay" IsHitTestVisible="False">
+                <Rectangle x:Name="RoiRectVisual" Stroke="#22C55E" StrokeThickness="2"
+                           Fill="#3322C55E" Visibility="Collapsed"/>
+              </Canvas>
+              <TextBlock x:Name="PreviewEmptyHint" Text="试运行或载入预览图后在此显示效果图"
+                         Foreground="#9CA3AF" HorizontalAlignment="Center" VerticalAlignment="Center"
+                         TextWrapping="Wrap" Margin="16" TextAlignment="Center"/>
+            </Grid>
+          </Border>
+        </DockPanel>
+      </Border>
+      <Border Grid.Column="4" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderBrushKey}"
               BorderThickness="1" CornerRadius="4" Padding="8">
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="pipelineJson 预览" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>

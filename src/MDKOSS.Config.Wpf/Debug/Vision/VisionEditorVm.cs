@@ -18,6 +18,10 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
     private string _validationText = "";
     private string _jsonPreview = "";
     private string _cameraDeviceId = "";
+    private string _algorithm = VisionAlgorithmRegistry.DefaultId;
+    private string? _previewImagePath;
+    private int _previewImageWidth;
+    private int _previewImageHeight;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -28,6 +32,38 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
     {
         get => _cameraDeviceId;
         set { if (_cameraDeviceId == value) return; _cameraDeviceId = value; OnPropertyChanged(); }
+    }
+
+    public string Algorithm
+    {
+        get => _algorithm;
+        set
+        {
+            var next = string.IsNullOrWhiteSpace(value) ? VisionAlgorithmRegistry.DefaultId : value.Trim();
+            if (string.Equals(_algorithm, next, StringComparison.OrdinalIgnoreCase)) return;
+            _algorithm = next;
+            OnPropertyChanged();
+            RefreshPreview();
+        }
+    }
+
+    /// <summary>Last try-run / preview image path shown in the result panel.</summary>
+    public string? PreviewImagePath
+    {
+        get => _previewImagePath;
+        private set { if (_previewImagePath == value) return; _previewImagePath = value; OnPropertyChanged(); }
+    }
+
+    public int PreviewImageWidth
+    {
+        get => _previewImageWidth;
+        private set { if (_previewImageWidth == value) return; _previewImageWidth = value; OnPropertyChanged(); }
+    }
+
+    public int PreviewImageHeight
+    {
+        get => _previewImageHeight;
+        private set { if (_previewImageHeight == value) return; _previewImageHeight = value; OnPropertyChanged(); }
     }
 
     public string ValidationText
@@ -67,6 +103,9 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
         Nodes.Clear();
         Edges.Clear();
         CameraDeviceId = cameraDeviceId ?? "";
+        Algorithm = string.IsNullOrWhiteSpace(doc.Algorithm)
+            ? VisionAlgorithmRegistry.DefaultId
+            : doc.Algorithm.Trim();
         foreach (var n in doc.Nodes.OrderBy(x => x.Order).ThenBy(x => x.Id, StringComparer.OrdinalIgnoreCase))
         {
             Nodes.Add(VisionNodeVm.FromModel(n));
@@ -85,9 +124,66 @@ public sealed class VisionEditorVm : INotifyPropertyChanged
             nodes[i].Order = i;
         }
 
-        var doc = new VisionDocument { Version = 1, Nodes = nodes };
+        var doc = new VisionDocument
+        {
+            Version = 1,
+            Algorithm = string.IsNullOrWhiteSpace(Algorithm)
+                ? VisionAlgorithmRegistry.DefaultId
+                : Algorithm.Trim(),
+            Nodes = nodes,
+        };
         doc.RebuildLinearEdges();
         return doc;
+    }
+
+    public void SetPreviewImage(string? path, int width = 0, int height = 0)
+    {
+        PreviewImagePath = path;
+        PreviewImageWidth = Math.Max(0, width);
+        PreviewImageHeight = Math.Max(0, height);
+    }
+
+    public VisionNodeVm? FindRoiNode() =>
+        Selected is not null
+        && string.Equals(Selected.Kind, VisionNodeKinds.Roi, StringComparison.OrdinalIgnoreCase)
+            ? Selected
+            : Nodes.FirstOrDefault(n =>
+                string.Equals(n.Kind, VisionNodeKinds.Roi, StringComparison.OrdinalIgnoreCase));
+
+    public void ApplyRoiRect(VisionRoiRect rect)
+    {
+        var node = FindRoiNode();
+        if (node is null)
+        {
+            node = InsertNode(VisionNodeKinds.Roi);
+        }
+
+        var clamped = PreviewImageWidth > 0 && PreviewImageHeight > 0
+            ? rect.ClampToImage(PreviewImageWidth, PreviewImageHeight)
+            : rect.Normalize();
+        node.SetProp("x", clamped.X.ToString());
+        node.SetProp("y", clamped.Y.ToString());
+        node.SetProp("w", clamped.W.ToString());
+        node.SetProp("h", clamped.H.ToString());
+        Selected = node;
+        RefreshPreview();
+    }
+
+    public VisionRoiRect? TryGetRoiRect()
+    {
+        var node = FindRoiNode();
+        if (node is null)
+        {
+            return null;
+        }
+
+        var props = node.Props
+            .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+            .ToDictionary(p => p.Key.Trim(), p => p.Value ?? "", StringComparer.OrdinalIgnoreCase);
+        var rect = VisionRoiRect.FromProps(props);
+        return PreviewImageWidth > 0 && PreviewImageHeight > 0
+            ? rect.ClampToImage(PreviewImageWidth, PreviewImageHeight)
+            : rect.Normalize();
     }
 
     public VisionNodeVm InsertNode(string kind)

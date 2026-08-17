@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using MDKOSS.Core;
@@ -19,6 +20,13 @@ public partial class VisionEditorWindow : Window
 
     private string? _preferredVisionId;
     private bool _suppressBind;
+    private bool _suppressAlgorithm;
+
+    private bool _roiDragging;
+    private bool _roiMoving;
+    private Point _roiStartHost;
+    private VisionRoiRect _roiStartRect;
+    private VisionRoiRect _roiDraft;
 
     public VisionEditorWindow(ConfigWorkspace workspace, string? preferredVisionId = null, Action? onApplied = null)
     {
@@ -30,8 +38,10 @@ public partial class VisionEditorWindow : Window
         PreviewKeyDown += Window_PreviewKeyDown;
         Loaded += (_, _) =>
         {
+            ReloadAlgorithmList();
             ReloadVisionList();
             RefreshCanvas();
+            RefreshRoiOverlay();
         };
     }
 
@@ -54,6 +64,59 @@ public partial class VisionEditorWindow : Window
         {
             MoveDown_Click(sender, new RoutedEventArgs());
             e.Handled = true;
+        }
+    }
+
+    private void ReloadAlgorithmList()
+    {
+        _suppressAlgorithm = true;
+        try
+        {
+            AlgorithmCombo.Items.Clear();
+            foreach (var backend in VisionAlgorithmRegistry.List())
+            {
+                var label = backend.IsAvailable
+                    ? backend.DisplayName
+                    : $"{backend.DisplayName} (未安装)";
+                AlgorithmCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = label,
+                    Tag = backend.Id,
+                    IsEnabled = backend.IsAvailable || string.Equals(backend.Id, HalconVisionBackend.BackendId, StringComparison.OrdinalIgnoreCase),
+                });
+            }
+
+            SelectAlgorithmInCombo(_vm.Algorithm);
+        }
+        finally
+        {
+            _suppressAlgorithm = false;
+        }
+    }
+
+    private void SelectAlgorithmInCombo(string? algorithmId)
+    {
+        var id = string.IsNullOrWhiteSpace(algorithmId)
+            ? VisionAlgorithmRegistry.DefaultId
+            : algorithmId.Trim();
+        var match = AlgorithmCombo.Items.Cast<ComboBoxItem>()
+            .FirstOrDefault(i => string.Equals(i.Tag as string, id, StringComparison.OrdinalIgnoreCase));
+        AlgorithmCombo.SelectedItem = match
+            ?? AlgorithmCombo.Items.Cast<ComboBoxItem>()
+                .FirstOrDefault(i => string.Equals(i.Tag as string, VisionAlgorithmRegistry.DefaultId, StringComparison.OrdinalIgnoreCase))
+            ?? (AlgorithmCombo.Items.Count > 0 ? AlgorithmCombo.Items[0] : null);
+    }
+
+    private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressAlgorithm)
+        {
+            return;
+        }
+
+        if (AlgorithmCombo.SelectedItem is ComboBoxItem { Tag: string id })
+        {
+            _vm.Algorithm = id;
         }
     }
 
@@ -116,7 +179,11 @@ public partial class VisionEditorWindow : Window
         if (vision is null)
         {
             _vm.Load(VisionDocument.CreateEmpty());
+            _suppressAlgorithm = true;
+            try { SelectAlgorithmInCombo(_vm.Algorithm); }
+            finally { _suppressAlgorithm = false; }
             RefreshCanvas();
+            RefreshRoiOverlay();
             return;
         }
 
@@ -130,7 +197,11 @@ public partial class VisionEditorWindow : Window
         }
 
         _vm.Load(doc, vision.CameraDeviceId);
+        _suppressAlgorithm = true;
+        try { SelectAlgorithmInCombo(_vm.Algorithm); }
+        finally { _suppressAlgorithm = false; }
         RefreshCanvas();
+        RefreshRoiOverlay();
     }
 
     private void RefreshCanvas()
@@ -288,12 +359,14 @@ public partial class VisionEditorWindow : Window
     {
         _vm.Selected = node;
         RefreshCanvas();
+        RefreshRoiOverlay();
     }
 
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         _vm.Selected = null;
         RefreshCanvas();
+        RefreshRoiOverlay();
     }
 
     private void AddNode_Click(object sender, RoutedEventArgs e)
@@ -305,12 +378,14 @@ public partial class VisionEditorWindow : Window
 
         _vm.InsertNode(kind);
         RefreshCanvas();
+        RefreshRoiOverlay();
     }
 
     private void DeleteNode_Click(object sender, RoutedEventArgs e)
     {
         _vm.RemoveSelected();
         RefreshCanvas();
+        RefreshRoiOverlay();
     }
 
     private void MoveUp_Click(object sender, RoutedEventArgs e)
@@ -344,6 +419,22 @@ public partial class VisionEditorWindow : Window
             errors.Count == 0 ? MessageBoxImage.Information : MessageBoxImage.Warning);
     }
 
+    private void LoadPreview_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "选择预览 / ROI 底图",
+            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.tif;*.tiff|All|*.*",
+        };
+        if (dlg.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        ShowPreviewImage(dlg.FileName);
+        _vm.SetStatusText("已载入预览图，可拖拽 ROI：" + dlg.FileName);
+    }
+
     private void TryRun_Click(object sender, RoutedEventArgs e)
     {
         var dlg = new OpenFileDialog
@@ -362,6 +453,7 @@ public partial class VisionEditorWindow : Window
             "mdkoss-vision-debug.png");
         var result = new VisionExecutor().Run(doc, dlg.FileName, debugPath);
         var lines = new List<string>();
+        lines.Add($"algorithm={doc.Algorithm}");
         if (!string.IsNullOrWhiteSpace(result.Error))
         {
             lines.Add("ERROR: " + result.Error);
@@ -372,15 +464,272 @@ public partial class VisionEditorWindow : Window
         if (!string.IsNullOrWhiteSpace(result.DebugImagePath) && System.IO.File.Exists(result.DebugImagePath))
         {
             lines.Add($"debugImage={result.DebugImagePath}");
+            ShowPreviewImage(result.DebugImagePath);
+        }
+        else
+        {
+            ShowPreviewImage(dlg.FileName);
         }
 
         _vm.SetStatusText(string.Join(Environment.NewLine, lines));
         MessageBox.Show(
             this,
-            result.Ok ? "试运行完成。" : ("试运行失败：\n" + (result.Error ?? "unknown")),
+            result.Ok ? "试运行完成，效果图已更新。" : ("试运行失败：\n" + (result.Error ?? "unknown")),
             "视觉试运行",
             MessageBoxButton.OK,
             result.Ok ? MessageBoxImage.Information : MessageBoxImage.Warning);
+    }
+
+    private void ShowPreviewImage(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !System.IO.File.Exists(path))
+        {
+            return;
+        }
+
+        var bmp = LoadBitmap(path);
+        if (bmp is null)
+        {
+            return;
+        }
+
+        ResultImage.Source = bmp;
+        PreviewEmptyHint.Visibility = Visibility.Collapsed;
+        _vm.SetPreviewImage(path, bmp.PixelWidth, bmp.PixelHeight);
+        RefreshRoiOverlay();
+    }
+
+    private static BitmapImage? LoadBitmap(string path)
+    {
+        try
+        {
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+            bmp.UriSource = new Uri(path, UriKind.Absolute);
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void PreviewHost_SizeChanged(object sender, SizeChangedEventArgs e) => RefreshRoiOverlay();
+
+    private void RefreshRoiOverlay()
+    {
+        if (_vm.PreviewImageWidth <= 0 || _vm.PreviewImageHeight <= 0 || ResultImage.Source is null)
+        {
+            RoiRectVisual.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var rect = _roiDragging ? _roiDraft : _vm.TryGetRoiRect();
+        if (rect is null)
+        {
+            RoiRectVisual.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        if (!TryMapImageRectToHost(rect.Value, out var hostRect))
+        {
+            RoiRectVisual.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        Canvas.SetLeft(RoiRectVisual, hostRect.X);
+        Canvas.SetTop(RoiRectVisual, hostRect.Y);
+        RoiRectVisual.Width = Math.Max(1, hostRect.Width);
+        RoiRectVisual.Height = Math.Max(1, hostRect.Height);
+        RoiRectVisual.Visibility = Visibility.Visible;
+    }
+
+    private bool TryGetImageLayout(out Rect imageInHost, out double scale)
+    {
+        imageInHost = default;
+        scale = 1;
+        if (ResultImage.Source is not BitmapSource bmp || bmp.PixelWidth <= 0 || bmp.PixelHeight <= 0)
+        {
+            return false;
+        }
+
+        var hostW = PreviewHost.ActualWidth;
+        var hostH = PreviewHost.ActualHeight;
+        if (hostW <= 1 || hostH <= 1)
+        {
+            return false;
+        }
+
+        scale = Math.Min(hostW / bmp.PixelWidth, hostH / bmp.PixelHeight);
+        var dispW = bmp.PixelWidth * scale;
+        var dispH = bmp.PixelHeight * scale;
+        imageInHost = new Rect((hostW - dispW) / 2, (hostH - dispH) / 2, dispW, dispH);
+        return true;
+    }
+
+    private bool TryMapHostToImage(Point hostPt, out Point imagePt)
+    {
+        imagePt = default;
+        if (!TryGetImageLayout(out var layout, out var scale) || scale <= 0)
+        {
+            return false;
+        }
+
+        if (!layout.Contains(hostPt))
+        {
+            // clamp to image bounds for easier dragging near edges
+            hostPt = new Point(
+                Math.Clamp(hostPt.X, layout.Left, layout.Right),
+                Math.Clamp(hostPt.Y, layout.Top, layout.Bottom));
+        }
+
+        var ix = (hostPt.X - layout.X) / scale;
+        var iy = (hostPt.Y - layout.Y) / scale;
+        // Map into ROI coordinate space (source size stored on VM).
+        if (_vm.PreviewImageWidth > 0 && ResultImage.Source is BitmapSource bmp && bmp.PixelWidth > 0
+            && bmp.PixelWidth != _vm.PreviewImageWidth)
+        {
+            ix *= (double)_vm.PreviewImageWidth / bmp.PixelWidth;
+            iy *= (double)_vm.PreviewImageHeight / bmp.PixelHeight;
+        }
+
+        imagePt = new Point(ix, iy);
+        return true;
+    }
+
+    private bool TryMapImageRectToHost(VisionRoiRect rect, out Rect hostRect)
+    {
+        hostRect = default;
+        if (!TryGetImageLayout(out var layout, out var scale) || scale <= 0)
+        {
+            return false;
+        }
+
+        double sx = rect.X;
+        double sy = rect.Y;
+        double sw = rect.W;
+        double sh = rect.H;
+        if (ResultImage.Source is BitmapSource bmp && bmp.PixelWidth > 0
+            && _vm.PreviewImageWidth > 0 && bmp.PixelWidth != _vm.PreviewImageWidth)
+        {
+            var fx = (double)bmp.PixelWidth / _vm.PreviewImageWidth;
+            var fy = (double)bmp.PixelHeight / _vm.PreviewImageHeight;
+            sx *= fx;
+            sy *= fy;
+            sw *= fx;
+            sh *= fy;
+        }
+
+        hostRect = new Rect(
+            layout.X + sx * scale,
+            layout.Y + sy * scale,
+            Math.Max(1, sw * scale),
+            Math.Max(1, sh * scale));
+        return true;
+    }
+
+    private void Preview_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_vm.PreviewImageWidth <= 0 || ResultImage.Source is null)
+        {
+            return;
+        }
+
+        var hostPt = e.GetPosition(PreviewHost);
+        if (!TryMapHostToImage(hostPt, out var imgPt))
+        {
+            return;
+        }
+
+        _roiStartHost = hostPt;
+        var existing = _vm.TryGetRoiRect();
+        if (existing is { } cur
+            && imgPt.X >= cur.X && imgPt.X <= cur.X + cur.W
+            && imgPt.Y >= cur.Y && imgPt.Y <= cur.Y + cur.H)
+        {
+            _roiMoving = true;
+            _roiStartRect = cur;
+            _roiDraft = cur;
+        }
+        else
+        {
+            _roiMoving = false;
+            _roiDraft = new VisionRoiRect((int)imgPt.X, (int)imgPt.Y, 1, 1);
+        }
+
+        _roiDragging = true;
+        PreviewHost.CaptureMouse();
+        RefreshRoiOverlay();
+        e.Handled = true;
+    }
+
+    private void Preview_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_roiDragging)
+        {
+            return;
+        }
+
+        var hostPt = e.GetPosition(PreviewHost);
+        if (!TryMapHostToImage(hostPt, out var imgPt) || !TryMapHostToImage(_roiStartHost, out var startImg))
+        {
+            return;
+        }
+
+        if (_roiMoving)
+        {
+            var dx = (int)Math.Round(imgPt.X - startImg.X);
+            var dy = (int)Math.Round(imgPt.Y - startImg.Y);
+            _roiDraft = new VisionRoiRect(
+                _roiStartRect.X + dx,
+                _roiStartRect.Y + dy,
+                _roiStartRect.W,
+                _roiStartRect.H).ClampToImage(_vm.PreviewImageWidth, _vm.PreviewImageHeight);
+        }
+        else
+        {
+            var x0 = (int)Math.Round(startImg.X);
+            var y0 = (int)Math.Round(startImg.Y);
+            var x1 = (int)Math.Round(imgPt.X);
+            var y1 = (int)Math.Round(imgPt.Y);
+            _roiDraft = new VisionRoiRect(x0, y0, x1 - x0, y1 - y0)
+                .Normalize()
+                .ClampToImage(_vm.PreviewImageWidth, _vm.PreviewImageHeight);
+        }
+
+        RefreshRoiOverlay();
+        e.Handled = true;
+    }
+
+    private void Preview_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_roiDragging)
+        {
+            return;
+        }
+
+        _roiDragging = false;
+        PreviewHost.ReleaseMouseCapture();
+        _vm.ApplyRoiRect(_roiDraft);
+        RefreshCanvas();
+        RefreshRoiOverlay();
+        RoiHintText.Text = $"ROI {_roiDraft.X},{_roiDraft.Y} {_roiDraft.W}x{_roiDraft.H}";
+        e.Handled = true;
+    }
+
+    private void Preview_MouseLeave(object sender, MouseEventArgs e)
+    {
+        // keep drag if mouse captured
+        if (!_roiDragging || PreviewHost.IsMouseCaptured)
+        {
+            return;
+        }
+
+        _roiDragging = false;
     }
 
     private void Apply_Click(object sender, RoutedEventArgs e)
@@ -411,5 +760,6 @@ public partial class VisionEditorWindow : Window
         {
             _vm.RefreshPreview();
             RefreshCanvas();
+            RefreshRoiOverlay();
         });
 }

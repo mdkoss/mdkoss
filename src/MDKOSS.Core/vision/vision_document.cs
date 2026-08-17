@@ -9,6 +9,12 @@ public sealed class VisionDocument
 {
     public int Version { get; set; } = 1;
 
+    /// <summary>
+    /// Algorithm platform id (<c>opencv</c> default; <c>halcon</c> or custom via
+    /// <see cref="VisionAlgorithmRegistry"/>).
+    /// </summary>
+    public string Algorithm { get; set; } = VisionAlgorithmRegistry.DefaultId;
+
     public List<VisionNode> Nodes { get; set; } = [];
 
     public List<VisionEdge> Edges { get; set; } = [];
@@ -30,6 +36,7 @@ public sealed class VisionDocument
         return new VisionDocument
         {
             Version = 1,
+            Algorithm = VisionAlgorithmRegistry.DefaultId,
             Nodes =
             [
                 new VisionNode { Id = startId, Kind = VisionNodeKinds.Start, X = left, Y = 40, Order = 0 },
@@ -121,7 +128,7 @@ public sealed class VisionDocument
             new() { Id = "n-end", Kind = VisionNodeKinds.End, X = left, Y = 600, Order = 7 },
         };
 
-        var doc = new VisionDocument { Version = 1, Nodes = nodes };
+        var doc = new VisionDocument { Version = 1, Algorithm = VisionAlgorithmRegistry.DefaultId, Nodes = nodes };
         doc.RebuildLinearEdges();
         return doc;
     }
