@@ -12,6 +12,20 @@ public enum MTaskState
 }
 
 /// <summary>
+/// Thrown when a motion task observes <c>machine.state</c> of stopped / fault and must abort.
+/// </summary>
+public sealed class MachineStoppedException : InvalidOperationException
+{
+    public string MachineState { get; }
+
+    public MachineStoppedException(string taskName, string machineState)
+        : base($"Motion task '{taskName}' aborted: machine.state={machineState}")
+    {
+        MachineState = machineState;
+    }
+}
+
+/// <summary>
 /// Base contract for periodic runtime tasks.
 /// </summary>
 public abstract class MTaskBase
@@ -31,7 +45,7 @@ public abstract class MTaskBase
     /// <summary>
     /// Executes a single task tick and updates task state.
     /// </summary>
-    public async Task ExecuteOnceAsync(CancellationToken cancellationToken)
+    public virtual async Task ExecuteOnceAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -154,6 +168,10 @@ public sealed class MTaskScheduler : IDisposable
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 break;
+            }
+            catch (MachineStoppedException)
+            {
+                // Motion tick aborted by machine stop; keep polling so a later start can resume.
             }
         }
     }

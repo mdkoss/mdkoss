@@ -58,7 +58,7 @@ Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视�
 - 设备动作走已有 `DeviceActionRegistry` / 扩展注册，避免在 Runtime 里堆 `switch`。
 - 配置字段与 `*.setting.json`、参数类、监控页三者对齐。
 - 提交说明面向人类，1–2 句写原因；不要署名 Cursor / AI / agent。
-- **不要 `git push`。** 未要求时不要改 git config、不要 force。
+- **不要自行 `git push`。** Issue 由轮询脚本在处理后推送。未要求时不要改 git config、不要 force。
 
 ## 验证
 
@@ -82,5 +82,5 @@ dotnet test MDKOSS.sln -c Release
 
 1. 读标题、描述、`module` / `type` / `priority`，先在上表定位，再搜符号。
 2. 最小改动修复；补或改测试证明行为。
-3. `git add` 只加相关文件并 commit。
+3. `git add` 只加相关文件并 commit。不要 push，轮询脚本会紧接着推送。
 4. 用纯文本写 3–8 句方案摘要（改了什么、为什么、怎么验证）。不要 markdown 标题，不要双引号。

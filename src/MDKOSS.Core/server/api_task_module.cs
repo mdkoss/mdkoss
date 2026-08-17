@@ -37,6 +37,10 @@ public sealed class TaskApiModule : MonitoringApiModule
                 command = "stop";
                 actionLabel = "stop";
                 break;
+            case "pause":
+                command = "pause";
+                actionLabel = "pause";
+                break;
             case "reset":
                 command = "reset";
                 actionLabel = "reset";
@@ -52,7 +56,16 @@ public sealed class TaskApiModule : MonitoringApiModule
                 return true;
         }
 
-        Runtime.Vars.Set("task.operation.command", command);
+        if (command is "start" or "stop" or "reset" or "pause")
+        {
+            Runtime.Vars.Set("machine.command", command);
+        }
+
+        if (command is not "pause")
+        {
+            Runtime.Vars.Set("task.operation.command", command);
+        }
+
         await WriteTaskOperationResultAsync(context.Response, true, actionLabel, cancellationToken)
             .ConfigureAwait(false);
         return true;

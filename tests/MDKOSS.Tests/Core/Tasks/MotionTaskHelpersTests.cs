@@ -131,4 +131,73 @@ public sealed class MotionTaskHelpersTests
             }
         }
     }
+
+    private sealed class GateProbeMotionTask : MotionTask
+    {
+        public int Ticks { get; private set; }
+
+        public GateProbeMotionTask(IDriver driver, MVarStore vars)
+            : base("probe-gate", 40, driver, vars, new Dictionary<string, MDeviceBase>())
+        {
+        }
+
+        public void CallMove() => AxisMoveTo("missing", 1);
+
+        protected override Task TickAsync(CancellationToken cancellationToken)
+        {
+            Ticks++;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task Stopped_machine_aborts_tick_and_faults_task()
+    {
+        var vars = new MVarStore();
+        vars.Set("machine.state", TaskMachineTask.States.Stopped);
+        var driver = DriverFactory.Create("sim");
+        driver.Initialize(new MdkSetting.DriverConfig { Id = "d1", Type = "sim" });
+        var task = new GateProbeMotionTask(driver, vars);
+
+        await task.ExecuteOnceAsync(CancellationToken.None);
+
+        Assert.Equal(0, task.Ticks);
+        Assert.Equal(MTaskState.Fault, task.State);
+        Assert.Contains("stopped", vars.Get<string>("task.probe-gate.lastFault") ?? "", StringComparison.OrdinalIgnoreCase);
+        driver.Dispose();
+    }
+
+    [Fact]
+    public void Stopped_machine_throws_on_motion_command()
+    {
+        var vars = new MVarStore();
+        vars.Set("machine.state", TaskMachineTask.States.Stopped);
+        var driver = DriverFactory.Create("sim");
+        driver.Initialize(new MdkSetting.DriverConfig { Id = "d1", Type = "sim" });
+        var task = new GateProbeMotionTask(driver, vars);
+
+        var ex = Assert.Throws<MachineStoppedException>(task.CallMove);
+        Assert.Equal(TaskMachineTask.States.Stopped, ex.MachineState);
+        driver.Dispose();
+    }
+
+    [Fact]
+    public async Task Paused_machine_waits_until_running()
+    {
+        var vars = new MVarStore();
+        vars.Set("machine.state", TaskMachineTask.States.Paused);
+        var driver = DriverFactory.Create("sim");
+        driver.Initialize(new MdkSetting.DriverConfig { Id = "d1", Type = "sim" });
+        var task = new GateProbeMotionTask(driver, vars);
+
+        var running = task.ExecuteOnceAsync(CancellationToken.None);
+        await Task.Delay(80);
+        Assert.False(running.IsCompleted);
+        Assert.Equal(0, task.Ticks);
+
+        vars.Set("machine.state", TaskMachineTask.States.Running);
+        await running.WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.Equal(1, task.Ticks);
+        driver.Dispose();
+    }
 }

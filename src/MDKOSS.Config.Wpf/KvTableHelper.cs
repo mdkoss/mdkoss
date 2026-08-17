@@ -45,7 +45,7 @@ public static class ConfigTypeCatalog
     ];
 
     public static IReadOnlyList<string> TaskTypes { get; } =
-        ["pollDriver", "operation", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor"];
+        ["pollDriver", "operation", "machine", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor"];
 
     public static IReadOnlyList<string> GpioDirections { get; } =
         ["in", "out"];

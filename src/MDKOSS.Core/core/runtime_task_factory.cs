@@ -55,6 +55,8 @@ public static class RuntimeTaskFactory
         RegisterCore("polldriver", CreatePollDriver);
         RegisterCore("operation", CreateOperation);
         RegisterCore("taskoperation", CreateOperation);
+        RegisterCore("machine", CreateMachine);
+        RegisterCore("taskmachine", CreateMachine);
         RegisterCore("cycle", CreateCycle);
         RegisterCore("taskcycle", CreateCycle);
         RegisterCore("motion", CreateMotion);
@@ -111,6 +113,14 @@ public static class RuntimeTaskFactory
         _ = taskTypeKey;
         var gpio = ResolveTaskGpio(ctx, config.Parameters);
         return new TaskOperationTask(ctx.Vars, gpio, config.IntervalMs);
+    }
+
+    private static MTaskBase? CreateMachine(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
+    {
+        _ = taskTypeKey;
+        var gpio = ResolveTaskGpio(ctx, config.Parameters);
+        var intervalMs = config.IntervalMs > 0 ? config.IntervalMs : 50;
+        return new TaskMachineTask(ctx.Vars, gpio, intervalMs, config.Parameters);
     }
 
     private static MTaskBase? CreateCycle(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)

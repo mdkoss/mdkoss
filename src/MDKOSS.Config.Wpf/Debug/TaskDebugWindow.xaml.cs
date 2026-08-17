@@ -410,7 +410,7 @@ public partial class TaskDebugWindow : Window
         }
 
         var parameters = KvTableHelper.ToStringDict(_paramRows);
-        if (typeKey is "operation" or "taskoperation")
+        if (typeKey is "operation" or "taskoperation" or "machine" or "taskmachine")
         {
             if (parameters.TryGetValue("gpioDeviceId", out var gpioId) && !string.IsNullOrWhiteSpace(gpioId))
             {
@@ -428,7 +428,9 @@ public partial class TaskDebugWindow : Window
             else if (!_workspace.Setting.Devices.Any(d =>
                          string.Equals(d.Type, "gpio", StringComparison.OrdinalIgnoreCase)))
             {
-                issues.Add("[警告] 当前 setting 没有 gpio 设备；operation 灯塔 IO 将不可用。");
+                issues.Add(typeKey is "machine" or "taskmachine"
+                    ? "[警告] 当前 setting 没有 gpio 设备；machine 任务仍可通过 machine.command 启停。"
+                    : "[警告] 当前 setting 没有 gpio 设备；operation 灯塔 IO 将不可用。");
             }
         }
 
@@ -473,6 +475,8 @@ public partial class TaskDebugWindow : Window
             "pollDriver\n  轮询驱动心跳，写入 vars。\n  必需：DriverId、IntervalMs。\n  可选参数：varPrefix。",
         "operation" or "taskoperation" =>
             "operation\n  处理 task.operation.command（start/stop/reset/lamp）。\n  gpioDeviceId 可空（默认共享 GpioDevice）。\n  DriverId 可空。",
+        "machine" or "taskmachine" =>
+            "machine\n  系统级整机任务：启动/停止/复位按钮（及 machine.command）改 machine.state。\n  运行时若配置未包含则自动注册。gpioDeviceId 可空。",
         "cycle" or "taskcycle" =>
             "cycle\n  周期汇总运行时快照 / 任务状态。\n  主要：IntervalMs。DriverId 可空。",
         "motion" or "motiontask" =>
@@ -494,6 +498,13 @@ public partial class TaskDebugWindow : Window
                 ["varPrefix"] = "driver",
             },
             "operation" or "taskoperation" => new(StringComparer.OrdinalIgnoreCase),
+            "machine" or "taskmachine" => new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["startAlias"] = "startButton",
+                ["stopAlias"] = "stopButton",
+                ["resetAlias"] = "resetButton",
+                ["pauseAlias"] = "pauseButton",
+            },
             "cycle" or "taskcycle" => new(StringComparer.OrdinalIgnoreCase)
             {
                 ["note"] = "cycle uses IntervalMs; gpio optional",

@@ -17,6 +17,7 @@ public static class DeviceParameterPresets
             {
                 ["in.startButton"] = $"{drv}|di.gpi.bit.0|启动按钮",
                 ["in.stopButton"] = $"{drv}|di.gpi.bit.1|停止按钮",
+                ["in.resetButton"] = $"{drv}|di.gpi.bit.2|复位按钮",
                 ["out.tower.green"] = $"{drv}|do.gpo.bit.0|绿灯",
                 ["out.tower.red"] = $"{drv}|do.gpo.bit.1|红灯",
             },
@@ -65,6 +66,13 @@ public static class DeviceParameterPresets
             "polldriver" => new(StringComparer.OrdinalIgnoreCase) { ["varPrefix"] = "driver" },
             // gpioDeviceId optional: blank → runtime uses the first (shared) GpioDevice
             "operation" => new(StringComparer.OrdinalIgnoreCase),
+            "machine" or "taskmachine" => new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["startAlias"] = "startButton",
+                ["stopAlias"] = "stopButton",
+                ["resetAlias"] = "resetButton",
+                ["pauseAlias"] = "pauseButton",
+            },
             "cycle" => new(StringComparer.OrdinalIgnoreCase),
             "flow" => new(StringComparer.OrdinalIgnoreCase) { ["loop"] = "true", ["flowJson"] = "{}" },
             _ => new(StringComparer.OrdinalIgnoreCase),

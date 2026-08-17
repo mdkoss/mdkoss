@@ -179,8 +179,9 @@ public sealed class FlowTaskLifecycleTests
             using var rt = new MdkRuntime(loaded);
             rt.Initialize();
 
-            var snap = Assert.Single(rt.GetTaskSnapshots());
-            Assert.Equal("task-flow-rt", snap.Name);
+            var snaps = rt.GetTaskSnapshots();
+            Assert.Contains(snaps, t => t.Name == "task-machine");
+            var snap = Assert.Single(snaps, t => t.Name == "task-flow-rt");
             Assert.Equal(nameof(FlowTask), snap.Type);
 
             rt.Start();

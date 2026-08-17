@@ -414,7 +414,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
                 },
                 axes = new[] { "linear", "rotary", "axis" },
                 platforms = new[] { "platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw" },
-                tasks = new[] { "pollDriver", "operation", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor" },
+                tasks = new[] { "pollDriver", "operation", "machine", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor" },
             },
             defaults = new
             {

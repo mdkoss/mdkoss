@@ -49,18 +49,21 @@ public sealed class DispenserApiModule : MonitoringApiModule
             case "start":
                 Runtime.Vars.Set("task.dispense.command", "start");
                 Runtime.Vars.Set("task.operation.command", "start");
+                Runtime.Vars.Set("machine.command", "start");
                 DispenseLogStore.Info("api", "operator start");
                 await WriteSuccessAsync(context.Response, "start", cancellationToken).ConfigureAwait(false);
                 return true;
             case "stop":
                 Runtime.Vars.Set("task.dispense.command", "stop");
                 Runtime.Vars.Set("task.operation.command", "stop");
+                Runtime.Vars.Set("machine.command", "stop");
                 DispenseLogStore.Warn("api", "operator stop");
                 await WriteSuccessAsync(context.Response, "stop", cancellationToken).ConfigureAwait(false);
                 return true;
             case "reset":
                 Runtime.Vars.Set("task.dispense.command", "reset");
                 Runtime.Vars.Set("task.operation.command", "reset");
+                Runtime.Vars.Set("machine.command", "reset");
                 DispenseLogStore.Info("api", "operator reset");
                 await WriteSuccessAsync(context.Response, "reset", cancellationToken).ConfigureAwait(false);
                 return true;

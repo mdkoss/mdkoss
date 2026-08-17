@@ -489,6 +489,22 @@ public sealed class MdkAlarmHub
             items.Add(BuildItem(id, code, name, level, "runtime", message, varKey, value, condition, latch: false, now));
         }
 
+        snap.Vars.TryGetValue("machine.state", out var machineState);
+        var machine = FormatValue(machineState);
+        snap.Vars.TryGetValue("machine.message", out var machineMsg);
+        if (string.Equals(machine, "fault", StringComparison.OrdinalIgnoreCase))
+        {
+            Add(
+                "runtime.machine",
+                "RT-MACH",
+                "整机故障",
+                "error",
+                string.IsNullOrWhiteSpace(FormatValue(machineMsg)) ? "machine.state=fault" : FormatValue(machineMsg)!,
+                "machine.state",
+                machine,
+                true);
+        }
+
         snap.Vars.TryGetValue("task.operation.state", out var opState);
         var op = FormatValue(opState);
         snap.Vars.TryGetValue("task.operation.message", out var opMsg);

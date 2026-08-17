@@ -49,18 +49,21 @@ public sealed class DieBonderApiModule : MonitoringApiModule
             case "start":
                 Runtime.Vars.Set("task.pnp.command", "start");
                 Runtime.Vars.Set("task.operation.command", "start");
+                Runtime.Vars.Set("machine.command", "start");
                 BondLogStore.Info("api", "operator start");
                 await WriteSuccessAsync(context.Response, "start", cancellationToken).ConfigureAwait(false);
                 return true;
             case "stop":
                 Runtime.Vars.Set("task.pnp.command", "stop");
                 Runtime.Vars.Set("task.operation.command", "stop");
+                Runtime.Vars.Set("machine.command", "stop");
                 BondLogStore.Warn("api", "operator stop");
                 await WriteSuccessAsync(context.Response, "stop", cancellationToken).ConfigureAwait(false);
                 return true;
             case "reset":
                 Runtime.Vars.Set("task.pnp.command", "reset");
                 Runtime.Vars.Set("task.operation.command", "reset");
+                Runtime.Vars.Set("machine.command", "reset");
                 BondLogStore.Info("api", "operator reset");
                 await WriteSuccessAsync(context.Response, "reset", cancellationToken).ConfigureAwait(false);
                 return true;

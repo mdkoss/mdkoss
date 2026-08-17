@@ -37,6 +37,92 @@ public abstract class MotionTask : MTaskBase
     /// <summary>Shared runtime alarm manager (null when constructed without one).</summary>
     protected MdkAlarmManager? Alarms { get; }
 
+    private CancellationToken _tickCt;
+
+    /// <inheritdoc />
+    public override async Task ExecuteOnceAsync(CancellationToken cancellationToken)
+    {
+        _tickCt = cancellationToken;
+        try
+        {
+            await EnsureSystemAllowsMotionAsync(cancellationToken).ConfigureAwait(false);
+            await base.ExecuteOnceAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (MachineStoppedException ex)
+        {
+            State = MTaskState.Fault;
+            SetVar("state", "fault");
+            SetVar("lastFaultUtc", DateTime.UtcNow);
+            SetVar("lastFault", ex.Message);
+        }
+        finally
+        {
+            _tickCt = CancellationToken.None;
+        }
+    }
+
+    /// <summary>
+    /// Blocks while <c>machine.state</c> is paused; throws <see cref="MachineStoppedException"/>
+    /// when the machine is stopped or in fault. Missing / idle / running states proceed.
+    /// Call from long-running ticks so pause/stop is observed mid-cycle.
+    /// </summary>
+    protected Task EnsureSystemAllowsMotionAsync(CancellationToken cancellationToken) =>
+        EnsureSystemAllowsMotionCoreAsync(cancellationToken);
+
+    /// <summary>Synchronous form for motion helpers. Uses the current tick cancellation token.</summary>
+    protected void EnsureSystemAllowsMotion() =>
+        EnsureSystemAllowsMotionCoreAsync(_tickCt).GetAwaiter().GetResult();
+
+    private async Task EnsureSystemAllowsMotionCoreAsync(CancellationToken cancellationToken)
+    {
+        var pollMs = Math.Clamp(IntervalMs, 20, 200);
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var state = ReadMachineState();
+            if (IsPausedState(state))
+            {
+                SetVar("hold", TaskMachineTask.States.Paused);
+                await Task.Delay(pollMs, cancellationToken).ConfigureAwait(false);
+                continue;
+            }
+
+            SetVar("hold", string.Empty);
+            if (IsStoppedState(state))
+            {
+                State = MTaskState.Fault;
+                SetVar("state", "fault");
+                throw new MachineStoppedException(Name, state!);
+            }
+
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private string? ReadMachineState()
+    {
+        if (!TryGetGlobalVar<string>("machine.state", out var raw) || string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        return raw.Trim().ToLowerInvariant();
+    }
+
+    private static bool IsPausedState(string? state) =>
+        string.Equals(state, TaskMachineTask.States.Paused, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(state, "hold", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(state, "holding", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsStoppedState(string? state) =>
+        string.Equals(state, TaskMachineTask.States.Stopped, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(state, TaskMachineTask.States.Fault, StringComparison.OrdinalIgnoreCase);
+
     // -----------------------------
     // Device lookup
     // -----------------------------
@@ -93,6 +179,7 @@ public abstract class MotionTask : MTaskBase
     // -----------------------------
     protected bool AxisMoveTo(string axisDeviceId, double position)
     {
+        EnsureSystemAllowsMotion();
         if (!TryGetAxisDevice(axisDeviceId, out var axis) || axis is null)
         {
             return false;
@@ -103,6 +190,11 @@ public abstract class MotionTask : MTaskBase
 
     protected bool AxisSetMotionEnabled(string axisDeviceId, bool enabled)
     {
+        if (enabled)
+        {
+            EnsureSystemAllowsMotion();
+        }
+
         if (!TryGetAxisDevice(axisDeviceId, out var axis) || axis is null)
         {
             return false;
@@ -114,6 +206,7 @@ public abstract class MotionTask : MTaskBase
     /// <summary>Issues a jog command on an axis (signed velocity = direction * velocity).</summary>
     protected bool AxisJog(string axisDeviceId, double direction, double velocity = 1.0)
     {
+        EnsureSystemAllowsMotion();
         if (!TryGetAxisDevice(axisDeviceId, out var axis) || axis is null)
         {
             return false;
@@ -138,6 +231,11 @@ public abstract class MotionTask : MTaskBase
     // -----------------------------
     protected bool PlatformSetMotion(string platformDeviceId, bool enabled)
     {
+        if (enabled)
+        {
+            EnsureSystemAllowsMotion();
+        }
+
         if (!TryGetPlatformDevice(platformDeviceId, out var platform) || platform is null)
         {
             return false;
@@ -154,6 +252,7 @@ public abstract class MotionTask : MTaskBase
 
     protected bool PlatformAxisMoveTo(string platformDeviceId, string axisLetter, double position)
     {
+        EnsureSystemAllowsMotion();
         if (!TryGetPlatformDevice(platformDeviceId, out var platform) || platform is null)
         {
             return false;
@@ -170,6 +269,7 @@ public abstract class MotionTask : MTaskBase
         double direction,
         double velocity = 1.0)
     {
+        EnsureSystemAllowsMotion();
         if (!TryGetPlatformDevice(platformDeviceId, out var platform) || platform is null)
         {
             return false;

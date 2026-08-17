@@ -18,13 +18,15 @@
       <a class="link-btn" href="/">主界面</a>
     </div>
     <div class="grid">
-      <div class="card span-4"><div class="label">项目</div><div class="value" id="vProject">—</div></div>
-      <div class="card span-4"><div class="label">运行时</div><div class="value" id="vRun">—</div></div>
-      <div class="card span-4"><div class="label">操作任务</div><div class="value" id="vOp">—</div></div>
+      <div class="card span-3"><div class="label">项目</div><div class="value" id="vProject">—</div></div>
+      <div class="card span-3"><div class="label">运行时</div><div class="value" id="vRun">—</div></div>
+      <div class="card span-3"><div class="label">整机状态</div><div class="value" id="vMachine">—</div></div>
+      <div class="card span-3"><div class="label">操作任务</div><div class="value" id="vOp">—</div></div>
       <div class="card span-12">
         <h2 class="panel-title">任务操作</h2>
         <div class="btn-group">
           <button type="button" class="btn primary" id="btnStart">启动</button>
+          <button type="button" class="btn" id="btnPause">暂停</button>
           <button type="button" class="btn danger" id="btnStop">停止</button>
           <button type="button" class="btn" id="btnReset">复位</button>
         </div>
@@ -67,6 +69,7 @@
       }
     }
     document.getElementById("btnStart").onclick = () => cmd("/api/task/start", "启动");
+    document.getElementById("btnPause").onclick = () => cmd("/api/task/pause", "暂停");
     document.getElementById("btnStop").onclick = () => cmd("/api/task/stop", "停止");
     document.getElementById("btnReset").onclick = () => cmd("/api/task/reset", "复位");
 
@@ -77,8 +80,9 @@
         const devices = field(data, "devices", "Devices") || {};
         document.getElementById("vProject").textContent = field(data, "projectName", "ProjectName") || "—";
         document.getElementById("vRun").textContent = field(data, "isRunning", "IsRunning") ? "RUNNING" : "STOPPED";
+        document.getElementById("vMachine").textContent = vars["machine.state"] ?? "—";
         document.getElementById("vOp").textContent = vars["task.operation.state"] ?? "—";
-        document.getElementById("opMsg").textContent = vars["task.operation.message"] ?? "—";
+        document.getElementById("opMsg").textContent = vars["machine.message"] ?? vars["task.operation.message"] ?? "—";
 
         const faults = [];
         const df = Number(vars["task.cycle.dev.fault"] || 0);
