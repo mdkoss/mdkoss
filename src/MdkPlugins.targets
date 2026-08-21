@@ -18,6 +18,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Sim\MDKOSS.Drivers.Sim.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Gts\MDKOSS.Drivers.Gts.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\MDKOSS.Drivers.S7.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\MDKOSS.Extensions.Serial.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\MDKOSS.Extensions.Tcp.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
@@ -32,6 +33,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Sim\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Sim.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Gts\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Gts.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Dmc.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.S7.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Serial.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Tcp.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Mysql.dll" />
@@ -81,6 +83,9 @@
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.dll" />
       <_ModServerDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\NModbus.*.dll" />
       <_ModServerDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.ModServer\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
+      <_S7Deps Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\S7.Net.dll" />
+      <_S7Deps Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\S7.Net.*.dll" />
+      <_S7DepsJson Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
       <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.dll" />
       <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.*.dll" />
       <_MysqlDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
@@ -127,6 +132,18 @@
       DestinationFolder="$(MdkPluginsOutputDir)"
       SkipUnchangedFiles="true"
       Condition="'@(_ModServerDepsJson)' != ''" />
+
+    <Copy
+      SourceFiles="@(_S7Deps)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(_S7Deps.Identity)')" />
+
+    <Copy
+      SourceFiles="@(_S7DepsJson)"
+      DestinationFolder="$(MdkPluginsOutputDir)"
+      SkipUnchangedFiles="true"
+      Condition="'@(_S7DepsJson)' != ''" />
 
     <Copy
       SourceFiles="@(_MysqlDeps)"
