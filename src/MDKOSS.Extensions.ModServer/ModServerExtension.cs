@@ -9,17 +9,21 @@ namespace MDKOSS.Extensions.ModServer;
 /// <list type="bullet">
 /// <item><c>devmodserver</c> — local slave/server</item>
 /// <item><c>devmodclient</c> — remote master/client (batch read)</item>
+/// <item>driver <c>modbus</c> / <c>modbus-tcp</c> — <see cref="DrvModbus"/> IO backend</item>
 /// </list>
 /// </summary>
 public sealed class ModServerExtension : IMdkExtension
 {
     public string Id => "modserver";
 
-    public string DisplayName => "Modbus TCP Server / Client";
+    public string DisplayName => "Modbus TCP Server / Client / Driver";
 
     public void Register(IExtensionRegistration registration)
     {
         ArgumentNullException.ThrowIfNull(registration);
+
+        registration.Driver("modbus", () => new DrvModbus());
+        registration.Driver("modbus-tcp", () => new DrvModbus());
 
         registration.Device("devmodserver", (cfg, name, vars, _) =>
         {

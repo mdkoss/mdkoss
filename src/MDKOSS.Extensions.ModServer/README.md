@@ -1,11 +1,12 @@
 # Modbus TCP 扩展（MDKOSS.Extensions.ModServer）
 
-独立扩展程序集，通过统一扩展接口（`IMdkExtension` + `MdkExtensionHost`）注册两类设备：
+独立扩展程序集，通过统一扩展接口（`IMdkExtension` + `MdkExtensionHost`）注册两类设备与一套 IO 驱动：
 
 | 配置 type | 角色 | 说明 |
 |-----------|------|------|
 | **`devmodserver`** | Slave / Server | 本机监听，供外部 Master 读写 |
 | **`devmodclient`** | Master / Client | 连接远程 Slave，**重点支持批读取** |
+| **`modbus` / `modbus-tcp`** | IDriver | `DrvModbus`：以 Modbus TCP 作 GPIO 底层（线圈/离散量/保持寄存器） |
 
 ## 接入方式
 
@@ -25,6 +26,7 @@ ModServerExtensionBootstrap.Register();
 src/MDKOSS.Extensions.ModServer/
 ├── MDKOSS.Extensions.ModServer.csproj
 ├── ModServerExtension.cs
+├── drvmodbus.cs                 # IDriver type=modbus / modbus-tcp
 ├── ModServerDeviceActions.cs / ModServerDeviceApi.cs
 ├── ModClientDeviceActions.cs / ModClientDeviceApi.cs
 ├── devices/
@@ -175,3 +177,43 @@ POST /api/modclient/readBatch
 - 依赖 [NModbus](https://www.nuget.org/packages/NModbus) 实现协议栈。
 - 端口 `502` 在 Windows 上可能需要提升权限；演示配置使用 `1502`。
 - 连续寄存器读超过 125、线圈超过 2000 时，client 会自动分片请求并拼接结果。
+
+---
+
+## IDriver（`modbus` / `modbus-tcp`）
+
+`DrvModbus` 作为 Modbus TCP **Master**，把远程 Slave 的线圈/离散输入（或保持寄存器）映射为运行时统一 GPIO 地址，便于 GPIO 设备与任务直接使用，无需再包一层 `devmodclient`。
+
+| 配置 address | Modbus（默认） |
+|---|---|
+| `di.gpi.bit.{n}` | 离散输入，自 `diAddress` 起的第 n 位 |
+| `do.gpo.bit.{n}` | 线圈，自 `doAddress` 起的第 n 位 |
+| `di.gpi` / `do.gpo` | 连续 32 位拼成 int 位掩码 |
+
+原生地址：`coil.{n}`、`discrete.{n}`、`holding.{n}`、`input.{n}`。
+
+| 参数 | 默认 | 说明 |
+|---|---|---|
+| `host` | | Slave IP；空且未强制连网时走内存仿真 |
+| `port` | `502` | TCP 端口 |
+| `unitId` | `1` | 从站地址 |
+| `simulate` | 无 host 时为 true | `true` 强制内存仿真 |
+| `diAddress` / `doAddress` | `0` | DI/DO 起始地址 |
+| `diArea` | `discrete` | `discrete` / `coils` / `holding` |
+| `doArea` | `coils` | `coils` / `holding` |
+| `ioBitBase` | `0` | `bit.n` 编号基准（0 或 1） |
+
+```json
+{
+  "id": "drv-modbus",
+  "type": "modbus-tcp",
+  "enabled": true,
+  "parameters": {
+    "host": "192.168.0.10",
+    "port": "502",
+    "unitId": "1"
+  }
+}
+```
+
+无现场 Slave 时设 `"simulate": "true"`，IO 在内存中往返，便于联调与单测。轴运动接口对本驱动返回 false。

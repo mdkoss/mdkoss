@@ -31,6 +31,9 @@ public sealed class DriverFactoryTests
         Assert.True(DriverFactory.IsSupported("s7"));
         Assert.Contains("s7", DriverFactory.RegisteredTypes);
         Assert.True(DriverFactory.IsSupported("s7-1200"));
+        Assert.True(DriverFactory.IsSupported("modbus"));
+        Assert.Contains("modbus", DriverFactory.RegisteredTypes);
+        Assert.True(DriverFactory.IsSupported("modbus-tcp"));
     }
 
     [Fact]
@@ -39,6 +42,7 @@ public sealed class DriverFactoryTests
         Assert.Contains("driver-sim", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("driver-dmc", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("driver-s7", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
+        Assert.Contains("modserver", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("serial", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("tcp", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("camera", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
