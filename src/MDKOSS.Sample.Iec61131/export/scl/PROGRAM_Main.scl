@@ -1,0 +1,8 @@
+(* Cyclic entry — assign to a 20ms task / OB1 in TIA *)
+PROGRAM PROGRAM_Main
+VAR
+    fbStationCycle : FB_StationCycle; (* station-cycle *)
+END_VAR
+
+fbStationCycle(Run := TRUE, Reset := FALSE);
+END_PROGRAM

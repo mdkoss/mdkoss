@@ -1,0 +1,278 @@
+(* Flow task 'station-cycle' — step sequencer, cycle ~20ms *)
+FUNCTION_BLOCK FB_StationCycle
+VAR_INPUT
+    Run : BOOL := TRUE;
+    Reset : BOOL;
+END_VAR
+VAR_OUTPUT
+    Done : BOOL;
+    Busy : BOOL;
+    LastLog : STRING[80];
+    LastError : STRING[80];
+    iStepOut : DINT;
+END_VAR
+VAR
+    iStep : DINT := 10;
+    cycleCount : REAL := 0.0; (* flow variable *)
+    recipeCount : REAL := 3.0; (* flow variable *)
+    pickPos : REAL := 10.0; (* flow variable *)
+    placePos : REAL := 50.0; (* flow variable *)
+    startOk : BOOL := FALSE; (* flow variable *)
+    stopHit : BOOL := FALSE; (* flow variable *)
+    doorOk : BOOL := FALSE; (* flow variable *)
+    wpPresent : BOOL := FALSE; (* flow variable *)
+    tmp : REAL := 0.0; (* flow variable *)
+    param_jogVel : REAL := 0.0; (* param *)
+    taskvar_state : STRING[80] := ''; (* taskVar *)
+    snap_type : STRING[80] := ''; (* snapshot *)
+    snap_state : STRING[80] := ''; (* snapshot *)
+    snap_driverConnected : BOOL := FALSE; (* snapshot *)
+    fb_n_call_fault : FB_StationCycleFaultHold; (* call FaultHold *)
+    fb_n_ensure : FB_EnsureDriver; (* motion.ensureDriver n-ensure *)
+    fb_n_en : FB_AxisEnable; (* motion.axisEnable n-en *)
+    fb_n_plat : FB_PlatformSetMotion; (* motion.platformStart n-plat *)
+    fb_n_snap : FB_DeviceSnapshot; (* motion.deviceSnapshot n-snap *)
+    fb_n_pick : FB_AxisMoveTo; (* motion.axisMoveTo n-pick *)
+    ton_n_d1 : TON; (* n-d1 *)
+    ton_n_d2 : TON; (* n-d2 *)
+    fb_n_place : FB_PlatformAxisMoveTo; (* motion.platformAxisMoveTo n-place *)
+    fb_n_jog : FB_AxisJog; (* motion.axisJog n-jog *)
+    ton_n_d4 : TON; (* n-d4 *)
+    fb_n_stop : FB_AxisStop; (* motion.axisStop n-stop *)
+    fb_n_pstop : FB_PlatformAxisStop; (* motion.platformAxisStop n-pstop *)
+    ton_n_d3 : TON; (* n-d3 *)
+    ton_n_wait : TON; (* n-wait *)
+END_VAR
+
+IF Reset THEN
+    iStep := 10;
+    Done := FALSE;
+    Busy := FALSE;
+    LastError := '';
+END_IF;
+
+IF NOT Run THEN
+    Busy := FALSE;
+    RETURN;
+END_IF;
+
+Busy := NOT Done;
+CASE iStep OF
+    10: (* start n-start *)
+        iStep := 20;
+    20: (* declareVar n-decl *)
+        tmp := 0.0;
+        iStep := 30;
+    30: (* setVar n-recipe *)
+        recipeCount := recipe_targetCount;
+        iStep := 40;
+    40: (* motion.setParam n-param *)
+        param_jogVel := 5.0;
+        iStep := 50;
+    50: (* motion.setGlobalVar n-ready-off *)
+        machine_ready := FALSE;
+        iStep := 60;
+    60: (* motion.setTaskVar n-state-idle *)
+        taskvar_state := 'idle';
+        iStep := 70;
+    70: (* motion.gpioWrite n-y-on *)
+        Q_tower_yellow := TRUE;
+        iStep := 80;
+    80: (* motion.gpioWrite n-r-off *)
+        Q_tower_red := FALSE;
+        iStep := 90;
+    90: (* motion.gpioWrite n-g-off *)
+        Q_tower_green := FALSE;
+        iStep := 100;
+    100: (* while n-loop *)
+        IF cycleCount < recipeCount THEN
+            iStep := 160;
+        ELSE
+            iStep := 110;
+        END_IF;
+    110: (* motion.gpioWrite n-done-green *)
+        Q_tower_green := TRUE;
+        iStep := 120;
+    120: (* motion.setTaskVar n-done-state *)
+        taskvar_state := 'done';
+        iStep := 130;
+    130: (* motion.setGlobalVar n-done-ready *)
+        machine_ready := TRUE;
+        iStep := 140;
+    140: (* op.writeIo n-buzz-off *)
+        Q_buzzer := FALSE;
+        iStep := 150;
+    150: (* end *)
+        Done := TRUE;
+        Busy := FALSE;
+    160: (* motion.gpioRead n-rd-start *)
+        startOk := I_startButton;
+        iStep := 170;
+    170: (* motion.gpioRead n-rd-stop *)
+        stopHit := I_stopButton;
+        iStep := 180;
+    180: (* motion.gpioRead n-rd-door *)
+        doorOk := I_safetyDoor;
+        iStep := 190;
+    190: (* if n-if-stop *)
+        IF stopHit THEN
+            iStep := 200;
+        ELSE
+            iStep := 210;
+        END_IF;
+    200: (* call n-call-fault *)
+        fb_n_call_fault(Execute := TRUE);
+        IF fb_n_call_fault.Done THEN
+            fb_n_call_fault(Execute := FALSE);
+            iStep := 100;
+        END_IF;
+    210: (* if n-if-run *)
+        IF doorOk AND startOk THEN
+            iStep := 220;
+        ELSE
+            iStep := 470;
+        END_IF;
+    220: (* motion.setTaskVar n-state-run *)
+        taskvar_state := 'run';
+        iStep := 230;
+    230: (* motion.gpioWrite n-y-off *)
+        Q_tower_yellow := FALSE;
+        iStep := 240;
+    240: (* motion.ensureDriver n-ensure *)
+        fb_n_ensure(Execute := TRUE, DeviceId := 'axis-x');
+        IF fb_n_ensure.Done THEN
+            fb_n_ensure(Execute := FALSE, DeviceId := 'axis-x');
+            iStep := 250;
+        END_IF;
+    250: (* motion.axisEnable n-en *)
+        fb_n_en(Execute := TRUE, DeviceId := 'axis-x', Enabled := TRUE);
+        IF fb_n_en.Done THEN
+            fb_n_en(Execute := FALSE, DeviceId := 'axis-x', Enabled := TRUE);
+            iStep := 260;
+        END_IF;
+    260: (* motion.platformStart n-plat *)
+        fb_n_plat(Execute := TRUE, DeviceId := 'head-xyz', Enabled := TRUE);
+        IF fb_n_plat.Done THEN
+            fb_n_plat(Execute := FALSE, DeviceId := 'head-xyz', Enabled := TRUE);
+            iStep := 270;
+        END_IF;
+    270: (* motion.deviceSnapshot n-snap *)
+        fb_n_snap(Execute := TRUE, DeviceId := 'axis-x');
+        IF fb_n_snap.Done THEN
+            snap_type := fb_n_snap.DeviceType;
+            snap_state := fb_n_snap.State;
+            snap_driverConnected := fb_n_snap.DriverConnected;
+            fb_n_snap(Execute := FALSE, DeviceId := 'axis-x');
+            iStep := 280;
+        END_IF;
+    280: (* motion.axisMoveTo n-pick *)
+        fb_n_pick(Execute := TRUE, DeviceId := 'axis-x', Position := pickPos);
+        IF fb_n_pick.Done THEN
+            fb_n_pick(Execute := FALSE, DeviceId := 'axis-x', Position := pickPos);
+            iStep := 290;
+        END_IF;
+    290: (* delay n-d1 *)
+        ton_n_d1(IN := TRUE, PT := T#100MS);
+        IF ton_n_d1.Q THEN
+            ton_n_d1(IN := FALSE, PT := T#100MS);
+            iStep := 300;
+        END_IF;
+    300: (* motion.gpioWrite n-grip-on *)
+        Q_gripper := TRUE;
+        iStep := 310;
+    310: (* delay n-d2 *)
+        ton_n_d2(IN := TRUE, PT := T#50MS);
+        IF ton_n_d2.Q THEN
+            ton_n_d2(IN := FALSE, PT := T#50MS);
+            iStep := 320;
+        END_IF;
+    320: (* motion.platformAxisMoveTo n-place *)
+        fb_n_place(Execute := TRUE, DeviceId := 'head-xyz', Axis := 'X', Position := placePos);
+        IF fb_n_place.Done THEN
+            fb_n_place(Execute := FALSE, DeviceId := 'head-xyz', Axis := 'X', Position := placePos);
+            iStep := 330;
+        END_IF;
+    330: (* motion.gpioWrite n-grip-off *)
+        Q_gripper := FALSE;
+        iStep := 340;
+    340: (* motion.gpioRead n-rd-wp *)
+        wpPresent := I_workpiece_present;
+        iStep := 350;
+    350: (* if n-if-wp *)
+        IF wpPresent THEN
+            iStep := 440;
+        ELSE
+            iStep := 360;
+        END_IF;
+    360: (* motion.axisJog n-jog *)
+        fb_n_jog(Execute := TRUE, DeviceId := 'axis-x', Direction := 1.0, Velocity := 5.0);
+        IF fb_n_jog.Done THEN
+            fb_n_jog(Execute := FALSE, DeviceId := 'axis-x', Direction := 1.0, Velocity := 5.0);
+            iStep := 370;
+        END_IF;
+    370: (* delay n-d4 *)
+        ton_n_d4(IN := TRUE, PT := T#30MS);
+        IF ton_n_d4.Q THEN
+            ton_n_d4(IN := FALSE, PT := T#30MS);
+            iStep := 380;
+        END_IF;
+    380: (* motion.axisStop n-stop *)
+        fb_n_stop(Execute := TRUE, DeviceId := 'axis-x');
+        IF fb_n_stop.Done THEN
+            fb_n_stop(Execute := FALSE, DeviceId := 'axis-x');
+            iStep := 390;
+        END_IF;
+    390: (* motion.platformAxisStop n-pstop *)
+        fb_n_pstop(Execute := TRUE, DeviceId := 'head-xyz', Axis := 'X');
+        IF fb_n_pstop.Done THEN
+            fb_n_pstop(Execute := FALSE, DeviceId := 'head-xyz', Axis := 'X');
+            iStep := 400;
+        END_IF;
+    400: (* setVar n-inc *)
+        cycleCount := cycleCount + 1.0;
+        iStep := 410;
+    410: (* motion.setGlobalVar n-done-cnt *)
+        recipe_doneCount := cycleCount;
+        iStep := 420;
+    420: (* motion.getParam n-getp *)
+        tmp := param_jogVel;
+        iStep := 430;
+    430: (* op.log n-log *)
+        LastLog := 'cycle ok';
+        iStep := 100;
+    440: (* op.writeIo n-valve-on *)
+        Q_valve := TRUE;
+        iStep := 450;
+    450: (* delay n-d3 *)
+        ton_n_d3(IN := TRUE, PT := T#80MS);
+        IF ton_n_d3.Q THEN
+            ton_n_d3(IN := FALSE, PT := T#80MS);
+            iStep := 460;
+        END_IF;
+    460: (* op.writeIo n-valve-off *)
+        Q_valve := FALSE;
+        iStep := 360;
+    470: (* if n-if-door *)
+        IF NOT doorOk THEN
+            iStep := 480;
+        ELSE
+            iStep := 500;
+        END_IF;
+    480: (* motion.gpioWrite n-door-red *)
+        Q_tower_red := TRUE;
+        iStep := 490;
+    490: (* op.log n-door-log *)
+        LastLog := 'safety door';
+        iStep := 500;
+    500: (* delay n-wait *)
+        ton_n_wait(IN := TRUE, PT := T#50MS);
+        IF ton_n_wait.Q THEN
+            ton_n_wait(IN := FALSE, PT := T#50MS);
+            iStep := 100;
+        END_IF;
+    ELSE
+        LastError := 'bad_step';
+        Done := TRUE;
+END_CASE;
+iStepOut := iStep;
+END_FUNCTION_BLOCK

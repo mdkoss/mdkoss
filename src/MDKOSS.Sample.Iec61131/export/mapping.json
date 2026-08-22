@@ -1,0 +1,500 @@
+{
+  "project": "\u5DE5\u4F4D\u8282\u62CD\u793A\u4F8B\uFF08IEC \u5BFC\u51FA\uFF09",
+  "cycleMs": 20,
+  "io": [
+    {
+      "name": "I_startButton",
+      "alias": "startButton",
+      "deviceId": "gpio-station",
+      "mdkAddress": "di.gpi.bit.0",
+      "atAddress": "%I0.0",
+      "isOutput": false,
+      "label": "\u542F\u52A8"
+    },
+    {
+      "name": "I_stopButton",
+      "alias": "stopButton",
+      "deviceId": "gpio-station",
+      "mdkAddress": "di.gpi.bit.1",
+      "atAddress": "%I0.1",
+      "isOutput": false,
+      "label": "\u505C\u6B62"
+    },
+    {
+      "name": "I_resetButton",
+      "alias": "resetButton",
+      "deviceId": "gpio-station",
+      "mdkAddress": "di.gpi.bit.2",
+      "atAddress": "%I0.2",
+      "isOutput": false,
+      "label": "\u590D\u4F4D"
+    },
+    {
+      "name": "I_safetyDoor",
+      "alias": "safetyDoor",
+      "deviceId": "gpio-station",
+      "mdkAddress": "di.gpi.bit.3",
+      "atAddress": "%I0.3",
+      "isOutput": false,
+      "label": "\u5B89\u5168\u95E8"
+    },
+    {
+      "name": "I_workpiece_present",
+      "alias": "workpiece.present",
+      "deviceId": "gpio-station",
+      "mdkAddress": "di.gpi.bit.4",
+      "atAddress": "%I0.4",
+      "isOutput": false,
+      "label": "\u5DE5\u4EF6\u5230\u4F4D"
+    },
+    {
+      "name": "Q_tower_red",
+      "alias": "tower.red",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.0",
+      "atAddress": "%Q0.0",
+      "isOutput": true,
+      "label": "\u7EA2\u706F"
+    },
+    {
+      "name": "Q_tower_yellow",
+      "alias": "tower.yellow",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.1",
+      "atAddress": "%Q0.1",
+      "isOutput": true,
+      "label": "\u9EC4\u706F"
+    },
+    {
+      "name": "Q_tower_green",
+      "alias": "tower.green",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.2",
+      "atAddress": "%Q0.2",
+      "isOutput": true,
+      "label": "\u7EFF\u706F"
+    },
+    {
+      "name": "Q_buzzer",
+      "alias": "buzzer",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.3",
+      "atAddress": "%Q0.3",
+      "isOutput": true,
+      "label": "\u8702\u9E23\u5668"
+    },
+    {
+      "name": "Q_gripper",
+      "alias": "gripper",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.4",
+      "atAddress": "%Q0.4",
+      "isOutput": true,
+      "label": "\u5939\u722A"
+    },
+    {
+      "name": "Q_valve",
+      "alias": "valve",
+      "deviceId": "gpio-station",
+      "mdkAddress": "do.gpo.bit.5",
+      "atAddress": "%Q0.5",
+      "isOutput": true,
+      "label": "\u9600"
+    }
+  ],
+  "globals": [
+    {
+      "name": "machine_mode",
+      "type": "STRING[80]",
+      "sourceKey": "machine.mode",
+      "init": "\u0027AUTO\u0027"
+    },
+    {
+      "name": "machine_ready",
+      "type": "BOOL",
+      "sourceKey": "machine.ready",
+      "init": "FALSE"
+    },
+    {
+      "name": "recipe_targetCount",
+      "type": "REAL",
+      "sourceKey": "recipe.targetCount",
+      "init": "3.0"
+    },
+    {
+      "name": "recipe_doneCount",
+      "type": "REAL",
+      "sourceKey": "recipe.doneCount",
+      "init": "0.0"
+    }
+  ],
+  "nodes": [
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-start",
+      "kind": "start",
+      "step": 10
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-decl",
+      "kind": "declareVar",
+      "step": 20
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-recipe",
+      "kind": "setVar",
+      "step": 30
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-param",
+      "kind": "motion.setParam",
+      "step": 40
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-ready-off",
+      "kind": "motion.setGlobalVar",
+      "step": 50
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-state-idle",
+      "kind": "motion.setTaskVar",
+      "step": 60
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-y-on",
+      "kind": "motion.gpioWrite",
+      "step": 70
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-r-off",
+      "kind": "motion.gpioWrite",
+      "step": 80
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-g-off",
+      "kind": "motion.gpioWrite",
+      "step": 90
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-loop",
+      "kind": "while",
+      "step": 100
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-done-green",
+      "kind": "motion.gpioWrite",
+      "step": 110
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-done-state",
+      "kind": "motion.setTaskVar",
+      "step": 120
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-done-ready",
+      "kind": "motion.setGlobalVar",
+      "step": 130
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-buzz-off",
+      "kind": "op.writeIo",
+      "step": 140
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-end",
+      "kind": "end",
+      "step": 150
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-rd-start",
+      "kind": "motion.gpioRead",
+      "step": 160
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-rd-stop",
+      "kind": "motion.gpioRead",
+      "step": 170
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-rd-door",
+      "kind": "motion.gpioRead",
+      "step": 180
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-if-stop",
+      "kind": "if",
+      "step": 190
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-call-fault",
+      "kind": "call",
+      "step": 200
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-if-run",
+      "kind": "if",
+      "step": 210
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-state-run",
+      "kind": "motion.setTaskVar",
+      "step": 220
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-y-off",
+      "kind": "motion.gpioWrite",
+      "step": 230
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-ensure",
+      "kind": "motion.ensureDriver",
+      "step": 240
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-en",
+      "kind": "motion.axisEnable",
+      "step": 250
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-plat",
+      "kind": "motion.platformStart",
+      "step": 260
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-snap",
+      "kind": "motion.deviceSnapshot",
+      "step": 270
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-pick",
+      "kind": "motion.axisMoveTo",
+      "step": 280
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-d1",
+      "kind": "delay",
+      "step": 290
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-grip-on",
+      "kind": "motion.gpioWrite",
+      "step": 300
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-d2",
+      "kind": "delay",
+      "step": 310
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-place",
+      "kind": "motion.platformAxisMoveTo",
+      "step": 320
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-grip-off",
+      "kind": "motion.gpioWrite",
+      "step": 330
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-rd-wp",
+      "kind": "motion.gpioRead",
+      "step": 340
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-if-wp",
+      "kind": "if",
+      "step": 350
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-jog",
+      "kind": "motion.axisJog",
+      "step": 360
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-d4",
+      "kind": "delay",
+      "step": 370
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-stop",
+      "kind": "motion.axisStop",
+      "step": 380
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-pstop",
+      "kind": "motion.platformAxisStop",
+      "step": 390
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-inc",
+      "kind": "setVar",
+      "step": 400
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-done-cnt",
+      "kind": "motion.setGlobalVar",
+      "step": 410
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-getp",
+      "kind": "motion.getParam",
+      "step": 420
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-log",
+      "kind": "op.log",
+      "step": 430
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-valve-on",
+      "kind": "op.writeIo",
+      "step": 440
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-d3",
+      "kind": "delay",
+      "step": 450
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-valve-off",
+      "kind": "op.writeIo",
+      "step": 460
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-if-door",
+      "kind": "if",
+      "step": 470
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-door-red",
+      "kind": "motion.gpioWrite",
+      "step": 480
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-door-log",
+      "kind": "op.log",
+      "step": 490
+    },
+    {
+      "pou": "FB_StationCycle",
+      "nodeId": "n-wait",
+      "kind": "delay",
+      "step": 500
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-start",
+      "kind": "start",
+      "step": 10
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-axis-stop",
+      "kind": "motion.axisStop",
+      "step": 20
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-plat-stop",
+      "kind": "motion.platformStop",
+      "step": 30
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-paxis-stop",
+      "kind": "motion.platformAxisStop",
+      "step": 40
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-grip",
+      "kind": "motion.gpioWrite",
+      "step": 50
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-valve",
+      "kind": "op.writeIo",
+      "step": 60
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-red",
+      "kind": "motion.gpioWrite",
+      "step": 70
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-buzz",
+      "kind": "motion.gpioWrite",
+      "step": 80
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-state",
+      "kind": "motion.setTaskVar",
+      "step": 90
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-log",
+      "kind": "op.log",
+      "step": 100
+    },
+    {
+      "pou": "FB_StationCycleFaultHold",
+      "nodeId": "f-end",
+      "kind": "end",
+      "step": 110
+    }
+  ],
+  "notes": []
+}

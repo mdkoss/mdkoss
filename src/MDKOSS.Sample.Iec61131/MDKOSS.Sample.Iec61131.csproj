@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MDKOSS.Sample.Iec61131</RootNamespace>
+    <AssemblyName>MDKOSS.Sample.Iec61131</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MDKOSS.Core\MDKOSS.Core.csproj" />
+    <ProjectReference Include="..\MDKOSS.Iec61131\MDKOSS.Iec61131.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="configs\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="export\**\*">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

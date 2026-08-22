@@ -31,5 +31,7 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo |
 | `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
+| `MDKOSS.Iec61131` | Flow / 变量 / GPIO → IEC 61131-3（SCL + PLCopen XML） |
+| `MDKOSS.Sample.Iec61131` | 工位节拍示例 + 导出结果 |
 
 各宿主 / 扩展若带 `README.md`，以项目内说明为准。

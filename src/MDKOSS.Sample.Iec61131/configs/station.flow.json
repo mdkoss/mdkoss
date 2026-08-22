@@ -1,0 +1,1116 @@
+{
+  "Version": 1,
+  "Variables": [
+    {
+      "Name": "cycleCount",
+      "Type": "number",
+      "Init": "0"
+    },
+    {
+      "Name": "recipeCount",
+      "Type": "number",
+      "Init": "3"
+    },
+    {
+      "Name": "pickPos",
+      "Type": "number",
+      "Init": "10"
+    },
+    {
+      "Name": "placePos",
+      "Type": "number",
+      "Init": "50"
+    },
+    {
+      "Name": "startOk",
+      "Type": "bool",
+      "Init": "false"
+    },
+    {
+      "Name": "stopHit",
+      "Type": "bool",
+      "Init": "false"
+    },
+    {
+      "Name": "doorOk",
+      "Type": "bool",
+      "Init": "false"
+    },
+    {
+      "Name": "wpPresent",
+      "Type": "bool",
+      "Init": "false"
+    },
+    {
+      "Name": "tmp",
+      "Type": "number",
+      "Init": "0"
+    }
+  ],
+  "Functions": [
+    {
+      "Name": "main",
+      "EntryNodeId": "n-start"
+    },
+    {
+      "Name": "FaultHold",
+      "EntryNodeId": "f-start"
+    }
+  ],
+  "Nodes": [
+    {
+      "Id": "n-start",
+      "Kind": "start",
+      "X": 0,
+      "Y": 0,
+      "Props": {},
+      "Order": 0
+    },
+    {
+      "Id": "n-decl",
+      "Kind": "declareVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "name": "tmp",
+        "type": "number",
+        "init": "0"
+      },
+      "Order": 1
+    },
+    {
+      "Id": "n-recipe",
+      "Kind": "setVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "name": "recipeCount",
+        "expr": "recipe.targetCount"
+      },
+      "Order": 2
+    },
+    {
+      "Id": "n-param",
+      "Kind": "motion.setParam",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "jogVel",
+        "expr": "5"
+      },
+      "Order": 3
+    },
+    {
+      "Id": "n-ready-off",
+      "Kind": "motion.setGlobalVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "machine.ready",
+        "expr": "false"
+      },
+      "Order": 4
+    },
+    {
+      "Id": "n-state-idle",
+      "Kind": "motion.setTaskVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "state",
+        "expr": "\"idle\""
+      },
+      "Order": 5
+    },
+    {
+      "Id": "n-y-on",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.yellow",
+        "value": "true"
+      },
+      "Order": 6
+    },
+    {
+      "Id": "n-r-off",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.red",
+        "value": "false"
+      },
+      "Order": 7
+    },
+    {
+      "Id": "n-g-off",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.green",
+        "value": "false"
+      },
+      "Order": 8
+    },
+    {
+      "Id": "n-loop",
+      "Kind": "while",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "condition": "cycleCount < recipeCount"
+      },
+      "Order": 9
+    },
+    {
+      "Id": "n-done-green",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.green",
+        "value": "true"
+      },
+      "Order": 10
+    },
+    {
+      "Id": "n-done-state",
+      "Kind": "motion.setTaskVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "state",
+        "expr": "\"done\""
+      },
+      "Order": 11
+    },
+    {
+      "Id": "n-done-ready",
+      "Kind": "motion.setGlobalVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "machine.ready",
+        "expr": "true"
+      },
+      "Order": 12
+    },
+    {
+      "Id": "n-buzz-off",
+      "Kind": "op.writeIo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "buzzer",
+        "value": "false"
+      },
+      "Order": 13
+    },
+    {
+      "Id": "n-end",
+      "Kind": "end",
+      "X": 0,
+      "Y": 0,
+      "Props": {},
+      "Order": 14
+    },
+    {
+      "Id": "n-rd-start",
+      "Kind": "motion.gpioRead",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "startButton",
+        "name": "startOk"
+      },
+      "ParentId": "n-loop",
+      "Slot": "body",
+      "Order": 0
+    },
+    {
+      "Id": "n-rd-stop",
+      "Kind": "motion.gpioRead",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "stopButton",
+        "name": "stopHit"
+      },
+      "ParentId": "n-loop",
+      "Slot": "body",
+      "Order": 1
+    },
+    {
+      "Id": "n-rd-door",
+      "Kind": "motion.gpioRead",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "safetyDoor",
+        "name": "doorOk"
+      },
+      "ParentId": "n-loop",
+      "Slot": "body",
+      "Order": 2
+    },
+    {
+      "Id": "n-if-stop",
+      "Kind": "if",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "condition": "stopHit"
+      },
+      "ParentId": "n-loop",
+      "Slot": "body",
+      "Order": 3
+    },
+    {
+      "Id": "n-call-fault",
+      "Kind": "call",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "function": "FaultHold"
+      },
+      "ParentId": "n-if-stop",
+      "Slot": "then",
+      "Order": 0
+    },
+    {
+      "Id": "n-if-run",
+      "Kind": "if",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "condition": "doorOk && startOk"
+      },
+      "ParentId": "n-if-stop",
+      "Slot": "else",
+      "Order": 0
+    },
+    {
+      "Id": "n-state-run",
+      "Kind": "motion.setTaskVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "state",
+        "expr": "\"run\""
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 0
+    },
+    {
+      "Id": "n-y-off",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.yellow",
+        "value": "false"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 1
+    },
+    {
+      "Id": "n-ensure",
+      "Kind": "motion.ensureDriver",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 2
+    },
+    {
+      "Id": "n-en",
+      "Kind": "motion.axisEnable",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x",
+        "enabled": "true"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 3
+    },
+    {
+      "Id": "n-plat",
+      "Kind": "motion.platformStart",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "head-xyz"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 4
+    },
+    {
+      "Id": "n-snap",
+      "Kind": "motion.deviceSnapshot",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x",
+        "prefix": "snap"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 5
+    },
+    {
+      "Id": "n-pick",
+      "Kind": "motion.axisMoveTo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x",
+        "position": "pickPos"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 6
+    },
+    {
+      "Id": "n-d1",
+      "Kind": "delay",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "ms": "100"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 7
+    },
+    {
+      "Id": "n-grip-on",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "gripper",
+        "value": "true"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 8
+    },
+    {
+      "Id": "n-d2",
+      "Kind": "delay",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "ms": "50"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 9
+    },
+    {
+      "Id": "n-place",
+      "Kind": "motion.platformAxisMoveTo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "head-xyz",
+        "axis": "X",
+        "position": "placePos"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 10
+    },
+    {
+      "Id": "n-grip-off",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "gripper",
+        "value": "false"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 11
+    },
+    {
+      "Id": "n-rd-wp",
+      "Kind": "motion.gpioRead",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "workpiece.present",
+        "name": "wpPresent"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 12
+    },
+    {
+      "Id": "n-if-wp",
+      "Kind": "if",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "condition": "wpPresent"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 13
+    },
+    {
+      "Id": "n-jog",
+      "Kind": "motion.axisJog",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x",
+        "direction": "1",
+        "velocity": "5"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 14
+    },
+    {
+      "Id": "n-d4",
+      "Kind": "delay",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "ms": "30"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 15
+    },
+    {
+      "Id": "n-stop",
+      "Kind": "motion.axisStop",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 16
+    },
+    {
+      "Id": "n-pstop",
+      "Kind": "motion.platformAxisStop",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "head-xyz",
+        "axis": "X"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 17
+    },
+    {
+      "Id": "n-inc",
+      "Kind": "setVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "name": "cycleCount",
+        "expr": "cycleCount + 1"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 18
+    },
+    {
+      "Id": "n-done-cnt",
+      "Kind": "motion.setGlobalVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "recipe.doneCount",
+        "expr": "cycleCount"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 19
+    },
+    {
+      "Id": "n-getp",
+      "Kind": "motion.getParam",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "jogVel",
+        "name": "tmp"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 20
+    },
+    {
+      "Id": "n-log",
+      "Kind": "op.log",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "message": "\"cycle ok\""
+      },
+      "ParentId": "n-if-run",
+      "Slot": "then",
+      "Order": 21
+    },
+    {
+      "Id": "n-valve-on",
+      "Kind": "op.writeIo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "valve",
+        "value": "true"
+      },
+      "ParentId": "n-if-wp",
+      "Slot": "then",
+      "Order": 0
+    },
+    {
+      "Id": "n-d3",
+      "Kind": "delay",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "ms": "80"
+      },
+      "ParentId": "n-if-wp",
+      "Slot": "then",
+      "Order": 1
+    },
+    {
+      "Id": "n-valve-off",
+      "Kind": "op.writeIo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "valve",
+        "value": "false"
+      },
+      "ParentId": "n-if-wp",
+      "Slot": "then",
+      "Order": 2
+    },
+    {
+      "Id": "n-if-door",
+      "Kind": "if",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "condition": "!doorOk"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "else",
+      "Order": 0
+    },
+    {
+      "Id": "n-door-red",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.red",
+        "value": "true"
+      },
+      "ParentId": "n-if-door",
+      "Slot": "then",
+      "Order": 0
+    },
+    {
+      "Id": "n-door-log",
+      "Kind": "op.log",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "message": "\"safety door\""
+      },
+      "ParentId": "n-if-door",
+      "Slot": "then",
+      "Order": 1
+    },
+    {
+      "Id": "n-wait",
+      "Kind": "delay",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "ms": "50"
+      },
+      "ParentId": "n-if-run",
+      "Slot": "else",
+      "Order": 1
+    },
+    {
+      "Id": "f-start",
+      "Kind": "start",
+      "X": 0,
+      "Y": 0,
+      "Props": {},
+      "Order": 0
+    },
+    {
+      "Id": "f-axis-stop",
+      "Kind": "motion.axisStop",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "axis-x"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-plat-stop",
+      "Kind": "motion.platformStop",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "head-xyz"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-paxis-stop",
+      "Kind": "motion.platformAxisStop",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "head-xyz",
+        "axis": "X"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-grip",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "gripper",
+        "value": "false"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-valve",
+      "Kind": "op.writeIo",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "valve",
+        "value": "false"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-red",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "tower.red",
+        "value": "true"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-buzz",
+      "Kind": "motion.gpioWrite",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "deviceId": "gpio-station",
+        "alias": "buzzer",
+        "value": "true"
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-state",
+      "Kind": "motion.setTaskVar",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "key": "state",
+        "expr": "\"fault\""
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-log",
+      "Kind": "op.log",
+      "X": 0,
+      "Y": 0,
+      "Props": {
+        "message": "\"fault hold\""
+      },
+      "Order": 0
+    },
+    {
+      "Id": "f-end",
+      "Kind": "end",
+      "X": 0,
+      "Y": 0,
+      "Props": {},
+      "Order": 0
+    }
+  ],
+  "Edges": [
+    {
+      "From": "n-start",
+      "To": "n-decl",
+      "Port": "next"
+    },
+    {
+      "From": "n-decl",
+      "To": "n-recipe",
+      "Port": "next"
+    },
+    {
+      "From": "n-recipe",
+      "To": "n-param",
+      "Port": "next"
+    },
+    {
+      "From": "n-param",
+      "To": "n-ready-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-ready-off",
+      "To": "n-state-idle",
+      "Port": "next"
+    },
+    {
+      "From": "n-state-idle",
+      "To": "n-y-on",
+      "Port": "next"
+    },
+    {
+      "From": "n-y-on",
+      "To": "n-r-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-r-off",
+      "To": "n-g-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-g-off",
+      "To": "n-loop",
+      "Port": "next"
+    },
+    {
+      "From": "n-loop",
+      "To": "n-rd-start",
+      "Port": "body"
+    },
+    {
+      "From": "n-rd-start",
+      "To": "n-rd-stop",
+      "Port": "next"
+    },
+    {
+      "From": "n-rd-stop",
+      "To": "n-rd-door",
+      "Port": "next"
+    },
+    {
+      "From": "n-rd-door",
+      "To": "n-if-stop",
+      "Port": "next"
+    },
+    {
+      "From": "n-if-stop",
+      "To": "n-call-fault",
+      "Port": "true"
+    },
+    {
+      "From": "n-if-stop",
+      "To": "n-if-run",
+      "Port": "false"
+    },
+    {
+      "From": "n-call-fault",
+      "To": "n-loop",
+      "Port": "next"
+    },
+    {
+      "From": "n-if-run",
+      "To": "n-state-run",
+      "Port": "true"
+    },
+    {
+      "From": "n-if-run",
+      "To": "n-if-door",
+      "Port": "false"
+    },
+    {
+      "From": "n-state-run",
+      "To": "n-y-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-y-off",
+      "To": "n-ensure",
+      "Port": "next"
+    },
+    {
+      "From": "n-ensure",
+      "To": "n-en",
+      "Port": "next"
+    },
+    {
+      "From": "n-en",
+      "To": "n-plat",
+      "Port": "next"
+    },
+    {
+      "From": "n-plat",
+      "To": "n-snap",
+      "Port": "next"
+    },
+    {
+      "From": "n-snap",
+      "To": "n-pick",
+      "Port": "next"
+    },
+    {
+      "From": "n-pick",
+      "To": "n-d1",
+      "Port": "next"
+    },
+    {
+      "From": "n-d1",
+      "To": "n-grip-on",
+      "Port": "next"
+    },
+    {
+      "From": "n-grip-on",
+      "To": "n-d2",
+      "Port": "next"
+    },
+    {
+      "From": "n-d2",
+      "To": "n-place",
+      "Port": "next"
+    },
+    {
+      "From": "n-place",
+      "To": "n-grip-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-grip-off",
+      "To": "n-rd-wp",
+      "Port": "next"
+    },
+    {
+      "From": "n-rd-wp",
+      "To": "n-if-wp",
+      "Port": "next"
+    },
+    {
+      "From": "n-if-wp",
+      "To": "n-valve-on",
+      "Port": "true"
+    },
+    {
+      "From": "n-if-wp",
+      "To": "n-jog",
+      "Port": "false"
+    },
+    {
+      "From": "n-valve-on",
+      "To": "n-d3",
+      "Port": "next"
+    },
+    {
+      "From": "n-d3",
+      "To": "n-valve-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-valve-off",
+      "To": "n-jog",
+      "Port": "next"
+    },
+    {
+      "From": "n-jog",
+      "To": "n-d4",
+      "Port": "next"
+    },
+    {
+      "From": "n-d4",
+      "To": "n-stop",
+      "Port": "next"
+    },
+    {
+      "From": "n-stop",
+      "To": "n-pstop",
+      "Port": "next"
+    },
+    {
+      "From": "n-pstop",
+      "To": "n-inc",
+      "Port": "next"
+    },
+    {
+      "From": "n-inc",
+      "To": "n-done-cnt",
+      "Port": "next"
+    },
+    {
+      "From": "n-done-cnt",
+      "To": "n-getp",
+      "Port": "next"
+    },
+    {
+      "From": "n-getp",
+      "To": "n-log",
+      "Port": "next"
+    },
+    {
+      "From": "n-log",
+      "To": "n-loop",
+      "Port": "next"
+    },
+    {
+      "From": "n-if-door",
+      "To": "n-door-red",
+      "Port": "true"
+    },
+    {
+      "From": "n-if-door",
+      "To": "n-wait",
+      "Port": "false"
+    },
+    {
+      "From": "n-door-red",
+      "To": "n-door-log",
+      "Port": "next"
+    },
+    {
+      "From": "n-door-log",
+      "To": "n-wait",
+      "Port": "next"
+    },
+    {
+      "From": "n-wait",
+      "To": "n-loop",
+      "Port": "next"
+    },
+    {
+      "From": "n-loop",
+      "To": "n-done-green",
+      "Port": "exit"
+    },
+    {
+      "From": "n-done-green",
+      "To": "n-done-state",
+      "Port": "next"
+    },
+    {
+      "From": "n-done-state",
+      "To": "n-done-ready",
+      "Port": "next"
+    },
+    {
+      "From": "n-done-ready",
+      "To": "n-buzz-off",
+      "Port": "next"
+    },
+    {
+      "From": "n-buzz-off",
+      "To": "n-end",
+      "Port": "next"
+    },
+    {
+      "From": "f-start",
+      "To": "f-axis-stop",
+      "Port": "next"
+    },
+    {
+      "From": "f-axis-stop",
+      "To": "f-plat-stop",
+      "Port": "next"
+    },
+    {
+      "From": "f-plat-stop",
+      "To": "f-paxis-stop",
+      "Port": "next"
+    },
+    {
+      "From": "f-paxis-stop",
+      "To": "f-grip",
+      "Port": "next"
+    },
+    {
+      "From": "f-grip",
+      "To": "f-valve",
+      "Port": "next"
+    },
+    {
+      "From": "f-valve",
+      "To": "f-red",
+      "Port": "next"
+    },
+    {
+      "From": "f-red",
+      "To": "f-buzz",
+      "Port": "next"
+    },
+    {
+      "From": "f-buzz",
+      "To": "f-state",
+      "Port": "next"
+    },
+    {
+      "From": "f-state",
+      "To": "f-log",
+      "Port": "next"
+    },
+    {
+      "From": "f-log",
+      "To": "f-end",
+      "Port": "next"
+    }
+  ]
+}

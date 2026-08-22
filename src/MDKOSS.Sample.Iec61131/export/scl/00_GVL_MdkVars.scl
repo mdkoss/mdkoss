@@ -1,0 +1,18 @@
+(* Global vars + IO image for '工位节拍示例（IEC 导出）' *)
+VAR_GLOBAL
+    I_startButton AT %I0.0 : BOOL; (* I gpio-station.startButton 启动 *)
+    I_stopButton AT %I0.1 : BOOL; (* I gpio-station.stopButton 停止 *)
+    I_resetButton AT %I0.2 : BOOL; (* I gpio-station.resetButton 复位 *)
+    I_safetyDoor AT %I0.3 : BOOL; (* I gpio-station.safetyDoor 安全门 *)
+    I_workpiece_present AT %I0.4 : BOOL; (* I gpio-station.workpiece.present 工件到位 *)
+    Q_tower_red AT %Q0.0 : BOOL; (* Q gpio-station.tower.red 红灯 *)
+    Q_tower_yellow AT %Q0.1 : BOOL; (* Q gpio-station.tower.yellow 黄灯 *)
+    Q_tower_green AT %Q0.2 : BOOL; (* Q gpio-station.tower.green 绿灯 *)
+    Q_buzzer AT %Q0.3 : BOOL; (* Q gpio-station.buzzer 蜂鸣器 *)
+    Q_gripper AT %Q0.4 : BOOL; (* Q gpio-station.gripper 夹爪 *)
+    Q_valve AT %Q0.5 : BOOL; (* Q gpio-station.valve 阀 *)
+    machine_mode : STRING[80] := 'AUTO'; (* machine.mode *)
+    machine_ready : BOOL := FALSE; (* machine.ready *)
+    recipe_targetCount : REAL := 3.0; (* recipe.targetCount *)
+    recipe_doneCount : REAL := 0.0; (* recipe.doneCount *)
+END_VAR

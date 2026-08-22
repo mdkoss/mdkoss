@@ -33,6 +33,8 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
 | `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo 宿主 |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
+| `MDKOSS.Iec61131` | Flow 任务 / 变量 / GPIO 导出为 IEC 61131-3 |
+| `MDKOSS.Sample.Iec61131` | 工位节拍 IEC 导出示例 |
 
 Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视觉/相机，`recipe`→配方（参数组；排单指生产工单），`driver`→`IDriver`/板卡，`other`→先搜再改。
 

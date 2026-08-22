@@ -1,0 +1,96 @@
+{
+  "projectName": "工位节拍示例（IEC 导出）",
+  "cycleMs": 20,
+  "monitoringPrefix": "http://127.0.0.1:5090/",
+  "drivers": [
+    {
+      "id": "drv-motion",
+      "name": "",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "note": "运动仿真（导出后由 PLC 轴 FB 承接）"
+      }
+    },
+    {
+      "id": "drv-io",
+      "name": "",
+      "type": "s7",
+      "enabled": true,
+      "parameters": {
+        "simulate": "true",
+        "cpu": "S71200",
+        "note": "IO 按 S7 映像区映射"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "station-cycle",
+      "type": "flow",
+      "driverId": "",
+      "intervalMs": 20,
+      "parameters": {
+        "loop": "false",
+        "flowFile": "station.flow.json",
+        "note": "工位节拍：等启动 → 取放 → 计件"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio-station",
+      "name": "工位 IO",
+      "type": "gpio",
+      "driverId": "",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "drv-io|di.gpi.bit.0|启动",
+        "in.stopButton": "drv-io|di.gpi.bit.1|停止",
+        "in.resetButton": "drv-io|di.gpi.bit.2|复位",
+        "in.safetyDoor": "drv-io|di.gpi.bit.3|安全门",
+        "in.workpiece.present": "drv-io|di.gpi.bit.4|工件到位",
+        "out.tower.red": "drv-io|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "drv-io|do.gpo.bit.1|黄灯",
+        "out.tower.green": "drv-io|do.gpo.bit.2|绿灯",
+        "out.buzzer": "drv-io|do.gpo.bit.3|蜂鸣器",
+        "out.gripper": "drv-io|do.gpo.bit.4|夹爪",
+        "out.valve": "drv-io|do.gpo.bit.5|阀"
+      }
+    }
+  ],
+  "axes": [
+    {
+      "id": "axis-x",
+      "name": "X",
+      "type": "linear",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {
+        "axis": "0",
+        "unit": "mm",
+        "kind": "linear"
+      }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "head-xyz",
+      "name": "工位平台",
+      "type": "xyz",
+      "driverId": "drv-motion",
+      "enabled": true,
+      "parameters": {}
+    }
+  ],
+  "vars": {
+    "machine.mode": "AUTO",
+    "machine.ready": false,
+    "recipe.targetCount": 3,
+    "recipe.doneCount": 0
+  },
+  "recipeVarKeys": [],
+  "recipes": [],
+  "visions": [],
+  "alarms": []
+}

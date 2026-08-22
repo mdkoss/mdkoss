@@ -1,0 +1,85 @@
+(* Flow task 'station-cycle.FaultHold' — step sequencer, cycle ~20ms *)
+FUNCTION_BLOCK FB_StationCycleFaultHold
+VAR_INPUT
+    Execute : BOOL;
+END_VAR
+VAR_OUTPUT
+    Done : BOOL;
+    Busy : BOOL;
+    LastLog : STRING[80];
+    LastError : STRING[80];
+    iStepOut : DINT;
+END_VAR
+VAR
+    iStep : DINT := 10;
+    cycleCount : REAL := 0.0; (* flow variable *)
+    recipeCount : REAL := 3.0; (* flow variable *)
+    pickPos : REAL := 10.0; (* flow variable *)
+    placePos : REAL := 50.0; (* flow variable *)
+    startOk : BOOL := FALSE; (* flow variable *)
+    stopHit : BOOL := FALSE; (* flow variable *)
+    doorOk : BOOL := FALSE; (* flow variable *)
+    wpPresent : BOOL := FALSE; (* flow variable *)
+    tmp : REAL := 0.0; (* flow variable *)
+    taskvar_state : STRING[80] := ''; (* taskVar *)
+    fb_f_axis_stop : FB_AxisStop; (* motion.axisStop f-axis-stop *)
+    fb_f_plat_stop : FB_PlatformSetMotion; (* motion.platformStop f-plat-stop *)
+    fb_f_paxis_stop : FB_PlatformAxisStop; (* motion.platformAxisStop f-paxis-stop *)
+END_VAR
+
+IF NOT Execute THEN
+    Done := FALSE;
+    Busy := FALSE;
+    iStep := 10;
+    RETURN;
+END_IF;
+
+Busy := NOT Done;
+CASE iStep OF
+    10: (* start f-start *)
+        iStep := 20;
+    20: (* motion.axisStop f-axis-stop *)
+        fb_f_axis_stop(Execute := TRUE, DeviceId := 'axis-x');
+        IF fb_f_axis_stop.Done THEN
+            fb_f_axis_stop(Execute := FALSE, DeviceId := 'axis-x');
+            iStep := 30;
+        END_IF;
+    30: (* motion.platformStop f-plat-stop *)
+        fb_f_plat_stop(Execute := TRUE, DeviceId := 'head-xyz', Enabled := FALSE);
+        IF fb_f_plat_stop.Done THEN
+            fb_f_plat_stop(Execute := FALSE, DeviceId := 'head-xyz', Enabled := FALSE);
+            iStep := 40;
+        END_IF;
+    40: (* motion.platformAxisStop f-paxis-stop *)
+        fb_f_paxis_stop(Execute := TRUE, DeviceId := 'head-xyz', Axis := 'X');
+        IF fb_f_paxis_stop.Done THEN
+            fb_f_paxis_stop(Execute := FALSE, DeviceId := 'head-xyz', Axis := 'X');
+            iStep := 50;
+        END_IF;
+    50: (* motion.gpioWrite f-grip *)
+        Q_gripper := FALSE;
+        iStep := 60;
+    60: (* op.writeIo f-valve *)
+        Q_valve := FALSE;
+        iStep := 70;
+    70: (* motion.gpioWrite f-red *)
+        Q_tower_red := TRUE;
+        iStep := 80;
+    80: (* motion.gpioWrite f-buzz *)
+        Q_buzzer := TRUE;
+        iStep := 90;
+    90: (* motion.setTaskVar f-state *)
+        taskvar_state := 'fault';
+        iStep := 100;
+    100: (* op.log f-log *)
+        LastLog := 'fault hold';
+        iStep := 110;
+    110: (* end *)
+        Done := TRUE;
+        Busy := FALSE;
+    ELSE
+        LastError := 'bad_step';
+        Done := TRUE;
+END_CASE;
+iStepOut := iStep;
+END_FUNCTION_BLOCK

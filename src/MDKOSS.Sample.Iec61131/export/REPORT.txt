@@ -1,0 +1,13 @@
+MDKOSS → IEC 61131 export: 工位节拍示例（IEC 导出）
+Cycle: 20 ms
+POUs: 3
+IO points: 11
+Globals: 4
+
+Notes:
+  (none)
+
+POUs:
+  FunctionBlock FB_StationCycle  source=station-cycle  steps=50  cyclic=True loop=False
+  FunctionBlock FB_StationCycleFaultHold  source=station-cycle.FaultHold  steps=11  cyclic=False loop=False
+  Program PROGRAM_Main  source=Main  steps=1  cyclic=True loop=False
