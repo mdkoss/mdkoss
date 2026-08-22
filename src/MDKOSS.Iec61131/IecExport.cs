@@ -76,11 +76,17 @@ public static class IecExport
         };
     }
 
+    public static IecExportResult FromSetting(MdkSetting setting, string outputDirectory, string? settingDirectory = null)
+    {
+        ArgumentNullException.ThrowIfNull(setting);
+        var project = IecProjectBuilder.FromSetting(setting, settingDirectory);
+        return Write(project, outputDirectory);
+    }
+
     public static IecExportResult FromSettingFile(string settingPath, string outputDirectory)
     {
         var setting = MdkSetting.Load(settingPath);
-        var project = IecProjectBuilder.FromSetting(setting, Path.GetDirectoryName(Path.GetFullPath(settingPath)));
-        return Write(project, outputDirectory);
+        return FromSetting(setting, outputDirectory, Path.GetDirectoryName(Path.GetFullPath(settingPath)));
     }
 
     private static string WriteReport(IecProject project)

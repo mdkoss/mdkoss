@@ -13,8 +13,8 @@ public static class PlcOpenXmlWriter
         var sb = new StringBuilder();
         sb.AppendLine(@"<?xml version=""1.0"" encoding=""utf-8""?>");
         sb.AppendLine(@"<project xmlns=""http://www.plcopen.org/xml/tc6_0201"">");
-        sb.AppendLine(@"  <fileHeader companyName=""MDKOSS"" productName=""MDKOSS.Iec61131"" productVersion=""1.0"" creationDateTime="""
-                     + DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss", CultureInfo.InvariantCulture) + @"""/>");
+        // Fixed timestamp keeps checked-in sample exports stable across regenerations.
+        sb.AppendLine(@"  <fileHeader companyName=""MDKOSS"" productName=""MDKOSS.Iec61131"" productVersion=""1.0"" creationDateTime=""2000-01-01T00:00:00""/>");
         sb.AppendLine($@"  <contentHeader name=""{Xml(project.Name)}"">");
         sb.AppendLine(@"    <coordinateInfo>");
         sb.AppendLine(@"      <fbd><scaling x=""1"" y=""1""/></fbd>");

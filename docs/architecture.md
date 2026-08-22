@@ -78,6 +78,8 @@ MDKOSS.sln
 ├── src/MDKOSS.Sample.DieBonder/ # 半导体贴片机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Sample.Dispenser/ # 三轴点胶机 Demo 宿主（嵌入 CEF）
 ├── src/MDKOSS.Sample.Pnp/         # 拾取放置 Demo 宿主（嵌入 CEF）
+├── src/MDKOSS.Iec61131/           # Flow → IEC 61131-3 导出
+├── src/MDKOSS.Sample.Iec61131/    # 工位节拍导出示例
 ├── src/MDKOSS.Cef/            # CefSharp 界面库 + views
 ├── src/MDKOSS.Config.Wpf/     # WPF 配置界面可执行入口
 ├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）

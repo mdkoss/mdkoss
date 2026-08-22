@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project xmlns="http://www.plcopen.org/xml/tc6_0201">
-  <fileHeader companyName="MDKOSS" productName="MDKOSS.Iec61131" productVersion="1.0" creationDateTime="2026-08-21T15:05:53"/>
+  <fileHeader companyName="MDKOSS" productName="MDKOSS.Iec61131" productVersion="1.0" creationDateTime="2000-01-01T00:00:00"/>
   <contentHeader name="工位节拍示例（IEC 导出）">
     <coordinateInfo>
       <fbd><scaling x="1" y="1"/></fbd>

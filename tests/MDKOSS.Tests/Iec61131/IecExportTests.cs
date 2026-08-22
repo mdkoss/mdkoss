@@ -2,7 +2,7 @@ using MDKOSS.Core;
 using MDKOSS.Core.Flow;
 using MDKOSS.Iec61131;
 
-namespace MDKOSS.Tests.Iec61131;
+namespace MDKOSS.Tests.PlcIec;
 
 public sealed class IecExprTests
 {
