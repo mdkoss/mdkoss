@@ -1,0 +1,50 @@
+{
+  "projectName": "Modbus IDriver Holding 测试",
+  "startPage": "indexModbus.html",
+  "monitoringPrefix": "http://127.0.0.1:5090/",
+  "cycleMs": 50,
+  "databasePath": "data/mdk.db",
+  "drivers": [
+    {
+      "id": "drv-modbus",
+      "name": "Modbus TCP Master",
+      "type": "modbus-tcp",
+      "enabled": true,
+      "parameters": {
+        "simulate": "true",
+        "unitId": "1",
+        "diAddress": "0",
+        "doAddress": "0",
+        "diArea": "discrete",
+        "doArea": "coils",
+        "ioBitBase": "0",
+        "note": "无现场 Slave 时走内存仿真；接真机时改 host/port 并关闭 simulate"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio-modbus",
+      "name": "Modbus GPIO 映射",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.hr0.bit0": "drv-modbus|di.gpi.bit.0|HR 映射 DI0",
+        "out.coil0": "drv-modbus|do.gpo.bit.0|Coil0"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "id": "poll-modbus",
+      "name": "Poll Modbus Driver",
+      "type": "pollDriver",
+      "enabled": true,
+      "driverId": "drv-modbus",
+      "intervalMs": 200,
+      "parameters": {}
+    }
+  ],
+  "vars": {},
+  "recipes": []
+}
