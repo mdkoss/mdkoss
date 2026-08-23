@@ -3,77 +3,106 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MDKOSS Modbus IDriver — Holding 测试</title>
+  <title>MDKOSS Modbus — 寄存器组态</title>
   <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
   <style>
-    .hr-toolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 12px; }
-    .hr-toolbar .form-group { margin: 0; min-width: 110px; }
-    .hr-toolbar button { white-space: nowrap; }
-    .hr-meta { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
-    .hr-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-      gap: 8px;
-      max-height: calc(100vh - 260px);
-      overflow: auto;
-      padding: 2px;
-    }
-    .hr-cell {
+    .mb-toolbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; margin-bottom: 10px; }
+    .mb-toolbar .form-group { margin: 0; min-width: 110px; }
+    .mb-meta { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    .mb-groups { display: flex; flex-direction: column; gap: 12px; }
+    .mb-group {
       border: 1px solid var(--line);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--panel);
-      padding: 8px 10px;
-      display: grid;
-      gap: 6px;
+      min-height: 88px;
     }
-    .hr-cell.dirty { border-color: rgba(255, 204, 102, .55); }
-    .hr-addr {
-      font-size: 11px;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
+    .mb-group h3 {
+      margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600;
+      border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; gap: 8px;
     }
-    .hr-cell input {
-      font-family: Consolas, "Cascadia Mono", monospace;
-      font-size: 13px;
-      padding: 6px 8px;
+    .mb-group h3 span { color: var(--muted); font-weight: 400; font-size: 11px; }
+    .mb-canvas {
+      position: relative; min-height: 72px; padding: 10px;
+      display: flex; flex-wrap: wrap; gap: 8px;
     }
-    .hr-actions { display: flex; gap: 6px; }
-    .hr-actions button { flex: 1; padding: 4px 6px; font-size: 12px; }
+    .mb-widget {
+      border: 1px solid var(--line); border-radius: 8px;
+      background: var(--bg, #0f1728); padding: 8px 10px; width: 240px;
+      display: grid; gap: 4px;
+    }
+    .mb-widget .nm { font-size: 12px; font-weight: 600; }
+    .mb-widget .sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .mb-widget .row { display: flex; gap: 6px; align-items: center; }
+    .mb-widget .row input { flex: 1; min-width: 0; font-size: 12px; }
+    .mb-lamp {
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #334; border: 1px solid #556; flex: 0 0 auto;
+    }
+    .mb-lamp.on { background: #3dd68c; box-shadow: 0 0 8px #3dd68c88; }
+    .mb-menu {
+      position: fixed; z-index: 40; min-width: 220px; max-height: 70vh; overflow: auto;
+      background: #1b2436; border: 1px solid #3a4a66; border-radius: 8px;
+      box-shadow: 0 8px 24px #0008; padding: 6px 0; display: none;
+    }
+    .mb-menu .cap { padding: 4px 12px; font-size: 11px; color: #8aa; }
+    .mb-menu button {
+      display: block; width: 100%; text-align: left; background: none; border: 0;
+      color: #dce7ff; padding: 6px 12px; font-size: 12px; cursor: pointer;
+    }
+    .mb-menu button:hover { background: #2a3a58; }
+    .mb-picker {
+      position: fixed; inset: 0; background: #0006; z-index: 50; display: none;
+      align-items: center; justify-content: center;
+    }
+    .mb-picker .box {
+      background: #152033; border: 1px solid #3a4a66; border-radius: 12px;
+      width: min(720px, 92vw); max-height: 80vh; overflow: auto; padding: 16px;
+    }
+    .mb-picker .list { display: grid; gap: 4px; margin-top: 8px; }
+    .mb-picker .item {
+      display: flex; justify-content: space-between; gap: 8px;
+      padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    }
+    .mb-picker .item:hover { background: #24344f; }
   </style>
 </head>
 <body data-tool-group="debug" data-tool-page="indexModbus">
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">Modbus IDriver · Holding Registers</div>
-        <div class="sub">默认 200 个字（holding.0 … holding.199）· GET/POST <code>/api/modbusdrv</code> · 仿真驱动可无 Slave 联调</div>
+        <div class="title">Modbus 寄存器组态</div>
+        <div class="sub">分组显示 plc_registers · 读写 REG / REGI / REGF / BIT · 右键添加控件 · 布局另存为本地配置</div>
       </div>
       <a class="link-btn" href="/debug_driver.html">驱动 IO 位格 →</a>
     </div>
-
     <div class="card">
-      <div class="hr-toolbar">
+      <div class="mb-toolbar">
         <div class="form-group">
           <label for="driverId">Driver ID</label>
           <input id="driverId" value="drv-modbus" />
         </div>
-        <div class="form-group">
-          <label for="startAddr">起始地址</label>
-          <input id="startAddr" type="number" min="0" max="65535" value="0" />
-        </div>
-        <div class="form-group">
-          <label for="count">数量</label>
-          <input id="count" type="number" min="1" max="2000" value="200" />
-        </div>
         <button type="button" class="primary" id="btnRefresh">刷新</button>
-        <button type="button" id="btnFill">写入测试图案</button>
-        <button type="button" id="btnAuto">自动刷新</button>
+        <button type="button" id="btnAuto">停止自动</button>
+        <button type="button" id="btnSave">保存布局</button>
+        <button type="button" id="btnReset">恢复默认布局</button>
       </div>
-      <p class="hr-meta" id="meta">—</p>
-      <div class="hr-grid" id="grid"></div>
+      <p class="mb-meta" id="meta">—</p>
+      <div class="mb-groups" id="groups"></div>
       <div class="msg" id="msg"></div>
-      <div class="footer">上次刷新：<span id="lastUpdate">-</span></div>
+      <div class="footer">上次刷新：<span id="lastUpdate">-</span> · 间隔 100ms</div>
+    </div>
+  </div>
+  <div class="mb-menu" id="menu"></div>
+  <div class="mb-picker" id="picker">
+    <div class="box">
+      <div class="title" style="font-size:16px">添加寄存器控件</div>
+      <input id="pickerFilter" placeholder="筛选名称 / 地址 / 类型" style="width:100%;margin-top:8px" />
+      <div class="list" id="pickerList"></div>
+      <div style="margin-top:10px;text-align:right">
+        <button type="button" id="pickerClose">关闭</button>
+      </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
@@ -81,153 +110,299 @@
   <script>
     const { esc, fetchJson } = MdkTool;
     const driverIdEl = document.getElementById("driverId");
-    const startEl = document.getElementById("startAddr");
-    const countEl = document.getElementById("count");
-    const grid = document.getElementById("grid");
-    const meta = document.getElementById("meta");
-    const msg = document.getElementById("msg");
-    const lastUpdate = document.getElementById("lastUpdate");
+    const groupsEl = document.getElementById("groups");
+    const metaEl = document.getElementById("meta");
+    const msgEl = document.getElementById("msg");
+    const lastUpdateEl = document.getElementById("lastUpdate");
     const btnAuto = document.getElementById("btnAuto");
+    const menuEl = document.getElementById("menu");
+    const pickerEl = document.getElementById("picker");
+    const pickerListEl = document.getElementById("pickerList");
+    const pickerFilterEl = document.getElementById("pickerFilter");
 
+    let catalog = { points: [], groups: [] };
+    let layout = { version: 1, refreshMs: 100, widgets: [] };
+    let values = {};
     let autoTimer = null;
-    let lastValues = [];
+    let busy = false;
+    let addGroup = "";
+    let menuWidgetId = "";
 
-    function params() {
-      return {
-        driverId: (driverIdEl.value || "drv-modbus").trim(),
-        start: Number(startEl.value) || 0,
-        count: Math.max(1, Math.min(2000, Number(countEl.value) || 200)),
-      };
-    }
-
+    function driverId() { return (driverIdEl.value || "drv-modbus").trim(); }
     function setMsg(text, isErr) {
-      msg.textContent = text || "";
-      msg.classList.toggle("err", !!isErr);
+      msgEl.textContent = text || "";
+      msgEl.classList.toggle("err", !!isErr);
+    }
+    function pointById(id) { return (catalog.points || []).find((p) => p.id === id) || null; }
+    function widgetsOf(group) {
+      return (layout.widgets || []).filter((w) => (w.group || "") === group);
     }
 
-    function render(data) {
-      const start = data.start | 0;
-      const values = Array.isArray(data.values) ? data.values : [];
-      lastValues = values.slice();
-      meta.textContent =
-        `${data.driverId || "—"} · ${data.driverName || "—"} · ` +
-        `${data.connected ? "在线" : "离线"} · ` +
-        `ok ${data.okCount}/${values.length} · holding.${start}…holding.${start + Math.max(0, values.length - 1)}`;
-
-      grid.innerHTML = values.map((v, i) => {
-        const addr = start + i;
-        const hex = "0x" + Number(v).toString(16).toUpperCase().padStart(4, "0");
-        return `<div class="hr-cell" data-addr="${addr}">
-          <div class="hr-addr">holding.${addr}</div>
-          <input data-role="value" value="${esc(String(v))}" title="${esc(hex)}" />
-          <div class="hr-actions">
-            <button type="button" data-role="write">写入</button>
-          </div>
-        </div>`;
+    function render() {
+      const groupNames = (catalog.groups && catalog.groups.length)
+        ? catalog.groups.slice()
+        : [...new Set((catalog.points || []).map((p) => p.group).filter(Boolean))];
+      if (!groupNames.length) {
+        groupsEl.innerHTML = '<p class="mb-meta">未找到 plc_registers.js / plc_registers.json。请放到 configs/（本地文件，不入库）。</p>';
+        return;
+      }
+      groupsEl.innerHTML = groupNames.map((g) => {
+        const ws = widgetsOf(g);
+        const cards = ws.map((w) => {
+          const p = pointById(w.pointId);
+          if (!p) return "";
+          const raw = values[p.id];
+          const writable = p.writable !== false && p.type !== "di";
+          if (p.type === "bit") {
+            const on = !!raw;
+            return `<div class="mb-widget" data-wid="${esc(w.id)}" data-pid="${esc(p.id)}">
+              <div class="nm">${esc(p.label || p.name)}</div>
+              <div class="sub">${esc(p.type)} · holding.${p.address}.${p.bit}</div>
+              <div class="row">
+                <span class="mb-lamp ${on ? "on" : ""}"></span>
+                <span>${on ? "ON" : "OFF"}</span>
+                ${writable ? '<button type="button" data-role="toggle">翻转</button>' : ""}
+              </div>
+            </div>`;
+          }
+          return `<div class="mb-widget" data-wid="${esc(w.id)}" data-pid="${esc(p.id)}">
+            <div class="nm">${esc(p.label || p.name)}</div>
+            <div class="sub">${esc((p.type || "reg").toUpperCase())} · holding.${p.address}${p.wordCount > 1 ? "+" + (p.wordCount - 1) : ""} · ${esc(p.plcAddress || "")}</div>
+            <div class="row">
+              <input data-role="val" value="${esc(raw == null ? "" : String(raw))}" ${writable ? "" : "readonly"} />
+              ${writable ? '<button type="button" data-role="write">写入</button>' : ""}
+            </div>
+            <div class="sub">${esc(p.description || "")}</div>
+          </div>`;
+        }).join("");
+        return `<section class="mb-group" data-group="${esc(g)}">
+          <h3>${esc(g)}<span>${ws.length} 控件 · 右键添加</span></h3>
+          <div class="mb-canvas">${cards || '<div class="sub">右键添加寄存器控件</div>'}</div>
+        </section>`;
       }).join("");
 
-      grid.querySelectorAll("button[data-role=write]").forEach((btn) => {
-        btn.addEventListener("click", onWriteClick);
-      });
-      grid.querySelectorAll("input[data-role=value]").forEach((inp) => {
-        inp.addEventListener("input", () => {
-          const cell = inp.closest(".hr-cell");
-          const addr = Number(cell.getAttribute("data-addr"));
-          const idx = addr - start;
-          const orig = lastValues[idx];
-          cell.classList.toggle("dirty", Number(inp.value) !== Number(orig));
-        });
+      groupsEl.querySelectorAll("button[data-role=write]").forEach((b) => b.addEventListener("click", onWrite));
+      groupsEl.querySelectorAll("button[data-role=toggle]").forEach((b) => b.addEventListener("click", onToggle));
+      groupsEl.querySelectorAll("input[data-role=val]").forEach((inp) => {
         inp.addEventListener("keydown", (ev) => {
           if (ev.key === "Enter") {
             ev.preventDefault();
-            inp.closest(".hr-cell").querySelector("button[data-role=write]").click();
+            const btn = inp.closest(".mb-widget") && inp.closest(".mb-widget").querySelector("button[data-role=write]");
+            if (btn) btn.click();
           }
         });
       });
     }
 
-    async function refresh() {
-      const p = params();
-      const q = new URLSearchParams({
-        driverId: p.driverId,
-        start: String(p.start),
-        count: String(p.count),
-      });
-      setMsg("读取中…");
-      try {
-        const data = await fetchJson("/api/modbusdrv/holding?" + q.toString());
-        if (!data || data.success === false) {
-          throw new Error((data && data.error) || "read_failed");
+    function patchValues(data) {
+      const map = {};
+      (data.values || []).forEach((v) => { map[v.id] = v.ok ? v.value : null; });
+      values = map;
+      groupsEl.querySelectorAll(".mb-widget").forEach((el) => {
+        const p = pointById(el.getAttribute("data-pid"));
+        if (!p) return;
+        const raw = values[p.id];
+        if (p.type === "bit") {
+          const lamp = el.querySelector(".mb-lamp");
+          if (lamp) lamp.classList.toggle("on", !!raw);
+          const lab = el.querySelector(".row span:nth-child(2)");
+          if (lab) lab.textContent = raw ? "ON" : "OFF";
+          return;
         }
-        render(data);
-        setMsg(`已读 ${data.okCount}/${(data.values || []).length} 个寄存器`);
-        lastUpdate.textContent = new Date().toLocaleTimeString();
+        const inp = el.querySelector("input[data-role=val]");
+        if (inp && document.activeElement !== inp) inp.value = raw == null ? "" : String(raw);
+      });
+    }
+
+    async function loadCatalog() {
+      const data = await fetchJson("/api/modbusdrv/catalog");
+      catalog = data || { points: [], groups: [] };
+    }
+    async function loadLayout() {
+      const data = await fetchJson("/api/modbusdrv/layout");
+      layout = (data && data.layout) || { version: 1, refreshMs: 100, widgets: [] };
+      if (!Array.isArray(layout.widgets)) layout.widgets = [];
+    }
+
+    async function refresh() {
+      if (busy) return;
+      busy = true;
+      try {
+        const q = new URLSearchParams({ driverId: driverId() });
+        const data = await fetchJson("/api/modbusdrv/values?" + q.toString());
+        if (!data || data.success === false) throw new Error((data && data.error) || "read_failed");
+        if (!groupsEl.querySelector(".mb-widget") && (layout.widgets || []).length) render();
+        patchValues(data);
+        metaEl.textContent =
+          (data.driverId || "—") + " · " + (data.driverName || "—") + " · " +
+          (data.connected ? "在线" : "离线") + " · 点 " + ((catalog.points || []).length) +
+          " · 控件 " + ((layout.widgets || []).length) + " · 100ms";
+        lastUpdateEl.textContent = new Date().toLocaleTimeString();
+        setMsg("");
       } catch (e) {
         setMsg("读取失败: " + (e && e.message ? e.message : String(e)), true);
+      } finally {
+        busy = false;
       }
     }
 
-    async function onWriteClick(ev) {
-      const cell = ev.currentTarget.closest(".hr-cell");
-      const addr = Number(cell.getAttribute("data-addr"));
-      const input = cell.querySelector("input[data-role=value]");
-      const n = Number(input.value);
-      if (!Number.isFinite(n) || n < 0 || n > 65535) {
-        setMsg("值须为 0..65535", true);
-        return;
-      }
-      const p = params();
-      setMsg(`写入 holding.${addr}…`);
+    async function writePoint(id, value) {
+      setMsg("写入 " + id + "…");
       try {
-        const res = await fetch("/api/modbusdrv/write", {
+        const res = await fetch("/api/modbusdrv/writepoint", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driverId: p.driverId, address: addr, value: n | 0 }),
+          body: JSON.stringify({ driverId: driverId(), id, value }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
-        setMsg(`已写 holding.${addr} = ${n | 0}`);
-        cell.classList.remove("dirty");
+        setMsg("已写 " + id);
         await refresh();
       } catch (e) {
         setMsg("写入失败: " + (e && e.message ? e.message : String(e)), true);
       }
     }
+    function onWrite(ev) {
+      const cell = ev.currentTarget.closest(".mb-widget");
+      const inp = cell.querySelector("input[data-role=val]");
+      writePoint(cell.getAttribute("data-pid"), inp.value);
+    }
+    function onToggle(ev) {
+      const cell = ev.currentTarget.closest(".mb-widget");
+      const id = cell.getAttribute("data-pid");
+      writePoint(id, !values[id]);
+    }
 
-    async function fillPattern() {
-      const p = params();
-      setMsg("写入测试图案…");
+    async function saveLayout() {
       try {
-        const res = await fetch("/api/modbusdrv/fill", {
+        const res = await fetch("/api/modbusdrv/layout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driverId: p.driverId, start: p.start, count: p.count }),
+          body: JSON.stringify(layout),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
-        setMsg(`图案写入 ${data.written}/${data.count}`);
-        await refresh();
+        setMsg("布局已保存（本地 configs/modbus.layout.json，不入库）");
       } catch (e) {
-        setMsg("填充失败: " + (e && e.message ? e.message : String(e)), true);
+        setMsg("保存失败: " + (e && e.message ? e.message : String(e)), true);
       }
     }
 
-    function toggleAuto() {
-      if (autoTimer) {
-        clearInterval(autoTimer);
-        autoTimer = null;
-        btnAuto.textContent = "自动刷新";
-        return;
-      }
+    function addWidget(point) {
+      if (!point) return;
+      layout.widgets.push({
+        id: "w-" + Math.random().toString(16).slice(2, 10),
+        pointId: point.id,
+        kind: point.type,
+        group: point.group || addGroup || "",
+        x: 0, y: 0, w: 240, h: 84,
+      });
+      render();
+      hideMenu();
+      hidePicker();
+    }
+    function removeWidget(wid) {
+      layout.widgets = (layout.widgets || []).filter((w) => w.id !== wid);
+      render();
+      hideMenu();
+    }
+
+    function hideMenu() { menuEl.style.display = "none"; }
+    function showMenu(x, y, html) {
+      menuEl.innerHTML = html;
+      menuEl.style.display = "block";
+      menuEl.style.left = Math.min(x, window.innerWidth - 240) + "px";
+      menuEl.style.top = Math.min(y, window.innerHeight - 80) + "px";
+      menuEl.querySelectorAll("[data-act]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const act = b.getAttribute("data-act");
+          if (act === "add") openPicker(b.getAttribute("data-group") || addGroup);
+          if (act === "del" && menuWidgetId) removeWidget(menuWidgetId);
+          if (act === "save") { hideMenu(); saveLayout(); }
+        });
+      });
+    }
+
+    function hidePicker() { pickerEl.style.display = "none"; }
+    function openPicker(group) {
+      addGroup = group || "";
+      hideMenu();
+      pickerEl.style.display = "flex";
+      pickerFilterEl.value = "";
+      drawPicker();
+      pickerFilterEl.focus();
+    }
+    function drawPicker() {
+      const q = (pickerFilterEl.value || "").toLowerCase();
+      const items = (catalog.points || []).filter((p) => {
+        if (p.isContinuation) return false;
+        if (addGroup && p.group !== addGroup) return false;
+        if (!q) return true;
+        return [p.id, p.name, p.label, p.type, p.addressHex, p.description].join(" ").toLowerCase().includes(q);
+      });
+      pickerListEl.innerHTML = items.map((p) =>
+        `<div class="item" data-id="${esc(p.id)}">
+          <span>${esc(p.label || p.name)} <small>${esc(p.type)} holding.${p.address}${p.bit != null ? "." + p.bit : ""}</small></span>
+          <span>${esc(p.group || "")}</span>
+        </div>`
+      ).join("") || '<div class="sub">没有可添加的点</div>';
+      pickerListEl.querySelectorAll(".item").forEach((el) => {
+        el.addEventListener("click", () => addWidget(pointById(el.getAttribute("data-id"))));
+      });
+    }
+
+    groupsEl.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      const widget = ev.target.closest(".mb-widget");
+      const group = ev.target.closest(".mb-group");
+      addGroup = group ? (group.getAttribute("data-group") || "") : "";
+      menuWidgetId = widget ? (widget.getAttribute("data-wid") || "") : "";
+      const html = widget
+        ? `<div class="cap">控件</div>
+           <button type="button" data-act="del">删除此控件</button>
+           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加寄存器控件…</button>
+           <button type="button" data-act="save">保存布局</button>`
+        : `<div class="cap">${esc(addGroup || "画布")}</div>
+           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加寄存器控件…</button>
+           <button type="button" data-act="save">保存布局</button>`;
+      showMenu(ev.clientX, ev.clientY, html);
+    });
+    document.addEventListener("click", (ev) => { if (!menuEl.contains(ev.target)) hideMenu(); });
+    pickerFilterEl.addEventListener("input", drawPicker);
+    document.getElementById("pickerClose").addEventListener("click", hidePicker);
+
+    function startAuto() {
+      if (autoTimer) clearInterval(autoTimer);
+      autoTimer = setInterval(refresh, 100);
       btnAuto.textContent = "停止自动";
-      autoTimer = setInterval(refresh, 1000);
-      refresh();
     }
-
+    function stopAuto() {
+      if (autoTimer) clearInterval(autoTimer);
+      autoTimer = null;
+      btnAuto.textContent = "自动刷新";
+    }
+    btnAuto.addEventListener("click", () => { if (autoTimer) stopAuto(); else startAuto(); });
     document.getElementById("btnRefresh").addEventListener("click", refresh);
-    document.getElementById("btnFill").addEventListener("click", fillPattern);
-    btnAuto.addEventListener("click", toggleAuto);
-    refresh();
+    document.getElementById("btnSave").addEventListener("click", saveLayout);
+    document.getElementById("btnReset").addEventListener("click", () => {
+      layout.widgets = [];
+      (catalog.points || []).filter((p) => !p.isContinuation && p.bit == null && p.name).forEach(addWidget);
+      render();
+      setMsg("已恢复默认分组控件（未保存）");
+    });
+
+    (async function init() {
+      try {
+        await loadCatalog();
+        await loadLayout();
+        render();
+        await refresh();
+        startAuto();
+      } catch (e) {
+        setMsg("初始化失败: " + (e && e.message ? e.message : String(e)), true);
+        render();
+      }
+    })();
   </script>
 </body>
 </html>

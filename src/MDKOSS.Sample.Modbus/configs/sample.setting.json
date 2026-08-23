@@ -1,5 +1,5 @@
 {
-  "projectName": "Modbus IDriver Holding 测试",
+  "projectName": "Modbus 寄存器组态",
   "startPage": "indexModbus.html",
   "monitoringPrefix": "http://127.0.0.1:5090/",
   "cycleMs": 50,

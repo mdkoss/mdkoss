@@ -33,6 +33,13 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
         public int? Count { get; set; }
     }
 
+    private sealed class WritePointRequest
+    {
+        public string? DriverId { get; set; }
+        public string? Id { get; set; }
+        public JsonElement Value { get; set; }
+    }
+
     public ModbusDriverApiModule(MdkRuntime runtime) : base(runtime) { }
 
     public override string RoutePrefix => "/api/modbusdrv";
@@ -48,12 +55,23 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
 
         if (isGet)
         {
-            if (actionPath.Equals("holding", StringComparison.OrdinalIgnoreCase)
-                || actionPath.Equals("status", StringComparison.OrdinalIgnoreCase)
-                || string.IsNullOrEmpty(actionPath))
+            switch (actionPath.ToLowerInvariant())
             {
-                await WriteHoldingAsync(context, cancellationToken).ConfigureAwait(false);
-                return true;
+                case "catalog":
+                    await WriteCatalogAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
+                case "values":
+                case "points":
+                    await WriteValuesAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
+                case "layout":
+                    await WriteLayoutAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
+                case "holding":
+                case "status":
+                case "":
+                    await WriteHoldingAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
             }
         }
 
@@ -69,11 +87,18 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
             case "writeone":
                 await HandleWriteOneAsync(context, cancellationToken).ConfigureAwait(false);
                 return true;
+            case "writepoint":
+                await HandleWritePointAsync(context, cancellationToken).ConfigureAwait(false);
+                return true;
             case "writemany":
                 await HandleWriteManyAsync(context, cancellationToken).ConfigureAwait(false);
                 return true;
             case "fill":
                 await HandleFillAsync(context, cancellationToken).ConfigureAwait(false);
+                return true;
+            case "layout":
+            case "savelayout":
+                await HandleSaveLayoutAsync(context, cancellationToken).ConfigureAwait(false);
                 return true;
             default:
                 await WriteErrorAsync(context.Response, "unknown_action", cancellationToken).ConfigureAwait(false);
@@ -239,6 +264,202 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
         await WriteResponseAsync(context.Response, "application/json; charset=utf-8", ok, cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private async Task WriteCatalogAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var catalog = LoadCatalog();
+        var payload = JsonSerializer.Serialize(new
+        {
+            success = true,
+            source = catalog.Source,
+            groups = catalog.Groups,
+            points = catalog.Points,
+            exportedJson = Path.GetFileName(catalog.Source).EndsWith(".js", StringComparison.OrdinalIgnoreCase),
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task WriteValuesAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var query = context.Request.Url?.Query;
+        var driverId = GetQueryValue(query, "driverId") ?? ResolveDefaultDriverId();
+        if (!TryResolveDriver(driverId, out var driver, out var error) || driver is null)
+        {
+            await WriteErrorAsync(context.Response, error ?? "no_driver", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var catalog = LoadCatalog();
+        var ids = GetQueryValue(query, "ids");
+        var wanted = string.IsNullOrWhiteSpace(ids)
+            ? catalog.Points
+            : ids.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(catalog.Find)
+                .Where(p => p is not null)
+                .Cast<PlcRegisterPoint>()
+                .ToList();
+
+        var start = 0;
+        var count = HoldingRegisterBank.DefaultCount;
+        if (wanted.Count > 0)
+        {
+            start = wanted.Min(p => p.Address);
+            var end = wanted.Max(p => p.Address + Math.Max(1, p.WordCount) - 1);
+            count = Math.Clamp(end - start + 1, 1, HoldingRegisterBank.MaxCount);
+        }
+
+        var snap = HoldingRegisterBank.Read(driver, start, count);
+        var values = wanted.Select(p =>
+        {
+            var raw = PlcRegisterAccess.Decode(p, snap.Values, snap.Start);
+            return new
+            {
+                id = p.Id,
+                type = p.Type,
+                address = p.Address,
+                bit = p.Bit,
+                ok = raw is not null,
+                value = raw,
+            };
+        }).ToList();
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            success = true,
+            driverId,
+            driverName = driver.Name,
+            connected = snap.Connected,
+            start = snap.Start,
+            okCount = snap.OkCount,
+            values,
+            timestampUtc = DateTime.UtcNow,
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task WriteLayoutAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var catalog = LoadCatalog();
+        var path = LayoutPath();
+        var layout = ModbusHmiLayoutStore.LoadOrDefault(path, catalog);
+        var payload = JsonSerializer.Serialize(new
+        {
+            success = true,
+            path,
+            layout,
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task HandleWritePointAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        WritePointRequest? req;
+        try
+        {
+            req = Deserialize<WritePointRequest>(body);
+        }
+        catch (JsonException)
+        {
+            await WriteErrorAsync(context.Response, "invalid_json", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(req?.Id))
+        {
+            await WriteErrorAsync(context.Response, "missing_fields", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var point = LoadCatalog().Find(req.Id);
+        if (point is null)
+        {
+            await WriteErrorAsync(context.Response, "point_not_found", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var driverId = string.IsNullOrWhiteSpace(req.DriverId) ? ResolveDefaultDriverId() : req.DriverId.Trim();
+        if (!TryResolveDriver(driverId, out var driver, out var error) || driver is null)
+        {
+            await WriteErrorAsync(context.Response, error ?? "no_driver", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (!PlcRegisterAccess.TryWrite(driver, point, req.Value))
+        {
+            await WriteErrorAsync(context.Response, "write_failed", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var ok = JsonSerializer.Serialize(new
+        {
+            success = true,
+            action = "writepoint",
+            driverId,
+            id = point.Id,
+            type = point.Type,
+            address = point.Address,
+            bit = point.Bit,
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", ok, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task HandleSaveLayoutAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var body = await ReadBodyAsync(context.Request, cancellationToken).ConfigureAwait(false);
+        ModbusHmiLayout? layout;
+        try
+        {
+            layout = Deserialize<ModbusHmiLayout>(body);
+        }
+        catch (JsonException)
+        {
+            await WriteErrorAsync(context.Response, "invalid_json", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        if (layout is null)
+        {
+            await WriteErrorAsync(context.Response, "invalid_layout", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var path = LayoutPath();
+        try
+        {
+            ModbusHmiLayoutStore.Save(path, layout);
+        }
+        catch (Exception)
+        {
+            await WriteErrorAsync(context.Response, "save_failed", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var ok = JsonSerializer.Serialize(new
+        {
+            success = true,
+            action = "savelayout",
+            path,
+            count = layout.Widgets.Count,
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", ok, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private PlcRegisterCatalog LoadCatalog()
+        => PlcRegisterCatalog.Load(Runtime.SettingPath, AppContext.BaseDirectory);
+
+    private string LayoutPath()
+        => ModbusHmiLayoutStore.ResolvePath(Runtime.SettingPath, AppContext.BaseDirectory);
 
     private string ResolveDefaultDriverId()
     {

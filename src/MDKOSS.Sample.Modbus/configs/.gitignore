@@ -1,0 +1,4 @@
+# 现场寄存器表与组态布局含地址信息，不入库
+plc_registers.js
+plc_registers.json
+modbus.layout.json
