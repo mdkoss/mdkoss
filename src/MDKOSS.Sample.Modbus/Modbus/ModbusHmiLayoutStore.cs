@@ -97,7 +97,7 @@ public static class ModbusHmiLayoutStore
     public static ModbusHmiLayout CreateDefault(PlcRegisterCatalog catalog)
     {
         var layout = new ModbusHmiLayout { Version = 1, RefreshMs = 100 };
-        var groups = catalog.PrimaryWidgets()
+        var groups = catalog.DisplayPoints()
             .GroupBy(p => p.Group, StringComparer.Ordinal)
             .ToList();
         var y = 16.0;

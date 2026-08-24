@@ -91,8 +91,8 @@ public sealed class MdkSetting
         ?? Path.Combine(DefaultConfigsDirectory, "sample.setting.json");
 
     /// <summary>
-    /// First JSON in <paramref name="configsDirectory"/> (top-level, filename order, ignore case).
-    /// Skips HMI layout files (<c>*.layout.json</c>, <c>*.hmi.json</c>).
+    /// First settings JSON in <paramref name="configsDirectory"/> (top-level).
+    /// Prefers <c>*.setting.json</c>; skips layout / HMI / register-export files.
     /// </summary>
     public static string? FindFirstSettingsFile(string configsDirectory)
     {
@@ -101,17 +101,23 @@ public sealed class MdkSetting
             return null;
         }
 
-        return Directory.EnumerateFiles(configsDirectory, "*.json")
+        var files = Directory.EnumerateFiles(configsDirectory, "*.json")
             .Where(path => !IsAuxiliaryConfigJson(path))
             .OrderBy(path => Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
-            .FirstOrDefault();
+            .ToList();
+
+        return files.FirstOrDefault(path =>
+                   Path.GetFileName(path).EndsWith(".setting.json", StringComparison.OrdinalIgnoreCase))
+               ?? files.FirstOrDefault();
     }
 
     private static bool IsAuxiliaryConfigJson(string path)
     {
         var name = Path.GetFileName(path);
         return name.EndsWith(".layout.json", StringComparison.OrdinalIgnoreCase)
-            || name.EndsWith(".hmi.json", StringComparison.OrdinalIgnoreCase);
+            || name.EndsWith(".hmi.json", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("plc_registers.json", StringComparison.OrdinalIgnoreCase)
+            || name.Equals("plc_panels.json", StringComparison.OrdinalIgnoreCase);
     }
 
     private static JsonSerializerOptions JsonOptions { get; } = new()

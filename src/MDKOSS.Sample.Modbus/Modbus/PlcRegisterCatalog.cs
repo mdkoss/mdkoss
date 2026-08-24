@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,7 +8,7 @@ namespace MDKOSS.Sample.Modbus.Machine;
 
 /// <summary>
 /// Named Modbus holding point (reg / regi / regf / bit / di / do) loaded from
-/// <c>plc_registers.json</c> (exported) or the source <c>plc_registers.js</c>.
+/// <c>plc_registers.json</c>. Legacy <c>plc_registers.js</c> is converted, not loaded.
 /// </summary>
 public sealed class PlcRegisterPoint
 {
@@ -54,18 +55,9 @@ public sealed class PlcRegisterCatalog
 
     public static PlcRegisterCatalog Load(string? settingPath, string? baseDirectory)
     {
-        var dirs = EnumerateSearchDirs(settingPath, baseDirectory);
-        foreach (var dir in dirs)
+        foreach (var dir in EnumerateSearchDirs(settingPath, baseDirectory))
         {
-            var js = Path.Combine(dir, "plc_registers.js");
-            if (File.Exists(js))
-            {
-                var catalog = LoadFromJs(File.ReadAllText(js), js);
-                TryExportJson(dir, catalog);
-                return catalog;
-            }
-
-            var json = Path.Combine(dir, "plc_registers.json");
+            var json = Path.Combine(dir, PlcConfigFiles.RegistersJson);
             if (File.Exists(json))
             {
                 return LoadFromJson(File.ReadAllText(json), json);
@@ -127,6 +119,11 @@ public sealed class PlcRegisterCatalog
 
     public IReadOnlyList<PlcRegisterPoint> PrimaryWidgets()
         => Points.Where(p => !p.IsContinuation && p.Bit is null && p.Name.Length > 0).ToList();
+
+    public IReadOnlyList<PlcRegisterPoint> DisplayPoints()
+        => Points.Where(p => !p.IsContinuation).ToList();
+
+    public PlcPanelConfig ToPanels() => PlcPanelExport.FromCatalog(this);
 
     private static PlcRegisterCatalog FromJsArray(JsonElement array, string source)
     {
@@ -202,7 +199,7 @@ public sealed class PlcRegisterCatalog
                         continue;
                     }
 
-                    var bitName = FirstNonEmpty(
+                    var bitName = PreferBitLabel(
                         ReadString(bitEl, "name"),
                         ReadString(bitEl, "description"),
                         ReadString(bitEl, "access"));
@@ -242,20 +239,7 @@ public sealed class PlcRegisterCatalog
         };
     }
 
-    private static void TryExportJson(string dir, PlcRegisterCatalog catalog)
-    {
-        try
-        {
-            Directory.CreateDirectory(dir);
-            File.WriteAllText(Path.Combine(dir, "plc_registers.json"), catalog.ToJson());
-        }
-        catch
-        {
-            // Local export is best-effort (output dir may be locked).
-        }
-    }
-
-    private static IEnumerable<string> EnumerateSearchDirs(string? settingPath, string? baseDirectory)
+    internal static IEnumerable<string> EnumerateSearchDirs(string? settingPath, string? baseDirectory)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(settingPath))
@@ -398,6 +382,43 @@ public sealed class PlcRegisterCatalog
         };
     }
 
+    private static string PreferBitLabel(params string[] parts)
+    {
+        foreach (var part in parts)
+        {
+            if (IsHumanBitLabel(part))
+            {
+                return part.Trim();
+            }
+        }
+
+        return FirstNonEmpty(parts);
+    }
+
+    private static bool IsHumanBitLabel(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var t = text.Trim();
+        if (t is "0" or "1" or "DO" or "DI" or "do" or "di" or "en")
+        {
+            return false;
+        }
+
+        if (t.StartsWith("(V", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("BIT", StringComparison.OrdinalIgnoreCase)
+            || t.StartsWith("I", StringComparison.Ordinal) && t.Contains('.')
+            || t.StartsWith("Q", StringComparison.Ordinal) && t.Contains('.'))
+        {
+            return false;
+        }
+
+        return t.Any(static ch => ch > 127) || t.Length > 2;
+    }
+
     private static string FirstNonEmpty(params string[] parts)
         => parts.FirstOrDefault(s => !string.IsNullOrWhiteSpace(s)) ?? "";
 
@@ -418,6 +439,7 @@ public sealed class PlcRegisterCatalog
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         WriteIndented = true,
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 }
 
@@ -437,6 +459,100 @@ public static class PlcRegisterJsConverter
         return ConvertSlice(js.AsSpan(start, end - start + 1));
     }
 
+    /// <summary>Converts a JS object literal (e.g. <c>PLC_PANELS = { ... }</c>) into JSON.</summary>
+    public static string ToJsonObject(string js, string marker = "PLC_PANELS")
+    {
+        ArgumentNullException.ThrowIfNull(js);
+        var idx = js.IndexOf(marker, StringComparison.Ordinal);
+        var from = idx < 0 ? 0 : idx;
+        var eq = js.IndexOf('=', from);
+        var start = js.IndexOf('{', eq >= 0 ? eq : from);
+        if (start < 0)
+        {
+            throw new InvalidDataException("未找到对象字面量。");
+        }
+
+        var end = FindMatchingBrace(js, start);
+        return ConvertSlice(js.AsSpan(start, end - start + 1));
+    }
+
+    private static int FindMatchingBrace(string js, int start)
+    {
+        var depth = 0;
+        var i = start;
+        while (i < js.Length)
+        {
+            var c = js[i];
+            if (c is '\'' or '"')
+            {
+                i = SkipJsString(js, i);
+                continue;
+            }
+
+            if (c == '/' && i + 1 < js.Length)
+            {
+                if (js[i + 1] == '/')
+                {
+                    i = js.IndexOf('\n', i);
+                    if (i < 0)
+                    {
+                        break;
+                    }
+
+                    i++;
+                    continue;
+                }
+
+                if (js[i + 1] == '*')
+                {
+                    var close = js.IndexOf("*/", i + 2, StringComparison.Ordinal);
+                    i = close < 0 ? js.Length : close + 2;
+                    continue;
+                }
+            }
+
+            if (c == '{')
+            {
+                depth++;
+            }
+            else if (c == '}')
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    return i;
+                }
+            }
+
+            i++;
+        }
+
+        throw new InvalidDataException("对象字面量括号不匹配。");
+    }
+
+    private static int SkipJsString(string js, int i)
+    {
+        var quote = js[i];
+        i++;
+        while (i < js.Length)
+        {
+            if (js[i] == '\\' && i + 1 < js.Length)
+            {
+                i += 2;
+                continue;
+            }
+
+            if (js[i] == quote)
+            {
+                return i + 1;
+            }
+
+            i++;
+        }
+
+        return i;
+    }
+
     private static string ConvertSlice(ReadOnlySpan<char> src)
     {
         var sb = new StringBuilder(src.Length + 64);
@@ -448,6 +564,31 @@ public static class PlcRegisterJsConverter
             {
                 i = AppendJsString(src, i, sb);
                 continue;
+            }
+
+            if (c == '/' && i + 1 < src.Length)
+            {
+                if (src[i + 1] == '/')
+                {
+                    while (i < src.Length && src[i] is not '\n')
+                    {
+                        i++;
+                    }
+
+                    continue;
+                }
+
+                if (src[i + 1] == '*')
+                {
+                    i += 2;
+                    while (i + 1 < src.Length && !(src[i] == '*' && src[i + 1] == '/'))
+                    {
+                        i++;
+                    }
+
+                    i = Math.Min(i + 2, src.Length);
+                    continue;
+                }
             }
 
             if (char.IsLetter(c) || c == '_' || c > 127)

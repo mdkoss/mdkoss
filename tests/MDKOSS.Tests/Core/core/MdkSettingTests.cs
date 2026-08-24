@@ -73,6 +73,25 @@ public sealed class MdkSettingTests
     }
 
     [Fact]
+    public void FindFirstSettingsFile_prefers_setting_json_over_register_exports()
+    {
+        var dir = CreateTempConfigsDir();
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "plc_registers.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "plc_panels.json"), "{}");
+            File.WriteAllText(Path.Combine(dir, "sample.setting.json"), "{}");
+
+            var found = MdkSetting.FindFirstSettingsFile(dir);
+            Assert.Equal("sample.setting.json", Path.GetFileName(found));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void FindFirstSettingsFile_returns_null_when_only_layout_or_missing()
     {
         Assert.Null(MdkSetting.FindFirstSettingsFile(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))));

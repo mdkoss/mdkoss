@@ -67,6 +67,10 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
                 case "layout":
                     await WriteLayoutAsync(context, cancellationToken).ConfigureAwait(false);
                     return true;
+                case "panels":
+                case "plcconfig":
+                    await WritePanelsAsync(context, cancellationToken).ConfigureAwait(false);
+                    return true;
                 case "holding":
                 case "status":
                 case "":
@@ -268,13 +272,14 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
     private async Task WriteCatalogAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
         var catalog = LoadCatalog();
+        var panels = LoadPanels(catalog);
         var payload = JsonSerializer.Serialize(new
         {
             success = true,
             source = catalog.Source,
             groups = catalog.Groups,
             points = catalog.Points,
-            exportedJson = Path.GetFileName(catalog.Source).EndsWith(".js", StringComparison.OrdinalIgnoreCase),
+            panels,
         }, SnapshotJsonOptions);
         context.Response.StatusCode = (int)HttpStatusCode.OK;
         await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
@@ -292,6 +297,8 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
         }
 
         var catalog = LoadCatalog();
+        var panels = LoadPanels(catalog);
+        catalog = PlcPanelExport.AugmentCatalog(catalog, panels);
         var ids = GetQueryValue(query, "ids");
         var wanted = string.IsNullOrWhiteSpace(ids)
             ? catalog.Points
@@ -341,6 +348,21 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
             .ConfigureAwait(false);
     }
 
+    private async Task WritePanelsAsync(HttpListenerContext context, CancellationToken cancellationToken)
+    {
+        var catalog = LoadCatalog();
+        var config = LoadPanels(catalog);
+        var payload = JsonSerializer.Serialize(new
+        {
+            success = true,
+            source = config.Source,
+            config,
+        }, SnapshotJsonOptions);
+        context.Response.StatusCode = (int)HttpStatusCode.OK;
+        await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private async Task WriteLayoutAsync(HttpListenerContext context, CancellationToken cancellationToken)
     {
         var catalog = LoadCatalog();
@@ -377,7 +399,10 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
             return;
         }
 
-        var point = LoadCatalog().Find(req.Id);
+        var catalog = LoadCatalog();
+        var panels = LoadPanels(catalog);
+        catalog = PlcPanelExport.AugmentCatalog(catalog, panels);
+        var point = catalog.Find(req.Id);
         if (point is null)
         {
             await WriteErrorAsync(context.Response, "point_not_found", cancellationToken).ConfigureAwait(false);
@@ -457,6 +482,9 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
 
     private PlcRegisterCatalog LoadCatalog()
         => PlcRegisterCatalog.Load(Runtime.SettingPath, AppContext.BaseDirectory);
+
+    private PlcPanelConfig LoadPanels(PlcRegisterCatalog catalog)
+        => PlcPanelExport.LoadOrGenerate(Runtime.SettingPath, AppContext.BaseDirectory, catalog);
 
     private string LayoutPath()
         => ModbusHmiLayoutStore.ResolvePath(Runtime.SettingPath, AppContext.BaseDirectory);

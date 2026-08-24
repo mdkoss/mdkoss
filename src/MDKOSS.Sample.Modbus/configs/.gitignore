@@ -1,4 +1,8 @@
 # 现场寄存器表与组态布局含地址信息，不入库
-plc_registers.js
 plc_registers.json
+plc_panels.json
 modbus.layout.json
+# 遗留 JS，已改为 JSON；保留本地副本但不入库、运行时不读取
+plc_registers.js
+plcconfig.js
+newplctool.html

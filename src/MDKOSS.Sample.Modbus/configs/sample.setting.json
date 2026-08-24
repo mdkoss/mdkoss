@@ -11,14 +11,19 @@
       "type": "modbus-tcp",
       "enabled": true,
       "parameters": {
-        "simulate": "true",
+        "simulate": "false",
+        "host": "127.0.0.1",
+        "port": "1502",
         "unitId": "1",
+        "connectTimeoutMs": "3000",
+        "readTimeoutMs": "3000",
+        "writeTimeoutMs": "3000",
         "diAddress": "0",
         "doAddress": "0",
         "diArea": "discrete",
         "doArea": "coils",
         "ioBitBase": "0",
-        "note": "无现场 Slave 时走内存仿真；接真机时改 host/port 并关闭 simulate"
+        "note": "连本机 Modbus TCP 测试服务 127.0.0.1:1502（服务端 bind 0.0.0.0:1502）"
       }
     }
   ],

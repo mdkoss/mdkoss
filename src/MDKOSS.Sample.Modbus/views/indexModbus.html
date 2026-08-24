@@ -3,105 +3,301 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MDKOSS Modbus — 寄存器组态</title>
+  <title>MDKOSS Modbus — PLC 操作台</title>
   <link rel="stylesheet" href="/css/theme-gray.css" />
   <link rel="stylesheet" href="/css/debug.css" />
   <style>
-    .mb-toolbar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: end; margin-bottom: 10px; }
-    .mb-toolbar .form-group { margin: 0; min-width: 110px; }
-    .mb-meta { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
-    .mb-groups { display: flex; flex-direction: column; gap: 12px; }
-    .mb-group {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--panel);
-      min-height: 88px;
+    /* 跟随 theme-gray：浅色高对比工控台，不用 newplctool 深色底 */
+    .plc-hmi { color: var(--text); }
+    .plc-hmi .mb-toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: end; margin-bottom: 8px;
     }
-    .mb-group h3 {
-      margin: 0; padding: 8px 12px; font-size: 13px; font-weight: 600;
-      border-bottom: 1px solid var(--line);
-      display: flex; justify-content: space-between; gap: 8px;
+    .plc-hmi .mb-toolbar .form-group { margin: 0; min-width: 140px; }
+    .plc-hmi .mb-toolbar input { width: 168px; }
+    .plc-hmi .mb-meta {
+      color: var(--muted); font-size: 13px; margin: 0 0 8px;
+      padding: 6px 10px; background: var(--panel); border: 1px solid var(--line);
+      border-radius: 6px;
     }
-    .mb-group h3 span { color: var(--muted); font-weight: 400; font-size: 11px; }
-    .mb-canvas {
-      position: relative; min-height: 72px; padding: 10px;
-      display: flex; flex-wrap: wrap; gap: 8px;
+    .main-display { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; align-items: stretch; }
+    .display-box {
+      flex: 1 1 180px; min-width: 160px; min-height: 64px; padding: 8px 14px;
+      background: var(--panel); color: var(--mono); border: 1px solid var(--line);
+      border-radius: var(--radius); display: flex; flex-direction: column; justify-content: center;
+      box-shadow: var(--shadow);
     }
-    .mb-widget {
-      border: 1px solid var(--line); border-radius: 8px;
-      background: var(--bg, #0f1728); padding: 8px 10px; width: 240px;
-      display: grid; gap: 4px;
+    .display-box.pos { border-color: var(--accent); background: #dbe7ff; }
+    .display-label { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+    .display-box .value-row {
+      display: flex; align-items: baseline; gap: 6px;
+      font-family: ui-monospace, Consolas, monospace; font-size: 28px; font-weight: 700; line-height: 1.15;
     }
-    .mb-widget .nm { font-size: 12px; font-weight: 600; }
-    .mb-widget .sub { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-    .mb-widget .row { display: flex; gap: 6px; align-items: center; }
-    .mb-widget .row input { flex: 1; min-width: 0; font-size: 12px; }
-    .mb-lamp {
-      width: 14px; height: 14px; border-radius: 50%;
-      background: #334; border: 1px solid #556; flex: 0 0 auto;
+    .display-unit { font-size: 14px; font-weight: 600; color: var(--muted); }
+    .button-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 2 1 320px; }
+    .control-btn {
+      padding: 8px 14px; min-height: 36px; background: var(--btn-bg); border: 1px solid var(--line);
+      color: var(--text); border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
     }
-    .mb-lamp.on { background: #3dd68c; box-shadow: 0 0 8px #3dd68c88; }
+    .control-btn:hover { background: var(--btn-hover); border-color: var(--accent); }
+    .control-btn.emergency { background: #fef2f2; border-color: var(--danger); color: var(--danger); }
+    .control-btn.emergency:hover { background: #fee2e2; }
+    .control-btn.reset-btn { background: #dbe7ff; border-color: var(--accent); color: var(--accent); }
+    .backup-restore-group { display: flex; gap: 8px; margin: 6px 0 8px; align-items: center; }
+    .backup-btn { background: #dbe7ff; border-color: var(--accent); color: var(--accent); }
+    .restore-btn { background: #ecfdf5; border-color: var(--ok); color: var(--ok); }
+    .panel-container {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 10px; margin: 4px 0 8px; align-items: start;
+    }
+    .plc-hmi .panel {
+      min-width: 0; margin: 0; padding: 12px 14px; border: 1px solid var(--line);
+      border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow);
+    }
+    .plc-hmi .panel-title {
+      font-weight: 700; margin: 0 0 10px; border-bottom: 1px solid var(--line);
+      padding-bottom: 6px; color: var(--text); display: flex; justify-content: space-between; gap: 8px;
+      font-size: 15px;
+    }
+    .plc-hmi .panel-title span { color: var(--muted); font-weight: 500; font-size: 12px; }
+    .plc-hmi .form-group {
+      display: flex; align-items: center; margin-bottom: 6px; gap: 0;
+    }
+    .plc-hmi .form-group > .form-label,
+    .plc-hmi .form-label {
+      display: flex; align-items: center; justify-content: flex-end;
+      flex: 0 0 180px; width: 180px; min-width: 180px; max-width: 180px;
+      margin: 0 10px 0 0; padding: 0; text-align: right; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+      position: relative; cursor: help; color: var(--muted); font-size: 13px; font-weight: 600;
+    }
+    .plc-hmi .form-label .unit { color: var(--muted); margin-left: 4px; font-size: 11px; font-weight: 500; }
+    .plc-hmi .form-label::after {
+      content: attr(data-tooltip); position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); padding: 8px 10px; background: var(--text); color: #fff;
+      border-radius: 6px; font-size: 12px; font-weight: 500; white-space: pre-line;
+      opacity: 0; visibility: hidden; z-index: 20; min-width: 140px; pointer-events: none;
+    }
+    .plc-hmi .form-label:hover::after { opacity: 1; visibility: visible; }
+    .input-wrapper { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1 1 auto; }
+    .plc-hmi .form-input,
+    .plc-hmi input.form-input {
+      width: 128px; max-width: 128px; flex: 0 0 128px; box-sizing: border-box;
+      padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--input-bg); color: var(--mono); font-family: ui-monospace, Consolas, monospace;
+      font-size: 14px; font-weight: 700;
+    }
+    .plc-hmi .form-input.display-only { background: var(--log-bg); cursor: pointer; }
+    .plc-hmi .form-input.display-only:hover { border-color: var(--accent); background: #fff; }
+    .plc-hmi .form-input.editing {
+      border-color: var(--accent); background: #fff;
+      box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.22);
+    }
+    .plc-hmi .form-input[readonly]:not(.display-only) { cursor: default; opacity: 0.85; }
+    .enter-icon { color: var(--accent); cursor: pointer; font-weight: 700; display: none; }
+    .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex: 0 0 auto; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; inset: 0; background: #94a3b8; transition: .2s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background: #fff; transition: .2s; border-radius: 50%;
+    }
+    input:checked + .slider { background: var(--accent); }
+    input:checked + .slider:before { transform: translateX(20px); }
+    input:disabled + .slider { cursor: default; opacity: 0.55; }
+    .correction-method-toggle {
+      display: inline-flex; padding: 0; border: 1px solid var(--line); border-radius: 6px;
+      overflow: hidden; cursor: pointer; background: var(--btn-bg); font-size: 13px; line-height: 1.2;
+    }
+    .correction-method-segment { padding: 6px 10px; color: var(--muted); white-space: nowrap; font-weight: 600; }
+    .correction-method-segment.active { background: var(--accent); color: #fff; }
+    .correction-method-value {
+      margin-left: 4px; min-width: 28px; padding: 4px 8px; text-align: center;
+      font-family: ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--log-bg); color: var(--mono); font-weight: 700;
+    }
+    .status-notification {
+      min-height: 0; padding: 0; border-radius: 6px; margin: 0; color: var(--text); background: transparent;
+    }
+    .status-notification:not(:empty) { padding: 6px 10px; margin-bottom: 8px; }
+    .status-notification.success { background: #ecfdf5; color: var(--ok); }
+    .status-notification.error { background: #fef2f2; color: var(--danger); }
+    .status-notification.loading { background: #dbe7ff; color: var(--accent); }
+    .write-status {
+      position: fixed; right: 16px; bottom: 16px; padding: 8px 14px; border-radius: 6px;
+      background: var(--text); color: #fff; opacity: 0; pointer-events: none; z-index: 90;
+      font-weight: 600;
+    }
+    .write-status.show { opacity: 1; }
+    .write-status.success { background: var(--ok); }
+    .write-status.error { background: var(--danger); }
     .mb-menu {
-      position: fixed; z-index: 40; min-width: 220px; max-height: 70vh; overflow: auto;
-      background: #1b2436; border: 1px solid #3a4a66; border-radius: 8px;
-      box-shadow: 0 8px 24px #0008; padding: 6px 0; display: none;
+      position: fixed; z-index: 70; min-width: 220px; max-height: 70vh; overflow: auto;
+      background: var(--panel2); border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18); padding: 6px 0; display: none;
     }
-    .mb-menu .cap { padding: 4px 12px; font-size: 11px; color: #8aa; }
+    .mb-menu .cap { padding: 4px 12px; font-size: 12px; color: var(--muted); font-weight: 700; }
     .mb-menu button {
       display: block; width: 100%; text-align: left; background: none; border: 0;
-      color: #dce7ff; padding: 6px 12px; font-size: 12px; cursor: pointer;
+      color: var(--text); padding: 8px 12px; font-size: 13px; cursor: pointer; font-weight: 600;
     }
-    .mb-menu button:hover { background: #2a3a58; }
+    .mb-menu button:hover { background: #dbe7ff; color: var(--accent); }
     .mb-picker {
-      position: fixed; inset: 0; background: #0006; z-index: 50; display: none;
-      align-items: center; justify-content: center;
+      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 80; display: none;
+      align-items: center; justify-content: center; padding: 16px;
     }
     .mb-picker .box {
-      background: #152033; border: 1px solid #3a4a66; border-radius: 12px;
-      width: min(720px, 92vw); max-height: 80vh; overflow: auto; padding: 16px;
+      background: var(--panel2, #fff); border: 1px solid var(--line); border-radius: 12px;
+      width: min(1120px, 96vw); max-height: 88vh; overflow: hidden; padding: 14px 16px;
+      display: flex; flex-direction: column; color: var(--text); box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
     }
-    .mb-picker .list { display: grid; gap: 4px; margin-top: 8px; }
-    .mb-picker .item {
-      display: flex; justify-content: space-between; gap: 8px;
-      padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px;
+    .mb-picker .picker-head {
+      display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex: 0 0 auto;
     }
-    .mb-picker .item:hover { background: #24344f; }
+    .mb-picker .picker-head .title { font-size: 18px; font-weight: 700; }
+    .mb-picker .picker-count { color: var(--muted); font-size: 13px; }
+    .mb-picker .picker-toolbar {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin: 10px 0; flex: 0 0 auto;
+    }
+    .mb-picker .picker-toolbar .form-group { margin: 0; min-width: 140px; flex: 1 1 180px; }
+    .mb-picker .picker-toolbar label.check {
+      display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted);
+      margin: 0 4px 8px; white-space: nowrap; font-weight: 600;
+    }
+    .mb-picker input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
+    .mb-picker .picker-table-wrap {
+      flex: 1 1 auto; min-height: 220px; overflow: auto; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--panel2);
+    }
+    .mb-picker table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .mb-picker th {
+      position: sticky; top: 0; background: var(--table-head, #dce3ec); color: var(--muted);
+      font-weight: 700; text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line);
+    }
+    .mb-picker td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .mb-picker tbody tr { cursor: pointer; }
+    .mb-picker tbody tr:hover { background: rgba(29, 78, 216, 0.08); }
+    .mb-picker tbody tr.used { opacity: 0.55; }
+    .mb-picker tbody tr.selected { background: rgba(29, 78, 216, 0.14); }
+    .mb-picker .addr { font-family: ui-monospace, Consolas, monospace; color: var(--mono); }
+    .mb-picker .picker-foot {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end;
+      margin-top: 10px; flex: 0 0 auto;
+    }
+    .mb-picker .picker-foot .picker-sel { margin-right: auto; color: var(--muted); font-size: 13px; }
+
+    body.plc-console .wrap { min-height: 0; overflow: hidden; }
+    body.plc-console .wrap > .card.plc-hmi {
+      display: flex; flex-direction: column; min-width: 0; min-height: 0;
+      overflow: auto; overscroll-behavior: contain;
+    }
+    body.plc-console .mb-toolbar,
+    body.plc-console .status-notification,
+    body.plc-console .mb-meta,
+    body.plc-console .main-display,
+    body.plc-console .backup-restore-group,
+    body.plc-console .msg,
+    body.plc-console .footer { flex: 0 0 auto; }
+    body.plc-console .panel-container { flex: 1 1 auto; min-width: 0; }
   </style>
 </head>
-<body data-tool-group="debug" data-tool-page="indexModbus">
+<body class="plc-console" data-tool-group="debug" data-tool-page="indexModbus">
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">Modbus 寄存器组态</div>
-        <div class="sub">分组显示 plc_registers · 读写 REG / REGI / REGF / BIT · 右键添加控件 · 布局另存为本地配置</div>
+        <div class="title">PLC 操作台</div>
+        <div class="sub">由 plc_registers.json / plc_panels.json 加载 · 单击编辑 / 回车写入 · BIT 拨动开关 · 100ms 刷新</div>
       </div>
       <a class="link-btn" href="/debug_driver.html">驱动 IO 位格 →</a>
     </div>
-    <div class="card">
+    <div class="card plc-hmi">
       <div class="mb-toolbar">
         <div class="form-group">
           <label for="driverId">Driver ID</label>
           <input id="driverId" value="drv-modbus" />
         </div>
-        <button type="button" class="primary" id="btnRefresh">刷新</button>
-        <button type="button" id="btnAuto">停止自动</button>
-        <button type="button" id="btnSave">保存布局</button>
-        <button type="button" id="btnReset">恢复默认布局</button>
+        <button type="button" class="btn primary" id="btnRefresh">刷新</button>
+        <button type="button" class="btn" id="btnAuto">停止自动</button>
+        <button type="button" class="btn" id="btnSave">保存布局</button>
+        <button type="button" class="btn" id="btnReset">恢复全部字段</button>
+        <button type="button" class="btn" id="btnCatalog">寄存器表</button>
       </div>
+      <div id="status-notification" class="status-notification"></div>
       <p class="mb-meta" id="meta">—</p>
-      <div class="mb-groups" id="groups"></div>
+      <div class="main-display">
+        <div class="display-box pos">
+          <span class="display-label">位置</span>
+          <span class="value-row">
+            <span id="position-value">—</span>
+            <span class="display-unit" id="position-unit">m</span>
+          </span>
+        </div>
+        <div class="display-box">
+          <span class="display-label">速度</span>
+          <span class="value-row">
+            <span id="speed-value">—</span>
+            <span class="display-unit" id="speed-unit">m/s</span>
+          </span>
+        </div>
+        <div class="button-group" id="commands"></div>
+      </div>
+      <div class="backup-restore-group">
+        <button type="button" class="control-btn backup-btn" id="backup-btn">备份寄存器</button>
+        <button type="button" class="control-btn restore-btn" id="restore-file-btn">导入寄存器</button>
+        <input type="file" id="restore-file" accept=".json" hidden />
+      </div>
+      <div class="panel-container" id="panels"></div>
       <div class="msg" id="msg"></div>
       <div class="footer">上次刷新：<span id="lastUpdate">-</span> · 间隔 100ms</div>
     </div>
   </div>
+  <div class="write-status" id="write-status"></div>
   <div class="mb-menu" id="menu"></div>
   <div class="mb-picker" id="picker">
     <div class="box">
-      <div class="title" style="font-size:16px">添加寄存器控件</div>
-      <input id="pickerFilter" placeholder="筛选名称 / 地址 / 类型" style="width:100%;margin-top:8px" />
-      <div class="list" id="pickerList"></div>
-      <div style="margin-top:10px;text-align:right">
-        <button type="button" id="pickerClose">关闭</button>
+      <div class="picker-head">
+        <div class="title">寄存器表</div>
+        <span class="picker-count" id="pickerCount">未加载</span>
+      </div>
+      <div class="picker-toolbar">
+        <div class="form-group">
+          <label for="pickerFilter">查询</label>
+          <input id="pickerFilter" placeholder="名称 / ID / 地址 / 类型 / 分组，如 0x1D、holding.29、bit" />
+        </div>
+        <div class="form-group" style="flex:0 0 120px;min-width:120px">
+          <label for="pickerType">类型</label>
+          <select id="pickerType"><option value="">全部</option></select>
+        </div>
+        <div class="form-group" style="flex:0 1 160px;min-width:140px">
+          <label for="pickerGroup">分组</label>
+          <select id="pickerGroup"><option value="">全部</option></select>
+        </div>
+        <label class="check"><input type="checkbox" id="pickerHideUsed" /> 隐藏已添加</label>
+        <button type="button" class="btn primary" id="pickerLoadAll">加载全部寄存器</button>
+      </div>
+      <div class="picker-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:36px"><input type="checkbox" id="pickerCheckAll" title="全选可见" /></th>
+              <th>名称</th>
+              <th>类型</th>
+              <th>地址</th>
+              <th>位</th>
+              <th>分组</th>
+              <th>当前值</th>
+              <th>读写</th>
+            </tr>
+          </thead>
+          <tbody id="pickerList"></tbody>
+        </table>
+      </div>
+      <div class="picker-foot">
+        <span class="picker-sel" id="pickerSelMeta">已选 0</span>
+        <button type="button" class="btn" id="pickerSelectVisible">全选可见</button>
+        <button type="button" class="btn primary" id="pickerAddSelected">添加所选到面板</button>
+        <button type="button" class="btn" id="pickerClose">关闭</button>
       </div>
     </div>
   </div>
@@ -110,7 +306,8 @@
   <script>
     const { esc, fetchJson } = MdkTool;
     const driverIdEl = document.getElementById("driverId");
-    const groupsEl = document.getElementById("groups");
+    const panelsEl = document.getElementById("panels");
+    const commandsEl = document.getElementById("commands");
     const metaEl = document.getElementById("meta");
     const msgEl = document.getElementById("msg");
     const lastUpdateEl = document.getElementById("lastUpdate");
@@ -119,14 +316,29 @@
     const pickerEl = document.getElementById("picker");
     const pickerListEl = document.getElementById("pickerList");
     const pickerFilterEl = document.getElementById("pickerFilter");
+    const pickerTypeEl = document.getElementById("pickerType");
+    const pickerGroupEl = document.getElementById("pickerGroup");
+    const pickerHideUsedEl = document.getElementById("pickerHideUsed");
+    const pickerCheckAllEl = document.getElementById("pickerCheckAll");
+    const pickerCountEl = document.getElementById("pickerCount");
+    const pickerSelMetaEl = document.getElementById("pickerSelMeta");
+    const notifyEl = document.getElementById("status-notification");
+    const writeStatusEl = document.getElementById("write-status");
 
     let catalog = { points: [], groups: [] };
+    let panelConfig = { panels: [], commands: [], encoderScale: 0.00005, refreshMs: 100, mainDisplay: {} };
     let layout = { version: 1, refreshMs: 100, widgets: [] };
     let values = {};
     let autoTimer = null;
     let busy = false;
     let addGroup = "";
-    let menuWidgetId = "";
+    let menuFieldId = "";
+    let currentEditingInput = null;
+    let lastEncoder = null;
+    let lastPollAt = 0;
+
+    let pickerRows = [];
+    const pickerSelected = new Set();
 
     function driverId() { return (driverIdEl.value || "drv-modbus").trim(); }
     function setMsg(text, isErr) {
@@ -134,89 +346,291 @@
       msgEl.classList.toggle("err", !!isErr);
     }
     function pointById(id) { return (catalog.points || []).find((p) => p.id === id) || null; }
-    function widgetsOf(group) {
-      return (layout.widgets || []).filter((w) => (w.group || "") === group);
+    function fieldById(id) {
+      for (const panel of panelConfig.panels || []) {
+        const f = (panel.fields || []).find((x) => x.id === id || x.pointId === id);
+        if (f) return f;
+      }
+      return null;
+    }
+    function allFields() {
+      return (panelConfig.panels || []).flatMap((p) => (p.fields || []).map((f) => ({ panel: p, field: f })));
+    }
+    function visibleIds() {
+      const ws = layout.widgets || [];
+      if (!ws.length) return null;
+      const fieldIds = new Set(allFields().map(({ field }) => field.id));
+      const matched = [];
+      ws.forEach((w) => {
+        if (fieldIds.has(w.id)) matched.push(w.id);
+        else if (w.id && String(w.id).startsWith("w-") && fieldIds.has(String(w.id).slice(2))) {
+          matched.push(String(w.id).slice(2));
+        }
+      });
+      if (!matched.length) return null;
+      return new Set(matched);
+    }
+    function isVisible(field) {
+      const ids = visibleIds();
+      if (!ids) return true;
+      return ids.has(field.id) || ids.has(field.pointId);
+    }
+    function findPoint(addr, bit, type) {
+      const pts = catalog.points || [];
+      if (bit != null || type === "bit" || type === "correctionMethod") {
+        const b = bit == null ? 0 : bit;
+        return pts.find((p) => p.address === addr && p.bit === b && p.type === "bit") || null;
+      }
+      const want = type === "int" ? "regi" : type === "float" ? "regf" : "";
+      if (want) {
+        const typed = pts.find((p) => p.address === addr && p.bit == null && !p.isContinuation && p.type === want);
+        if (typed) return typed;
+      }
+      return pts.find((p) => p.address === addr && p.bit == null && !p.isContinuation) || null;
+    }
+    function resolvePointIds() {
+      (panelConfig.panels || []).forEach((panel) => {
+        (panel.fields || []).forEach((f) => {
+          if (!f.pointId || !pointById(f.pointId)) {
+            const p = findPoint(f.addr, f.bit, f.type);
+            if (p) f.pointId = p.id;
+            else if (!f.pointId) f.pointId = f.id;
+          }
+          if (f.writable == null) f.writable = true;
+        });
+      });
+    }
+
+    function showNotify(text, type) {
+      notifyEl.textContent = text || "";
+      notifyEl.className = "status-notification" + (type ? " " + type : "");
+      if (type === "success") {
+        setTimeout(() => { if (notifyEl.textContent === text) notifyEl.className = "status-notification"; }, 1800);
+      }
+    }
+    function showWriteStatus(ok, text) {
+      writeStatusEl.textContent = text;
+      writeStatusEl.className = "write-status show " + (ok ? "success" : "error");
+      setTimeout(() => { writeStatusEl.className = "write-status"; }, 1000);
+    }
+
+    function tooltipFor(field) {
+      const p = pointById(field.pointId || field.id);
+      const type = (p && p.type) || field.type || "";
+      const addr = field.addr != null ? field.addr : (p && p.address);
+      const bit = field.bit != null ? field.bit : (p && p.bit);
+      const plc = (p && p.plcAddress) || "";
+      return `地址: ${addr}${bit != null ? "\n位: " + bit : ""}\n类型: ${type}${plc ? "\n" + plc : ""}`;
+    }
+
+    function renderField(field) {
+      const id = esc(field.id);
+      const writable = field.writable !== false;
+      const unit = field.unit ? `<span class="unit">${esc(field.unit)}</span>` : "";
+      const label = `<label class="form-label" for="${id}" data-tooltip="${esc(tooltipFor(field))}">${esc(field.label)}${unit}</label>`;
+      if (field.type === "correctionMethod") {
+        const off = esc(field.offLabel || "关");
+        const on = esc(field.onLabel || "开");
+        return `<div class="form-group" data-fid="${id}" data-pid="${esc(field.pointId || field.id)}">
+          ${label}
+          <div class="input-wrapper">
+            <button type="button" class="correction-method-toggle" id="${id}" data-value="0" ${writable ? "" : "disabled"}>
+              <span class="correction-method-segment segment-off active">${off}</span>
+              <span class="correction-method-segment segment-on">${on}</span>
+            </button>
+            <span class="correction-method-value" id="${id}-value">0</span>
+          </div>
+        </div>`;
+      }
+      if (field.type === "bit") {
+        return `<div class="form-group" data-fid="${id}" data-pid="${esc(field.pointId || field.id)}">
+          ${label}
+          <div class="input-wrapper">
+            <label class="switch">
+              <input type="checkbox" id="${id}" ${writable ? "" : "disabled"} />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>`;
+      }
+      return `<div class="form-group" data-fid="${id}" data-pid="${esc(field.pointId || field.id)}">
+        ${label}
+        <div class="input-wrapper">
+          <input type="text" class="form-input display-only" id="${id}" readonly ${writable ? "" : "data-ro=1"} />
+          ${writable ? `<span class="enter-icon" id="${id}-enter">↵</span>` : ""}
+        </div>
+      </div>`;
     }
 
     function render() {
-      const groupNames = (catalog.groups && catalog.groups.length)
-        ? catalog.groups.slice()
-        : [...new Set((catalog.points || []).map((p) => p.group).filter(Boolean))];
-      if (!groupNames.length) {
-        groupsEl.innerHTML = '<p class="mb-meta">未找到 plc_registers.js / plc_registers.json。请放到 configs/（本地文件，不入库）。</p>';
+      const cmds = panelConfig.commands || [];
+      commandsEl.innerHTML = cmds.map((c) =>
+        `<button type="button" class="control-btn ${esc(c.cssClass || "")}" data-cmd="${esc(c.id)}">${esc(c.label)}</button>`
+      ).join("");
+      commandsEl.querySelectorAll("[data-cmd]").forEach((btn) => {
+        btn.addEventListener("click", () => runCommand(btn.getAttribute("data-cmd")));
+      });
+
+      const posUnit = (panelConfig.mainDisplay && panelConfig.mainDisplay.positionUnit) || "m";
+      const spdUnit = (panelConfig.mainDisplay && panelConfig.mainDisplay.speedUnit) || "m/s";
+      document.getElementById("position-unit").textContent = posUnit;
+      document.getElementById("speed-unit").textContent = spdUnit;
+
+      const groups = panelConfig.panels || [];
+      if (!groups.length) {
+        panelsEl.innerHTML = '<p class="mb-meta">未找到 plc_panels.json / plc_registers.json。请放到 configs/（本地文件，不入库）。</p>';
         return;
       }
-      groupsEl.innerHTML = groupNames.map((g) => {
-        const ws = widgetsOf(g);
-        const cards = ws.map((w) => {
-          const p = pointById(w.pointId);
-          if (!p) return "";
-          const raw = values[p.id];
-          const writable = p.writable !== false && p.type !== "di";
-          if (p.type === "bit") {
-            const on = !!raw;
-            return `<div class="mb-widget" data-wid="${esc(w.id)}" data-pid="${esc(p.id)}">
-              <div class="nm">${esc(p.label || p.name)}</div>
-              <div class="sub">${esc(p.type)} · holding.${p.address}.${p.bit}</div>
-              <div class="row">
-                <span class="mb-lamp ${on ? "on" : ""}"></span>
-                <span>${on ? "ON" : "OFF"}</span>
-                ${writable ? '<button type="button" data-role="toggle">翻转</button>' : ""}
-              </div>
-            </div>`;
-          }
-          return `<div class="mb-widget" data-wid="${esc(w.id)}" data-pid="${esc(p.id)}">
-            <div class="nm">${esc(p.label || p.name)}</div>
-            <div class="sub">${esc((p.type || "reg").toUpperCase())} · holding.${p.address}${p.wordCount > 1 ? "+" + (p.wordCount - 1) : ""} · ${esc(p.plcAddress || "")}</div>
-            <div class="row">
-              <input data-role="val" value="${esc(raw == null ? "" : String(raw))}" ${writable ? "" : "readonly"} />
-              ${writable ? '<button type="button" data-role="write">写入</button>' : ""}
-            </div>
-            <div class="sub">${esc(p.description || "")}</div>
-          </div>`;
-        }).join("");
-        return `<section class="mb-group" data-group="${esc(g)}">
-          <h3>${esc(g)}<span>${ws.length} 控件 · 右键添加</span></h3>
-          <div class="mb-canvas">${cards || '<div class="sub">右键添加寄存器控件</div>'}</div>
+      panelsEl.innerHTML = groups.map((panel) => {
+        const fields = (panel.fields || []).filter((f) => isVisible(f));
+        return `<section class="panel" data-group="${esc(panel.title)}" data-panel="${esc(panel.id)}">
+          <div class="panel-title">${esc(panel.title)}<span>${fields.length} 项 · 右键组态</span></div>
+          ${fields.map(renderField).join("") || '<p class="mb-meta">右键添加字段</p>'}
         </section>`;
       }).join("");
 
-      groupsEl.querySelectorAll("button[data-role=write]").forEach((b) => b.addEventListener("click", onWrite));
-      groupsEl.querySelectorAll("button[data-role=toggle]").forEach((b) => b.addEventListener("click", onToggle));
-      groupsEl.querySelectorAll("input[data-role=val]").forEach((inp) => {
-        inp.addEventListener("keydown", (ev) => {
-          if (ev.key === "Enter") {
-            ev.preventDefault();
-            const btn = inp.closest(".mb-widget") && inp.closest(".mb-widget").querySelector("button[data-role=write]");
-            if (btn) btn.click();
-          }
+      panelsEl.querySelectorAll(".form-input, .switch input[type=checkbox], .correction-method-toggle").forEach(bindField);
+    }
+
+    function updateCorrectionMethod(el, isOn) {
+      el.dataset.value = isOn ? "1" : "0";
+      const offSeg = el.querySelector(".segment-off");
+      const onSeg = el.querySelector(".segment-on");
+      if (offSeg) offSeg.classList.toggle("active", !isOn);
+      if (onSeg) onSeg.classList.toggle("active", !!isOn);
+      const valueEl = document.getElementById(el.id + "-value");
+      if (valueEl) valueEl.textContent = isOn ? "1" : "0";
+    }
+
+    function bindField(input) {
+      if (input.classList && input.classList.contains("correction-method-toggle")) {
+        input.addEventListener("click", () => {
+          if (input.disabled) return;
+          const next = input.dataset.value === "1" ? 0 : 1;
+          updateCorrectionMethod(input, next === 1);
+          writePoint(input.id, next);
         });
+        return;
+      }
+      if (input.type === "checkbox") {
+        input.addEventListener("change", () => {
+          if (input.disabled) return;
+          writePoint(input.id, input.checked ? 1 : 0);
+        });
+        return;
+      }
+      const writable = !input.getAttribute("data-ro");
+      input.addEventListener("click", () => {
+        if (!writable) return;
+        if (currentEditingInput && currentEditingInput !== input) revertEdit(currentEditingInput);
+        beginEdit(input);
       });
+      input.addEventListener("blur", () => {
+        if (currentEditingInput !== input) return;
+        const id = input.id;
+        const value = input.value;
+        revertEdit(input);
+        writePoint(id, value);
+      });
+      input.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") { ev.preventDefault(); input.blur(); }
+        if (ev.key === "Escape") { revertEdit(input); input.blur(); }
+      });
+      const icon = document.getElementById(input.id + "-enter");
+      if (icon) icon.addEventListener("mousedown", (ev) => { ev.preventDefault(); input.blur(); });
+    }
+
+    function beginEdit(input) {
+      input.classList.remove("display-only");
+      input.removeAttribute("readonly");
+      input.classList.add("editing");
+      input.focus();
+      input.select();
+      currentEditingInput = input;
+      const icon = document.getElementById(input.id + "-enter");
+      if (icon) icon.style.display = "inline-block";
+    }
+    function revertEdit(input) {
+      input.classList.add("display-only");
+      input.setAttribute("readonly", "true");
+      input.classList.remove("editing");
+      if (currentEditingInput === input) currentEditingInput = null;
+      const icon = document.getElementById(input.id + "-enter");
+      if (icon) icon.style.display = "none";
+    }
+
+    function formatValue(field, raw) {
+      if (raw == null || raw === "") return "";
+      if (field && field.type === "float") {
+        const n = Number(raw);
+        return Number.isFinite(n) ? n.toFixed(2) : String(raw);
+      }
+      return String(raw);
     }
 
     function patchValues(data) {
       const map = {};
       (data.values || []).forEach((v) => { map[v.id] = v.ok ? v.value : null; });
       values = map;
-      groupsEl.querySelectorAll(".mb-widget").forEach((el) => {
-        const p = pointById(el.getAttribute("data-pid"));
-        if (!p) return;
-        const raw = values[p.id];
-        if (p.type === "bit") {
-          const lamp = el.querySelector(".mb-lamp");
-          if (lamp) lamp.classList.toggle("on", !!raw);
-          const lab = el.querySelector(".row span:nth-child(2)");
-          if (lab) lab.textContent = raw ? "ON" : "OFF";
+      allFields().forEach(({ field }) => {
+        const id = field.id;
+        if (currentEditingInput && currentEditingInput.id === id) return;
+        const el = document.getElementById(id);
+        if (!el) return;
+        const raw = values[field.pointId || id];
+        if (field.type === "correctionMethod") {
+          if (raw != null) updateCorrectionMethod(el, !!raw && raw !== 0 && raw !== "0");
           return;
         }
-        const inp = el.querySelector("input[data-role=val]");
-        if (inp && document.activeElement !== inp) inp.value = raw == null ? "" : String(raw);
+        if (field.type === "bit") {
+          el.checked = !!raw && raw !== 0 && raw !== "0";
+          return;
+        }
+        el.value = formatValue(field, raw);
       });
+      updateMainDisplay();
+      updatePickerValues();
+    }
+
+    function updateMainDisplay() {
+      const md = panelConfig.mainDisplay || {};
+      const scale = Number(panelConfig.encoderScale) || 0.00005;
+      const posId = md.positionPointId;
+      const spdId = md.speedPointId;
+      const enc = posId != null && values[posId] != null ? Number(values[posId]) : NaN;
+      const posEl = document.getElementById("position-value");
+      const spdEl = document.getElementById("speed-value");
+      if (Number.isFinite(enc)) {
+        posEl.textContent = (enc * scale).toFixed(2);
+        const now = Date.now();
+        const dt = lastPollAt ? Math.max((now - lastPollAt) / 1000, 0.05) : (panelConfig.refreshMs || 100) / 1000;
+        if (lastEncoder != null) {
+          spdEl.textContent = (((enc - lastEncoder) * scale) / dt).toFixed(2);
+        }
+        lastEncoder = enc;
+        lastPollAt = now;
+      } else {
+        posEl.textContent = "—";
+      }
+      if (!Number.isFinite(enc) && spdId != null && values[spdId] != null) {
+        const n = Number(values[spdId]);
+        spdEl.textContent = Number.isFinite(n) ? n.toFixed(2) : "—";
+      }
     }
 
     async function loadCatalog() {
-      const data = await fetchJson("/api/modbusdrv/catalog");
-      catalog = data || { points: [], groups: [] };
+      const [cat, pan] = await Promise.all([
+        fetchJson("/api/modbusdrv/catalog"),
+        fetchJson("/api/modbusdrv/panels").catch(() => null),
+      ]);
+      catalog = cat || { points: [], groups: [] };
+      const cfg = (pan && pan.config) || (cat && cat.panels) || null;
+      if (cfg && Array.isArray(cfg.panels)) {
+        panelConfig = cfg;
+      }
+      if (!panelConfig.panels) panelConfig.panels = [];
+      if (!panelConfig.commands) panelConfig.commands = [];
+      resolvePointIds();
     }
     async function loadLayout() {
       const data = await fetchJson("/api/modbusdrv/layout");
@@ -231,12 +645,13 @@
         const q = new URLSearchParams({ driverId: driverId() });
         const data = await fetchJson("/api/modbusdrv/values?" + q.toString());
         if (!data || data.success === false) throw new Error((data && data.error) || "read_failed");
-        if (!groupsEl.querySelector(".mb-widget") && (layout.widgets || []).length) render();
+        if (!panelsEl.querySelector(".form-group") && (panelConfig.panels || []).length) render();
         patchValues(data);
+        const vis = visibleIds();
         metaEl.textContent =
           (data.driverId || "—") + " · " + (data.driverName || "—") + " · " +
           (data.connected ? "在线" : "离线") + " · 点 " + ((catalog.points || []).length) +
-          " · 控件 " + ((layout.widgets || []).length) + " · 100ms";
+          " · 字段 " + (vis ? vis.size : allFields().length) + " · 100ms";
         lastUpdateEl.textContent = new Date().toLocaleTimeString();
         setMsg("");
       } catch (e) {
@@ -247,30 +662,38 @@
     }
 
     async function writePoint(id, value) {
-      setMsg("写入 " + id + "…");
+      const field = fieldById(id);
+      const pid = (field && field.pointId) || id;
       try {
         const res = await fetch("/api/modbusdrv/writepoint", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ driverId: driverId(), id, value }),
+          body: JSON.stringify({ driverId: driverId(), id: pid, value }),
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
-        setMsg("已写 " + id);
+        showWriteStatus(true, (field && field.label ? field.label : pid) + " 写入成功");
         await refresh();
+        return true;
       } catch (e) {
-        setMsg("写入失败: " + (e && e.message ? e.message : String(e)), true);
+        showWriteStatus(false, "写入失败: " + (e && e.message ? e.message : String(e)));
+        return false;
       }
     }
-    function onWrite(ev) {
-      const cell = ev.currentTarget.closest(".mb-widget");
-      const inp = cell.querySelector("input[data-role=val]");
-      writePoint(cell.getAttribute("data-pid"), inp.value);
+
+    async function pulsePoint(id) {
+      const ok = await writePoint(id, 1);
+      if (!ok) return false;
+      await new Promise((r) => setTimeout(r, 150));
+      return writePoint(id, 0);
     }
-    function onToggle(ev) {
-      const cell = ev.currentTarget.closest(".mb-widget");
-      const id = cell.getAttribute("data-pid");
-      writePoint(id, !values[id]);
+
+    function runCommand(cmdId) {
+      const cmd = (panelConfig.commands || []).find((c) => c.id === cmdId);
+      if (!cmd) return;
+      showNotify("执行 " + cmd.label + "…", "loading");
+      const go = cmd.kind === "pulse" ? pulsePoint(cmd.pointId) : writePoint(cmd.pointId, cmd.value);
+      go.then((ok) => showNotify(cmd.label + (ok === false ? " 失败" : " 已下发"), ok === false ? "error" : "success"));
     }
 
     async function saveLayout() {
@@ -282,27 +705,77 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
-        setMsg("布局已保存（本地 configs/modbus.layout.json，不入库）");
+        showNotify("布局已保存（本地 configs/modbus.layout.json，不入库）", "success");
       } catch (e) {
-        setMsg("保存失败: " + (e && e.message ? e.message : String(e)), true);
+        showNotify("保存失败: " + (e && e.message ? e.message : String(e)), "error");
       }
     }
 
-    function addWidget(point) {
-      if (!point) return;
-      layout.widgets.push({
-        id: "w-" + Math.random().toString(16).slice(2, 10),
-        pointId: point.id,
-        kind: point.type,
-        group: point.group || addGroup || "",
-        x: 0, y: 0, w: 240, h: 84,
-      });
-      render();
-      hideMenu();
-      hidePicker();
+    function ensureWidgetList() {
+      if ((layout.widgets || []).length) return;
+      layout.widgets = allFields().map(({ field, panel }) => ({
+        id: "w-" + field.id,
+        pointId: field.pointId || field.id,
+        kind: field.type,
+        group: panel.title,
+      }));
     }
-    function removeWidget(wid) {
-      layout.widgets = (layout.widgets || []).filter((w) => w.id !== wid);
+    function fieldTypeFromPoint(point) {
+      const t = (point && point.type) || "reg";
+      if (t === "regf") return "float";
+      if (t === "regi") return "int";
+      if (t === "bit" || t === "di" || t === "do") return "bit";
+      return "short";
+    }
+    function fieldFromPoint(point) {
+      return {
+        id: point.id,
+        pointId: point.id,
+        label: point.label || point.name || point.id,
+        type: fieldTypeFromPoint(point),
+        addr: point.address,
+        bit: point.bit,
+        writable: point.writable !== false && point.type !== "di",
+      };
+    }
+    function usedPointIds() {
+      return new Set(allFields().map(({ field }) => field.pointId || field.id));
+    }
+    function targetPanel() {
+      if (!Array.isArray(panelConfig.panels)) panelConfig.panels = [];
+      let panel = panelConfig.panels.find((p) => p.title === addGroup || p.id === addGroup);
+      if (!panel) {
+        panel = { id: "custom", title: addGroup || "自定义", fields: [] };
+        panelConfig.panels.push(panel);
+      }
+      if (!Array.isArray(panel.fields)) panel.fields = [];
+      return panel;
+    }
+    function addWidget(point, opts) {
+      if (!point) return false;
+      ensureWidgetList();
+      const used = usedPointIds();
+      const alreadyField = used.has(point.id);
+      const alreadyWidget = (layout.widgets || []).some((w) => w.pointId === point.id || w.id === point.id);
+      if (!alreadyField) targetPanel().fields.push(fieldFromPoint(point));
+      if (!alreadyWidget) {
+        layout.widgets.push({
+          id: "w-" + Math.random().toString(16).slice(2, 10),
+          pointId: point.id,
+          kind: point.type,
+          group: point.group || addGroup || "",
+        });
+      }
+      if (alreadyField && alreadyWidget) return false;
+      if (!opts || !opts.silent) {
+        render();
+        hideMenu();
+      }
+      return true;
+    }
+    function removeField(fid) {
+      ensureWidgetList();
+      layout.widgets = (layout.widgets || []).filter((w) => w.pointId !== fid && w.id !== fid);
       render();
       hideMenu();
     }
@@ -317,63 +790,193 @@
         b.addEventListener("click", () => {
           const act = b.getAttribute("data-act");
           if (act === "add") openPicker(b.getAttribute("data-group") || addGroup);
-          if (act === "del" && menuWidgetId) removeWidget(menuWidgetId);
+          if (act === "del" && menuFieldId) removeField(menuFieldId);
           if (act === "save") { hideMenu(); saveLayout(); }
         });
       });
     }
-
     function hidePicker() { pickerEl.style.display = "none"; }
+    function pickerOpen() { return pickerEl.style.display === "flex"; }
+    function fillSelect(el, items, keep) {
+      const cur = keep != null ? keep : el.value;
+      const opts = ['<option value="">全部</option>'].concat(
+        items.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`)
+      );
+      el.innerHTML = opts.join("");
+      if (cur && items.includes(cur)) el.value = cur;
+    }
+    function loadAllRegisters() {
+      pickerRows = (catalog.points || []).filter((p) => !p.isContinuation);
+      const types = [...new Set(pickerRows.map((p) => p.type).filter(Boolean))].sort();
+      const groups = [...new Set(pickerRows.map((p) => p.group).filter(Boolean))];
+      fillSelect(pickerTypeEl, types);
+      fillSelect(pickerGroupEl, groups, addGroup && groups.includes(addGroup) ? addGroup : "");
+      pickerCountEl.textContent = "已加载 " + pickerRows.length + " 个寄存器";
+      drawPicker();
+    }
+    function pointMatchesQuery(p, q) {
+      if (!q) return true;
+      const hay = [p.id, p.name, p.label, p.type, p.group, p.description, p.plcAddress, p.addressHex]
+        .join(" ").toLowerCase();
+      if (hay.includes(q)) return true;
+      const addr = String(p.address);
+      if (addr === q || ("holding." + addr) === q || ("hr " + addr) === q) return true;
+      const hex = (p.addressHex || p.address.toString(16)).toLowerCase();
+      if (hex === q || ("0x" + hex) === q) return true;
+      if (p.bit != null && (q === String(p.bit) || q === "." + p.bit || q === "bit" + p.bit)) return true;
+      return false;
+    }
+    function filteredPickerRows() {
+      const q = (pickerFilterEl.value || "").trim().toLowerCase();
+      const type = pickerTypeEl.value;
+      const group = pickerGroupEl.value;
+      const hideUsed = pickerHideUsedEl.checked;
+      const used = hideUsed ? usedPointIds() : null;
+      return pickerRows.filter((p) => {
+        if (type && p.type !== type) return false;
+        if (group && p.group !== group) return false;
+        if (used && used.has(p.id)) return false;
+        return pointMatchesQuery(p, q);
+      });
+    }
+    function formatPickerValue(p) {
+      const raw = values[p.id];
+      if (raw == null || raw === "") return "—";
+      if (p.type === "regf") {
+        const n = Number(raw);
+        return Number.isFinite(n) ? n.toFixed(2) : String(raw);
+      }
+      if (p.type === "bit" || p.type === "di" || p.type === "do") {
+        return raw && raw !== 0 && raw !== "0" ? "1" : "0";
+      }
+      return String(raw);
+    }
+    function updatePickerSelMeta() {
+      pickerSelMetaEl.textContent = "已选 " + pickerSelected.size;
+      const visible = pickerListEl.querySelectorAll("tr[data-id]");
+      const checked = pickerListEl.querySelectorAll("tr[data-id] input[type=checkbox]:checked");
+      pickerCheckAllEl.checked = visible.length > 0 && checked.length === visible.length;
+      pickerCheckAllEl.indeterminate = checked.length > 0 && checked.length < visible.length;
+    }
     function openPicker(group) {
       addGroup = group || "";
       hideMenu();
       pickerEl.style.display = "flex";
       pickerFilterEl.value = "";
-      drawPicker();
+      pickerHideUsedEl.checked = false;
+      pickerSelected.clear();
+      loadAllRegisters();
       pickerFilterEl.focus();
     }
     function drawPicker() {
-      const q = (pickerFilterEl.value || "").toLowerCase();
-      const items = (catalog.points || []).filter((p) => {
-        if (p.isContinuation) return false;
-        if (addGroup && p.group !== addGroup) return false;
-        if (!q) return true;
-        return [p.id, p.name, p.label, p.type, p.addressHex, p.description].join(" ").toLowerCase().includes(q);
+      if (!pickerRows.length) {
+        pickerListEl.innerHTML = '<tr><td colspan="8" class="mb-meta">点击「加载全部寄存器」从目录载入。</td></tr>';
+        pickerCountEl.textContent = "未加载";
+        updatePickerSelMeta();
+        return;
+      }
+      const used = usedPointIds();
+      const items = filteredPickerRows();
+      pickerCountEl.textContent = "显示 " + items.length + " / " + pickerRows.length + " · 目录 " + ((catalog.points || []).length);
+      pickerListEl.innerHTML = items.map((p) => {
+        const selected = pickerSelected.has(p.id);
+        const already = used.has(p.id);
+        return `<tr data-id="${esc(p.id)}" class="${already ? "used" : ""}${selected ? " selected" : ""}">
+          <td><input type="checkbox" ${selected ? "checked" : ""} /></td>
+          <td>${esc(p.label || p.name || p.id)}</td>
+          <td>${esc(p.type || "")}</td>
+          <td class="addr">${esc(p.addressHex || String(p.address))} <small>holding.${p.address}</small></td>
+          <td class="addr">${p.bit != null ? p.bit : "—"}</td>
+          <td>${esc(p.group || "")}</td>
+          <td class="addr pv">${esc(formatPickerValue(p))}</td>
+          <td>${p.writable === false || p.type === "di" ? "只读" : "可写"}</td>
+        </tr>`;
+      }).join("") || '<tr><td colspan="8" class="mb-meta">没有匹配的寄存器</td></tr>';
+      pickerListEl.querySelectorAll("tr[data-id]").forEach((tr) => {
+        const id = tr.getAttribute("data-id");
+        const cb = tr.querySelector("input[type=checkbox]");
+        const toggle = (on) => {
+          if (on) pickerSelected.add(id); else pickerSelected.delete(id);
+          cb.checked = on;
+          tr.classList.toggle("selected", on);
+          updatePickerSelMeta();
+        };
+        cb.addEventListener("click", (ev) => { ev.stopPropagation(); toggle(cb.checked); });
+        tr.addEventListener("click", () => toggle(!cb.checked));
+        tr.addEventListener("dblclick", (ev) => {
+          ev.preventDefault();
+          const point = pointById(id);
+          if (addWidget(point)) {
+            showNotify("已添加 " + ((point && (point.label || point.name)) || id), "success");
+            drawPicker();
+          }
+        });
       });
-      pickerListEl.innerHTML = items.map((p) =>
-        `<div class="item" data-id="${esc(p.id)}">
-          <span>${esc(p.label || p.name)} <small>${esc(p.type)} holding.${p.address}${p.bit != null ? "." + p.bit : ""}</small></span>
-          <span>${esc(p.group || "")}</span>
-        </div>`
-      ).join("") || '<div class="sub">没有可添加的点</div>';
-      pickerListEl.querySelectorAll(".item").forEach((el) => {
-        el.addEventListener("click", () => addWidget(pointById(el.getAttribute("data-id"))));
+      updatePickerSelMeta();
+    }
+    function updatePickerValues() {
+      if (!pickerOpen()) return;
+      pickerListEl.querySelectorAll("tr[data-id]").forEach((tr) => {
+        const p = pointById(tr.getAttribute("data-id"));
+        const cell = tr.querySelector(".pv");
+        if (p && cell) cell.textContent = formatPickerValue(p);
       });
     }
+    function addSelectedPoints() {
+      const ids = [...pickerSelected];
+      let n = 0;
+      ids.forEach((id) => { if (addWidget(pointById(id), { silent: true })) n++; });
+      render();
+      hideMenu();
+      drawPicker();
+      showNotify(n ? "已添加 " + n + " 个字段到「" + (addGroup || "自定义") + "」" : "没有新字段可添加", n ? "success" : "error");
+    }
 
-    groupsEl.addEventListener("contextmenu", (ev) => {
+    panelsEl.addEventListener("contextmenu", (ev) => {
       ev.preventDefault();
-      const widget = ev.target.closest(".mb-widget");
-      const group = ev.target.closest(".mb-group");
-      addGroup = group ? (group.getAttribute("data-group") || "") : "";
-      menuWidgetId = widget ? (widget.getAttribute("data-wid") || "") : "";
-      const html = widget
-        ? `<div class="cap">控件</div>
-           <button type="button" data-act="del">删除此控件</button>
-           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加寄存器控件…</button>
+      const row = ev.target.closest(".form-group");
+      const panel = ev.target.closest(".panel");
+      addGroup = panel ? (panel.getAttribute("data-group") || "") : "";
+      menuFieldId = row ? (row.getAttribute("data-pid") || "") : "";
+      const html = row
+        ? `<div class="cap">字段</div>
+           <button type="button" data-act="del">移除此字段</button>
+           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加字段…</button>
            <button type="button" data-act="save">保存布局</button>`
-        : `<div class="cap">${esc(addGroup || "画布")}</div>
-           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加寄存器控件…</button>
+        : `<div class="cap">${esc(addGroup || "面板")}</div>
+           <button type="button" data-act="add" data-group="${esc(addGroup)}">添加字段…</button>
            <button type="button" data-act="save">保存布局</button>`;
       showMenu(ev.clientX, ev.clientY, html);
     });
     document.addEventListener("click", (ev) => { if (!menuEl.contains(ev.target)) hideMenu(); });
     pickerFilterEl.addEventListener("input", drawPicker);
+    pickerTypeEl.addEventListener("change", drawPicker);
+    pickerGroupEl.addEventListener("change", drawPicker);
+    pickerHideUsedEl.addEventListener("change", drawPicker);
+    document.getElementById("pickerLoadAll").addEventListener("click", () => {
+      pickerSelected.clear();
+      loadAllRegisters();
+      showNotify("已加载 " + pickerRows.length + " 个寄存器到表格", "success");
+    });
+    document.getElementById("pickerSelectVisible").addEventListener("click", () => {
+      filteredPickerRows().forEach((p) => pickerSelected.add(p.id));
+      drawPicker();
+    });
+    pickerCheckAllEl.addEventListener("change", () => {
+      const rows = filteredPickerRows();
+      if (pickerCheckAllEl.checked) rows.forEach((p) => pickerSelected.add(p.id));
+      else rows.forEach((p) => pickerSelected.delete(p.id));
+      drawPicker();
+    });
+    document.getElementById("pickerAddSelected").addEventListener("click", addSelectedPoints);
     document.getElementById("pickerClose").addEventListener("click", hidePicker);
+    pickerEl.addEventListener("click", (ev) => { if (ev.target === pickerEl) hidePicker(); });
+    document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && pickerOpen()) hidePicker(); });
+    document.getElementById("btnCatalog").addEventListener("click", () => openPicker(addGroup || ""));
 
     function startAuto() {
       if (autoTimer) clearInterval(autoTimer);
-      autoTimer = setInterval(refresh, 100);
+      autoTimer = setInterval(refresh, panelConfig.refreshMs || 100);
       btnAuto.textContent = "停止自动";
     }
     function stopAuto() {
@@ -386,9 +989,53 @@
     document.getElementById("btnSave").addEventListener("click", saveLayout);
     document.getElementById("btnReset").addEventListener("click", () => {
       layout.widgets = [];
-      (catalog.points || []).filter((p) => !p.isContinuation && p.bit == null && p.name).forEach(addWidget);
       render();
-      setMsg("已恢复默认分组控件（未保存）");
+      showNotify("已显示全部导出字段（未保存）", "success");
+    });
+
+    document.getElementById("backup-btn").addEventListener("click", async () => {
+      try {
+        showNotify("正在备份…", "loading");
+        const points = {};
+        allFields().forEach(({ field }) => {
+          if (field.type === "bit") return;
+          const raw = values[field.pointId || field.id];
+          if (raw == null) return;
+          points[field.pointId || field.id] = raw;
+        });
+        const blob = new Blob([JSON.stringify({ version: 1, points }, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "plc_registers_" + new Date().toISOString().replace(/[:.]/g, "-") + ".json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showNotify("寄存器备份已下载", "success");
+      } catch (e) {
+        showNotify("备份失败: " + (e && e.message ? e.message : String(e)), "error");
+      }
+    });
+    document.getElementById("restore-file-btn").addEventListener("click", () => {
+      document.getElementById("restore-file").click();
+    });
+    document.getElementById("restore-file").addEventListener("change", async (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      ev.target.value = "";
+      if (!file) return;
+      if (!confirm("确定要恢复寄存器数据吗？这将覆盖当前值。")) return;
+      try {
+        const raw = JSON.parse(await file.text());
+        const map = raw.points && typeof raw.points === "object" ? raw.points : raw;
+        let ok = 0, fail = 0;
+        for (const [key, value] of Object.entries(map)) {
+          const field = fieldById(key) || allFields().map((x) => x.field).find((f) => String(f.addr) === String(key));
+          if (!field || field.type === "bit" || field.writable === false) continue;
+          const success = await writePoint(field.pointId || field.id, value);
+          if (success) ok++; else fail++;
+        }
+        showNotify(fail ? `恢复完成: ${ok} 成功, ${fail} 失败` : `成功恢复 ${ok} 个寄存器`, fail ? "error" : "success");
+      } catch (e) {
+        showNotify("恢复失败: " + (e && e.message ? e.message : String(e)), "error");
+      }
     });
 
     (async function init() {
