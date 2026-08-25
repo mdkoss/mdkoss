@@ -257,16 +257,18 @@ body {
 }
 .recipe-pick-btn:hover { background: rgba(91, 163, 255, 0.35); }
 
-/* 二级 popup 弹层（iframe） */
+/* 二级 popup 弹层（iframe）：从顶栏下方铺开，顶栏仍可切换/再次点击关闭 */
 .popup-modal {
-  display: none; position: fixed; inset: 0; z-index: 200;
+  display: none; position: fixed;
+  top: var(--top-h); left: 0; right: 0; bottom: 0;
+  z-index: 200;
   align-items: center; justify-content: center;
   background: rgba(0, 0, 0, 0.55);
 }
 .popup-modal.open { display: flex; }
 .popup-dialog {
   width: min(720px, calc(100vw - 48px));
-  height: min(720px, calc(100vh - 80px));
+  height: min(640px, calc(100vh - var(--top-h) - 48px));
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -276,7 +278,7 @@ body {
 }
 .popup-dialog.wide {
   width: min(960px, calc(100vw - 48px));
-  height: min(800px, calc(100vh - 80px));
+  height: min(720px, calc(100vh - var(--top-h) - 48px));
 }
 .popup-dialog-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -298,7 +300,9 @@ body {
 
 /* 排单选择弹层（兼容旧 class；现由 popup_recipe 承接） */
 .recipe-modal {
-  display: none; position: fixed; inset: 0; z-index: 200;
+  display: none; position: fixed;
+  top: var(--top-h); left: 0; right: 0; bottom: 0;
+  z-index: 200;
   align-items: center; justify-content: center;
   background: rgba(0, 0, 0, 0.55);
 }

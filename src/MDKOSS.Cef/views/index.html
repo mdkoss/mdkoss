@@ -144,26 +144,52 @@
     const popupTitle = document.getElementById("popupTitle");
     const popupFrame = document.getElementById("popupFrame");
     const btnPopupClose = document.getElementById("btnPopupClose");
+    /** @type {string|null} name|wide|orderId of the open popup; null when closed */
+    let currentPopupKey = null;
 
-    function openPopup(name, title, opts) {
+    function buildPopupKey(name, opts) {
       opts = opts || {};
-      popupTitle.textContent = title || name;
-      popupDialog.classList.toggle("wide", !!opts.wide);
-      const qs = new URLSearchParams({ embedded: "1" });
-      if (opts.orderId) qs.set("orderId", opts.orderId);
-      popupFrame.src = `/${name}.html?${qs.toString()}`;
-      popupModal.classList.add("open");
-      popupModal.setAttribute("aria-hidden", "false");
+      return `${name}|${opts.wide ? "1" : "0"}|${opts.orderId || ""}`;
+    }
+
+    function syncPopupNav(name) {
       document.querySelectorAll(".nav-btn[data-popup]").forEach((b) => {
-        b.classList.toggle("active", b.getAttribute("data-popup") === name);
+        b.classList.toggle("active", !!name && b.getAttribute("data-popup") === name);
       });
     }
 
+    function openPopup(name, title, opts) {
+      opts = opts || {};
+      const key = buildPopupKey(name, opts);
+      if (popupModal.classList.contains("open") && currentPopupKey === key) {
+        closePopup(false);
+        return;
+      }
+      const needReload = currentPopupKey !== key;
+      popupTitle.textContent = title || name;
+      popupDialog.classList.toggle("wide", !!opts.wide);
+      if (needReload) {
+        const qs = new URLSearchParams({ embedded: "1" });
+        if (opts.orderId) qs.set("orderId", String(opts.orderId));
+        popupFrame.src = `/${name}.html?${qs.toString()}`;
+      }
+      currentPopupKey = key;
+      popupModal.classList.add("open");
+      popupModal.setAttribute("aria-hidden", "false");
+      syncPopupNav(name);
+      try { btnPopupClose.focus(); } catch { /* ignore */ }
+    }
+
     function closePopup(refresh) {
+      if (!popupModal.classList.contains("open") && !currentPopupKey) {
+        if (refresh) tick();
+        return;
+      }
       popupModal.classList.remove("open");
       popupModal.setAttribute("aria-hidden", "true");
       popupFrame.src = "about:blank";
-      document.querySelectorAll(".nav-btn[data-popup].active").forEach((b) => b.classList.remove("active"));
+      currentPopupKey = null;
+      syncPopupNav(null);
       if (refresh) tick();
     }
 

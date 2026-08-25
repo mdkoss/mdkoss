@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -26,7 +26,6 @@
     </div>
   </div>
   <script>
-    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
     function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
     async function post(path){
       await fetch(path,{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
@@ -53,5 +52,6 @@
     document.getElementById("btnReset").onclick = () => post("/api/alarms/reset");
     tick(); setInterval(tick, 1000);
   </script>
+  <script src="/js/popup_embed.js"></script>
 </body>
 </html>

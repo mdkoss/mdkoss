@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -24,7 +24,6 @@
     <div style="padding:8px 0 0;font-size:12px"><a href="/man_vars.html" target="_blank" style="color:var(--accent)">变量配置 →</a></div>
   </div>
   <script>
-    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
     function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
     async function tick(){
       try{
@@ -47,5 +46,6 @@
     }
     tick(); setInterval(tick, 1000);
   </script>
+  <script src="/js/popup_embed.js"></script>
 </body>
 </html>

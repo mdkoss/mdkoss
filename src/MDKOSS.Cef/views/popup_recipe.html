@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -19,7 +19,6 @@
     <div style="padding:8px;font-size:12px"><a href="/man_recipe.html" target="_blank" style="color:var(--accent)">配方配置管理 →</a></div>
   </div>
   <script>
-    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
     function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
     function field(d,a,b){return d[a]??d[b];}
     function notifyClose(){
@@ -71,5 +70,6 @@
     }
     load();
   </script>
+  <script src="/js/popup_embed.js"></script>
 </body>
 </html>

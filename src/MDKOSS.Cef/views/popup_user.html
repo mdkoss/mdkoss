@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -22,7 +22,6 @@
     <div class="row"><span>登录</span><span id="userLogin">本地会话</span></div>
   </div>
   <script>
-    if (new URLSearchParams(location.search).get("embedded") === "1") document.body.classList.add("embedded");
     async function tick(){
       try{
         const data = await (await fetch("/api/status",{cache:"no-store"})).json();
@@ -33,5 +32,6 @@
     }
     tick(); setInterval(tick, 2000);
   </script>
+  <script src="/js/popup_embed.js"></script>
 </body>
 </html>
