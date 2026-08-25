@@ -140,6 +140,18 @@ public sealed class AlarmsVisionsApiTests
             Assert.True(listVis.GetProperty("success").GetBoolean());
             Assert.Equal(1, listVis.GetProperty("visions").GetArrayLength());
             Assert.Equal(visionId, listVis.GetProperty("activeVisionId").GetString());
+            Assert.Equal("opencv", listVis.GetProperty("defaultAlgorithm").GetString());
+            Assert.True(listVis.GetProperty("backends").GetArrayLength() >= 2);
+            var first = listVis.GetProperty("visions")[0];
+            Assert.False(string.IsNullOrWhiteSpace(first.GetProperty("algorithm").GetString()));
+            Assert.True(first.GetProperty("algorithmAvailable").GetBoolean());
+
+            var backends = await client.GetFromJsonAsync<JsonElement>("/api/visions/backends");
+            Assert.True(backends.GetProperty("success").GetBoolean());
+            Assert.Contains(
+                backends.GetProperty("backends").EnumerateArray(),
+                b => string.Equals(b.GetProperty("id").GetString(), "opencv", StringComparison.OrdinalIgnoreCase)
+                     && b.GetProperty("available").GetBoolean());
         }
         finally
         {

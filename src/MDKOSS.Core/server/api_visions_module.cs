@@ -1,9 +1,10 @@
 using System.Net;
 using System.Text.Json;
+using MDKOSS.Core.Vision;
 
 namespace MDKOSS.Core.Monitor;
 
-/// <summary>Handles /api/visions — list pipelines and set the active vision id.</summary>
+/// <summary>Handles /api/visions — list pipelines, backends, and set the active vision id.</summary>
 public sealed class VisionsApiModule : MonitoringApiModule
 {
     public VisionsApiModule(MdkRuntime runtime) : base(runtime) { }
@@ -23,6 +24,12 @@ public sealed class VisionsApiModule : MonitoringApiModule
         if (string.IsNullOrEmpty(path) && isGet)
         {
             await WriteListAsync(context.Response, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+
+        if (path.Equals("backends", StringComparison.OrdinalIgnoreCase) && isGet)
+        {
+            await WriteBackendsAsync(context.Response, cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -60,11 +67,22 @@ public sealed class VisionsApiModule : MonitoringApiModule
         {
             success = true,
             activeVisionId = Runtime.Setting.ActiveVisionId ?? "",
+            defaultAlgorithm = VisionAlgorithmRegistry.DefaultId,
+            backends = ListBackends(),
             visions,
             devices,
             timestampUtc = DateTime.UtcNow,
         }, cancellationToken);
     }
+
+    private Task WriteBackendsAsync(HttpListenerResponse response, CancellationToken cancellationToken) =>
+        WriteJsonAsync(response, new
+        {
+            success = true,
+            defaultAlgorithm = VisionAlgorithmRegistry.DefaultId,
+            backends = ListBackends(),
+            timestampUtc = DateTime.UtcNow,
+        }, cancellationToken);
 
     private async Task HandleGetByIdAsync(
         HttpListenerResponse response,
@@ -131,24 +149,49 @@ public sealed class VisionsApiModule : MonitoringApiModule
     private static object Summarize(MdkSetting.VisionConfig v)
     {
         var pipeline = v.EffectivePipeline;
+        var algorithm = string.IsNullOrWhiteSpace(pipeline.Algorithm)
+            ? VisionAlgorithmRegistry.DefaultId
+            : pipeline.Algorithm.Trim();
+        var backend = VisionAlgorithmRegistry.Resolve(algorithm);
         return new
         {
             id = v.Id,
             name = v.Name,
             description = v.Description,
             cameraDeviceId = v.CameraDeviceId,
+            algorithm,
+            algorithmAvailable = backend.IsAvailable,
             nodeCount = pipeline.Nodes.Count,
         };
     }
 
-    private static object ToDto(MdkSetting.VisionConfig v) => new
+    private static object ToDto(MdkSetting.VisionConfig v)
     {
-        id = v.Id,
-        name = v.Name,
-        description = v.Description,
-        cameraDeviceId = v.CameraDeviceId,
-        pipeline = v.EffectivePipeline,
-    };
+        var pipeline = v.EffectivePipeline;
+        var algorithm = string.IsNullOrWhiteSpace(pipeline.Algorithm)
+            ? VisionAlgorithmRegistry.DefaultId
+            : pipeline.Algorithm.Trim();
+        return new
+        {
+            id = v.Id,
+            name = v.Name,
+            description = v.Description,
+            cameraDeviceId = v.CameraDeviceId,
+            algorithm,
+            algorithmAvailable = VisionAlgorithmRegistry.Resolve(algorithm).IsAvailable,
+            pipeline,
+        };
+    }
+
+    private static IReadOnlyList<object> ListBackends() =>
+        VisionAlgorithmRegistry.List()
+            .Select(b => (object)new
+            {
+                id = b.Id,
+                displayName = b.DisplayName,
+                available = b.IsAvailable,
+            })
+            .ToList();
 
     private static bool IsVisionDevice(string? type)
     {

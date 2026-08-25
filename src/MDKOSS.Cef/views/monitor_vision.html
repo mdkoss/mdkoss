@@ -35,8 +35,8 @@
         <div class="label">流程定义（/api/visions）</div>
         <div class="table-scroll">
           <table>
-            <thead><tr><th>ID</th><th>名称</th><th>相机</th><th>节点</th><th>说明</th></tr></thead>
-            <tbody id="visRows"><tr><td colspan="5" style="color:var(--muted)">—</td></tr></tbody>
+            <thead><tr><th>ID</th><th>名称</th><th>算法</th><th>相机</th><th>节点</th><th>说明</th></tr></thead>
+            <tbody id="visRows"><tr><td colspan="6" style="color:var(--muted)">—</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -103,12 +103,17 @@
 
         const vbody = document.getElementById("visRows");
         vbody.innerHTML = visList.length
-          ? visList.map((v) => `<tr>
+          ? visList.map((v) => {
+              const algo = v.algorithm || "opencv";
+              const avail = v.algorithmAvailable === false ? "不可用" : "可用";
+              return `<tr>
               <td>${esc(v.id)}</td><td>${esc(v.name)}</td>
+              <td>${esc(algo)} (${esc(avail)})</td>
               <td>${esc(v.cameraDeviceId || "—")}</td>
               <td>${esc(v.nodeCount)}</td><td>${esc(v.description || "")}</td>
-            </tr>`).join("")
-          : '<tr><td colspan="5" style="color:var(--muted)">无视觉流程</td></tr>';
+            </tr>`;
+            }).join("")
+          : '<tr><td colspan="6" style="color:var(--muted)">无视觉流程</td></tr>';
 
         const id = sel.value;
         if (!id) {
