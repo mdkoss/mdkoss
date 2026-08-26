@@ -74,6 +74,10 @@ public static class DeviceParameterPresets
                 ["pauseAlias"] = "pauseButton",
             },
             "cycle" => new(StringComparer.OrdinalIgnoreCase),
+            "cloud-machine" or "cloudmachine" => new(StringComparer.OrdinalIgnoreCase)
+            {
+                ["mysqlDeviceId"] = "mysql-cloud",
+            },
             "flow" => new(StringComparer.OrdinalIgnoreCase) { ["loop"] = "true", ["flowJson"] = "{}" },
             _ => new(StringComparer.OrdinalIgnoreCase),
         };

@@ -88,6 +88,8 @@
       <_S7DepsJson Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
       <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.dll" />
       <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MySqlConnector.*.dll" />
+      <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\Microsoft.Extensions.Logging.Abstractions.dll" />
+      <_MysqlDeps Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
       <_MysqlDepsJson Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\*.deps.json" />
     </ItemGroup>
 
@@ -203,6 +205,8 @@
       <_HostSidePublishDeps Include="$(_HostOutDir)System.IO.Ports.*.dll" />
       <_HostSidePublishDeps Include="$(_HostOutDir)MySqlConnector.dll" />
       <_HostSidePublishDeps Include="$(_HostOutDir)MySqlConnector.*.dll" />
+      <_HostSidePublishDeps Include="$(_HostOutDir)Microsoft.Extensions.Logging.Abstractions.dll" />
+      <_HostSidePublishDeps Include="$(_HostOutDir)Microsoft.Extensions.DependencyInjection.Abstractions.dll" />
       <_HostSidePublishRuntime Include="$(_HostOutDir)runtimes\win\**\*.*" />
     </ItemGroup>
 

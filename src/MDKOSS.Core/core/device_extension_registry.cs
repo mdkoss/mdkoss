@@ -45,4 +45,8 @@ public static class DeviceExtensionRegistry
         device = null;
         return false;
     }
+
+    /// <summary>Returns whether a factory is registered for the type.</summary>
+    public static bool IsRegistered(string? deviceType) =>
+        !string.IsNullOrWhiteSpace(deviceType) && Factories.ContainsKey(deviceType.Trim());
 }

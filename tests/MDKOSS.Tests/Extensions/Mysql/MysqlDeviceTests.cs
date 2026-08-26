@@ -281,3 +281,228 @@ public sealed class MysqlApiModuleTests
         }
     }
 }
+
+public sealed class CloudMachineTaskTests
+{
+    [Fact]
+    public void Create_without_mysql_device_returns_null()
+    {
+        var vars = new MVarStore();
+        var ctx = new TaskBootstrapContext(
+            new Dictionary<string, MDKOSS.Core.Drivers.IDriver>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, MDeviceBase>(StringComparer.OrdinalIgnoreCase),
+            vars,
+            () => new RuntimeSnapshot(
+                "p",
+                MdkProduct.Version,
+                false,
+                new Dictionary<string, DriverSnapshot>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, DeviceSnapshot>(StringComparer.OrdinalIgnoreCase),
+                new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)),
+            () => [],
+            getMachineMonitor: () => new MachineMonitorRecord { Id = "x" });
+
+        Assert.Null(CloudMachineTask.Create(ctx, new MdkSetting.TaskConfig { Type = "cloud-machine" }));
+    }
+
+    [Fact]
+    public void Create_binds_named_mysql_device()
+    {
+        var vars = new MVarStore();
+        var mysql = new MysqlDevice("mysql-cloud", "Cloud", new MysqlDeviceParameters(), vars);
+        try
+        {
+            var devices = new Dictionary<string, MDeviceBase>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["mysql-cloud"] = mysql,
+            };
+            var ctx = new TaskBootstrapContext(
+                new Dictionary<string, MDKOSS.Core.Drivers.IDriver>(StringComparer.OrdinalIgnoreCase),
+                devices,
+                vars,
+                () => new RuntimeSnapshot(
+                    "p",
+                    MdkProduct.Version,
+                    false,
+                    new Dictionary<string, DriverSnapshot>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, DeviceSnapshot>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)),
+                () => [],
+                getMachineMonitor: () => new MachineMonitorRecord { Id = "x" });
+
+            var task = CloudMachineTask.Create(ctx, new MdkSetting.TaskConfig
+            {
+                Type = "cloud-machine",
+                IntervalMs = 5_000,
+                Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["mysqlDeviceId"] = "mysql-cloud",
+                },
+            });
+            Assert.NotNull(task);
+            Assert.Equal(CloudMachineTask.TaskName, task!.Name);
+        }
+        finally
+        {
+            mysql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Tick_connect_failure_warns_and_disconnects()
+    {
+        var vars = new MVarStore();
+        var mysql = new MysqlDevice(
+            "mysql-offline",
+            "offline",
+            new MysqlDeviceParameters
+            {
+                Host = "127.0.0.1",
+                Port = 1,
+                ConnectTimeoutMs = 200,
+                CommandTimeoutMs = 200,
+            },
+            vars);
+        try
+        {
+            var task = new CloudMachineTask(mysql, () => new MachineMonitorRecord { Id = "x" }, vars, 5_000);
+            await task.ExecuteOnceAsync(CancellationToken.None);
+            Assert.False(mysql.IsConnected);
+            Assert.NotEqual(MTaskState.Fault, task.State);
+            Assert.NotEqual(MDeviceState.Fault, mysql.State);
+            Assert.False(string.IsNullOrWhiteSpace(vars.Get<string>("cloud.machine.lastError")));
+        }
+        finally
+        {
+            mysql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Tick_live_upsert_then_disconnects()
+    {
+        if (!MysqlLiveCredentials.TryLoad(out var raw))
+        {
+            return;
+        }
+
+        var vars = new MVarStore();
+        var mysql = new MysqlDevice("mysql1", "live", MysqlLiveCredentials.ToDeviceParameters(raw), vars);
+        const string testId = "mdkoss-test-cloud-machine-tick";
+        try
+        {
+            var record = new MachineMonitorRecord
+            {
+                Id = testId,
+                Name = "tick-test-machine",
+                Version = MdkProduct.Version,
+                MachineType = "TestRig",
+                MachineState = "idle",
+                LastHeartbeatUtc = DateTime.UtcNow,
+                Vars = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase),
+            };
+            var task = new CloudMachineTask(mysql, () => record, vars, 5_000);
+            await task.ExecuteOnceAsync(CancellationToken.None);
+            Assert.False(mysql.IsConnected);
+            Assert.NotEqual(MTaskState.Fault, task.State);
+            Assert.Equal(testId, vars.Get<string>("cloud.machine.id"));
+            Assert.Equal(string.Empty, vars.Get<string>("cloud.machine.lastError"));
+        }
+        finally
+        {
+            if (mysql.Connect() == MysqlErrorCode.Ok)
+            {
+                mysql.Execute(
+                    "DELETE FROM machine WHERE id=@id",
+                    new Dictionary<string, object?> { ["id"] = testId });
+                mysql.Disconnect();
+            }
+
+            mysql.Dispose();
+        }
+    }
+
+    [Fact]
+    public void Upsert_monitor_row_against_live_machine_table()
+    {
+        if (!MysqlLiveCredentials.TryLoad(out var raw))
+        {
+            return;
+        }
+
+        var vars = new MVarStore();
+        var device = new MysqlDevice("mysql1", "live", MysqlLiveCredentials.ToDeviceParameters(raw), vars);
+        const string testId = "mdkoss-test-machine-monitor";
+        try
+        {
+            Assert.Equal(MysqlErrorCode.Ok, device.Connect());
+            var record = new MachineMonitorRecord
+            {
+                Id = testId,
+                Name = "unit-test-machine",
+                Version = MdkProduct.Version,
+                MachineType = "TestRig",
+                IsRunning = false,
+                MachineState = "idle",
+                MachineMessage = "test",
+                HostName = Environment.MachineName,
+                Setting = new { projectName = "unit-test-machine" },
+                Vars = new Dictionary<string, object?> { ["machine.state"] = "idle" },
+                Recipe = new { recipes = Array.Empty<object>() },
+                Orders = Array.Empty<object>(),
+                Drivers = new Dictionary<string, object?>(),
+                Devices = new Dictionary<string, object?>(),
+                Tasks = Array.Empty<object>(),
+                Alarms = new { active = Array.Empty<object>() },
+                LastHeartbeatUtc = DateTime.UtcNow,
+            };
+
+            var (err, _, _) = device.Execute(MachineMonitorRecord.UpsertSql, record.ToUpsertParameters());
+            Assert.Equal(MysqlErrorCode.Ok, err);
+
+            var (qErr, result) = device.Query(
+                "SELECT name, version, machine_type, machine_state FROM machine WHERE id=@id",
+                new Dictionary<string, object?> { ["id"] = testId });
+            Assert.Equal(MysqlErrorCode.Ok, qErr);
+            Assert.NotNull(result);
+            Assert.Equal(1, result!.RowCount);
+            var row = result.Rows[0];
+            Assert.Equal("unit-test-machine", row[0]?.ToString());
+            Assert.Equal("TestRig", row[2]?.ToString());
+            Assert.Equal("idle", row[3]?.ToString());
+        }
+        finally
+        {
+            if (device.IsConnected || device.Connect() == MysqlErrorCode.Ok)
+            {
+                device.Execute(
+                    "DELETE FROM machine WHERE id=@id",
+                    new Dictionary<string, object?> { ["id"] = testId });
+                device.Disconnect();
+            }
+
+            device.Dispose();
+        }
+    }
+}
+
+public sealed class MysqlPluginDeployTests
+{
+    [Fact]
+    public void Plugins_folder_includes_mysqlconnector_logging_dependencies()
+    {
+        var plugins = Path.Combine(AppContext.BaseDirectory, "plugins");
+        Assert.True(Directory.Exists(plugins), plugins);
+        string[] required =
+        [
+            "MySqlConnector.dll",
+            "Microsoft.Extensions.Logging.Abstractions.dll",
+            "Microsoft.Extensions.DependencyInjection.Abstractions.dll",
+        ];
+        foreach (var name in required)
+        {
+            Assert.True(File.Exists(Path.Combine(plugins, name)), Path.Combine(plugins, name));
+        }
+    }
+}
+

@@ -70,6 +70,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
     private sealed class MachinePatch
     {
         public string? ProjectName { get; set; }
+        public string? MachineId { get; set; }
+        public string? MachineType { get; set; }
         public int? CycleMs { get; set; }
         public string? MonitoringPrefix { get; set; }
         public string? StartPage { get; set; }
@@ -414,7 +416,7 @@ public sealed class ConfigApiModule : MonitoringApiModule
                 },
                 axes = new[] { "linear", "rotary", "axis" },
                 platforms = new[] { "platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw" },
-                tasks = new[] { "pollDriver", "operation", "machine", "cycle", "motion", "flow", "pnpCycle", "pnpConveyor" },
+                tasks = new[] { "pollDriver", "operation", "machine", "cycle", "cloud-machine", "motion", "flow", "pnpCycle", "pnpConveyor" },
             },
             defaults = new
             {
@@ -970,6 +972,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
         {
             success = true,
             projectName = s.ProjectName,
+            machineId = s.MachineId ?? "",
+            machineType = s.MachineType ?? "",
             cycleMs = s.CycleMs,
             monitoringPrefix = s.MonitoringPrefix ?? "",
             startPage = s.StartPage ?? "",
@@ -980,6 +984,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
             parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["projectName"] = s.ProjectName ?? "",
+                ["machineId"] = s.MachineId ?? "",
+                ["machineType"] = s.MachineType ?? "",
                 ["cycleMs"] = s.CycleMs.ToString(),
                 ["monitoringPrefix"] = s.MonitoringPrefix ?? "",
                 ["startPage"] = s.StartPage ?? "",
@@ -1008,6 +1014,8 @@ public sealed class ConfigApiModule : MonitoringApiModule
 
         var projectName = FirstNonEmpty(patch.ProjectName, Read("projectName", s.ProjectName));
         s.ProjectName = string.IsNullOrWhiteSpace(projectName) ? "MDKOSS" : projectName.Trim();
+        s.MachineId = EmptyToNull(FirstNonEmpty(patch.MachineId, Read("machineId", s.MachineId)));
+        s.MachineType = EmptyToNull(FirstNonEmpty(patch.MachineType, Read("machineType", s.MachineType)));
 
         var cycleRaw = patch.CycleMs?.ToString() ?? Read("cycleMs", s.CycleMs.ToString());
         if (!int.TryParse(cycleRaw, out var cycle) || cycle <= 0)

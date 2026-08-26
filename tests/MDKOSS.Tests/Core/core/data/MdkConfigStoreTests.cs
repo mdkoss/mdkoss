@@ -98,6 +98,8 @@ public sealed class MdkConfigStoreTests
         var original = new MdkSetting
         {
             ProjectName = "RoundTrip",
+            MachineId = "rt-id",
+            MachineType = "Pnp",
             CycleMs = 40,
             ActiveRecipeId = "r1",
             Drivers =
@@ -138,6 +140,8 @@ public sealed class MdkConfigStoreTests
         var loaded = reader.ImportSetting();
 
         Assert.Equal("RoundTrip", loaded.ProjectName);
+        Assert.Equal("rt-id", loaded.MachineId);
+        Assert.Equal("Pnp", loaded.MachineType);
         Assert.Equal(40, loaded.CycleMs);
         Assert.Equal("r1", loaded.ActiveRecipeId);
         Assert.Single(loaded.Drivers);

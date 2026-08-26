@@ -13,6 +13,15 @@ public sealed class MdkSetting
     /// <summary>Project display name (distinguishes machine/project identity).</summary>
     public string ProjectName { get; set; } = "MDKOSS";
 
+    /// <summary>
+    /// Stable cloud instance id for table <c>machine</c>. When empty, runtime uses
+    /// <c>host:projectName</c>.
+    /// </summary>
+    public string? MachineId { get; set; }
+
+    /// <summary>Machine model / 机型名称 (e.g. DieBonder, Dispenser). Distinct from <see cref="ProjectName"/>.</summary>
+    public string? MachineType { get; set; }
+
     /// <summary>Main loop cycle hint in milliseconds.</summary>
     public int CycleMs { get; set; } = 20;
 

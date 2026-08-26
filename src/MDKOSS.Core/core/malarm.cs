@@ -533,6 +533,10 @@ public sealed class MdkAlarmHub
 
         foreach (var (id, d) in snap.Devices)
         {
+            if (string.Equals(id, MdkCloudMonitor.MysqlDeviceId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
             var st = (d.State ?? "").Trim().ToLowerInvariant();
             if (st is "fault" or "error")
             {

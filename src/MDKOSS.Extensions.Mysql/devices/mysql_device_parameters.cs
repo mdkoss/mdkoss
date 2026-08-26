@@ -48,6 +48,49 @@ public sealed class MysqlDeviceParameters
         };
     }
 
+    /// <summary>
+    /// Password for the public mdkossdb monitor: env <c>MDKOSS_MYSQL_PASSWORD</c>,
+    /// else local gitignored <c>scripts/mdkossdb/test_conn.py</c>. Never required in committed JSON.
+    /// </summary>
+    public static string ResolvePassword()
+    {
+        var env = Environment.GetEnvironmentVariable("MDKOSS_MYSQL_PASSWORD");
+        if (!string.IsNullOrWhiteSpace(env))
+        {
+            return env.Trim();
+        }
+
+        return TryReadPasswordFromTestConn(out var password) ? password : string.Empty;
+    }
+
+    private static bool TryReadPasswordFromTestConn(out string password)
+    {
+        password = string.Empty;
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            var candidate = Path.Combine(dir.FullName, "scripts", "mdkossdb", "test_conn.py");
+            if (File.Exists(candidate))
+            {
+                var text = File.ReadAllText(candidate);
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    text,
+                    @"[""']password[""']\s*:\s*[""']([^""']*)[""']");
+                if (match.Success)
+                {
+                    password = match.Groups[1].Value;
+                    return !string.IsNullOrWhiteSpace(password);
+                }
+
+                return false;
+            }
+
+            dir = dir.Parent;
+        }
+
+        return false;
+    }
+
     public string BuildConnectionString()
     {
         var builder = new MySqlConnectionStringBuilder

@@ -153,6 +153,8 @@ public sealed class ConfigApiModuleTests
                 parameters = new Dictionary<string, string>
                 {
                     ["projectName"] = "patched-machine",
+                    ["machineId"] = "mid-1",
+                    ["machineType"] = "Pnp",
                     ["cycleMs"] = "50",
                     ["startPage"] = "index.html",
                     ["recipeVarKeys"] = "a,b",
@@ -160,9 +162,13 @@ public sealed class ConfigApiModuleTests
             });
             var after = await ReadJsonAsync(patch);
             Assert.Equal("patched-machine", after.GetProperty("projectName").GetString());
+            Assert.Equal("mid-1", after.GetProperty("machineId").GetString());
+            Assert.Equal("Pnp", after.GetProperty("machineType").GetString());
             Assert.Equal(50, after.GetProperty("cycleMs").GetInt32());
             Assert.Equal("index.html", after.GetProperty("startPage").GetString());
             Assert.Equal("patched-machine", rt.Setting.ProjectName);
+            Assert.Equal("mid-1", rt.Setting.MachineId);
+            Assert.Equal("Pnp", rt.Setting.MachineType);
             Assert.Equal(["a", "b"], rt.Setting.RecipeVarKeys);
         });
     }

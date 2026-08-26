@@ -14,7 +14,8 @@ public sealed class TaskBootstrapContext
         Func<RuntimeSnapshot> getSnapshot,
         Func<IReadOnlyList<MTaskBase>> listTasks,
         IFlowRuntimeHost? flowHost = null,
-        MdkAlarmManager? alarmManager = null)
+        MdkAlarmManager? alarmManager = null,
+        Func<MachineMonitorRecord>? getMachineMonitor = null)
     {
         Drivers = drivers;
         Devices = devices;
@@ -23,6 +24,7 @@ public sealed class TaskBootstrapContext
         ListTasks = listTasks;
         FlowHost = flowHost;
         AlarmManager = alarmManager;
+        GetMachineMonitor = getMachineMonitor;
     }
 
     public IReadOnlyDictionary<string, IDriver> Drivers { get; }
@@ -40,6 +42,9 @@ public sealed class TaskBootstrapContext
 
     /// <summary>Optional alarm manager for motion / custom tasks.</summary>
     public MdkAlarmManager? AlarmManager { get; }
+
+    /// <summary>Optional cloud/local machine monitor payload builder.</summary>
+    public Func<MachineMonitorRecord>? GetMachineMonitor { get; }
 }
 
 /// <summary>Registry for task implementations keyed by config <c>type</c> string.</summary>

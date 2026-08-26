@@ -6,3 +6,7 @@ Query 执行 SELECT（或返回结果集的语句），返回列名与行。
 Execute 执行 INSERT / UPDATE / DELETE / DDL，返回受影响行数与 lastInsertId。
 Scalar 执行并返回第一行第一列。
 Status 返回 isConnected、host、port、database、user（不含密码）。
+
+任务类型 `cloud-machine`：每拍连接 → upsert 到表 `machine` → 立即断开。失败只写告警日志，任务不进入 Fault。
+
+运行时在 Mysql 插件已加载时**默认**注册设备 `mysql-cloud` 和任务 `task-cloud-machine`。`Start()` 后立刻上传一次，之后按间隔心跳；每拍连接 → upsert → 断开，失败只写告警日志、设备不进入 Fault。密码取 `MDKOSS_MYSQL_PASSWORD` 或本机 `scripts/mdkossdb/test_conn.py`。测试进程默认不注册；`MDKOSS_CLOUD_MONITOR=0` 可关掉。宿主 `plugins/` 需带上 `MySqlConnector` 及其 `Microsoft.Extensions.Logging.Abstractions` 依赖。

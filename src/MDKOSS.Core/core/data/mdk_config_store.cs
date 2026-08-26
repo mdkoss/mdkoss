@@ -948,6 +948,8 @@ public sealed class MdkConfigStore : IDisposable
         var entries = new (string Key, string Value, string Group, string Remark)[]
         {
             ("projectName", setting.ProjectName ?? string.Empty, "general", "工程名称"),
+            ("machineId", setting.MachineId ?? string.Empty, "general", "云端设备 Id"),
+            ("machineType", setting.MachineType ?? string.Empty, "general", "机型名称"),
             ("cycleMs", setting.CycleMs.ToString(), "general", "主循环周期(ms)"),
             ("monitoringPrefix", setting.MonitoringPrefix ?? string.Empty, "general", "监控 API 前缀"),
             ("startPage", setting.StartPage ?? string.Empty, "general", "启动页面"),
@@ -1157,6 +1159,12 @@ public sealed class MdkConfigStore : IDisposable
             {
                 case "projectName":
                     setting.ProjectName = value;
+                    break;
+                case "machineId":
+                    setting.MachineId = string.IsNullOrWhiteSpace(value) ? null : value;
+                    break;
+                case "machineType":
+                    setting.MachineType = string.IsNullOrWhiteSpace(value) ? null : value;
                     break;
                 case "cycleMs" when int.TryParse(value, out var cycle):
                     setting.CycleMs = cycle;

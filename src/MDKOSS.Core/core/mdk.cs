@@ -82,6 +82,7 @@ public sealed class MdkRuntime : IDisposable
         BootstrapVars();
         BootstrapDrivers();
         BootstrapDevices();
+        EnsureSystemCloudMysqlDevice();
         BootstrapTasks();
 
         AppLog.Info($"MdkRuntime initialized (project: {Setting.ProjectName}, version: {MdkProduct.Version}).");
@@ -125,7 +126,29 @@ public sealed class MdkRuntime : IDisposable
 
         _scheduler.Start();
         IsRunning = true;
+        KickCloudMachineStartupUpload();
         AppLog.Info("MdkRuntime started.");
+    }
+
+    /// <summary>Fires one cloud heartbeat as soon as the runtime is running (does not block Start).</summary>
+    private void KickCloudMachineStartupUpload()
+    {
+        if (!_tasks.TryGetValue(MdkCloudMonitor.TaskName, out var task))
+        {
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await task.ExecuteOnceAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn($"Cloud machine startup upload failed: {ex.Message}");
+            }
+        });
     }
 
     /// <summary>
@@ -203,6 +226,7 @@ public sealed class MdkRuntime : IDisposable
         }
 
         EnsureSystemMachineTask();
+        EnsureSystemCloudMachineTask();
     }
 
     /// <summary>
@@ -226,6 +250,98 @@ public sealed class MdkRuntime : IDisposable
         if (task is not null)
         {
             RegisterTask(task);
+        }
+    }
+
+    /// <summary>
+    /// Registers implicit <c>mysql-cloud</c> when the Mysql plugin is loaded and config
+    /// does not already define that id.
+    /// </summary>
+    private void EnsureSystemCloudMysqlDevice()
+    {
+        if (!MdkCloudMonitor.AutoRegisterEnabled())
+        {
+            return;
+        }
+
+        if (_devices.ContainsKey(MdkCloudMonitor.MysqlDeviceId))
+        {
+            return;
+        }
+
+        if (!DeviceExtensionRegistry.IsRegistered(MdkCloudMonitor.MysqlDeviceType))
+        {
+            return;
+        }
+
+        var config = new MdkSetting.DeviceConfig
+        {
+            Id = MdkCloudMonitor.MysqlDeviceId,
+            Name = MdkCloudMonitor.MysqlDeviceName,
+            Type = MdkCloudMonitor.MysqlDeviceType,
+            Enabled = true,
+            Parameters = MdkCloudMonitor.DefaultMysqlParameters(),
+        };
+
+        if (!DeviceExtensionRegistry.TryCreate(
+                config.Type,
+                config,
+                config.Name,
+                Vars,
+                _drivers,
+                out var device)
+            || device is null)
+        {
+            return;
+        }
+
+        try
+        {
+            device.Initialize();
+            _devices[config.Id] = device;
+            AppLog.Info($"System device '{config.Id}' registered for cloud machine monitor.");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Warn($"System device '{config.Id}' skipped: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Registers implicit <c>task-cloud-machine</c> when the task type is available
+    /// and <c>mysql-cloud</c> (or another mysqldev) exists.
+    /// </summary>
+    private void EnsureSystemCloudMachineTask()
+    {
+        if (!MdkCloudMonitor.AutoRegisterEnabled())
+        {
+            return;
+        }
+
+        if (_tasks.ContainsKey(MdkCloudMonitor.TaskName))
+        {
+            return;
+        }
+
+        if (!RuntimeTaskFactory.IsSupported(MdkCloudMonitor.TaskType))
+        {
+            return;
+        }
+
+        var task = CreateTaskFromConfig(new MdkSetting.TaskConfig
+        {
+            Name = MdkCloudMonitor.TaskName,
+            Type = MdkCloudMonitor.TaskType,
+            IntervalMs = MdkCloudMonitor.DefaultIntervalMs,
+            Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["mysqlDeviceId"] = MdkCloudMonitor.MysqlDeviceId,
+            },
+        });
+        if (task is not null)
+        {
+            RegisterTask(task);
+            AppLog.Info($"System task '{MdkCloudMonitor.TaskName}' registered for cloud machine monitor.");
         }
     }
 
@@ -253,7 +369,8 @@ public sealed class MdkRuntime : IDisposable
             GetSnapshot,
             () => _tasks.Values.ToList(),
             flowHost: new RuntimeFlowHost(this),
-            alarmManager: AlarmManager);
+            alarmManager: AlarmManager,
+            getMachineMonitor: GetMachineMonitor);
 
         return RuntimeTaskFactory.Create(taskType, ctx, config);
     }
@@ -1265,6 +1382,12 @@ public sealed class MdkRuntime : IDisposable
 
     /// <summary>Exposes recipe state for WinForms and monitoring tools.</summary>
     public RecipeSnapshot GetRecipeSnapshot() => RecipeManager.GetSnapshot();
+
+    /// <summary>
+    /// Aggregates identity, setting, vars, recipes, orders, and live snapshots
+    /// for cloud table <c>machine</c> / <c>GET /api/machine</c>.
+    /// </summary>
+    public MachineMonitorRecord GetMachineMonitor() => MachineMonitor.Build(this);
 
     /// <summary>Applies a recipe by id at runtime.</summary>
     public bool TryApplyRecipe(string recipeId, out string? error)

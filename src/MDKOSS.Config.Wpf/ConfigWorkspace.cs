@@ -1496,6 +1496,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             ConfigModule.SysConfig => new Dictionary<string, object?>
             {
                 ["projectName"] = _setting.ProjectName,
+                ["machineId"] = _setting.MachineId,
+                ["machineType"] = _setting.MachineType,
                 ["cycleMs"] = _setting.CycleMs,
                 ["monitoringPrefix"] = _setting.MonitoringPrefix,
                 ["startPage"] = _setting.StartPage,
@@ -3316,6 +3318,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         return
         [
             SysEntry("projectName", _setting.ProjectName, "general", "工程名称"),
+            SysEntry("machineId", _setting.MachineId ?? "", "general", "云端设备 Id"),
+            SysEntry("machineType", _setting.MachineType ?? "", "general", "机型名称"),
             SysEntry("cycleMs", _setting.CycleMs.ToString(), "general", "主循环周期(ms)"),
             SysEntry("monitoringPrefix", _setting.MonitoringPrefix ?? "", "general", "监控 API 前缀"),
             SysEntry("startPage", _setting.StartPage ?? "", "general", "启动页面"),
@@ -4209,6 +4213,8 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         Draft.LoadOrderedStringParameters(
         [
             ("projectName", _setting.ProjectName ?? ""),
+            ("machineId", _setting.MachineId ?? ""),
+            ("machineType", _setting.MachineType ?? ""),
             ("cycleMs", _setting.CycleMs.ToString()),
             ("monitoringPrefix", _setting.MonitoringPrefix ?? ""),
             ("startPage", _setting.StartPage ?? ""),
@@ -4219,7 +4225,7 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
         ]);
         Draft.SetParamKeySuggestions(
         [
-            "projectName", "cycleMs", "monitoringPrefix", "startPage",
+            "projectName", "machineId", "machineType", "cycleMs", "monitoringPrefix", "startPage",
             "databasePath", "activeRecipeId", "recipeVarKeys", "activeVisionId",
         ]);
     }
@@ -4235,6 +4241,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
 
         _setting.ProjectName = projectName;
         OnPropertyChanged(nameof(ProjectName));
+
+        var machineId = book.GetValueOrDefault("machineId", "") ?? "";
+        _setting.MachineId = string.IsNullOrWhiteSpace(machineId) ? null : machineId.Trim();
+
+        var machineType = book.GetValueOrDefault("machineType", "") ?? "";
+        _setting.MachineType = string.IsNullOrWhiteSpace(machineType) ? null : machineType.Trim();
 
         var cycleRaw = book.GetValueOrDefault("cycleMs", _setting.CycleMs.ToString()) ?? "20";
         if (!int.TryParse(cycleRaw, out var cycle) || cycle <= 0)
@@ -4485,6 +4497,12 @@ public sealed class ConfigWorkspace : INotifyPropertyChanged
             case "projectName":
                 _setting.ProjectName = value;
                 OnPropertyChanged(nameof(ProjectName));
+                break;
+            case "machineId":
+                _setting.MachineId = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+                break;
+            case "machineType":
+                _setting.MachineType = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
                 break;
             case "cycleMs":
                 if (!int.TryParse(value, out var cycle) || cycle <= 0)

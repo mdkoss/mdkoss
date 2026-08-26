@@ -18,7 +18,7 @@ public sealed class MysqlExtension : IMdkExtension
 
         registration.Device("mysqldev", (cfg, name, vars, _) =>
         {
-            var parameters = MysqlDeviceParameters.ParseConfig(cfg.Parameters);
+            var parameters = MysqlDeviceParameters.ParseConfig(MysqlCloudDefaults.ApplyCloudDefaults(cfg));
             return new MysqlDevice(cfg.Id, name, parameters, vars);
         });
 
@@ -28,6 +28,9 @@ public sealed class MysqlExtension : IMdkExtension
                 MysqlDeviceActions.Execute((MysqlDevice)device, action, parameters));
 
         registration.MonitoringModule(runtime => new MysqlApiModule(runtime));
+
+        registration.Task("cloud-machine", (ctx, cfg, _) => CloudMachineTask.Create(ctx, cfg));
+        registration.Task("cloudmachine", (ctx, cfg, _) => CloudMachineTask.Create(ctx, cfg));
     }
 }
 
@@ -35,6 +38,51 @@ public sealed class MysqlExtension : IMdkExtension
 public static class MysqlExtensionBootstrap
 {
     public static void Register() => MdkExtensionHost.Register(new MysqlExtension());
+}
+
+internal static class MysqlCloudDefaults
+{
+    internal static Dictionary<string, string> ApplyCloudDefaults(MdkSetting.DeviceConfig cfg)
+    {
+        var bag = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var isCloud = string.Equals(cfg.Id, MdkCloudMonitor.MysqlDeviceId, StringComparison.OrdinalIgnoreCase);
+        if (isCloud)
+        {
+            foreach (var kv in MdkCloudMonitor.DefaultMysqlParameters())
+            {
+                bag[kv.Key] = kv.Value;
+            }
+        }
+
+        if (cfg.Parameters is not null)
+        {
+            foreach (var kv in cfg.Parameters)
+            {
+                if (!string.IsNullOrWhiteSpace(kv.Value))
+                {
+                    bag[kv.Key] = kv.Value;
+                }
+            }
+        }
+
+        if (isCloud || LooksLikeCloud(bag))
+        {
+            if (!bag.TryGetValue("password", out var password) || string.IsNullOrWhiteSpace(password))
+            {
+                bag["password"] = MysqlDeviceParameters.ResolvePassword();
+            }
+        }
+
+        return bag;
+    }
+
+    private static bool LooksLikeCloud(IReadOnlyDictionary<string, string> bag)
+    {
+        var host = bag.TryGetValue("host", out var h) ? h : "";
+        var database = bag.TryGetValue("database", out var d) ? d : "";
+        return host.Contains("sqlpub.com", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(database, "mdkossdb", StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 /// <summary>Unified action handlers for <see cref="MysqlDevice"/>.</summary>

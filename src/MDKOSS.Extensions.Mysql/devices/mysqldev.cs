@@ -69,7 +69,7 @@ public sealed class MysqlDevice : MDeviceBase
     }
 
     /// <summary>Opens the MySQL connection with current (or override) parameters.</summary>
-    public MysqlErrorCode Connect(MysqlDeviceParameters? overrideParameters = null)
+    public MysqlErrorCode Connect(MysqlDeviceParameters? overrideParameters = null, bool markFaultOnError = true)
     {
         lock (_lock)
         {
@@ -97,16 +97,16 @@ public sealed class MysqlDevice : MDeviceBase
             catch (MySqlException ex) when (IsTimeout(ex))
             {
                 CleanupUnlocked();
-                _lastError = ex.Message;
-                State = MDeviceState.Fault;
+                _lastError = FlattenException(ex);
+                State = markFaultOnError ? MDeviceState.Fault : MDeviceState.Initialized;
                 PublishStatusVarsUnlocked();
                 return MysqlErrorCode.Timeout;
             }
             catch (Exception ex)
             {
                 CleanupUnlocked();
-                _lastError = ex.Message;
-                State = MDeviceState.Fault;
+                _lastError = FlattenException(ex);
+                State = markFaultOnError ? MDeviceState.Fault : MDeviceState.Initialized;
                 PublishStatusVarsUnlocked();
                 return MysqlErrorCode.ConnectionFailed;
             }
@@ -126,7 +126,7 @@ public sealed class MysqlDevice : MDeviceBase
             try
             {
                 CleanupUnlocked();
-                State = MDeviceState.Stopped;
+                State = MDeviceState.Initialized;
                 PublishStatusVarsUnlocked();
                 return MysqlErrorCode.Ok;
             }
@@ -436,6 +436,22 @@ public sealed class MysqlDevice : MDeviceBase
         }
 
         _connection = null;
+    }
+
+    internal static string FlattenException(Exception ex)
+    {
+        var text = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+        for (var inner = ex.InnerException; inner is not null; inner = inner.InnerException)
+        {
+            if (string.IsNullOrWhiteSpace(inner.Message))
+            {
+                continue;
+            }
+
+            text += " -> " + inner.Message;
+        }
+
+        return text;
     }
 
     private static MysqlErrorCode MapException(Exception ex)
