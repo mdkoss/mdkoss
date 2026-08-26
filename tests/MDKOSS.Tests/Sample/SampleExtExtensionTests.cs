@@ -65,6 +65,45 @@ public sealed class SampleExtExtensionTests
     }
 
     [Fact]
+    public async Task Custom_startPage_replaces_root_and_index_html()
+    {
+        var port = FreePort();
+        var setting = new MdkSetting
+        {
+            ProjectName = "start-page-test",
+            StartPage = "demo_sample_ext.html",
+            MonitoringPrefix = $"http://127.0.0.1:{port}/",
+            Drivers =
+            [
+                new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        rt.Start();
+
+        try
+        {
+            using var handler = new HttpClientHandler { UseProxy = false };
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(5) };
+
+            foreach (var path in new[] { "/", "/index.html" })
+            {
+                using var page = await http.GetAsync($"http://127.0.0.1:{port}{path}");
+                page.EnsureSuccessStatusCode();
+                var html = await page.Content.ReadAsStringAsync();
+                Assert.Contains("Sample 扩展示例", html, StringComparison.Ordinal);
+                Assert.DoesNotContain("MDKOSS 主界面", html, StringComparison.Ordinal);
+            }
+        }
+        finally
+        {
+            await rt.StopAsync();
+        }
+    }
+
+    [Fact]
     public async Task Runtime_serves_sampleext_api_and_motion_task()
     {
         var db = Path.Combine(Path.GetTempPath(), $"mdk-sampleext-{Guid.NewGuid():N}.db");
@@ -72,6 +111,7 @@ public sealed class SampleExtExtensionTests
         var setting = new MdkSetting
         {
             ProjectName = "sample-ext-test",
+            StartPage = "demo_sample_ext.html",
             MonitoringPrefix = $"http://127.0.0.1:{port}/",
             DatabasePath = db,
             Drivers =

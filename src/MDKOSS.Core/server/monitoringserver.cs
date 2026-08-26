@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using MDKOSS.Host;
 
 namespace MDKOSS.Core.Monitor;
 
@@ -9,6 +10,7 @@ public sealed class MonitoringServer : IDisposable
     private readonly string _prefix;
     private readonly List<MonitoringApiModule> _modules = [];
     private readonly Dictionary<string, string> _staticPages;
+    private readonly string _indexFileName;
     private CancellationTokenSource? _cts;
     private Task? _loopTask;
 
@@ -19,6 +21,7 @@ public sealed class MonitoringServer : IDisposable
 
         // Register API modules (order matters: more specific prefixes first)
         _modules.Add(new StatusApiModule(runtime));
+        _modules.Add(new MachineApiModule(runtime));
         _modules.Add(new IoApiModule(runtime));
         _modules.Add(new DevicesApiModule(runtime));
         _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
@@ -98,6 +101,9 @@ public sealed class MonitoringServer : IDisposable
         {
             _staticPages[path] = html;
         }
+
+        _indexFileName = RuntimeHost.ResolveStartPage(runtime.Setting);
+        ApplyStartPageOverride(_staticPages, _indexFileName);
     }
 
     /// <summary>
@@ -112,6 +118,32 @@ public sealed class MonitoringServer : IDisposable
     {
         var fileName = path.TrimStart('/');
         pages[path] = ViewsHtml.Load(fileName, fileName);
+    }
+
+    /// <summary>
+    /// When settings specify a custom <c>startPage</c>, serve it at <c>/</c> and <c>/index.html</c>.
+    /// </summary>
+    private static void ApplyStartPageOverride(Dictionary<string, string> pages, string startPage)
+    {
+        if (string.Equals(startPage, "index.html", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var customPath = "/" + startPage;
+        if (pages.TryGetValue(customPath, out var customHtml))
+        {
+            pages["/"] = customHtml;
+            pages["/index.html"] = customHtml;
+            return;
+        }
+
+        var viewsHtml = ViewsHtml.TryLoad(startPage);
+        if (viewsHtml is not null)
+        {
+            pages["/"] = viewsHtml;
+            pages["/index.html"] = viewsHtml;
+        }
     }
 
     private static string NormalizePrefix(string prefix)
@@ -283,7 +315,7 @@ public sealed class MonitoringServer : IDisposable
         // 2. Static pages — prefer live views/ files so Sample always serves current HTML
         if (_staticPages.TryGetValue(path, out var html))
         {
-            var fileName = string.IsNullOrEmpty(path) || path == "/" ? "index.html" : path.TrimStart('/');
+            var fileName = IsIndexPath(path) ? _indexFileName : path.TrimStart('/');
             html = ViewsHtml.TryLoad(fileName) ?? html;
             await WriteResponseAsync(context.Response, "text/html; charset=utf-8", html, cancellationToken)
                 .ConfigureAwait(false);
@@ -302,6 +334,11 @@ public sealed class MonitoringServer : IDisposable
         await WriteResponseAsync(context.Response, "text/plain; charset=utf-8", "Not Found", cancellationToken)
             .ConfigureAwait(false);
     }
+
+    private static bool IsIndexPath(string path)
+        => string.IsNullOrEmpty(path)
+           || path == "/"
+           || path.Equals("/index.html", StringComparison.OrdinalIgnoreCase);
 
     private static readonly HashSet<string> ViewsAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
     {

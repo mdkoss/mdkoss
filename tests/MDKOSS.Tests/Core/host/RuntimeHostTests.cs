@@ -1,9 +1,20 @@
+using MDKOSS.Core;
 using MDKOSS.Host;
 
 namespace MDKOSS.Tests.Core;
 
 public sealed class RuntimeHostTests
 {
+    [Fact]
+    public void ResolveStartPage_uses_setting_or_defaults_to_index()
+    {
+        Assert.Equal("index.html", RuntimeHost.ResolveStartPage(new MdkSetting()));
+        Assert.Equal("index.html", RuntimeHost.ResolveStartPage(new MdkSetting { StartPage = "  " }));
+        Assert.Equal(
+            "demo_sample_ext.html",
+            RuntimeHost.ResolveStartPage(new MdkSetting { StartPage = "/demo_sample_ext.html" }));
+    }
+
     [Fact]
     public void ResolveDefaultSettingPath_uses_first_json_in_output_configs()
     {
