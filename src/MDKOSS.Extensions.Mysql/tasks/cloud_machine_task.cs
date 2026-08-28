@@ -4,7 +4,8 @@ namespace MDKOSS.Extensions.Mysql;
 
 /// <summary>
 /// Heartbeat task: upserts <see cref="MachineMonitorRecord"/> into public table <c>machine</c>
-/// via a <see cref="MysqlDevice"/>. Each tick connects, writes, then disconnects.
+/// via a <see cref="MysqlDevice"/>. Reuses an open debug session and does not disconnect
+/// afterwards (so /api/mysql Query is not left <see cref="MysqlErrorCode.NotConnected"/>).
 /// Failures are warning-logged only (the task does not go <see cref="MTaskState.Fault"/>).
 /// </summary>
 public sealed class CloudMachineTask : MTaskBase
@@ -58,7 +59,7 @@ public sealed class CloudMachineTask : MTaskBase
             if (!_mysql.IsConnected)
             {
                 var connect = _mysql.Connect(markFaultOnError: false);
-                if (connect != MysqlErrorCode.Ok)
+                if (connect != MysqlErrorCode.Ok && connect != MysqlErrorCode.AlreadyConnected)
                 {
                     Warn($"connect:{connect}:{_mysql.LastError}");
                     return Task.CompletedTask;
@@ -84,7 +85,6 @@ public sealed class CloudMachineTask : MTaskBase
         }
         finally
         {
-            DisconnectQuiet();
             Interlocked.Exchange(ref _busy, 0);
         }
 
@@ -95,18 +95,6 @@ public sealed class CloudMachineTask : MTaskBase
     {
         AppLog.Warn($"Cloud machine heartbeat failed: {message}");
         _vars.Set("cloud.machine.lastError", message ?? string.Empty);
-    }
-
-    private void DisconnectQuiet()
-    {
-        try
-        {
-            _mysql.Disconnect();
-        }
-        catch (Exception ex)
-        {
-            AppLog.Warn($"Cloud machine disconnect failed: {ex.Message}");
-        }
     }
 
     private static MysqlDevice? ResolveMysql(

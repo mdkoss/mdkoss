@@ -264,6 +264,8 @@ public sealed class MdkRuntime : IDisposable
             return;
         }
 
+        MdkCloudMonitor.EnsureMysqlPasswordEnvironment(SettingPath ?? "");
+
         if (_devices.ContainsKey(MdkCloudMonitor.MysqlDeviceId))
         {
             return;

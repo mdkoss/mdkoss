@@ -98,6 +98,7 @@ public static class RuntimeHost
     {
         try
         {
+            MdkCloudMonitor.EnsureMysqlPasswordEnvironment(runtime.SettingPath ?? "");
             AppLog.Info("Runtime init: Initialize()");
             runtime.Initialize();
             AppLog.Info("Runtime init: Start()");

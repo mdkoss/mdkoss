@@ -37,6 +37,47 @@ public sealed class MdkCloudMonitorTests
     }
 
     [Fact]
+    public void TryParsePasswordFromTestConnText_reads_config_dict()
+    {
+        const string text = """
+            CONFIG = {
+                "host": "example.com",
+                "password": "secret-from-file",
+                "database": "mdkossdb",
+            }
+            """;
+        Assert.True(MdkCloudMonitor.TryParsePasswordFromTestConnText(text, out var password));
+        Assert.Equal("secret-from-file", password);
+    }
+
+    [Fact]
+    public void EnsureMysqlPasswordEnvironment_sets_process_env_when_available()
+    {
+        lock (EnvLock)
+        {
+            var previous = Environment.GetEnvironmentVariable(MdkCloudMonitor.MysqlPasswordEnvVar);
+            try
+            {
+                var password = MdkCloudMonitor.EnsureMysqlPasswordEnvironment();
+                if (string.IsNullOrWhiteSpace(password))
+                {
+                    return;
+                }
+
+                Assert.Equal(
+                    password,
+                    Environment.GetEnvironmentVariable(MdkCloudMonitor.MysqlPasswordEnvVar));
+                var defaults = MdkCloudMonitor.DefaultMysqlParameters();
+                Assert.Equal(password, defaults["password"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(MdkCloudMonitor.MysqlPasswordEnvVar, previous);
+            }
+        }
+    }
+
+    [Fact]
     public void AutoRegisterEnabled_respects_env()
     {
         lock (EnvLock)

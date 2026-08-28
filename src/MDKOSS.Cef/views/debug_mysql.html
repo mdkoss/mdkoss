@@ -171,20 +171,20 @@
     function deviceId() { return (els.deviceId.value || "").trim(); }
 
     function configBody() {
-      return {
-        deviceId: deviceId(),
-        config: {
-          host: els.host.value.trim(),
-          port: Number(els.port.value) || 3306,
-          database: els.database.value.trim(),
-          user: els.user.value.trim(),
-          password: els.password.value,
-          connectTimeout: Number(els.connectTimeout.value) || 5000,
-          commandTimeout: Number(els.commandTimeout.value) || 30000,
-          charset: els.charset.value.trim() || "utf8mb4",
-          sslMode: els.sslMode.value,
-        },
+      const config = {
+        host: els.host.value.trim(),
+        port: Number(els.port.value) || 3306,
+        database: els.database.value.trim(),
+        user: els.user.value.trim(),
+        connectTimeout: Number(els.connectTimeout.value) || 5000,
+        commandTimeout: Number(els.commandTimeout.value) || 30000,
+        charset: els.charset.value.trim() || "utf8mb4",
+        sslMode: els.sslMode.value,
       };
+      if (els.password.value) {
+        config.password = els.password.value;
+      }
+      return { deviceId: deviceId(), config };
     }
 
     function setConnected(on) {

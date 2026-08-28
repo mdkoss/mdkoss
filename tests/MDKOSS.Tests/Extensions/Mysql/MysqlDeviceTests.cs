@@ -46,6 +46,13 @@ public sealed class MysqlDeviceParameterTests
     }
 
     [Fact]
+    public void ResolvePassword_does_not_throw()
+    {
+        var password = MysqlDeviceParameters.ResolvePassword();
+        Assert.NotNull(password);
+    }
+
+    [Fact]
     public void FromJson_maps_sql_parameter_types()
     {
         Assert.Null(MysqlDeviceApi.FromJson(JsonDocument.Parse("null").RootElement));
@@ -379,7 +386,7 @@ public sealed class CloudMachineTaskTests
     }
 
     [Fact]
-    public async Task Tick_live_upsert_then_disconnects()
+    public async Task Tick_live_upsert_keeps_connection()
     {
         if (!MysqlLiveCredentials.TryLoad(out var raw))
         {
@@ -403,7 +410,7 @@ public sealed class CloudMachineTaskTests
             };
             var task = new CloudMachineTask(mysql, () => record, vars, 5_000);
             await task.ExecuteOnceAsync(CancellationToken.None);
-            Assert.False(mysql.IsConnected);
+            Assert.True(mysql.IsConnected);
             Assert.NotEqual(MTaskState.Fault, task.State);
             Assert.Equal(testId, vars.Get<string>("cloud.machine.id"));
             Assert.Equal(string.Empty, vars.Get<string>("cloud.machine.lastError"));
@@ -411,6 +418,50 @@ public sealed class CloudMachineTaskTests
         finally
         {
             if (mysql.Connect() == MysqlErrorCode.Ok)
+            {
+                mysql.Execute(
+                    "DELETE FROM machine WHERE id=@id",
+                    new Dictionary<string, object?> { ["id"] = testId });
+                mysql.Disconnect();
+            }
+
+            mysql.Dispose();
+        }
+    }
+
+    [Fact]
+    public async Task Tick_keeps_preexisting_debug_connection()
+    {
+        if (!MysqlLiveCredentials.TryLoad(out var raw))
+        {
+            return;
+        }
+
+        var vars = new MVarStore();
+        var mysql = new MysqlDevice("mysql1", "live", MysqlLiveCredentials.ToDeviceParameters(raw), vars);
+        const string testId = "mdkoss-test-cloud-machine-keep";
+        try
+        {
+            Assert.Equal(MysqlErrorCode.Ok, mysql.Connect());
+            var record = new MachineMonitorRecord
+            {
+                Id = testId,
+                Name = "keep-conn-test",
+                Version = MdkProduct.Version,
+                MachineType = "TestRig",
+                MachineState = "idle",
+                LastHeartbeatUtc = DateTime.UtcNow,
+                Vars = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase),
+            };
+            var task = new CloudMachineTask(mysql, () => record, vars, 5_000);
+            await task.ExecuteOnceAsync(CancellationToken.None);
+            Assert.True(mysql.IsConnected);
+            Assert.Equal(MysqlErrorCode.Ok, mysql.Ping());
+            Assert.Equal(testId, vars.Get<string>("cloud.machine.id"));
+        }
+        finally
+        {
+            if (mysql.IsConnected || mysql.Connect() == MysqlErrorCode.Ok)
             {
                 mysql.Execute(
                     "DELETE FROM machine WHERE id=@id",
