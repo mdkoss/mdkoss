@@ -8,7 +8,7 @@
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）与 SQLite 持久化（排单 / 示教 / 配方）
 - 基础监控界面（`HttpListener + HTML Dashboard`），含主界面 HMI、IO / 平台 / 串口等监控与调试页
-- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（扩展示例）、**MDKOSS.Sample.DieBonder**（贴片机）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Sample.Pnp**（拾取放置）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
+- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（扩展示例）、**MDKOSS.Sample.DieBonder**（贴片机）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Sample.Pnp**（拾取放置）、**MDKOSS.Sample.Modbus**（Modbus IDriver 联调）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
 
 源码目录索引见 [src/README.md](./src/README.md)。
 
@@ -79,6 +79,8 @@ mdkoss/
     ├── MDKOSS.Sample.DieBonder/  # 半导体贴片机 Demo 宿主 + configs
     ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs
     ├── MDKOSS.Sample.Pnp/        # 拾取放置 Demo 宿主 + configs
+    ├── MDKOSS.Sample.Modbus/     # Modbus IDriver 联调宿主 + configs
+    ├── MDKOSS.Sample.Iec61131/   # 工位节拍 IEC 导出示例
     └── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
 ```
 
@@ -97,6 +99,8 @@ mdkoss/
   - **MDKOSS.Sample.DieBonder**：半导体贴片机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Pnp**：拾取放置 Demo；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample.Modbus**：Modbus IDriver Holding 联调；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample.Iec61131**：工位节拍 Flow → IEC 61131-3 导出
   - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
   均在入口中先 `MdkSetting.Load`，再创建 `MdkRuntime`；Debug 构建启动时会清空当日日志文件（`AppLog`）。
@@ -288,6 +292,9 @@ dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj
 # PNP
 dotnet run --project src/MDKOSS.Sample.Pnp/MDKOSS.Sample.Pnp.csproj
 
+# Modbus IDriver 联调（Holding 默认 200 字）
+dotnet run --project src/MDKOSS.Sample.Modbus/MDKOSS.Sample.Modbus.csproj
+
 # SampleExt 扩展示例
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
 ```
@@ -313,7 +320,7 @@ CEF / WPF 模式请查看 `logs/` 与窗体；浏览器亦可直接访问上述 
 
 ## 8. 下一步建议
 
-近期已补齐：产品版本 1.2.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.DieBonder** / **Sample.Dispenser** / **Sample.Pnp** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
+近期已补齐：产品版本 1.2.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.DieBonder** / **Sample.Dispenser** / **Sample.Pnp** / **Sample.Modbus** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
 
 可选后续方向：
 

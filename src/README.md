@@ -5,7 +5,7 @@
 ## 分层
 
 ```text
-宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Config.Wpf）
+宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Modbus / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 DiscoverAndRegister）
@@ -30,8 +30,21 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo |
 | `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo |
+| `MDKOSS.Sample.Modbus` | Modbus IDriver 联调（默认 200 Holding） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 | `MDKOSS.Iec61131` | Flow / 变量 / GPIO → IEC 61131-3（SCL + PLCopen XML） |
 | `MDKOSS.Sample.Iec61131` | 工位节拍示例 + 导出结果 |
+
+### Sample 宿主 README
+
+| 项目 | 说明 |
+|------|------|
+| [MDKOSS.Cef.Sample](MDKOSS.Cef.Sample/README.md) | 通用 CEF，按 JSON 跑机型 |
+| [MDKOSS.Sample](MDKOSS.Sample/README.md) | 自定义设备 / MotionTask 扩展示例 |
+| [MDKOSS.Sample.DieBonder](MDKOSS.Sample.DieBonder/README.md) | 半导体贴片机 |
+| [MDKOSS.Sample.Dispenser](MDKOSS.Sample.Dispenser/README.md) | 三轴点胶机 |
+| [MDKOSS.Sample.Pnp](MDKOSS.Sample.Pnp/README.md) | 拾取放置 |
+| [MDKOSS.Sample.Modbus](MDKOSS.Sample.Modbus/README.md) | Modbus TCP Master Holding 联调 |
+| [MDKOSS.Sample.Iec61131](MDKOSS.Sample.Iec61131/README.md) | Flow 工位节拍导出 IEC 61131 |
 
 各宿主 / 扩展若带 `README.md`，以项目内说明为准。

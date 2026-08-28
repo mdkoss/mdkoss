@@ -22,6 +22,7 @@ src/
 ├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
 ├── MDKOSS.Sample.Dispenser/
 ├── MDKOSS.Sample.Pnp/           # 拾取放置 Demo 宿主
+├── MDKOSS.Sample.Modbus/        # Modbus IDriver 联调宿主
 ├── MDKOSS.Iec61131/             # Flow / 变量 / GPIO → IEC 61131-3
 ├── MDKOSS.Sample.Iec61131/      # 工位节拍导出示例
 └── MDKOSS.Config.Wpf/
