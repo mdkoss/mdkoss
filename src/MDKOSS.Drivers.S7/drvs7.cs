@@ -18,6 +18,8 @@ public sealed class DrvS7 : IDriver
     private readonly ConcurrentDictionary<string, object?> _memory = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<int, byte> _simInput = new();
     private readonly ConcurrentDictionary<int, byte> _simOutput = new();
+    /// <summary>Simulation bag for Merker / DB native addresses (MW, DBX, …).</summary>
+    private readonly ConcurrentDictionary<string, object?> _simNative = new(StringComparer.OrdinalIgnoreCase);
     private readonly DriverIoPortCache _ioCache = new();
     private readonly object _gate = new();
     private Plc? _plc;
@@ -60,6 +62,7 @@ public sealed class DrvS7 : IDriver
         ClosePlcUnlocked();
         _simInput.Clear();
         _simOutput.Clear();
+        _simNative.Clear();
         _ioCache.Clear();
 
         if (forceSimulate)
@@ -645,24 +648,37 @@ public sealed class DrvS7 : IDriver
     private bool TryReadSimNativeUnlocked(string address, out object? value)
     {
         value = null;
-        if (!TryParseProcessBit(address, out var isOutput, out var byteAddr, out var bit)
-            || bit is null)
+        if (TryParseProcessBit(address, out var isOutput, out var byteAddr, out var bit)
+            && bit is not null)
         {
-            if (TryParseProcessByte(address, out isOutput, out byteAddr))
+            if (!TryReadByteUnlocked(isOutput, byteAddr, out var current))
             {
-                return TryReadByteUnlocked(isOutput, byteAddr, out var b)
-                    && (value = b) is not null;
+                return false;
             }
 
-            return false;
+            value = (current & (1 << bit.Value)) != 0;
+            return true;
         }
 
-        if (!TryReadByteUnlocked(isOutput, byteAddr, out var current))
+        if (TryParseProcessByte(address, out isOutput, out byteAddr))
+        {
+            return TryReadByteUnlocked(isOutput, byteAddr, out var b)
+                && (value = b) is not null;
+        }
+
+        // Merker / DB (and other bag keys): default-initialized like empty PLC memory.
+        if (!TryClassifySimNativeBag(address, out var kind))
         {
             return false;
         }
 
-        value = (current & (1 << bit.Value)) != 0;
+        var key = NormalizeNativeKey(address);
+        if (_simNative.TryGetValue(key, out value))
+        {
+            return true;
+        }
+
+        value = DefaultSimNativeValue(kind);
         return true;
     }
 
@@ -689,7 +705,162 @@ public sealed class DrvS7 : IDriver
             return TryWriteByteUnlocked(true, byteAddr, b);
         }
 
+        if (!TryClassifySimNativeBag(address, out var kind))
+        {
+            return false;
+        }
+
+        if (!TryCoerceSimNativeValue(kind, value, out var stored))
+        {
+            return false;
+        }
+
+        _simNative[NormalizeNativeKey(address)] = stored;
+        return true;
+    }
+
+    private static string NormalizeNativeKey(string address) => address.Trim().ToUpperInvariant();
+
+    private enum SimNativeKind
+    {
+        Bit,
+        Byte,
+        Word,
+        DWord,
+    }
+
+    private static object DefaultSimNativeValue(SimNativeKind kind) => kind switch
+    {
+        SimNativeKind.Bit => false,
+        SimNativeKind.Byte => (byte)0,
+        SimNativeKind.Word => (ushort)0,
+        _ => 0,
+    };
+
+    private static bool TryCoerceSimNativeValue(SimNativeKind kind, object? value, out object stored)
+    {
+        stored = DefaultSimNativeValue(kind);
+        try
+        {
+            stored = kind switch
+            {
+                SimNativeKind.Bit => Convert.ToBoolean(value ?? false, CultureInfo.InvariantCulture),
+                SimNativeKind.Byte => Convert.ToByte(value ?? 0, CultureInfo.InvariantCulture),
+                SimNativeKind.Word => Convert.ToUInt16(value ?? 0, CultureInfo.InvariantCulture),
+                _ => Convert.ToInt32(value ?? 0, CultureInfo.InvariantCulture),
+            };
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Recognizes Merker / DB forms used in simulation when no live PLC is attached.
+    /// Process I/Q is handled separately via byte maps.
+    /// </summary>
+    private static bool TryClassifySimNativeBag(string address, out SimNativeKind kind)
+    {
+        kind = SimNativeKind.Word;
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            return false;
+        }
+
+        var a = address.Trim();
+
+        // DB1.DBX0.0 / DB1.DBB0 / DB1.DBW2 / DB1.DBD4
+        if (a.StartsWith("DB", StringComparison.OrdinalIgnoreCase))
+        {
+            var dot = a.IndexOf('.', StringComparison.Ordinal);
+            if (dot <= 2 || dot >= a.Length - 1)
+            {
+                return false;
+            }
+
+            var dbNo = a[2..dot];
+            if (!int.TryParse(dbNo, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                return false;
+            }
+
+            var rest = a[(dot + 1)..];
+            if (rest.StartsWith("DBX", StringComparison.OrdinalIgnoreCase))
+            {
+                kind = SimNativeKind.Bit;
+                return rest.Contains('.', StringComparison.Ordinal);
+            }
+
+            if (rest.StartsWith("DBB", StringComparison.OrdinalIgnoreCase))
+            {
+                kind = SimNativeKind.Byte;
+                return int.TryParse(rest[3..], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+            }
+
+            if (rest.StartsWith("DBW", StringComparison.OrdinalIgnoreCase))
+            {
+                kind = SimNativeKind.Word;
+                return int.TryParse(rest[3..], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+            }
+
+            if (rest.StartsWith("DBD", StringComparison.OrdinalIgnoreCase))
+            {
+                kind = SimNativeKind.DWord;
+                return int.TryParse(rest[3..], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+            }
+
+            return false;
+        }
+
+        // M0.0 / MB0 / MW10 / MD0
+        if (a.Length >= 2 && (a[0] is 'M' or 'm'))
+        {
+            if (a.Contains('.', StringComparison.Ordinal)
+                && TryParseMerkerBit(a, out _))
+            {
+                kind = SimNativeKind.Bit;
+                return true;
+            }
+
+            if (a.Length >= 3)
+            {
+                var size = a[1];
+                var num = a[2..];
+                if (!int.TryParse(num, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+                {
+                    return false;
+                }
+
+                kind = size switch
+                {
+                    'B' or 'b' => SimNativeKind.Byte,
+                    'W' or 'w' => SimNativeKind.Word,
+                    'D' or 'd' => SimNativeKind.DWord,
+                    _ => SimNativeKind.Word,
+                };
+                return size is 'B' or 'b' or 'W' or 'w' or 'D' or 'd';
+            }
+        }
+
         return false;
+    }
+
+    private static bool TryParseMerkerBit(string address, out int bit)
+    {
+        bit = 0;
+        // M12.3
+        if (address.Length < 3 || address[0] is not ('M' or 'm'))
+        {
+            return false;
+        }
+
+        var parts = address[1..].Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return parts.Length == 2
+            && int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out _)
+            && int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out bit)
+            && bit is >= 0 and <= 7;
     }
 
     private bool TryAddressBitShift(short addressBit, out int shift)
@@ -777,14 +948,31 @@ public sealed class DrvS7 : IDriver
 
     private static bool LooksLikeS7Address(string address)
     {
-        if (address.Length < 2)
+        if (string.IsNullOrWhiteSpace(address) || address.Length < 2)
         {
             return false;
         }
 
+        // Keep di.* / do.* on the DriverIoAddress path (do not steal as S7).
+        if (DriverIoAddress.LooksLike(address))
+        {
+            return false;
+        }
+
+        if (address.StartsWith("DB", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         var head = address[0];
-        return head is 'I' or 'i' or 'Q' or 'q' or 'M' or 'm' or 'D' or 'd'
-            || address.StartsWith("DB", StringComparison.OrdinalIgnoreCase);
+        if (head is not ('I' or 'i' or 'Q' or 'q' or 'M' or 'm'))
+        {
+            return false;
+        }
+
+        var second = address[1];
+        return char.IsDigit(second)
+            || second is 'B' or 'b' or 'W' or 'w' or 'D' or 'd' or 'X' or 'x';
     }
 
     private static bool TryParseProcessBit(string address, out bool isOutput, out int byteAddr, out int? bit)

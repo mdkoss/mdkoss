@@ -1,3 +1,4 @@
+using System.Globalization;
 using MDKOSS.Core;
 using MDKOSS.Core.Drivers;
 using MDKOSS.Drivers.S7;
@@ -51,6 +52,37 @@ public sealed class DrvS7Tests
         Assert.True(Convert.ToBoolean(bit));
         Assert.True(drv.TryRead("do.gpo.bit.1", out var viaGpio));
         Assert.True(Convert.ToBoolean(viaGpio));
+    }
+
+    [Fact]
+    public void Native_merker_and_db_roundtrip_in_simulate_mode()
+    {
+        using var drv = Create();
+        Assert.True(drv.Write("MW10", (ushort)0x1234));
+        Assert.True(drv.TryRead("MW10", out var mw));
+        Assert.Equal((ushort)0x1234, Convert.ToUInt16(mw, CultureInfo.InvariantCulture));
+
+        Assert.True(drv.Write("M0.2", true));
+        Assert.True(drv.TryRead("M0.2", out var mBit));
+        Assert.True(Convert.ToBoolean(mBit));
+
+        Assert.True(drv.Write("DB1.DBX0.1", true));
+        Assert.True(drv.TryRead("DB1.DBX0.1", out var dbx));
+        Assert.True(Convert.ToBoolean(dbx));
+
+        Assert.True(drv.Write("DB1.DBW2", (ushort)99));
+        Assert.True(drv.TryRead("DB1.DBW2", out var dbw));
+        Assert.Equal((ushort)99, Convert.ToUInt16(dbw, CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void Driver_memory_keys_are_not_stolen_as_s7_addresses()
+    {
+        using var drv = Create();
+        Assert.True(drv.TryRead("driver.id", out var id));
+        Assert.Equal("s7", Convert.ToString(id, CultureInfo.InvariantCulture));
+        Assert.True(drv.TryRead("driver.cpu", out var cpu));
+        Assert.Equal("S71200", Convert.ToString(cpu, CultureInfo.InvariantCulture));
     }
 
     [Fact]

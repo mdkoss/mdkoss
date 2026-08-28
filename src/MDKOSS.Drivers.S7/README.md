@@ -19,6 +19,7 @@ S7DriverBootstrap.Register();
 | `di.gpi` / `do.gpo` | 连续 4 字节拼成 int 位掩码 |
 
 也支持原生 S7 地址经 `TryRead` / `Write`：`I0.0`、`Q0.0`、`IB0`、`QB0`、`DB1.DBX0.0`、`MW10` 等。
+仿真模式下 I/Q 走映像区字节表，Merker / DB（`M*`、`DB*.DBX/DBB/DBW/DBD`）走内存袋，便于无 PLC 联调。
 
 轴运动接口对本驱动返回 false（PLC 作 IO 底层，不模拟运动卡）。
 
