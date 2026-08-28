@@ -1,0 +1,237 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS Modbus IDriver — Holding 测试</title>
+  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+  <style>
+    .hr-toolbar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; margin-bottom: 12px; }
+    .hr-toolbar .form-group { margin: 0; min-width: 110px; }
+    .hr-toolbar button { white-space: nowrap; }
+    .hr-meta { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    .hr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 8px;
+      max-height: calc(100vh - 260px);
+      overflow: auto;
+      padding: 2px;
+    }
+    .hr-cell {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      padding: 8px 10px;
+      display: grid;
+      gap: 6px;
+    }
+    .hr-cell.dirty { border-color: rgba(255, 204, 102, .55); }
+    .hr-addr {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .hr-cell input {
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 13px;
+      padding: 6px 8px;
+    }
+    .hr-actions { display: flex; gap: 6px; }
+    .hr-actions button { flex: 1; padding: 4px 6px; font-size: 12px; }
+    .header-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body data-tool-group="debug" data-tool-page="debug_modbus_holding">
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Modbus IDriver · Holding Registers</div>
+        <div class="sub">默认 200 个字（holding.0 – holding.199）· GET/POST <code>/api/modbusdrv</code> · 仿真驱动可无 Slave 联调</div>
+      </div>
+      <div class="header-links">
+        <a class="link-btn" href="/indexModbus.html">PLC 操作台 →</a>
+        <a class="link-btn" href="/debug_driver.html">驱动 IO 位格 →</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hr-toolbar">
+        <div class="form-group">
+          <label for="driverId">Driver ID</label>
+          <input id="driverId" value="drv-modbus" />
+        </div>
+        <div class="form-group">
+          <label for="startAddr">起始地址</label>
+          <input id="startAddr" type="number" min="0" max="65535" value="0" />
+        </div>
+        <div class="form-group">
+          <label for="count">数量</label>
+          <input id="count" type="number" min="1" max="2000" value="200" />
+        </div>
+        <button type="button" class="primary" id="btnRefresh">刷新</button>
+        <button type="button" id="btnFill">写入测试图案</button>
+        <button type="button" id="btnAuto">自动刷新</button>
+      </div>
+      <p class="hr-meta" id="meta">—</p>
+      <div class="hr-grid" id="grid"></div>
+      <div class="msg" id="msg"></div>
+      <div class="footer">上次刷新：<span id="lastUpdate">-</span></div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const { esc, fetchJson } = MdkTool;
+    const driverIdEl = document.getElementById("driverId");
+    const startEl = document.getElementById("startAddr");
+    const countEl = document.getElementById("count");
+    const grid = document.getElementById("grid");
+    const meta = document.getElementById("meta");
+    const msg = document.getElementById("msg");
+    const lastUpdate = document.getElementById("lastUpdate");
+    const btnAuto = document.getElementById("btnAuto");
+
+    let autoTimer = null;
+    let lastValues = [];
+
+    function params() {
+      return {
+        driverId: (driverIdEl.value || "drv-modbus").trim(),
+        start: Number(startEl.value) || 0,
+        count: Math.max(1, Math.min(2000, Number(countEl.value) || 200)),
+      };
+    }
+
+    function setMsg(text, isErr) {
+      msg.textContent = text || "";
+      msg.classList.toggle("err", !!isErr);
+    }
+
+    function render(data) {
+      const start = data.start | 0;
+      const values = Array.isArray(data.values) ? data.values : [];
+      lastValues = values.slice();
+      meta.textContent =
+        `${data.driverId || "—"} · ${data.driverName || "—"} · ` +
+        `${data.connected ? "在线" : "离线"} · ` +
+        `ok ${data.okCount}/${values.length} · holding.${start}…holding.${start + Math.max(0, values.length - 1)}`;
+
+      grid.innerHTML = values.map((v, i) => {
+        const addr = start + i;
+        const hex = "0x" + Number(v).toString(16).toUpperCase().padStart(4, "0");
+        return `<div class="hr-cell" data-addr="${addr}">
+          <div class="hr-addr">holding.${addr}</div>
+          <input data-role="value" value="${esc(String(v))}" title="${esc(hex)}" />
+          <div class="hr-actions">
+            <button type="button" data-role="write">写入</button>
+          </div>
+        </div>`;
+      }).join("");
+
+      grid.querySelectorAll("button[data-role=write]").forEach((btn) => {
+        btn.addEventListener("click", onWriteClick);
+      });
+      grid.querySelectorAll("input[data-role=value]").forEach((inp) => {
+        inp.addEventListener("input", () => {
+          const cell = inp.closest(".hr-cell");
+          const addr = Number(cell.getAttribute("data-addr"));
+          const idx = addr - start;
+          const orig = lastValues[idx];
+          cell.classList.toggle("dirty", Number(inp.value) !== Number(orig));
+        });
+        inp.addEventListener("keydown", (ev) => {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            inp.closest(".hr-cell").querySelector("button[data-role=write]").click();
+          }
+        });
+      });
+    }
+
+    async function refresh() {
+      const p = params();
+      const q = new URLSearchParams({
+        driverId: p.driverId,
+        start: String(p.start),
+        count: String(p.count),
+      });
+      setMsg("读取中…");
+      try {
+        const data = await fetchJson("/api/modbusdrv/holding?" + q.toString());
+        if (!data || data.success === false) {
+          throw new Error((data && data.error) || "read_failed");
+        }
+        render(data);
+        setMsg(`已读 ${data.okCount}/${(data.values || []).length} 个寄存器`);
+        lastUpdate.textContent = new Date().toLocaleTimeString();
+      } catch (e) {
+        setMsg("读取失败: " + (e && e.message ? e.message : String(e)), true);
+      }
+    }
+
+    async function onWriteClick(ev) {
+      const cell = ev.currentTarget.closest(".hr-cell");
+      const addr = Number(cell.getAttribute("data-addr"));
+      const input = cell.querySelector("input[data-role=value]");
+      const n = Number(input.value);
+      if (!Number.isFinite(n) || n < 0 || n > 65535) {
+        setMsg("值须为 0..65535", true);
+        return;
+      }
+      const p = params();
+      setMsg(`写入 holding.${addr}…`);
+      try {
+        const res = await fetch("/api/modbusdrv/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ driverId: p.driverId, address: addr, value: n | 0 }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
+        setMsg(`已写 holding.${addr} = ${n | 0}`);
+        cell.classList.remove("dirty");
+        await refresh();
+      } catch (e) {
+        setMsg("写入失败: " + (e && e.message ? e.message : String(e)), true);
+      }
+    }
+
+    async function fillPattern() {
+      const p = params();
+      setMsg("写入测试图案…");
+      try {
+        const res = await fetch("/api/modbusdrv/fill", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ driverId: p.driverId, start: p.start, count: p.count }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.success) throw new Error(data.error || ("http " + res.status));
+        setMsg(`图案写入 ${data.written}/${data.count}`);
+        await refresh();
+      } catch (e) {
+        setMsg("填充失败: " + (e && e.message ? e.message : String(e)), true);
+      }
+    }
+
+    function toggleAuto() {
+      if (autoTimer) {
+        clearInterval(autoTimer);
+        autoTimer = null;
+        btnAuto.textContent = "自动刷新";
+        return;
+      }
+      btnAuto.textContent = "停止自动";
+      autoTimer = setInterval(refresh, 1000);
+      refresh();
+    }
+
+    document.getElementById("btnRefresh").addEventListener("click", refresh);
+    document.getElementById("btnFill").addEventListener("click", fillPattern);
+    btnAuto.addEventListener("click", toggleAuto);
+    refresh();
+  </script>
+</body>
+</html>

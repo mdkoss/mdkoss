@@ -32,6 +32,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo 宿主 |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
 | `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo 宿主 |
+| `MDKOSS.Sample.Modbus` | Modbus IDriver 联调宿主（默认 200 Holding Register） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 | `MDKOSS.Iec61131` | Flow 任务 / 变量 / GPIO 导出为 IEC 61131-3 |
 | `MDKOSS.Sample.Iec61131` | 工位节拍 IEC 导出示例 |
@@ -82,7 +83,7 @@ dotnet test MDKOSS.sln -c Release
 
 收到带 Issue id / 标题 / 描述的消息后**立刻动手改代码**，不要先回复「已就位 / 待命 / 直接说要处理的 issue」。那条消息本身就是任务。
 
-1. 读标题、描述、`module` / `type` / `priority`，先在上表定位，再搜符号。
+1. 读标题、描述、全部评论、`module` / `type` / `priority`，先在上表定位，再搜符号。后写的评论优先。
 2. 最小改动修复；补或改测试证明行为。
 3. `git add` 只加相关文件并 commit。不要 push，轮询脚本会紧接着推送。
 4. 用纯文本写 3–8 句方案摘要（改了什么、为什么、怎么验证）。不要 markdown 标题，不要双引号。

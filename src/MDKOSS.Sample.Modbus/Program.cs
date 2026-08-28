@@ -8,8 +8,8 @@ using System.Windows.Forms;
 namespace MDKOSS.Sample.Modbus;
 
 /// <summary>
-/// CEF host for Modbus IDriver holding-register smoke test.
-/// Start page and driver come from the first JSON in <c>configs/</c>.
+/// CEF host for Modbus IDriver holding-register smoke test (default 200 words).
+/// Start page <c>debug_modbus_holding.html</c> and driver come from the first JSON in <c>configs/</c>.
 /// </summary>
 internal static class Program
 {

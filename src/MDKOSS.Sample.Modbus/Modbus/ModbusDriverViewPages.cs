@@ -3,6 +3,7 @@ namespace MDKOSS.Sample.Modbus.Machine;
 /// <summary>Loads Modbus sample HTML views from the output <c>views/</c> folder.</summary>
 internal static class ModbusDriverViewPages
 {
+    public static readonly string HoldingHtml = Load("debug_modbus_holding.html", "Modbus Holding 测试");
     public static readonly string IndexHtml = Load("indexModbus.html", "Modbus 寄存器组态");
 
     private static string Load(string fileName, string title)

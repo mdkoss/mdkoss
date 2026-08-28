@@ -1,6 +1,6 @@
 {
-  "projectName": "Modbus 寄存器组态",
-  "startPage": "indexModbus.html",
+  "projectName": "Modbus IDriver Holding 测试",
+  "startPage": "debug_modbus_holding.html",
   "monitoringPrefix": "http://127.0.0.1:5090/",
   "cycleMs": 50,
   "databasePath": "data/mdk.db",
@@ -11,7 +11,7 @@
       "type": "modbus-tcp",
       "enabled": true,
       "parameters": {
-        "simulate": "false",
+        "simulate": "true",
         "host": "127.0.0.1",
         "port": "1502",
         "unitId": "1",
@@ -23,7 +23,7 @@
         "diArea": "discrete",
         "doArea": "coils",
         "ioBitBase": "0",
-        "note": "连本机 Modbus TCP 测试服务 127.0.0.1:1502（服务端 bind 0.0.0.0:1502）"
+        "note": "无现场 Slave 时 simulate=true 走内存仿真；接真机时改 host/port 并关闭 simulate"
       }
     }
   ],
