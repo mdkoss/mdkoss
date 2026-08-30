@@ -1,0 +1,75 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Monitor.MonitorCameraView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="相机调试 →" Command="{Binding GoToolCommand}" CommandParameter="debug_camera" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="相机监控" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="只读" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="相机矩阵 + Faceplate" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock Text="只读。开闭与抓图请进入相机调试。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="数量" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiTotal}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="在线" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiOnline}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="运行/打开" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiRun}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.4*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="0" Margin="0,0,8,0">
+        <DataGrid ItemsSource="{Binding Cameras}" SelectedItem="{Binding Selected, Mode=TwoWay}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="*"/>
+            <DataGridTextColumn Header="类型" Binding="{Binding Type}" Width="90"/>
+            <DataGridTextColumn Header="状态" Binding="{Binding State}" Width="80"/>
+            <DataGridTextColumn Header="在线" Binding="{Binding Online}" Width="70"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="1">
+        <StackPanel>
+          <TextBlock Text="{Binding FpTitle}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+          <TextBlock Style="{StaticResource KpiLabelStyle}" Text="状态"/>
+          <TextBlock Text="{Binding FpState}" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
+          <TextBlock Style="{StaticResource KpiLabelStyle}" Text="类型"/>
+          <TextBlock Text="{Binding FpType}" Margin="0,0,0,8"/>
+          <TextBlock Style="{StaticResource KpiLabelStyle}" Text="在线"/>
+          <TextBlock Text="{Binding FpOnline}" Margin="0,0,0,8"/>
+          <TextBlock Style="{StaticResource KpiLabelStyle}" Text="链路"/>
+          <TextBlock Text="{Binding FpLink}"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

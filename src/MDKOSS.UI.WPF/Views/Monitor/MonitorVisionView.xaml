@@ -1,0 +1,82 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Monitor.MonitorVisionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="视觉调试 →" Command="{Binding GoToolCommand}" CommandParameter="debug_vision" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="视觉监控" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="只读" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="结果 KPI + 流程 / 变量" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock Text="只读。run / captureAndRun 请进入视觉调试。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="当前流程" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding ActiveVision}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="状态" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VState}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="OK" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VOk}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="分数" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VScore}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="次数" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VCount}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.2*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="0" Margin="0,0,8,0">
+        <DataGrid ItemsSource="{Binding Visions}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="Id" Binding="{Binding Id}" Width="*"/>
+            <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+            <DataGridTextColumn Header="相机" Binding="{Binding Camera}" Width="*"/>
+            <DataGridTextColumn Header="节点" Binding="{Binding Nodes}" Width="60"/>
+            <DataGridTextColumn Header="说明" Binding="{Binding Description}" Width="1.4*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="1">
+        <DataGrid ItemsSource="{Binding Vars}">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="变量" Binding="{Binding Key}" Width="1.4*"/>
+            <DataGridTextColumn Header="值" Binding="{Binding Value}" Width="*"/>
+          </DataGrid.Columns>
+        </DataGrid>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

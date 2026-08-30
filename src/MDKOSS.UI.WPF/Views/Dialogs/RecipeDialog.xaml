@@ -1,0 +1,23 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Dialogs.RecipeDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True">
+  <DockPanel Margin="16">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <Button Content="应用" Command="{Binding ApplyCommand}" Style="{StaticResource DialogButtonStyle}"/>
+        <Button Content="关闭" Command="{Binding CloseCommand}" Style="{StaticResource DialogButtonStyle}"/>
+      </StackPanel>
+      <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+    </DockPanel>
+    <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="1*"/>
+        <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="1.2*"/>
+        <DataGridTextColumn Header="说明" Binding="{Binding Description}" Width="1.6*"/>
+        <DataGridCheckBoxColumn Header="当前" Binding="{Binding IsActive}" Width="0.6*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+  </DockPanel>
+</UserControl>

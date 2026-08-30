@@ -1,0 +1,39 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.ToolPageView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="Transparent">
+  <DockPanel Margin="20,16">
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+        <StackPanel Orientation="Horizontal" Visibility="{Binding ShowMachineActions, Converter={StaticResource BoolToVis}}">
+          <Button Content="启动" Command="{Binding StartCommand}" Style="{StaticResource DialogButtonStyle}"/>
+          <Button Content="停止" Command="{Binding StopCommand}" Style="{StaticResource DialogButtonStyle}"/>
+          <Button Content="复位" Command="{Binding ResetCommand}" Style="{StaticResource DialogButtonStyle}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Visibility="{Binding ShowAlarmActions, Converter={StaticResource BoolToVis}}">
+          <Button Content="测试触发" Command="{Binding TriggerAlarmCommand}" Style="{StaticResource DialogButtonStyle}"/>
+          <Button Content="全部复位" Command="{Binding ClearAlarmsCommand}" Style="{StaticResource DialogButtonStyle}"/>
+        </StackPanel>
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Text="{Binding Title}" FontSize="20" FontWeight="Bold"/>
+        <TextBlock Text="{Binding Subtitle}" Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0"/>
+      </StackPanel>
+    </DockPanel>
+
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding EmptyHint}" Foreground="{StaticResource MutedBrush}"
+               Margin="0,10,0,0"/>
+
+    <Border Background="{StaticResource PanelBrush}" CornerRadius="10"
+            BorderBrush="{StaticResource LineBrush}" BorderThickness="1">
+      <DataGrid ItemsSource="{Binding Rows}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="名称" Binding="{Binding Key}" Width="1.4*"/>
+          <DataGridTextColumn Header="值" Binding="{Binding Value}" Width="2.6*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+  </DockPanel>
+</UserControl>

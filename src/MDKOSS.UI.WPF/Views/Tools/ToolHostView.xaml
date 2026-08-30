@@ -1,0 +1,92 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.ToolHostView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Background="{DynamicResource ToolChromeBrush}"
+            BorderBrush="{DynamicResource ToolLineBrush}" BorderThickness="0,0,0,1">
+      <Border BorderBrush="{DynamicResource ToolModeBandBrush}" BorderThickness="0,3,0,0">
+        <DockPanel Margin="16,8">
+          <Button DockPanel.Dock="Left" Content="⌂ 主界面" Command="{Binding GoHomeCommand}"
+                  Style="{StaticResource ToolChromeBtnStyle}"/>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+            <TextBlock Text="{Binding ModeHint}" Foreground="{DynamicResource ToolMutedBrush}"
+                       FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <Button Content="监控" Command="{Binding SelectGroupCommand}" CommandParameter="monitor">
+              <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource ToolCrossLinkStyle}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsMonitor}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                      <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="FontWeight" Value="Bold"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+            <Button Content="调试" Command="{Binding SelectGroupCommand}" CommandParameter="debug">
+              <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource ToolCrossLinkStyle}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsDebug}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                      <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="FontWeight" Value="Bold"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+            <Button Content="配置" Command="{Binding SelectGroupCommand}" CommandParameter="man">
+              <Button.Style>
+                <Style TargetType="Button" BasedOn="{StaticResource ToolCrossLinkStyle}">
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsMan}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                      <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+                      <Setter Property="FontWeight" Value="Bold"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Button.Style>
+            </Button>
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Pages}" VerticalAlignment="Center" Margin="10,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Content="{Binding Label}"
+                        Command="{Binding DataContext.SelectPageCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                        CommandParameter="{Binding Id}">
+                  <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ToolPageLinkStyle}">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                          <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                          <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+                          <Setter Property="FontWeight" Value="Bold"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </Button.Style>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+    </Border>
+    <ContentControl prism:RegionManager.RegionName="ToolContentRegion"/>
+  </DockPanel>
+</UserControl>

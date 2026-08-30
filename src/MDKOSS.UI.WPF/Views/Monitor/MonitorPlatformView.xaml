@@ -1,0 +1,91 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Monitor.MonitorPlatformView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="平台调试 →" Command="{Binding GoToolCommand}" CommandParameter="debug_platform" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="平台监控" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="只读" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="全部平台矩阵 + 选中轴表" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock Text="只读。点动示教请进入平台调试。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="平台" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiPlat}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="在线" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiOnline}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="轴数" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiAxes}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="使能" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiEn}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="1.1*"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Row="0">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="平台一览" FontWeight="SemiBold" Margin="0,0,0,8"/>
+          <DataGrid ItemsSource="{Binding Platforms}" SelectedItem="{Binding Selected, Mode=TwoWay}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+              <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="*"/>
+              <DataGridTextColumn Header="类型" Binding="{Binding Type}" Width="80"/>
+              <DataGridTextColumn Header="在线" Binding="{Binding Online}" Width="70"/>
+              <DataGridTextColumn Header="状态" Binding="{Binding State}" Width="80"/>
+              <DataGridTextColumn Header="轴" Binding="{Binding AxisCount}" Width="50"/>
+              <DataGridTextColumn Header="使能" Binding="{Binding EnabledCount}" Width="50"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Row="1">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="{Binding FaceplateTitle}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+          <DataGrid ItemsSource="{Binding Axes}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="轴" Binding="{Binding Letter}" Width="50"/>
+              <DataGridTextColumn Header="轴设备" Binding="{Binding AxisId}" Width="*"/>
+              <DataGridTextColumn Header="驱动" Binding="{Binding Driver}" Width="*"/>
+              <DataGridTextColumn Header="在线" Binding="{Binding Online}" Width="70"/>
+              <DataGridTextColumn Header="使能" Binding="{Binding Enabled}" Width="70"/>
+              <DataGridTextColumn Header="指令" Binding="{Binding Prf}" Width="80"/>
+              <DataGridTextColumn Header="编码" Binding="{Binding Enc}" Width="80"/>
+              <DataGridTextColumn Header="速度" Binding="{Binding Vel}" Width="70"/>
+              <DataGridTextColumn Header="状态位" Binding="{Binding Flags}" Width="1.4*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

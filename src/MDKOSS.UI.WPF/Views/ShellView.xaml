@@ -1,0 +1,120 @@
+<Window x:Class="MDKOSS.UI.WPF.Views.ShellView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:prism="http://prismlibrary.com/"
+        prism:ViewModelLocator.AutoWireViewModel="True"
+        Title="{Binding Title}"
+        Width="1920" Height="1080"
+        MinWidth="1280" MinHeight="720"
+        WindowStartupLocation="CenterScreen"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Background="{StaticResource BgBrush}"
+        Foreground="{StaticResource TextBrush}">
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Height="64" Background="{StaticResource ChromeBrush}"
+            BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1"
+            Visibility="{Binding ContentMode, Converter={StaticResource EqToVis}, ConverterParameter=home}">
+      <DockPanel Margin="16,0">
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
+          <Border Width="40" Height="40" CornerRadius="8" Margin="0,0,10,0">
+            <Border.Background>
+              <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#5BA3FF" Offset="0"/>
+                <GradientStop Color="#2F6FE0" Offset="1"/>
+              </LinearGradientBrush>
+            </Border.Background>
+            <TextBlock Text="M" FontWeight="ExtraBold" FontSize="16" Foreground="White"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <TextBlock Text="{Binding DeviceName}" FontSize="18" FontWeight="Bold"
+                     VerticalAlignment="Center" MaxWidth="240" TextTrimming="CharacterEllipsis"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+          <TextBlock Text="报警灯" Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <Ellipse Width="22" Height="22" Fill="{Binding LampColor, Converter={StaticResource LampBrush}}"/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="⚙ 组件" Command="{Binding OpenDevicesCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="▶ 任务" Command="{Binding OpenTasksCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="𝑥 变量" Command="{Binding OpenVarsCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="⚠ 报警" Command="{Binding OpenAlarmsCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="☰ 工单" Command="{Binding OpenOrderCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="👤 用户" Command="{Binding OpenUserCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="ℹ 关于" Command="{Binding OpenAboutCommand}"
+                  Style="{StaticResource NavButtonStyle}"/>
+          <Button Content="⌂ 主界面" Command="{Binding GoHomeCommand}"
+                  Style="{StaticResource NavButtonStyle}"
+                  Visibility="{Binding ContentMode, Converter={StaticResource EqToVis}, ConverterParameter=tool}"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Border DockPanel.Dock="Bottom" Height="100" Background="{StaticResource ChromeBrush}"
+            BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0"
+            Visibility="{Binding ContentMode, Converter={StaticResource EqToVis}, ConverterParameter=home}">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1.2*"/>
+          <ColumnDefinition Width="2*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="20,10" VerticalAlignment="Center">
+          <TextBlock Text="当前订单" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" FontSize="13"/>
+          <TextBlock Text="{Binding CurrentOrderId}" FontSize="18" FontWeight="Bold" Margin="0,4,0,0"/>
+          <TextBlock Text="{Binding CurrentOrderDetail}" Foreground="{StaticResource MutedBrush}" FontSize="14"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="12,10" VerticalAlignment="Center">
+          <TextBlock Text="重要状态监控" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" FontSize="13"/>
+          <ItemsControl ItemsSource="{Binding StatusChips}" Margin="0,8,0,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                  <Ellipse Width="10" Height="10" Margin="0,0,8,0" VerticalAlignment="Center"
+                           Fill="{Binding Mode, Converter={StaticResource StatusDotBrush}}"/>
+                  <TextBlock Text="{Binding Label}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,16,0">
+          <StackPanel VerticalAlignment="Center" Margin="0,0,16,0" MinWidth="180">
+            <TextBlock Text="当前配方" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" FontSize="13"/>
+            <DockPanel Margin="0,4,0,0">
+              <Button DockPanel.Dock="Right" Content="选择配方" Command="{Binding PickRecipeCommand}"
+                      Style="{StaticResource DialogButtonStyle}" Height="42" Margin="10,0,0,0"/>
+              <StackPanel>
+                <TextBlock Text="{Binding RecipeName}" FontSize="18" FontWeight="Bold"/>
+                <TextBlock Text="{Binding RecipeIdText}" Foreground="{StaticResource MutedBrush}"/>
+              </StackPanel>
+            </DockPanel>
+          </StackPanel>
+          <Button Content="启动" Command="{Binding StartCommand}" Style="{StaticResource CtrlButtonStyle}"
+                  Background="{StaticResource StartBrush}"/>
+          <Button Content="停止" Command="{Binding StopCommand}" Style="{StaticResource CtrlButtonStyle}"
+                  Background="{StaticResource StopBrush}"/>
+          <Button Content="复位" Command="{Binding ResetCommand}" Style="{StaticResource CtrlButtonStyle}"
+                  Background="{StaticResource ResetBrush}"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <ContentControl prism:RegionManager.RegionName="ContentRegion"/>
+  </DockPanel>
+</Window>

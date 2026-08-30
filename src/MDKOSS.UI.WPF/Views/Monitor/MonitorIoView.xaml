@@ -1,0 +1,231 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Monitor.MonitorIoView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <StackPanel Orientation="Horizontal">
+          <Button Content="灯盘" Command="{Binding ShowLedCommand}">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource ToolToggleStyle}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding ShowLeds}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Content="明细" Command="{Binding ShowTableCommand}" Margin="-1,0,8,0">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource ToolToggleStyle}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding ShowTable}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+        </StackPanel>
+        <Button Content="强制输出 →" Command="{Binding GoToolCommand}" CommandParameter="debug_io" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="IO 监控" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="只读" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="灯盘按设备分组" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}" FontSize="12">
+        监控为只读。强制写入请进入
+        <Hyperlink Command="{Binding GoToolCommand}" CommandParameter="debug_io" Foreground="{DynamicResource ToolAccentBrush}" FontWeight="Bold">IO 强制</Hyperlink>
+        或
+        <Hyperlink Command="{Binding GoToolCommand}" CommandParameter="debug_driver" Foreground="{DynamicResource ToolAccentBrush}" FontWeight="Bold">驱动端口字</Hyperlink>。
+      </TextBlock>
+    </Border>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Margin="16,0,0,0">
+        <TextBlock Text="上次刷新" Style="{StaticResource ToolFormLabelStyle}"/>
+        <TextBlock Text="{Binding LastUpdate}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}"/>
+      </StackPanel>
+      <StackPanel>
+        <TextBlock Text="筛选" Style="{StaticResource ToolFormLabelStyle}"/>
+        <TextBox Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}"/>
+      </StackPanel>
+    </DockPanel>
+    <Grid Visibility="{Binding ShowLeds, Converter={StaticResource BoolToVis}}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="0" Margin="0,0,8,0">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="数字输入 DI" Style="{StaticResource ToolPanelTitleStyle}"/>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding InputGroups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{DynamicResource ToolLineBrush}" BorderThickness="1" CornerRadius="4"
+                          Background="{DynamicResource ToolInputBgBrush}" Padding="10,10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}"/>
+                        <TextBlock Text="{Binding Hint}" Foreground="{DynamicResource ToolMutedBrush}" FontSize="11" Margin="8,0,0,0"/>
+                      </StackPanel>
+                      <ItemsControl ItemsSource="{Binding Points}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <UniformGrid Columns="5"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Margin="0,0,6,6" Padding="6,8" CornerRadius="4" BorderThickness="1"
+                                    BorderBrush="{DynamicResource ToolLineBrush}" MinHeight="56">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Setter Property="Background" Value="{DynamicResource ToolPanel2Brush}"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsOn}" Value="True">
+                                      <Setter Property="Background" Value="#292DB87C"/>
+                                      <Setter Property="BorderBrush" Value="#732DB87C"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Border.Style>
+                              <StackPanel>
+                                <Border Width="12" Height="12" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,4">
+                                  <Border.Style>
+                                    <Style TargetType="Border">
+                                      <Setter Property="Background" Value="{DynamicResource ToolLedOffBrush}"/>
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsOn}" Value="True">
+                                          <Setter Property="Background" Value="{DynamicResource ToolLedOnBrush}"/>
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </Border.Style>
+                                </Border>
+                                <TextBlock Text="{Binding Alias}" FontSize="11" FontWeight="Bold" TextAlignment="Center" Foreground="{DynamicResource ToolTextBrush}" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding Address}" FontSize="10" FontFamily="Consolas" TextAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="1">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="数字输出 DO" Style="{StaticResource ToolPanelTitleStyle}"/>
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding OutputGroups}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{DynamicResource ToolLineBrush}" BorderThickness="1" CornerRadius="4"
+                          Background="{DynamicResource ToolInputBgBrush}" Padding="10,10" Margin="0,0,0,10">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Title}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}" Margin="0,0,0,8"/>
+                      <ItemsControl ItemsSource="{Binding Points}">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <UniformGrid Columns="5"/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border Margin="0,0,6,6" Padding="6,8" CornerRadius="4" BorderThickness="1" MinHeight="56">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Setter Property="Background" Value="{DynamicResource ToolPanel2Brush}"/>
+                                  <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsOn}" Value="True">
+                                      <Setter Property="Background" Value="#292DB87C"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Border.Style>
+                              <StackPanel>
+                                <Border Width="12" Height="12" CornerRadius="2" HorizontalAlignment="Center" Margin="0,0,0,4"
+                                        Background="{DynamicResource ToolLedOffBrush}">
+                                  <Border.Style>
+                                    <Style TargetType="Border">
+                                      <Setter Property="Background" Value="{DynamicResource ToolLedOffBrush}"/>
+                                      <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsOn}" Value="True">
+                                          <Setter Property="Background" Value="{DynamicResource ToolLedOnBrush}"/>
+                                        </DataTrigger>
+                                      </Style.Triggers>
+                                    </Style>
+                                  </Border.Style>
+                                </Border>
+                                <TextBlock Text="{Binding Alias}" FontSize="11" FontWeight="Bold" TextAlignment="Center" Foreground="{DynamicResource ToolTextBrush}"/>
+                                <TextBlock Text="{Binding Address}" FontSize="10" FontFamily="Consolas" TextAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+                              </StackPanel>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Grid>
+    <Grid Visibility="{Binding ShowTable, Converter={StaticResource BoolToVis}}">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="0" Margin="0,0,8,0">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="数字输入 DI" Style="{StaticResource ToolPanelTitleStyle}"/>
+          <DataGrid ItemsSource="{Binding Inputs}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="设备 ID" Binding="{Binding DeviceId}" Width="*"/>
+              <DataGridTextColumn Header="别名" Binding="{Binding Alias}" Width="*"/>
+              <DataGridTextColumn Header="驱动 ID" Binding="{Binding DriverId}" Width="*"/>
+              <DataGridTextColumn Header="地址" Binding="{Binding Address}" Width="*"/>
+              <DataGridTextColumn Header="驱动在线" Binding="{Binding Online}" Width="80"/>
+              <DataGridTextColumn Header="读值" Binding="{Binding Value}" Width="60"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="1">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="数字输出 DO · 只读" Style="{StaticResource ToolPanelTitleStyle}"/>
+          <DataGrid ItemsSource="{Binding Outputs}">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="设备 ID" Binding="{Binding DeviceId}" Width="*"/>
+              <DataGridTextColumn Header="别名" Binding="{Binding Alias}" Width="*"/>
+              <DataGridTextColumn Header="驱动 ID" Binding="{Binding DriverId}" Width="*"/>
+              <DataGridTextColumn Header="地址" Binding="{Binding Address}" Width="*"/>
+              <DataGridTextColumn Header="驱动在线" Binding="{Binding Online}" Width="80"/>
+              <DataGridTextColumn Header="读值" Binding="{Binding Value}" Width="60"/>
+            </DataGrid.Columns>
+          </DataGrid>
+        </DockPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>

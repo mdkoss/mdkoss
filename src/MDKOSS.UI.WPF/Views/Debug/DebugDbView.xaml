@@ -1,0 +1,45 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Debug.DebugDbView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="数据库" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="可写" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="路径与工单 / 配方计数" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource WritableNoteStyle}">
+      <TextBlock Text="只读查看运行时 SQLite。维护操作仍以 DataStore / Config 为主。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="工单" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding OrderCount}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="配方" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding RecipeCount}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding DbPath, StringFormat=路径：{0}}" Foreground="{DynamicResource ToolMutedBrush}" Margin="0,0,0,8"/>
+    <Border Style="{StaticResource ToolCardStyle}">
+      <DataGrid ItemsSource="{Binding Orders}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="工单" Binding="{Binding Key}" Width="*"/>
+          <DataGridTextColumn Header="摘要" Binding="{Binding Value}" Width="2*"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+  </DockPanel>
+</UserControl>

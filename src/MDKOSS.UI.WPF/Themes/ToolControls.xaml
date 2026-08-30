@@ -1,0 +1,230 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceDictionary Source="MonitorTheme.xaml"/>
+  </ResourceDictionary.MergedDictionaries>
+
+  <Style x:Key="ToolBtnStyle" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource ToolBtnBgBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="Margin" Value="0,0,8,0"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="MinHeight" Value="32"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="4" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ToolBtnHoverBrush}"/>
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ToolAccentBrush}"/>
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Bd" Property="Opacity" Value="0.5"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ToolBtnPrimaryStyle" TargetType="Button" BasedOn="{StaticResource ToolBtnStyle}">
+    <Setter Property="Background" Value="{DynamicResource ToolAccentSoftBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolAccentBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolAccentBrush}"/>
+  </Style>
+
+  <Style x:Key="ToolBtnDangerStyle" TargetType="Button" BasedOn="{StaticResource ToolBtnStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource ToolDangerBrush}"/>
+    <Setter Property="BorderBrush" Value="#80E05454"/>
+  </Style>
+
+  <Style x:Key="ToolLinkStyle" TargetType="Button" BasedOn="{StaticResource ToolBtnStyle}">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolAccentBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="Padding" Value="4,2"/>
+    <Setter Property="Margin" Value="8,0,0,0"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
+
+  <Style x:Key="ToolChromeBtnStyle" TargetType="Button" BasedOn="{StaticResource ToolBtnStyle}">
+    <Setter Property="Background" Value="{DynamicResource ToolChromeHomeBrush}"/>
+    <Setter Property="Margin" Value="0,0,6,0"/>
+    <Setter Property="Padding" Value="10,6"/>
+  </Style>
+
+  <Style x:Key="ToolPageLinkStyle" TargetType="Button">
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,6"/>
+    <Setter Property="Margin" Value="0,0,6,0"/>
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Cursor" Value="Hand"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="4" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="ToolPageLinkActiveStyle" TargetType="Button" BasedOn="{StaticResource ToolPageLinkStyle}">
+    <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+  </Style>
+
+  <Style x:Key="ToolCrossLinkStyle" TargetType="Button" BasedOn="{StaticResource ToolPageLinkStyle}">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Padding" Value="10,5"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+  </Style>
+
+  <Style x:Key="ToolTitleStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="24"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+  </Style>
+
+  <Style x:Key="ToolSubStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="13"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="Margin" Value="0,4,0,0"/>
+  </Style>
+
+  <Style x:Key="ToolPillStyle" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="10,3"/>
+    <Setter Property="Margin" Value="10,0,0,0"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+
+  <Style x:Key="ToolPillTextStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="ExtraBold"/>
+  </Style>
+
+  <Style x:Key="ToolNoteStyle" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource ToolPanelBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="3,1,1,1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="12,8"/>
+    <Setter Property="Margin" Value="0,0,0,12"/>
+  </Style>
+
+  <Style x:Key="WritableNoteStyle" TargetType="Border" BasedOn="{StaticResource ToolNoteStyle}"/>
+
+  <Style x:Key="KpiCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource ToolPanel2Brush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="10,12"/>
+    <Setter Property="Margin" Value="0,0,8,8"/>
+    <Setter Property="MinWidth" Value="0"/>
+  </Style>
+
+  <Style x:Key="ToolCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{DynamicResource ToolPanel2Brush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="CornerRadius" Value="4"/>
+    <Setter Property="Padding" Value="14"/>
+    <Setter Property="Margin" Value="0,0,0,10"/>
+  </Style>
+
+  <Style x:Key="KpiLabelStyle" TargetType="TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+  </Style>
+
+  <Style x:Key="KpiValueStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="20"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontFamily" Value="Consolas, Cascadia Mono"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+    <Setter Property="Margin" Value="0,4,0,0"/>
+  </Style>
+
+  <Style x:Key="PillStyle" TargetType="Border" BasedOn="{StaticResource ToolPillStyle}"/>
+
+  <Style x:Key="ToolPanelTitleStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="15"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+    <Setter Property="Margin" Value="0,0,0,10"/>
+  </Style>
+
+  <Style x:Key="ToolFormLabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="Margin" Value="0,0,0,4"/>
+  </Style>
+
+  <Style x:Key="ToolStatusStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="Margin" Value="0,8,0,0"/>
+  </Style>
+
+  <Style x:Key="JogButtonStyle" TargetType="RepeatButton">
+    <Setter Property="Background" Value="{DynamicResource ToolBtnBgBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolTextBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="18,14"/>
+    <Setter Property="Margin" Value="0,0,8,0"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="FontSize" Value="15"/>
+    <Setter Property="MinWidth" Value="120"/>
+    <Setter Property="MinHeight" Value="56"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+
+  <Style x:Key="ToolToggleStyle" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource ToolBtnBgBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolMutedBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="12,6"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="FontWeight" Value="Bold"/>
+    <Setter Property="Cursor" Value="Hand"/>
+  </Style>
+
+  <Style x:Key="ToolToggleActiveStyle" TargetType="Button" BasedOn="{StaticResource ToolToggleStyle}">
+    <Setter Property="Background" Value="{DynamicResource ToolModeBandBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource ToolModeBandTextBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource ToolModeBandBrush}"/>
+  </Style>
+</ResourceDictionary>

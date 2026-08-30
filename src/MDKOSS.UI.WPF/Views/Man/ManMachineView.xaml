@@ -1,0 +1,52 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Man.ManMachineView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="整机配置" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="配置" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="项目名 / 周期 / 路径" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock Text="简化配置：编辑项目名、周期、监控前缀等整机参数。不可增删。写入磁盘后需重启运行时。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <Border Style="{StaticResource ToolCardStyle}" VerticalAlignment="Top">
+      <StackPanel>
+        <TextBlock Text="{Binding SettingPath, StringFormat=配置文件：{0}}" Foreground="{DynamicResource ToolMutedBrush}" Margin="0,0,0,12"/>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="projectName" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding ProjectName, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="cycleMs" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding CycleMs, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="monitoringPrefix" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding MonitoringPrefix, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="startPage" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding StartPage, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="databasePath" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding DatabasePath, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="machineId" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding MachineId, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <Grid Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="140"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <TextBlock Text="machineType" VerticalAlignment="Center" Foreground="{DynamicResource ToolMutedBrush}"/>
+          <TextBox Grid.Column="1" Text="{Binding MachineType, UpdateSourceTrigger=PropertyChanged}"/></Grid>
+        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+          <Button Content="应用属性" Command="{Binding ApplyCommand}" Style="{StaticResource ToolBtnPrimaryStyle}"/>
+          <Button Content="保存到磁盘" Command="{Binding SaveCommand}" Style="{StaticResource ToolBtnStyle}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

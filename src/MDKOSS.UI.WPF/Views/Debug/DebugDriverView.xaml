@@ -1,0 +1,63 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Debug.DebugDriverView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+        <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="IO 强制 →" Command="{Binding GoToolCommand}" CommandParameter="debug_io" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="驱动诊断" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="可写" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="自检读 + 端口字读写" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource WritableNoteStyle}">
+      <TextBlock Text="读/查询无需确认；写端口字需确认。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="驱动数" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiTotal}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="在线" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding KpiOnline}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="最近读值" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding LastRead}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <Border Style="{StaticResource ToolCardStyle}" VerticalAlignment="Top">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+          <TextBlock Text="驱动" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <ComboBox ItemsSource="{Binding Drivers}" SelectedValue="{Binding DriverId}" SelectedValuePath="Key" DisplayMemberPath="Value" Width="280"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+          <TextBlock Text="地址" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <TextBox Text="{Binding Address, UpdateSourceTrigger=PropertyChanged}" Width="240"/>
+          <Button Content="读取" Command="{Binding ReadCommand}" Style="{StaticResource ToolBtnStyle}"/>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="写入值" VerticalAlignment="Center" Margin="0,0,8,0"/>
+          <TextBox Text="{Binding WriteValue, UpdateSourceTrigger=PropertyChanged}" Width="120"/>
+          <Button Content="写入" Command="{Binding WriteCommand}" Style="{StaticResource ToolBtnStyle}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </DockPanel>
+</UserControl>

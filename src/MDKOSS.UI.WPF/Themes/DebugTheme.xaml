@@ -1,0 +1,29 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="ToolBgBrush" Color="#1C1A16"/>
+  <SolidColorBrush x:Key="ToolPanelBrush" Color="#2A2620"/>
+  <SolidColorBrush x:Key="ToolPanel2Brush" Color="#322E26"/>
+  <SolidColorBrush x:Key="ToolTextBrush" Color="#F2ECE3"/>
+  <SolidColorBrush x:Key="ToolMutedBrush" Color="#A89A86"/>
+  <SolidColorBrush x:Key="ToolLineBrush" Color="#524636"/>
+  <SolidColorBrush x:Key="ToolAccentBrush" Color="#E0A21A"/>
+  <SolidColorBrush x:Key="ToolAccentSoftBrush" Color="#29E0A21A"/>
+  <SolidColorBrush x:Key="ToolOkBrush" Color="#2DB87C"/>
+  <SolidColorBrush x:Key="ToolWarnBrush" Color="#E0A21A"/>
+  <SolidColorBrush x:Key="ToolDangerBrush" Color="#E05454"/>
+  <SolidColorBrush x:Key="ToolInputBgBrush" Color="#16130F"/>
+  <SolidColorBrush x:Key="ToolBtnBgBrush" Color="#3A342A"/>
+  <SolidColorBrush x:Key="ToolBtnHoverBrush" Color="#4A4234"/>
+  <SolidColorBrush x:Key="ToolTableHeadBrush" Color="#2E291F"/>
+  <SolidColorBrush x:Key="ToolChromeBrush" Color="#16130F"/>
+  <SolidColorBrush x:Key="ToolChromeHomeBrush" Color="#322E26"/>
+  <SolidColorBrush x:Key="ToolModeBandBrush" Color="#E0A21A"/>
+  <SolidColorBrush x:Key="ToolModeBandTextBrush" Color="#1C1406"/>
+  <SolidColorBrush x:Key="ToolMatrixOkBrush" Color="#1A4A38"/>
+  <SolidColorBrush x:Key="ToolMatrixWarnBrush" Color="#4A3A12"/>
+  <SolidColorBrush x:Key="ToolMatrixFaultBrush" Color="#4A1E1E"/>
+  <SolidColorBrush x:Key="ToolMatrixOffBrush" Color="#322E26"/>
+  <SolidColorBrush x:Key="ToolLedOnBrush" Color="#2DB87C"/>
+  <SolidColorBrush x:Key="ToolLedOffBrush" Color="#524636"/>
+  <SolidColorBrush x:Key="ToolMonoBrush" Color="#F0D9A0"/>
+</ResourceDictionary>

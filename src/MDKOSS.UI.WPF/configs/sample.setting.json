@@ -1,0 +1,402 @@
+{
+  "projectName": "WPF HMI Demo",
+  "startPage": "index.html",
+  "monitoringPrefix": "http://127.0.0.1:5083/",
+  "cycleMs": 20,
+  "databasePath": "data/mdk.db",
+  "drivers": [
+    {
+      "id": "sim1",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000",
+        "card": "0",
+        "model": "VirtualCard",
+        "inBits": "32",
+        "outBits": "32",
+        "ioBitBase": "0",
+        "note": "仿真驱动：IO + 轴（0-base，bit.0 为第一点）"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio1",
+      "name": "主 IO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "sim1|di.gpi.bit.0|启动",
+        "in.stopButton": "sim1|di.gpi.bit.1|停止",
+        "in.resetButton": "sim1|di.gpi.bit.2|复位",
+        "out.tower.red": "sim1|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "sim1|do.gpo.bit.1|黄灯",
+        "out.tower.green": "sim1|do.gpo.bit.2|绿灯",
+        "out.ready": "sim1|do.gpo.bit.3|就绪"
+      }
+    },
+    {
+      "id": "cam1",
+      "name": "演示相机（核心占位）",
+      "type": "cameradev",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "role": "demo"
+      }
+    },
+    {
+      "id": "serial1",
+      "name": "演示串口",
+      "type": "serialdev",
+      "enabled": true,
+      "parameters": {
+        "portName": "COM1",
+        "baudRate": "9600",
+        "dataBits": "8",
+        "parity": "None",
+        "stopBits": "One",
+        "readTimeout": "5000",
+        "writeTimeout": "5000",
+        "dtrEnable": "false",
+        "rtsEnable": "false",
+        "note": "不自动打开；debug_serial 手动 Open（需本机 COM 或虚拟串口）"
+      }
+    },
+    {
+      "id": "tcp1",
+      "name": "演示 TCP",
+      "type": "tcpdev",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "15100",
+        "connectTimeout": "3000",
+        "readTimeout": "3000",
+        "writeTimeout": "3000",
+        "noDelay": "false",
+        "keepAlive": "true",
+        "note": "不自动连接；/api/tcp 手动 Connect（需本机有监听）"
+      }
+    },
+    {
+      "id": "mysql1",
+      "name": "演示 MySQL",
+      "type": "mysqldev",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "3306",
+        "database": "",
+        "user": "root",
+        "password": "",
+        "connectTimeout": "5000",
+        "commandTimeout": "30000",
+        "charset": "utf8mb4",
+        "sslMode": "None",
+        "autoConnect": "false",
+        "note": "不自动连接；debug_mysql 或 /api/mysql 手动 Connect"
+      }
+    },
+    {
+      "id": "mod-1",
+      "name": "演示 Modbus Server",
+      "type": "devmodserver",
+      "enabled": true,
+      "parameters": {
+        "bindAddress": "127.0.0.1",
+        "port": "1502",
+        "unitId": "1",
+        "autoStart": "true"
+      }
+    },
+    {
+      "id": "modc-1",
+      "name": "演示 Modbus Client",
+      "type": "devmodclient",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "1502",
+        "unitId": "1",
+        "connectTimeoutMs": "3000",
+        "readTimeoutMs": "3000",
+        "writeTimeoutMs": "3000",
+        "autoConnect": "true"
+      }
+    },
+    {
+      "id": "py-1",
+      "name": "演示 Python 脚本",
+      "type": "devpyscript",
+      "enabled": true,
+      "parameters": {
+        "pythonPath": "python",
+        "scriptPath": "configs/scripts/hello.py",
+        "arguments": "demo 1",
+        "timeoutMs": "30000",
+        "captureOutput": "true"
+      }
+    },
+    {
+      "id": "cam-ext-1",
+      "name": "演示扩展相机",
+      "type": "extcamera",
+      "enabled": true,
+      "parameters": {
+        "backend": "sim",
+        "deviceIndex": "0",
+        "width": "1280",
+        "height": "720",
+        "exposureMs": "12",
+        "noisePx": "0.8"
+      }
+    },
+    {
+      "id": "vision-1",
+      "name": "演示视觉设备",
+      "type": "visiondev",
+      "enabled": true,
+      "parameters": {
+        "visionId": "vision-inspect",
+        "cameraDeviceId": "cam-ext-1",
+        "resultPrefix": "vision",
+        "generateTestImage": "true"
+      }
+    }
+  ],
+  "axes": [
+    {
+      "id": "axis-x",
+      "name": "X 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "0"
+      }
+    },
+    {
+      "id": "axis-y",
+      "name": "Y 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "1"
+      }
+    },
+    {
+      "id": "axis-z",
+      "name": "Z 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "2"
+      }
+    },
+    {
+      "id": "axis-u",
+      "name": "U 轴",
+      "type": "rotary",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis": "3",
+        "unit": "deg"
+      }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "platform-xy",
+      "name": "XY 平台",
+      "type": "xy",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
+        "note": "步进示教 / 平台监控联调"
+      }
+    },
+    {
+      "id": "platform-xyz",
+      "name": "XYZ 平台",
+      "type": "xyz",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
+        "axis.Z": "axis-z",
+        "note": "三轴示教（仿真）"
+      }
+    },
+    {
+      "id": "platform-xyzu",
+      "name": "XYZU 平台",
+      "type": "xyzu",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
+        "axis.Z": "axis-z",
+        "axis.U": "axis-u",
+        "note": "四轴示教（U 为旋转轴，仿真）"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 100,
+      "parameters": {
+        "gpioDeviceId": "gpio1"
+      }
+    },
+    {
+      "name": "poll-sim",
+      "type": "pollDriver",
+      "driverId": "sim1",
+      "intervalMs": 50,
+      "parameters": {}
+    }
+  ],
+  "vars": {
+    "machine.name": "WPF HMI Demo",
+    "user.name": "operator",
+    "user.role": "操作员",
+    "task.operation.alias.red": "tower.red",
+    "task.operation.alias.yellow": "tower.yellow",
+    "task.operation.alias.green": "tower.green",
+    "task.operation.command": "lamp:red",
+    "order.list": "[{\"id\":\"ORD-DEMO-001\",\"product\":\"样件 A\",\"qty\":100,\"status\":\"running\",\"progress\":35,\"recipeId\":\"rcp-fast\",\"priority\":10,\"notes\":\"演示工单\",\"fields\":{\"lot\":\"L-DEMO\",\"line\":\"A\"}},{\"id\":\"ORD-DEMO-002\",\"product\":\"样件 B\",\"qty\":50,\"status\":\"pending\",\"progress\":0,\"recipeId\":\"rcp-safe\",\"priority\":0,\"fields\":{\"lot\":\"L-DEMO\",\"line\":\"B\"}}]",
+    "alarm.test": false,
+    "alarm.warn": false,
+    "vision.ok": false,
+    "vision.x": 0,
+    "vision.y": 0,
+    "vision.angle": 0,
+    "vision.score": 0
+  },
+  "recipeVarKeys": [ "process.speed", "process.dwellMs" ],
+  "activeRecipeId": "rcp-fast",
+  "recipes": [
+    {
+      "id": "rcp-fast",
+      "name": "快速模式",
+      "description": "演示配方 A",
+      "vars": {
+        "process.speed": 1.0,
+        "process.dwellMs": 50
+      }
+    },
+    {
+      "id": "rcp-safe",
+      "name": "安全模式",
+      "description": "演示配方 B",
+      "vars": {
+        "process.speed": 0.3,
+        "process.dwellMs": 200
+      }
+    }
+  ],
+  "activeVisionId": "vision-inspect",
+  "alarms": [
+    {
+      "id": "alm-demo",
+      "code": "DEMO-1",
+      "name": "演示报警",
+      "level": "error",
+      "enabled": true,
+      "varKey": "alarm.test",
+      "op": "truthy",
+      "value": "",
+      "message": "演示报警：popup 点「测试触发」或 POST /api/alarms/test",
+      "latch": true
+    },
+    {
+      "id": "alm-op-fault",
+      "code": "E001",
+      "name": "操作任务故障",
+      "level": "error",
+      "enabled": true,
+      "varKey": "task.operation.state",
+      "op": "eq",
+      "value": "fault",
+      "message": "操作任务进入 fault",
+      "latch": true
+    },
+    {
+      "id": "alm-warn",
+      "code": "DEMO-2",
+      "name": "演示警告",
+      "level": "warn",
+      "enabled": true,
+      "varKey": "alarm.warn",
+      "op": "truthy",
+      "value": "",
+      "message": "演示警告：将 alarm.warn 设为 true",
+      "latch": false
+    }
+  ],
+  "visions": [
+    {
+      "id": "vision-inspect",
+      "name": "基础斑点检测",
+      "description": "采集/加载图像 → 灰度/模糊/阈值 → findContours → outputPose",
+      "cameraDeviceId": "cam-ext-1",
+      "pipeline": {
+        "version": 1,
+        "nodes": [
+          { "id": "n-start", "kind": "start", "x": 300, "y": 40, "order": 0, "props": {} },
+          { "id": "n-load", "kind": "vision.loadImage", "x": 300, "y": 120, "order": 1, "props": { "path": "" } },
+          { "id": "n-gray", "kind": "vision.toGray", "x": 300, "y": 200, "order": 2, "props": {} },
+          { "id": "n-blur", "kind": "vision.blur", "x": 300, "y": 280, "order": 3, "props": { "kind": "gaussian", "ksize": "5" } },
+          { "id": "n-th", "kind": "vision.threshold", "x": 300, "y": 360, "order": 4, "props": { "mode": "binary", "thresh": "80", "maxVal": "255" } },
+          { "id": "n-blob", "kind": "vision.findContours", "x": 300, "y": 440, "order": 5, "props": { "thresh": "80", "minArea": "200" } },
+          { "id": "n-out", "kind": "vision.outputPose", "x": 300, "y": 520, "order": 6, "props": { "prefix": "vision", "requireOk": "false" } },
+          { "id": "n-end", "kind": "end", "x": 300, "y": 600, "order": 7, "props": {} }
+        ],
+        "edges": [
+          { "from": "n-start", "to": "n-load", "port": "next" },
+          { "from": "n-load", "to": "n-gray", "port": "next" },
+          { "from": "n-gray", "to": "n-blur", "port": "next" },
+          { "from": "n-blur", "to": "n-th", "port": "next" },
+          { "from": "n-th", "to": "n-blob", "port": "next" },
+          { "from": "n-blob", "to": "n-out", "port": "next" },
+          { "from": "n-out", "to": "n-end", "port": "next" }
+        ]
+      }
+    },
+    {
+      "id": "vision-pass",
+      "name": "直通采集",
+      "description": "加载图像后直接输出位姿（无处理节点）",
+      "cameraDeviceId": "cam1",
+      "pipeline": {
+        "version": 1,
+        "nodes": [
+          { "id": "n-start", "kind": "start", "x": 300, "y": 40, "order": 0, "props": {} },
+          { "id": "n-load", "kind": "vision.loadImage", "x": 300, "y": 140, "order": 1, "props": { "path": "" } },
+          { "id": "n-out", "kind": "vision.outputPose", "x": 300, "y": 240, "order": 2, "props": { "prefix": "vision", "requireOk": "false" } },
+          { "id": "n-end", "kind": "end", "x": 300, "y": 340, "order": 3, "props": {} }
+        ],
+        "edges": [
+          { "from": "n-start", "to": "n-load", "port": "next" },
+          { "from": "n-load", "to": "n-out", "port": "next" },
+          { "from": "n-out", "to": "n-end", "port": "next" }
+        ]
+      }
+    }
+  ]
+}

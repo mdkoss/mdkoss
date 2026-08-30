@@ -1,0 +1,15 @@
+<Window x:Class="MDKOSS.UI.WPF.Views.Dialogs.NavyDialogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{Binding Title}"
+        Width="760" Height="640"
+        MinWidth="520" MinHeight="360"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource PanelBrush}"
+        Foreground="{StaticResource TextBrush}"
+        Icon="pack://application:,,,/Assets/app.ico"
+        ShowInTaskbar="False">
+  <AdornerDecorator>
+    <ContentPresenter x:Name="PART_Content"/>
+  </AdornerDecorator>
+</Window>

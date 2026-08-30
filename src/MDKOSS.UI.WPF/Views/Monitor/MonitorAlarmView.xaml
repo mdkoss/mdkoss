@@ -1,0 +1,66 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Monitor.MonitorAlarmView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="报警调试 →" Command="{Binding GoToolCommand}" CommandParameter="debug_alarm" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="报警监控" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="只读" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="活动报警 / 未确认计数" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource ToolNoteStyle}">
+      <TextBlock Text="只读。确认 / 复位 / 模拟请进入报警调试。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <WrapPanel DockPanel.Dock="Top">
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="活动" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VActive}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="错误" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VError}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}">
+        <StackPanel>
+          <TextBlock Text="警告" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding VWarn}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+    </WrapPanel>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+      <ComboBox DockPanel.Dock="Right" Width="140"
+                ItemsSource="{Binding Scopes}"
+                SelectedValue="{Binding Scope, Mode=TwoWay}"
+                SelectedValuePath="Key"
+                DisplayMemberPath="Value"/>
+      <TextBox Text="{Binding Filter, UpdateSourceTrigger=PropertyChanged}" Width="240" HorizontalAlignment="Left"/>
+    </DockPanel>
+    <Border Style="{StaticResource ToolCardStyle}">
+      <DataGrid ItemsSource="{Binding Items}">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="活动" Binding="{Binding ActiveText}" Width="60"/>
+          <DataGridTextColumn Header="级别" Binding="{Binding Level}" Width="70"/>
+          <DataGridTextColumn Header="代码" Binding="{Binding Code}" Width="90"/>
+          <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*"/>
+          <DataGridTextColumn Header="消息" Binding="{Binding Message}" Width="1.6*"/>
+          <DataGridTextColumn Header="变量" Binding="{Binding VarKey}" Width="1.2*"/>
+          <DataGridTextColumn Header="当前值" Binding="{Binding Value}" Width="80"/>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Border>
+  </DockPanel>
+</UserControl>

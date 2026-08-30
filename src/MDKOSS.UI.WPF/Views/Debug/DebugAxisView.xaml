@@ -1,0 +1,125 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Views.Tools.Debug.DebugAxisView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,12">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Button Content="停止" Command="{Binding StopCommand}" Style="{StaticResource ToolBtnDangerStyle}"/>
+        <Button Content="只读监控 →" Command="{Binding GoToolCommand}" CommandParameter="monitor_axis" Style="{StaticResource ToolLinkStyle}"/>
+      </StackPanel>
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="轴调试" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="可写" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="使能 / 点动 / 定位" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource WritableNoteStyle}">
+      <TextBlock TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}" FontSize="12">
+        调试模式可写。点动/步进无需确认；使能、去使能、绝对定位需确认。
+        <Hyperlink Command="{Binding GoToolCommand}" CommandParameter="monitor_axis" Foreground="{DynamicResource ToolAccentBrush}" FontWeight="Bold">轴监控（只读）</Hyperlink>
+      </TextBlock>
+    </Border>
+    <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <StackPanel Grid.Column="0" Margin="0,0,12,0">
+        <TextBlock Text="轴设备" Style="{StaticResource ToolFormLabelStyle}"/>
+        <ComboBox ItemsSource="{Binding Axes}" SelectedItem="{Binding Selected}" DisplayMemberPath="Name"/>
+      </StackPanel>
+      <StackPanel Grid.Column="1" Margin="0,0,12,0">
+        <TextBlock Text="类型" Style="{StaticResource ToolFormLabelStyle}"/>
+        <TextBlock Text="{Binding Selected.Type}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}"/>
+      </StackPanel>
+      <StackPanel Grid.Column="2" Margin="0,0,12,0">
+        <TextBlock Text="驱动" Style="{StaticResource ToolFormLabelStyle}"/>
+        <TextBlock Text="{Binding Selected.Driver}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}"/>
+      </StackPanel>
+      <StackPanel Grid.Column="3">
+        <TextBlock Text="在线" Style="{StaticResource ToolFormLabelStyle}"/>
+        <TextBlock Text="{Binding Selected.Online}" FontWeight="Bold" Foreground="{DynamicResource ToolTextBrush}"/>
+      </StackPanel>
+    </Grid>
+    <UniformGrid DockPanel.Dock="Top" Columns="4" Margin="0,0,0,10">
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,8,8">
+        <StackPanel>
+          <TextBlock Text="位置" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.Prf}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,8,8">
+        <StackPanel>
+          <TextBlock Text="编码器" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.Enc}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,8,8">
+        <StackPanel>
+          <TextBlock Text="速度" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.Vel}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,0,8">
+        <StackPanel>
+          <TextBlock Text="使能" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.Enabled}" Style="{StaticResource KpiValueStyle}"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,8,0">
+        <StackPanel>
+          <TextBlock Text="状态" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.State}" Style="{StaticResource KpiValueStyle}" FontSize="16"/>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource KpiCardStyle}" Margin="0,0,8,0" Grid.ColumnSpan="3">
+        <StackPanel>
+          <TextBlock Text="轴状态位" Style="{StaticResource KpiLabelStyle}"/>
+          <TextBlock Text="{Binding Selected.Flags}" Style="{StaticResource KpiValueStyle}" FontSize="14"/>
+        </StackPanel>
+      </Border>
+    </UniformGrid>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.2*"/>
+        <ColumnDefinition Width="*"/>
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="0" Margin="0,0,10,0">
+        <StackPanel>
+          <DockPanel Margin="0,0,0,10">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+              <TextBlock Text="速度" Style="{StaticResource ToolFormLabelStyle}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+              <TextBox Text="{Binding Velocity, UpdateSourceTrigger=PropertyChanged}" Width="72"/>
+            </StackPanel>
+            <TextBlock Text="点动  按住连续" Style="{StaticResource ToolPanelTitleStyle}" Margin="0"/>
+          </DockPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+            <RepeatButton Content="←  Jog −" Command="{Binding JogNegCommand}" Style="{StaticResource JogButtonStyle}" Delay="200" Interval="80"/>
+            <RepeatButton Content="Jog +  →" Command="{Binding JogPosCommand}" Style="{StaticResource JogButtonStyle}" Delay="200" Interval="80"/>
+            <Button Content="停止点动" Command="{Binding JogStopCommand}" Style="{StaticResource ToolBtnStyle}"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <Button Content="使能" Command="{Binding EnableCommand}" Style="{StaticResource ToolBtnPrimaryStyle}"/>
+            <Button Content="去使能" Command="{Binding DisableCommand}" Style="{StaticResource ToolBtnStyle}"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource ToolCardStyle}" Grid.Column="1">
+        <StackPanel>
+          <TextBlock Text="绝对定位" Style="{StaticResource ToolPanelTitleStyle}"/>
+          <TextBlock Text="目标位置" Style="{StaticResource ToolFormLabelStyle}"/>
+          <TextBox Text="{Binding Target, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+          <Button Content="定位" Command="{Binding MoveCommand}" Style="{StaticResource ToolBtnPrimaryStyle}" HorizontalAlignment="Left"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </DockPanel>
+</UserControl>
