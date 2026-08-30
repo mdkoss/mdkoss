@@ -4,7 +4,7 @@ using Microsoft.Data.Sqlite;
 namespace MDKOSS.Core.Data;
 
 /// <summary>
-/// SQLite-backed persistence for production orders, recipes, and teach points.
+/// SQLite-backed persistence for production orders, recipes, teach points, and calibration.
 /// </summary>
 public sealed class MdkDataStore : IDisposable
 {
@@ -543,6 +543,178 @@ public sealed class MdkDataStore : IDisposable
         return true;
     }
 
+    // ── Calibration (标定参数 / 结果) ─────────────────────────────────────
+
+    public bool TryUpsertCalibParams(CalibParamsRecord record, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(record.TaskName))
+        {
+            error = "task_name_required";
+            return false;
+        }
+
+        record.ProjectName = (record.ProjectName ?? "").Trim();
+        record.TaskName = record.TaskName.Trim();
+        record.Params ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        record.UpdatedAtUtc = DateTime.UtcNow;
+
+        _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO calib_params (project_name, task_name, params_json, updated_at)
+                VALUES ($project_name, $task_name, $params_json, $updated_at)
+                ON CONFLICT(project_name, task_name) DO UPDATE SET
+                    params_json = excluded.params_json,
+                    updated_at = excluded.updated_at
+                """;
+            cmd.Parameters.AddWithValue("$project_name", record.ProjectName);
+            cmd.Parameters.AddWithValue("$task_name", record.TaskName);
+            cmd.Parameters.AddWithValue("$params_json", JsonSerializer.Serialize(record.Params, JsonOptions));
+            cmd.Parameters.AddWithValue("$updated_at", FormatUtc(record.UpdatedAtUtc));
+            cmd.ExecuteNonQuery();
+        });
+
+        return true;
+    }
+
+    public bool TryGetCalibParams(string projectName, string taskName, out CalibParamsRecord? record)
+    {
+        record = null;
+        if (string.IsNullOrWhiteSpace(taskName))
+        {
+            return false;
+        }
+
+        var project = (projectName ?? "").Trim();
+        var task = taskName.Trim();
+        record = _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT project_name, task_name, params_json, updated_at
+                FROM calib_params
+                WHERE project_name = $project_name AND task_name = $task_name
+                """;
+            cmd.Parameters.AddWithValue("$project_name", project);
+            cmd.Parameters.AddWithValue("$task_name", task);
+            using var reader = cmd.ExecuteReader();
+            return reader.Read() ? ReadCalibParams(reader) : null;
+        });
+
+        return record is not null;
+    }
+
+    public IReadOnlyList<CalibParamsRecord> ListCalibParams(string? projectName = null)
+    {
+        return _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT project_name, task_name, params_json, updated_at
+                FROM calib_params
+                """ + (string.IsNullOrWhiteSpace(projectName) ? "" : " WHERE project_name = $project_name") + """
+                 ORDER BY project_name, task_name COLLATE NOCASE
+                """;
+            if (!string.IsNullOrWhiteSpace(projectName))
+            {
+                cmd.Parameters.AddWithValue("$project_name", projectName.Trim());
+            }
+
+            var list = new List<CalibParamsRecord>();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(ReadCalibParams(reader));
+            }
+
+            return list;
+        });
+    }
+
+    public bool TryInsertCalibResult(CalibResultRecord record, out string? error)
+    {
+        error = null;
+        if (string.IsNullOrWhiteSpace(record.TaskName))
+        {
+            error = "task_name_required";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(record.Id))
+        {
+            record.Id = Guid.NewGuid().ToString("N");
+        }
+
+        record.ProjectName = (record.ProjectName ?? "").Trim();
+        record.TaskName = record.TaskName.Trim();
+        record.Params ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        record.Results ??= new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (record.CreatedAtUtc == default)
+        {
+            record.CreatedAtUtc = DateTime.UtcNow;
+        }
+
+        _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                INSERT INTO calib_results
+                    (id, project_name, task_name, params_json, results_json, ok, message, created_at)
+                VALUES
+                    ($id, $project_name, $task_name, $params_json, $results_json, $ok, $message, $created_at)
+                """;
+            cmd.Parameters.AddWithValue("$id", record.Id);
+            cmd.Parameters.AddWithValue("$project_name", record.ProjectName);
+            cmd.Parameters.AddWithValue("$task_name", record.TaskName);
+            cmd.Parameters.AddWithValue("$params_json", JsonSerializer.Serialize(record.Params, JsonOptions));
+            cmd.Parameters.AddWithValue("$results_json", JsonSerializer.Serialize(record.Results, JsonOptions));
+            cmd.Parameters.AddWithValue("$ok", record.Ok ? 1 : 0);
+            cmd.Parameters.AddWithValue("$message", record.Message ?? "");
+            cmd.Parameters.AddWithValue("$created_at", FormatUtc(record.CreatedAtUtc));
+            cmd.ExecuteNonQuery();
+        });
+
+        return true;
+    }
+
+    public IReadOnlyList<CalibResultRecord> ListCalibResults(string projectName, string? taskName = null)
+    {
+        var project = (projectName ?? "").Trim();
+        return _db.Execute(conn =>
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = """
+                SELECT id, project_name, task_name, params_json, results_json, ok, message, created_at
+                FROM calib_results
+                WHERE project_name = $project_name
+                """ + (string.IsNullOrWhiteSpace(taskName) ? "" : " AND task_name = $task_name") + """
+                 ORDER BY created_at DESC
+                """;
+            cmd.Parameters.AddWithValue("$project_name", project);
+            if (!string.IsNullOrWhiteSpace(taskName))
+            {
+                cmd.Parameters.AddWithValue("$task_name", taskName.Trim());
+            }
+
+            var list = new List<CalibResultRecord>();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                list.Add(ReadCalibResult(reader));
+            }
+
+            return list;
+        });
+    }
+
+    public bool TryGetLatestCalibResult(string projectName, string taskName, out CalibResultRecord? record)
+    {
+        record = ListCalibResults(projectName, taskName).FirstOrDefault();
+        return record is not null;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -748,6 +920,28 @@ public sealed class MdkDataStore : IDisposable
             UpdatedAtUtc = ParseUtc(reader.GetString(7)),
         };
     }
+
+    private static CalibParamsRecord ReadCalibParams(SqliteDataReader reader) =>
+        new()
+        {
+            ProjectName = reader.GetString(0),
+            TaskName = reader.GetString(1),
+            Params = ParseFieldsJson(reader.GetString(2)),
+            UpdatedAtUtc = ParseUtc(reader.GetString(3)),
+        };
+
+    private static CalibResultRecord ReadCalibResult(SqliteDataReader reader) =>
+        new()
+        {
+            Id = reader.GetString(0),
+            ProjectName = reader.GetString(1),
+            TaskName = reader.GetString(2),
+            Params = ParseFieldsJson(reader.GetString(3)),
+            Results = ParseFieldsJson(reader.GetString(4)),
+            Ok = reader.GetInt32(5) != 0,
+            Message = reader.IsDBNull(6) ? "" : reader.GetString(6),
+            CreatedAtUtc = ParseUtc(reader.GetString(7)),
+        };
 
     private static RecipeRecord FromSettingRecipe(MdkSetting.RecipeConfig cfg) =>
         new()

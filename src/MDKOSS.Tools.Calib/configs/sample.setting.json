@@ -96,6 +96,21 @@
       }
     },
     {
+      "name": "calib-platform-offset",
+      "type": "calib.platformoffset",
+      "driverId": "sim1",
+      "intervalMs": 80,
+      "parameters": {
+        "calib": "true",
+        "displayName": "平台偏置标定",
+        "group": "平台",
+        "platformDeviceId": "platform-xy",
+        "axisLetter": "X",
+        "expectedPos": "10",
+        "settleTicks": "3"
+      }
+    },
+    {
       "name": "calib-platform-flow",
       "type": "flow",
       "intervalMs": 50,

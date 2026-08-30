@@ -69,3 +69,12 @@ dotnet run --project src/MDKOSS.Sample.Pnp/MDKOSS.Sample.Pnp.csproj -- --console
 监控入口：`http://127.0.0.1:5084/indexPnp.html`
 
 配方：`chip-a` / `chip-b`。视觉当前为可运行仿真；接入真机时替换 `TryLocateTop` / `TryMeasureAngle` 即可。
+
+## 5. 标定
+
+`type=flow` 且 `calib=true`、`autoStart=false`。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本配置执行；参数与结果写入 SQLite。
+
+| 任务 | 流程 | 对象 |
+|------|------|------|
+| `calib-robot-xy` | `configs/flows/calib-robot-xy.flow.json` | `robot-xyz` X |
+| `calib-pick-z` | `configs/flows/calib-pick-z.flow.json` | `robot-xyz` Z |

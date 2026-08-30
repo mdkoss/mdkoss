@@ -41,14 +41,15 @@ public sealed class FlowTask : MTaskBase
     public static FlowTask Create(
         MdkSetting.TaskConfig config,
         MVarStore vars,
-        IFlowRuntimeHost? host = null)
+        IFlowRuntimeHost? host = null,
+        string? settingPath = null)
     {
         var name = string.IsNullOrWhiteSpace(config.Name) ? "flow" : config.Name.Trim();
         if (!config.Parameters.TryGetValue("flowJson", out var json) || string.IsNullOrWhiteSpace(json))
         {
             if (config.Parameters.TryGetValue("flowFile", out var flowFile)
                 && !string.IsNullOrWhiteSpace(flowFile)
-                && TryReadFlowFile(flowFile, out var fileJson))
+                && TryReadFlowFile(flowFile, out var fileJson, settingPath))
             {
                 json = fileJson;
             }
@@ -123,19 +124,14 @@ public sealed class FlowTask : MTaskBase
         return Task.CompletedTask;
     }
 
-    /// <summary>Resolves <c>flowFile</c> relative to the process base directory when not rooted.</summary>
-    public static bool TryReadFlowFile(string flowFile, out string json)
+    /// <summary>
+    /// Resolves <c>flowFile</c>: rooted path, then next to the setting JSON, then process base directory.
+    /// </summary>
+    public static bool TryReadFlowFile(string flowFile, out string json, string? settingPath = null)
     {
         json = "";
-        if (string.IsNullOrWhiteSpace(flowFile))
-        {
-            return false;
-        }
-
-        var path = Path.IsPathRooted(flowFile)
-            ? flowFile
-            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, flowFile.Trim()));
-        if (!File.Exists(path))
+        var path = ResolveExistingFlowFilePath(flowFile, settingPath);
+        if (path is null)
         {
             return false;
         }
@@ -144,15 +140,73 @@ public sealed class FlowTask : MTaskBase
         return !string.IsNullOrWhiteSpace(json);
     }
 
-    public static string ResolveFlowFilePath(string flowFile)
+    public static string? ResolveExistingFlowFilePath(string flowFile, string? settingPath = null)
+    {
+        foreach (var candidate in EnumerateFlowFileCandidates(flowFile, settingPath))
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    public static string ResolveFlowFilePath(string flowFile, string? settingPath = null)
     {
         if (string.IsNullOrWhiteSpace(flowFile))
         {
             throw new ArgumentException("flowFile is empty.", nameof(flowFile));
         }
 
-        return Path.IsPathRooted(flowFile)
-            ? flowFile
-            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, flowFile.Trim()));
+        return ResolveExistingFlowFilePath(flowFile, settingPath)
+               ?? EnumerateFlowFileCandidates(flowFile, settingPath).First();
+    }
+
+    private static IEnumerable<string> EnumerateFlowFileCandidates(string flowFile, string? settingPath)
+    {
+        var trimmed = (flowFile ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            yield break;
+        }
+
+        if (Path.IsPathRooted(trimmed))
+        {
+            yield return trimmed;
+            yield break;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settingPath))
+        {
+            var dir = Directory.Exists(settingPath)
+                ? settingPath
+                : Path.GetDirectoryName(settingPath);
+            if (!string.IsNullOrWhiteSpace(dir))
+            {
+                yield return Path.GetFullPath(Path.Combine(dir, trimmed));
+                var fileName = Path.GetFileName(trimmed);
+                if (!string.IsNullOrWhiteSpace(fileName))
+                {
+                    yield return Path.GetFullPath(Path.Combine(dir, fileName));
+                }
+
+                // setting 在 configs/ 下时，flowFile 仍写 configs/flows/...
+                const string configsPrefix = "configs/";
+                if (trimmed.StartsWith(configsPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    yield return Path.GetFullPath(Path.Combine(dir, trimmed[configsPrefix.Length..]));
+                }
+
+                var parent = Directory.GetParent(dir)?.FullName;
+                if (!string.IsNullOrWhiteSpace(parent))
+                {
+                    yield return Path.GetFullPath(Path.Combine(parent, trimmed));
+                }
+            }
+        }
+
+        yield return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, trimmed));
     }
 }

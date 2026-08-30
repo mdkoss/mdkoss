@@ -55,6 +55,20 @@
         "jogTicks": "3",
         "note": "SampleExt MotionTask：enable/move/jog/stop"
       }
+    },
+    {
+      "name": "calib-head-demo",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "演示头 XY 偏置",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-head-demo.flow.json",
+        "expectedX": "5"
+      }
     }
   ],
   "vars": {

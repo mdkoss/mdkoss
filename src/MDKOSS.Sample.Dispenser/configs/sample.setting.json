@@ -159,6 +159,34 @@
         "dispenseZ": "-6",
         "dwellTicks": "2"
       }
+    },
+    {
+      "name": "calib-head-xy",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "点胶头 XY 偏置",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-head-xy.flow.json",
+        "expectedX": "10"
+      }
+    },
+    {
+      "name": "calib-z-height",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "点胶 Z 高度",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-z-height.flow.json",
+        "expectedZ": "-6"
+      }
     }
   ],
   "recipeVarKeys": [

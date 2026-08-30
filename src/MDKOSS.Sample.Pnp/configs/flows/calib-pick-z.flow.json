@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "functions": [
+    { "name": "main", "entryNodeId": "n-start" }
+  ],
+  "nodes": [
+    { "id": "n-start", "kind": "start", "x": 300, "y": 40, "order": 0 },
+    { "id": "n-log1", "kind": "op.log", "x": 300, "y": 120, "order": 1, "props": { "message": "\"开始取料 Z 高度标定\"" } },
+    { "id": "n-en", "kind": "motion.platformStart", "x": 300, "y": 200, "order": 2, "props": { "deviceId": "robot-xyz" } },
+    { "id": "n-mv", "kind": "motion.platformAxisMoveTo", "x": 300, "y": 280, "order": 3, "props": { "deviceId": "robot-xyz", "axis": "Z", "position": "-12" } },
+    { "id": "n-delay", "kind": "delay", "x": 300, "y": 360, "order": 4, "props": { "ms": "200" } },
+    { "id": "n-ok", "kind": "motion.setTaskVar", "x": 300, "y": 440, "order": 5, "props": { "key": "calib.ok", "expr": "true" } },
+    { "id": "n-off", "kind": "motion.setTaskVar", "x": 300, "y": 520, "order": 6, "props": { "key": "calib.offsetZ", "expr": "-12" } },
+    { "id": "n-msg", "kind": "motion.setTaskVar", "x": 300, "y": 600, "order": 7, "props": { "key": "calib.message", "expr": "\"机器人 Z 到达 -12\"" } },
+    { "id": "n-log2", "kind": "op.log", "x": 300, "y": 680, "order": 8, "props": { "message": "\"标定完成\"" } },
+    { "id": "n-end", "kind": "end", "x": 300, "y": 760, "order": 9 }
+  ],
+  "edges": [
+    { "from": "n-start", "to": "n-log1", "port": "next" },
+    { "from": "n-log1", "to": "n-en", "port": "next" },
+    { "from": "n-en", "to": "n-mv", "port": "next" },
+    { "from": "n-mv", "to": "n-delay", "port": "next" },
+    { "from": "n-delay", "to": "n-ok", "port": "next" },
+    { "from": "n-ok", "to": "n-off", "port": "next" },
+    { "from": "n-off", "to": "n-msg", "port": "next" },
+    { "from": "n-msg", "to": "n-log2", "port": "next" },
+    { "from": "n-log2", "to": "n-end", "port": "next" }
+  ]
+}

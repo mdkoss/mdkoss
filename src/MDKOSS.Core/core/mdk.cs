@@ -372,7 +372,10 @@ public sealed class MdkRuntime : IDisposable
             () => _tasks.Values.ToList(),
             flowHost: new RuntimeFlowHost(this),
             alarmManager: AlarmManager,
-            getMachineMonitor: GetMachineMonitor);
+            getMachineMonitor: GetMachineMonitor)
+        {
+            SettingPath = SettingPath,
+        };
 
         return RuntimeTaskFactory.Create(taskType, ctx, config);
     }

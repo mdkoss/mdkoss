@@ -45,6 +45,9 @@ public sealed class TaskBootstrapContext
 
     /// <summary>Optional cloud/local machine monitor payload builder.</summary>
     public Func<MachineMonitorRecord>? GetMachineMonitor { get; }
+
+    /// <summary>Absolute path of the loaded setting JSON; used to resolve relative <c>flowFile</c>.</summary>
+    public string? SettingPath { get; init; }
 }
 
 /// <summary>Registry for task implementations keyed by config <c>type</c> string.</summary>
@@ -155,7 +158,7 @@ public static class RuntimeTaskFactory
     private static MTaskBase? CreateFlow(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
     {
         _ = taskTypeKey;
-        return FlowTask.Create(config, ctx.Vars, ctx.FlowHost);
+        return FlowTask.Create(config, ctx.Vars, ctx.FlowHost, ctx.SettingPath);
     }
 
     private static GpioDevice? ResolveTaskGpio(TaskBootstrapContext ctx, IReadOnlyDictionary<string, string> parameters)

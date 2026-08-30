@@ -42,3 +42,12 @@ dotnet run --project src/MDKOSS.Sample.Tools/MDKOSS.Sample.Tools.csproj -- --con
 工具页顶栏「主界面」回到本入口（`startPage` 覆盖了 `/` 与 `/index.html`）。
 
 接真机：把对应设备的 `simulate` / 端口 / 主机改掉即可；运动与 IO 默认走 `sim`，无需板卡。
+
+## 3. 标定
+
+`type=flow` 且 `calib=true`、`autoStart=false`。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本配置执行；参数与结果写入 SQLite。
+
+| 任务 | 流程 | 对象 |
+|------|------|------|
+| `calib-platform-xy` | `configs/flows/calib-platform-xy.flow.json` | `platform-xy` X |
+| `calib-platform-z` | `configs/flows/calib-platform-z.flow.json` | `platform-xyz` Z |

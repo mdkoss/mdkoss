@@ -18,6 +18,8 @@ public sealed class CalibExtension : IMdkExtension
         registration.Task("calibaxisoffset", CreateAxisOffset);
         registration.Task("calib.ninepoint", CreateNinePoint);
         registration.Task("calibninepoint", CreateNinePoint);
+        registration.Task("calib.platformoffset", CreatePlatformOffset);
+        registration.Task("calibplatformoffset", CreatePlatformOffset);
     }
 
     private static MTaskBase? CreateAxisOffset(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
@@ -27,6 +29,10 @@ public sealed class CalibExtension : IMdkExtension
     private static MTaskBase? CreateNinePoint(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
         => Create(ctx, config, taskTypeKey, (name, interval, driver, vars, devices, p, alarms) =>
             new NinePointCalibTask(name, interval, driver, vars, devices, p, alarms));
+
+    private static MTaskBase? CreatePlatformOffset(TaskBootstrapContext ctx, MdkSetting.TaskConfig config, string taskTypeKey)
+        => Create(ctx, config, taskTypeKey, (name, interval, driver, vars, devices, p, alarms) =>
+            new PlatformOffsetCalibTask(name, interval, driver, vars, devices, p, alarms));
 
     private static MTaskBase? Create(
         TaskBootstrapContext ctx,

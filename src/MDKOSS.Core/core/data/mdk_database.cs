@@ -5,7 +5,7 @@ namespace MDKOSS.Core.Data;
 /// <summary>SQLite connection holder and schema bootstrap.</summary>
 public sealed class MdkDatabase : IDisposable
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     private readonly string _connectionString;
     private readonly object _gate = new();
@@ -134,6 +134,7 @@ public sealed class MdkDatabase : IDisposable
 
             EnsureColumn(conn, "production_orders", "fields_json", "TEXT NOT NULL DEFAULT '{}'");
             EnsureConfigTables(conn);
+            EnsureCalibTables(conn);
 
             cmd.CommandText = "SELECT COUNT(*) FROM schema_version;";
             var count = Convert.ToInt64(cmd.ExecuteScalar());
@@ -276,6 +277,36 @@ public sealed class MdkDatabase : IDisposable
 
         EnsureColumn(conn, "drivers", "name", "TEXT NOT NULL DEFAULT ''");
         MigrateSysConfigsSchema(conn);
+    }
+
+    /// <summary>Schema v5: latest calibration parameters plus run history.</summary>
+    private static void EnsureCalibTables(SqliteConnection conn)
+    {
+        using var cmd = conn.CreateCommand();
+        cmd.CommandText = """
+            CREATE TABLE IF NOT EXISTS calib_params (
+                project_name TEXT NOT NULL,
+                task_name TEXT NOT NULL,
+                params_json TEXT NOT NULL DEFAULT '{}',
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (project_name, task_name)
+            );
+
+            CREATE TABLE IF NOT EXISTS calib_results (
+                id TEXT PRIMARY KEY,
+                project_name TEXT NOT NULL,
+                task_name TEXT NOT NULL,
+                params_json TEXT NOT NULL DEFAULT '{}',
+                results_json TEXT NOT NULL DEFAULT '{}',
+                ok INTEGER NOT NULL DEFAULT 0,
+                message TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_calib_results_task
+                ON calib_results(project_name, task_name, created_at);
+            """;
+        cmd.ExecuteNonQuery();
     }
 
     private static void EnsureColumn(SqliteConnection conn, string table, string column, string ddlType)

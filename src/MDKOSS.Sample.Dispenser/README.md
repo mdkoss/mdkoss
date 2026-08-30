@@ -68,3 +68,12 @@ dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj 
 ```
 
 监控入口：`http://127.0.0.1:5082/indexDispenser.html`
+
+## 6. 标定
+
+`type=flow` 且 `calib=true`、`autoStart=false`。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本配置执行；参数与结果写入 SQLite。
+
+| 任务 | 流程 | 对象 |
+|------|------|------|
+| `calib-head-xy` | `configs/flows/calib-head-xy.flow.json` | `head-dispense` X |
+| `calib-z-height` | `configs/flows/calib-z-height.flow.json` | `head-dispense` Z |

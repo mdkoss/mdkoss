@@ -36,3 +36,7 @@ dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj -- --console
 ```
 
 监控入口：`http://127.0.0.1:5083/demo_sample_ext.html`
+
+## 3. 标定
+
+`calib-head-demo`（`type=flow`，`autoStart=false`）对 `head-demo` 做 X 向偏置。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本配置执行；参数与结果写入 SQLite。流程：`configs/flows/calib-head-demo.flow.json`。

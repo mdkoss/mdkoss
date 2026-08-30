@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using MDKOSS.Core;
+using MDKOSS.Core.Data;
 using MDKOSS.Core.Flow;
 using MDKOSS.Host;
 using MDKOSS.Tasks;
@@ -185,7 +186,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         if (item.Config.Parameters.TryGetValue("flowFile", out var flowFile)
             && !string.IsNullOrWhiteSpace(flowFile))
         {
-            var path = FlowTask.ResolveFlowFilePath(flowFile);
+            var path = FlowTask.ResolveFlowFilePath(flowFile, _runtime?.SettingPath ?? SettingPath);
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, json);
             item.Config.Parameters.Remove("flowJson");
@@ -240,7 +241,12 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             Parameters.Add(new ParamRow { Key = kv.Key, Value = kv.Value });
         }
 
+        OverlayPersistedParameters();
         RefreshResults();
+        if (Results.Count == 0)
+        {
+            OverlayLatestResult();
+        }
     }
 
     private void OpenSetting()
@@ -299,8 +305,9 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             _runtime.Vars.Set($"task.{Selected.Name}.param.{row.Key.Trim()}", row.Value ?? "");
         }
 
+        PersistParameters();
         StatusText = $"已应用参数：{Selected.Title}";
-        AppendLog("info", "参数已写入任务配置与运行时变量");
+        AppendLog("info", "参数已写入任务配置、运行时变量与数据库");
     }
 
     private void RunSelected()
@@ -368,7 +375,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (!TryLoadFlow(Selected.Config, out var doc, out var error))
+        if (!TryLoadFlow(Selected.Config, _runtime?.SettingPath ?? SettingPath, out var doc, out var error))
         {
             MessageBox.Show(error ?? "无法加载流程。", "编辑流程", MessageBoxButton.OK, MessageBoxImage.Warning);
             doc = FlowDocument.CreateEmpty();
@@ -381,7 +388,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static bool TryLoadFlow(MdkSetting.TaskConfig config, out FlowDocument document, out string? error)
+    private static bool TryLoadFlow(MdkSetting.TaskConfig config, string? settingPath, out FlowDocument document, out string? error)
     {
         document = FlowDocument.CreateEmpty();
         error = null;
@@ -391,7 +398,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
             json = inline;
         }
         else if (config.Parameters.TryGetValue("flowFile", out var file)
-                 && FlowTask.TryReadFlowFile(file, out var fileJson))
+                 && FlowTask.TryReadFlowFile(file, out var fileJson, settingPath))
         {
             json = fileJson;
         }
@@ -522,7 +529,136 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         RunState = state;
         StatusText = $"{Selected?.Title}：{message}";
         AppendLog(string.Equals(state, "Fault", StringComparison.OrdinalIgnoreCase) ? "error" : "info", message);
+        PersistResult(string.Equals(state, "Completed", StringComparison.OrdinalIgnoreCase), message);
     }
+
+    private void OverlayPersistedParameters()
+    {
+        if (_runtime is null || Selected is null)
+        {
+            return;
+        }
+
+        if (!CalibStore.TryLoadParams(_runtime.DataStore, ProjectName(), Selected.Name, out var stored)
+            || stored.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var kv in stored)
+        {
+            var existing = Parameters.FirstOrDefault(r =>
+                string.Equals(r.Key, kv.Key, StringComparison.OrdinalIgnoreCase));
+            if (existing is null)
+            {
+                Parameters.Add(new ParamRow { Key = kv.Key, Value = kv.Value });
+            }
+            else
+            {
+                existing.Value = kv.Value;
+            }
+
+            Selected.Config.Parameters[kv.Key] = kv.Value;
+        }
+    }
+
+    private void OverlayLatestResult()
+    {
+        if (_runtime is null || Selected is null)
+        {
+            return;
+        }
+
+        if (!CalibStore.TryLoadLatestResult(_runtime.DataStore, ProjectName(), Selected.Name, out var record)
+            || record is null)
+        {
+            return;
+        }
+
+        foreach (var kv in record.Results.OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            Results.Add(new ResultRow { Key = kv.Key, Value = kv.Value });
+        }
+    }
+
+    private void PersistParameters()
+    {
+        if (_runtime is null || Selected is null)
+        {
+            return;
+        }
+
+        var parameters = CollectGridParams();
+        if (!CalibStore.TrySaveParams(_runtime.DataStore, ProjectName(), Selected.Name, parameters, out var error))
+        {
+            AppendLog("error", "标定参数写入数据库失败：" + (error ?? "unknown"));
+        }
+    }
+
+    private void PersistResult(bool ok, string message)
+    {
+        if (_runtime is null || Selected is null)
+        {
+            return;
+        }
+
+        var parameters = CollectGridParams();
+        var results = CalibStore.CollectResults(_runtime.Vars.Snapshot(), Selected.Name);
+        if (results.Count == 0 && Results.Count > 0)
+        {
+            foreach (var row in Results)
+            {
+                if (!string.IsNullOrWhiteSpace(row.Key))
+                {
+                    results[row.Key] = row.Value ?? "";
+                }
+            }
+        }
+
+        if (!ok && CalibStore.IsTruthyResult(results))
+        {
+            ok = true;
+        }
+
+        if (!CalibStore.TrySaveResult(
+                _runtime.DataStore,
+                ProjectName(),
+                Selected.Name,
+                parameters,
+                results,
+                ok,
+                message,
+                out var error))
+        {
+            AppendLog("error", "标定结果写入数据库失败：" + (error ?? "unknown"));
+            return;
+        }
+
+        AppendLog("info", "标定参数与结果已写入数据库");
+    }
+
+    private Dictionary<string, string> CollectGridParams()
+    {
+        if (Selected is not null && Parameters.Count == 0)
+        {
+            return CalibStore.CollectVisibleParams(Selected.Config);
+        }
+
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in Parameters)
+        {
+            if (string.IsNullOrWhiteSpace(row.Key) || CalibCatalog.HiddenParamKeys.Contains(row.Key))
+            {
+                continue;
+            }
+
+            dict[row.Key.Trim()] = row.Value ?? "";
+        }
+
+        return dict;
+    }
+
+    private string ProjectName() => _runtime?.Setting.ProjectName ?? "";
 
     private string? ReadTaskString(string taskName, string suffix)
     {

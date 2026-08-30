@@ -121,3 +121,25 @@ public sealed class TeachPointFileSnapshot
 }
 
 public sealed record TeachPointSnapshot(string PointId, string Name, IReadOnlyDictionary<string, double> Axes);
+
+/// <summary>Latest calibration parameters for one task in a project.</summary>
+public sealed class CalibParamsRecord
+{
+    public string ProjectName { get; set; } = string.Empty;
+    public string TaskName { get; set; } = string.Empty;
+    public Dictionary<string, string> Params { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public DateTime UpdatedAtUtc { get; set; }
+}
+
+/// <summary>One calibration run (parameters snapshot + results).</summary>
+public sealed class CalibResultRecord
+{
+    public string Id { get; set; } = string.Empty;
+    public string ProjectName { get; set; } = string.Empty;
+    public string TaskName { get; set; } = string.Empty;
+    public Dictionary<string, string> Params { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> Results { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public bool Ok { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; }
+}

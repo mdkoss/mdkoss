@@ -292,6 +292,34 @@
       "driverId": "sim1",
       "intervalMs": 50,
       "parameters": {}
+    },
+    {
+      "name": "calib-platform-xy",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "XY 平台偏置",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-platform-xy.flow.json",
+        "expectedX": "10"
+      }
+    },
+    {
+      "name": "calib-platform-z",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "XYZ 平台 Z 高度",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-platform-z.flow.json",
+        "expectedZ": "-4"
+      }
     }
   ],
   "vars": {

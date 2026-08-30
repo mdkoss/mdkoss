@@ -23,7 +23,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 |------|------|
 | `MDKOSS.Core` | `MdkRuntime`、`IDriver`、设备基类、任务调度、`MVarStore`、监控 HTTP/API、SQLite |
 | `MDKOSS.Extensions` | 扩展接入层（注册表 / Host） |
-| `MDKOSS.Drivers.Sim` / `Gts` / `Dmc` / `S7` | 仿真 / 固高 / 雷赛 / 西门子 S7-1200 |
+| `MDKOSS.Drivers.Sim` / `Gts` / `Dmc` / `S7` / `Boards` | 仿真 / 固高 / 雷赛 / S7 / 市面常用卡 |
 | `MDKOSS.Extensions.Serial` / `Tcp` / `Mysql` / `Camera` / `PyScript` / `ModServer` | 可选设备（ModServer 另注册 `modbus` IDriver） |
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
 | `MDKOSS.Cef.Extensions` | 主界面监控组态（`index_hmi` / `man_hmi` / `/api/hmi`；控件见 `views/widgets`） |
@@ -36,7 +36,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample.Modbus` | Modbus IDriver 联调宿主（默认 200 Holding Register） |
 | `MDKOSS.Sample.Tools` | 设备组件调试宿主（轴 / IO / 串口 / TCP / 相机 / 视觉 / MySQL 等） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
-| `MDKOSS.Tools.Calib` | WPF 标定工具（FlowTask 可编辑 / MotionTask 代码实现） |
+| `MDKOSS.Tools.Calib` | WPF 标定工具（Flow / MotionTask；参数与结果入 SQLite） |
 | `MDKOSS.Iec61131` | Flow 任务 / 变量 / GPIO 导出为 IEC 61131-3 |
 | `MDKOSS.Sample.Iec61131` | 工位节拍 IEC 导出示例 |
 

@@ -149,6 +149,34 @@
         "targetRunAlias": "tgt.conveyorRun",
         "runTicks": "5"
       }
+    },
+    {
+      "name": "calib-robot-xy",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "机器人 XY 偏置",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-robot-xy.flow.json",
+        "expectedX": "10"
+      }
+    },
+    {
+      "name": "calib-pick-z",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "取料 Z 高度",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-pick-z.flow.json",
+        "expectedZ": "-12"
+      }
     }
   ],
   "recipeVarKeys": [

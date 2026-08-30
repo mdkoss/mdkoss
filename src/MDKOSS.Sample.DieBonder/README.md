@@ -108,3 +108,13 @@ dotnet run --project src/MDKOSS.Sample.DieBonder/MDKOSS.Sample.DieBonder.csproj 
 - `http://127.0.0.1:5080/api/bond/dashboard`
 
 不同工程用 `projectName` 区分身份，用 `startPage` 指定启动页；`RuntimeHost` 不再按机型硬编码判断。
+
+## 6. 标定
+
+`type=flow` 且 `calib=true`、`autoStart=false`，不阻塞机型启动。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本 `sample.setting.json` 执行；参数与结果写入 SQLite。
+
+| 任务 | 流程 | 对象 |
+|------|------|------|
+| `calib-head-xy` | `configs/flows/calib-head-xy.flow.json` | `head-bond` X |
+| `calib-head-z` | `configs/flows/calib-head-z.flow.json` | `head-bond` Z |
+| `calib-head-u` | `configs/flows/calib-head-u.flow.json` | `head-bond` U |

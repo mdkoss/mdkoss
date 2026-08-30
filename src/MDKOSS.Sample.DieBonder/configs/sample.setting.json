@@ -189,6 +189,48 @@
         "targetRunAlias": "substrate.conveyorRun",
         "runTicks": "5"
       }
+    },
+    {
+      "name": "calib-head-xy",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "贴装头 XY 偏置",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-head-xy.flow.json",
+        "expectedX": "10"
+      }
+    },
+    {
+      "name": "calib-head-z",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "贴装头 Z 高度",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-head-z.flow.json",
+        "expectedZ": "-2"
+      }
+    },
+    {
+      "name": "calib-head-u",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "上视 U 角补偿",
+        "group": "标定",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/calib-head-u.flow.json",
+        "expectedU": "5"
+      }
     }
   ],
   "recipeVarKeys": [
