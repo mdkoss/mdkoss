@@ -9,7 +9,7 @@
 ## 分层与依赖
 
 ```
-宿主（Sample / Cef.Sample / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Config.Wpf）
+宿主（Sample / Cef.Sample / UI.WPF / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Tools / Config.Wpf）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
@@ -28,11 +28,13 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
 | `MDKOSS.Cef.Extensions` | 主界面监控组态（`index_hmi` / `man_hmi` / `/api/hmi`；控件见 `views/widgets`） |
 | `MDKOSS.Cef.Sample` | 加载并运行 `configs/` 下第一个 JSON 的 CEF 宿主 |
+| `MDKOSS.UI.WPF` | Prism + WPF 主界面宿主（`index.html` 对应的操作员 HMI） |
 | `MDKOSS.Sample` | SampleExt 扩展示例宿主 |
 | `MDKOSS.Sample.DieBonder` | 半导体贴片机 Demo 宿主 |
 | `MDKOSS.Sample.Dispenser` | 三轴点胶机 Demo 宿主 |
 | `MDKOSS.Sample.Pnp` | 拾取放置（PNP）Demo 宿主 |
 | `MDKOSS.Sample.Modbus` | Modbus IDriver 联调宿主（默认 200 Holding Register） |
+| `MDKOSS.Sample.Tools` | 设备组件调试宿主（轴 / IO / 串口 / TCP / 相机 / 视觉 / MySQL 等） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
 | `MDKOSS.Iec61131` | Flow 任务 / 变量 / GPIO 导出为 IEC 61131-3 |
 | `MDKOSS.Sample.Iec61131` | 工位节拍 IEC 导出示例 |
@@ -48,7 +50,7 @@ Issue 的 `module` 对照：`axis`→轴/平台，`gpio`→IO，`vision`→视�
 | 串口/TCP/MySQL | 对应 `Extensions.*`，不要改 Core 生命周期去硬接协议 |
 | 视觉/相机 | `Core/vision`、`Extensions.Camera` |
 | 任务/流程 | `Core/tasks`、`Core/tasks/flow` |
-| 监控 API / HMI | `Core/server`、`Cef/views`、`Cef.Extensions`（主界面组态） |
+| 监控 API / HMI | `Core/server`、`Cef/views`、`Cef.Extensions`（主界面组态）、`UI.WPF`（Prism 主界面） |
 | 配置 JSON / 编辑器 | `MdkSetting`、`Config.Wpf`（HMI 组态在系统组 `Hmi`） |
 | 配方/工单 | `Core/core/data`、`api_orders_module` |
 

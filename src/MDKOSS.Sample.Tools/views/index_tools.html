@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS 设备组件调试</title>
+  <link rel="stylesheet" href="/css/theme-debug.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+  <style>
+    .hub-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+    .hub-card .meta { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+    .hub-card .ids { font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; color: var(--mono); margin-bottom: 10px; }
+    .hub-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .hub-links a { font-size: 12px; }
+    .sec-title {
+      margin: 22px 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .live-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .live-table th, .live-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+    .live-table th { color: var(--muted); font-weight: 600; }
+    .live-table a { color: var(--accent); text-decoration: none; margin-right: 8px; }
+    .empty { color: var(--muted); padding: 16px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">设备组件调试 <span class="pill warn">可写</span></div>
+        <div class="sub">按组件进入 debug / monitor / man。仿真驱动可直接点动与强制 IO；串口 / TCP / MySQL 需本机对端。</div>
+      </div>
+      <div class="btn-group compact-btns">
+        <a class="link-btn" href="/debug_machine.html">整机</a>
+        <a class="link-btn" href="/man_device.html">设备配置</a>
+        <a class="link-btn" href="/index_hmi.html">HMI 组态</a>
+      </div>
+    </div>
+
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="kpi-card"><div class="label">项目</div><div class="value" id="kpiProject" style="font-size:14px">—</div></div>
+      <div class="kpi-card"><div class="label">设备</div><div class="value" id="kpiDevices">0</div></div>
+      <div class="kpi-card"><div class="label">在线</div><div class="value" id="kpiOnline">0</div></div>
+      <div class="kpi-card"><div class="label">运行</div><div class="value" id="kpiRun" style="font-size:14px">—</div></div>
+    </div>
+
+    <div class="sec-title">运动</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">驱动 <span class="hint">sim1</span></h2>
+        <p class="meta">仿真卡自检与端口字读写</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_driver.html?deviceId=sim1">调试</a>
+          <a class="link-btn" href="/monitor_runtime.html">总览</a>
+          <a class="link-btn" href="/man_driver.html">配置</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">轴 <span class="hint">axis-x / y / z / u</span></h2>
+        <p class="meta">使能 · 点动 · 步进 · 定位（仿真）</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_axis.html?deviceId=axis-x">调试 X</a>
+          <a class="link-btn" href="/monitor_axis.html?deviceId=axis-x">监控</a>
+          <a class="link-btn" href="/man_axis.html">配置</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">平台 <span class="hint">xy / xyz / xyzu</span></h2>
+        <p class="meta">步进示教与平台矩阵</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_platform.html?deviceId=platform-xyz">示教 XYZ</a>
+          <a class="link-btn" href="/monitor_platform.html?deviceId=platform-xyz">监控</a>
+          <a class="link-btn" href="/man_platform.html">配置</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">IO</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">GPIO <span class="hint">gpio1</span></h2>
+        <p class="meta">启动/停止/复位 + 塔灯（sim1 位）</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_io.html">强制</a>
+          <a class="link-btn" href="/monitor_io.html">监控</a>
+          <a class="link-btn" href="/man_gpio.html">配置</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">VIO <span class="hint">vio1</span></h2>
+        <p class="meta">虚拟 IO，无板卡依赖</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_io.html">强制</a>
+          <a class="link-btn" href="/monitor_io.html">监控</a>
+          <a class="link-btn" href="/man_gpio.html">配置</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">通信</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">串口 <span class="hint">serial1</span></h2>
+        <p class="meta">不自动打开；需 COM 或虚拟串口</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_serial.html?deviceId=serial1">调试</a>
+          <a class="link-btn" href="/man_device.html">配置</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">TCP <span class="hint">tcp1</span></h2>
+        <p class="meta">不自动连接 · API <code>/api/tcp</code></p>
+        <div class="hub-links">
+          <a class="link-btn" href="/man_device.html">配置</a>
+          <a class="link-btn" href="/monitor_runtime.html">总览</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">Modbus Server <span class="hint">mod-1</span></h2>
+        <p class="meta">127.0.0.1:1502 · API <code>/api/modserver</code></p>
+        <div class="hub-links">
+          <a class="link-btn" href="/man_device.html">配置</a>
+          <a class="link-btn" href="/monitor_runtime.html">总览</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">Modbus Client <span class="hint">modc-1</span></h2>
+        <p class="meta">连本机 Server · API <code>/api/modclient</code></p>
+        <div class="hub-links">
+          <a class="link-btn" href="/man_device.html">配置</a>
+          <a class="link-btn" href="/monitor_runtime.html">总览</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">视觉</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">核心相机 <span class="hint">cam1</span></h2>
+        <p class="meta">cameradev 占位，绑 sim1</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_camera.html?deviceId=cam1">调试</a>
+          <a class="link-btn" href="/monitor_camera.html?deviceId=cam1">监控</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">扩展相机 <span class="hint">cam-ext-1</span></h2>
+        <p class="meta">extcamera · backend=sim</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_camera.html?deviceId=cam-ext-1">调试</a>
+          <a class="link-btn" href="/monitor_camera.html?deviceId=cam-ext-1">监控</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">视觉 <span class="hint">vision-1</span></h2>
+        <p class="meta">斑点检测管线 · generateTestImage</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_vision.html?deviceId=vision-1">调试</a>
+          <a class="link-btn" href="/monitor_vision.html">监控</a>
+          <a class="link-btn" href="/man_vision.html">配置</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">数据 / 脚本</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">MySQL <span class="hint">mysql1</span></h2>
+        <p class="meta">不自动连接；本机有库再 Connect</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_mysql.html?deviceId=mysql1">调试</a>
+          <a class="link-btn" href="/man_device.html">配置</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">SQLite</h2>
+        <p class="meta">运行时库 <code>data/mdk.db</code></p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_db.html">维护</a>
+        </div>
+      </div>
+      <div class="card hub-card">
+        <h2 class="panel-title">Python <span class="hint">py-1</span></h2>
+        <p class="meta">hello.py · API <code>/api/pyscript</code></p>
+        <div class="hub-links">
+          <a class="link-btn" href="/man_device.html">配置</a>
+          <a class="link-btn" href="/monitor_runtime.html">总览</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">系统</div>
+    <div class="hub-grid">
+      <div class="card hub-card">
+        <h2 class="panel-title">整机 / 任务 / 报警</h2>
+        <p class="meta">启停复位 · 节拍 · 模拟报警</p>
+        <div class="hub-links">
+          <a class="link-btn" href="/debug_machine.html">整机</a>
+          <a class="link-btn" href="/monitor_task.html">任务</a>
+          <a class="link-btn" href="/debug_alarm.html">报警</a>
+          <a class="link-btn" href="/man_recipe.html">配方</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">运行时设备</div>
+    <div class="card">
+      <div id="liveBody"><div class="empty">加载 /api/status…</div></div>
+    </div>
+  </div>
+  <script>
+    const PLATFORM = new Set(["platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
+    function esc(s) {
+      return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function linksFor(id, type) {
+      const t = String(type || "").toLowerCase();
+      const q = encodeURIComponent(id);
+      if (PLATFORM.has(t)) {
+        return `<a href="/debug_platform.html?deviceId=${q}">示教</a><a href="/monitor_platform.html?deviceId=${q}">监控</a>`;
+      }
+      if (t === "serialdev") return `<a href="/debug_serial.html?deviceId=${q}">串口</a>`;
+      if (t === "gpio" || t === "vio") {
+        return `<a href="/debug_io.html">强制</a><a href="/monitor_io.html">监控</a>`;
+      }
+      if (t === "axis" || t === "linear" || t === "rotary") {
+        return `<a href="/debug_axis.html?deviceId=${q}">调试</a><a href="/monitor_axis.html?deviceId=${q}">监控</a>`;
+      }
+      if (t === "cameradev" || t === "camera" || t === "extcamera") {
+        return `<a href="/debug_camera.html?deviceId=${q}">调试</a><a href="/monitor_camera.html?deviceId=${q}">监控</a>`;
+      }
+      if (t === "mysqldev") return `<a href="/debug_mysql.html?deviceId=${q}">MySQL</a>`;
+      if (t === "visiondev" || t === "vision") {
+        return `<a href="/debug_vision.html?deviceId=${q}">调试</a><a href="/monitor_vision.html">监控</a>`;
+      }
+      return `<a href="/man_device.html">配置</a><a href="/monitor_runtime.html">总览</a>`;
+    }
+    function isOnline(d) {
+      const st = String(d.state ?? d.State ?? "").toLowerCase();
+      return st === "ready" || st === "running" || st === "open" || st === "online" || st === "connected";
+    }
+    async function tick() {
+      try {
+        const res = await fetch("/api/status", { cache: "no-store" });
+        if (!res.ok) throw new Error("http");
+        const data = await res.json();
+        const devices = data.devices || data.Devices || {};
+        const entries = Object.entries(devices);
+        document.getElementById("kpiProject").textContent = data.projectName || data.ProjectName || "—";
+        document.getElementById("kpiDevices").textContent = String(entries.length);
+        document.getElementById("kpiOnline").textContent = String(entries.filter(([, d]) => isOnline(d)).length);
+        document.getElementById("kpiRun").textContent = (data.isRunning || data.IsRunning) ? "RUNNING" : "STOPPED";
+        const el = document.getElementById("liveBody");
+        if (!entries.length) {
+          el.innerHTML = '<div class="empty">无设备</div>';
+          return;
+        }
+        el.innerHTML = `<table class="live-table"><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th></th></tr></thead><tbody>${
+          entries.map(([id, d]) => {
+            const name = d.name ?? d.Name ?? id;
+            const type = d.type ?? d.Type ?? "—";
+            const st = d.state ?? d.State ?? "—";
+            return `<tr><td>${esc(id)}</td><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(st)}</td><td>${linksFor(id, type)}</td></tr>`;
+          }).join("")
+        }</tbody></table>`;
+      } catch {
+        document.getElementById("liveBody").innerHTML = '<div class="empty">无法连接 /api/status</div>';
+        document.getElementById("kpiRun").textContent = "离线";
+      }
+    }
+    tick();
+    setInterval(tick, 1500);
+  </script>
+</body>
+</html>

@@ -18,11 +18,13 @@ src/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Cef.Extensions/       # 主界面监控组态（控件扩展包 + 布局 API）
 ├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
+├── MDKOSS.UI.WPF/               # Prism + WPF 主界面宿主
 ├── MDKOSS.Sample/               # SampleExt 扩展示例宿主
 ├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
 ├── MDKOSS.Sample.Dispenser/
 ├── MDKOSS.Sample.Pnp/           # 拾取放置 Demo 宿主
 ├── MDKOSS.Sample.Modbus/        # Modbus IDriver 联调宿主
+├── MDKOSS.Sample.Tools/         # 设备组件调试宿主
 ├── MDKOSS.Iec61131/             # Flow / 变量 / GPIO → IEC 61131-3
 ├── MDKOSS.Sample.Iec61131/      # 工位节拍导出示例
 └── MDKOSS.Config.Wpf/

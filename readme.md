@@ -8,7 +8,7 @@
 - 任务调度与心跳更新（`MTaskScheduler`）
 - 变量中心（`MVarStore`）与 SQLite 持久化（排单 / 示教 / 配方）
 - 基础监控界面（`HttpListener + HTML Dashboard`），含主界面 HMI、IO / 平台 / 串口等监控与调试页
-- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.Sample**（扩展示例）、**MDKOSS.Sample.DieBonder**（贴片机）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Sample.Pnp**（拾取放置）、**MDKOSS.Sample.Modbus**（Modbus IDriver 联调）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
+- 桌面壳：**MDKOSS.Cef.Sample**（通用 CEF 宿主）、**MDKOSS.UI.WPF**（Prism + WPF 主界面）、**MDKOSS.Sample**（扩展示例）、**MDKOSS.Sample.DieBonder**（贴片机）、**MDKOSS.Sample.Dispenser**（点胶机）、**MDKOSS.Sample.Pnp**（拾取放置）、**MDKOSS.Sample.Modbus**（Modbus IDriver 联调）、**MDKOSS.Sample.Tools**（设备组件调试）、**MDKOSS.Config.Wpf**（WPF 配置）；**MDKOSS.Cef** 仅为 CefSharp 界面库
 
 源码目录索引见 [src/README.md](./src/README.md)。
 
@@ -75,11 +75,13 @@ mdkoss/
     ├── MDKOSS.Extensions.ModServer/
     ├── MDKOSS.Cef/               # CefSharp 界面库 + views
     ├── MDKOSS.Cef.Sample/        # 通用 CEF 宿主 + configs
+    ├── MDKOSS.UI.WPF/            # Prism + WPF 主界面宿主 + configs
     ├── MDKOSS.Sample/            # SampleExt 扩展示例宿主 + configs
     ├── MDKOSS.Sample.DieBonder/  # 半导体贴片机 Demo 宿主 + configs
     ├── MDKOSS.Sample.Dispenser/  # 三轴点胶机 Demo 宿主 + configs
     ├── MDKOSS.Sample.Pnp/        # 拾取放置 Demo 宿主 + configs
     ├── MDKOSS.Sample.Modbus/     # Modbus IDriver 联调宿主 + configs
+    ├── MDKOSS.Sample.Tools/      # 设备组件调试宿主 + configs
     ├── MDKOSS.Sample.Iec61131/   # 工位节拍 IEC 导出示例
     └── MDKOSS.Config.Wpf/        # WPF 配置宿主 + configs
 ```
@@ -100,6 +102,7 @@ mdkoss/
   - **MDKOSS.Sample.Dispenser**：三轴点胶机 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Pnp**：拾取放置 Demo；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Modbus**：Modbus IDriver Holding 联调；嵌入 CEF；可选 `--console`
+  - **MDKOSS.Sample.Tools**：设备组件调试（轴 / IO / 串口 / TCP / 相机 / 视觉 / MySQL 等）；嵌入 CEF；可选 `--console`
   - **MDKOSS.Sample.Iec61131**：工位节拍 Flow → IEC 61131-3 导出
   - **MDKOSS.Cef**：CefSharp 界面库（`CefMainForm` / `views`），非可执行
 
@@ -277,6 +280,12 @@ WPF 配置界面：
 dotnet run --project src/MDKOSS.Config.Wpf/MDKOSS.Config.Wpf.csproj
 ```
 
+WPF 主界面（Prism）：
+
+```bash
+dotnet run --project src/MDKOSS.UI.WPF/MDKOSS.UI.WPF.csproj
+```
+
 CEF 宿主：
 
 ```bash
@@ -294,6 +303,9 @@ dotnet run --project src/MDKOSS.Sample.Pnp/MDKOSS.Sample.Pnp.csproj
 
 # Modbus IDriver 联调（Holding 默认 200 字）
 dotnet run --project src/MDKOSS.Sample.Modbus/MDKOSS.Sample.Modbus.csproj
+
+# 设备组件调试
+dotnet run --project src/MDKOSS.Sample.Tools/MDKOSS.Sample.Tools.csproj
 
 # SampleExt 扩展示例
 dotnet run --project src/MDKOSS.Sample/MDKOSS.Sample.csproj
