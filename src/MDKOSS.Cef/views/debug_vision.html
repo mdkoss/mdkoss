@@ -65,7 +65,7 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson, postJson, toast, logLine } = MdkTool;
+    const { esc, field, qs, fetchJson, postJson, toast, logLine, confirmWrite } = MdkTool;
     const VIS = new Set(["visiondev", "vision"]);
     const sel = document.getElementById("selDev");
     const out = document.getElementById("out");
@@ -116,8 +116,14 @@
       }
     }
 
-    document.getElementById("btnRun").onclick = () => action("run");
-    document.getElementById("btnCapture").onclick = () => action("captureAndRun");
+    document.getElementById("btnRun").onclick = () => {
+      if (!confirmWrite("确认执行视觉 run？", "设备: " + (sel.value || "—"))) return;
+      action("run");
+    };
+    document.getElementById("btnCapture").onclick = () => {
+      if (!confirmWrite("确认 captureAndRun？", "设备: " + (sel.value || "—"))) return;
+      action("captureAndRun");
+    };
     document.getElementById("btnStatus").onclick = () => action("status");
 
     refreshDevices().catch((e) => { out.textContent = e.message; });

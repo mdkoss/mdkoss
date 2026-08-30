@@ -144,7 +144,7 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, fetchJson, postJson, toast, logLine, qs } = MdkTool;
+    const { esc, fetchJson, postJson, toast, logLine, qs, confirmWrite } = MdkTool;
     const logBox = document.getElementById("logBox");
     const els = {
       deviceId: document.getElementById("deviceId"),
@@ -231,7 +231,8 @@
       }
     }
 
-    async function cmd(path, label, body) {
+    async function cmd(path, label, body, needConfirm) {
+      if (needConfirm && !confirmWrite("确认执行「" + label + "」？", path)) return null;
       try {
         const data = await postJson(path, body);
         toast(label + " 成功", true);
@@ -264,9 +265,9 @@
     }
 
     els.btnConnect.onclick = () => cmd("/api/mysql/connect", "连接", configBody());
-    els.btnDisconnect.onclick = () => cmd("/api/mysql/disconnect", "断开", { deviceId: deviceId() });
+    els.btnDisconnect.onclick = () => cmd("/api/mysql/disconnect", "断开", { deviceId: deviceId() }, true);
     els.btnPing.onclick = () => cmd("/api/mysql/ping", "Ping", { deviceId: deviceId() });
-    document.getElementById("btnApply").onclick = () => cmd("/api/mysql/config", "应用配置", configBody());
+    document.getElementById("btnApply").onclick = () => cmd("/api/mysql/config", "应用配置", configBody(), true);
 
     els.btnQuery.onclick = async () => {
       const data = await cmd("/api/mysql/query", "Query", {
@@ -280,7 +281,7 @@
     };
 
     els.btnExecute.onclick = async () => {
-      const data = await cmd("/api/mysql/execute", "Execute", { deviceId: deviceId(), sql: els.sql.value });
+      const data = await cmd("/api/mysql/execute", "Execute", { deviceId: deviceId(), sql: els.sql.value }, true);
       if (!data) return;
       els.resultMeta.textContent = "affectedRows=" + (data.affectedRows ?? 0) + " lastInsertId=" + (data.lastInsertId ?? 0);
       els.resultBox.innerHTML = "";

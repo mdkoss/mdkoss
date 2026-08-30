@@ -41,7 +41,7 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson, postJson, toast } = MdkTool;
+    const { esc, field, qs, fetchJson, postJson, toast, confirmWrite } = MdkTool;
     const CAM = new Set(["cameradev", "camera", "extcamera"]);
     const sel = document.getElementById("selCam");
     const out = document.getElementById("out");
@@ -89,7 +89,10 @@
     }
 
     document.getElementById("btnOpen").onclick = () => call("/api/extcamera/open");
-    document.getElementById("btnClose").onclick = () => call("/api/extcamera/close");
+    document.getElementById("btnClose").onclick = () => {
+      if (!confirmWrite("确认关闭相机？", "设备: " + (sel.value || "—"))) return;
+      call("/api/extcamera/close");
+    };
     document.getElementById("btnTrigger").onclick = () => call("/api/extcamera/trigger", "trigger");
     document.getElementById("btnStatus").onclick = () => call("/api/extcamera/status", "status");
 
