@@ -48,6 +48,8 @@ public partial class ToolHostView : UserControl
     private static ResourceDictionary Load(string relative) =>
         new()
         {
-            Source = new Uri($"pack://application:,,,/{relative}", UriKind.Absolute),
+            Source = new Uri(
+                $"pack://application:,,,/MDKOSS.UI.WPF;component/{relative}",
+                UriKind.Absolute),
         };
 }

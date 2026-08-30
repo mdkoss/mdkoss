@@ -30,6 +30,20 @@
             "problemMatcher": "$msCompile"
         },
         {
+            "label": "build-ui-wpf-sample",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/MDKOSS.UI.WPF.Sample/MDKOSS.UI.WPF.Sample.csproj",
+                "-c",
+                "Debug",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
             "label": "build",
             "command": "dotnet",
             "type": "process",

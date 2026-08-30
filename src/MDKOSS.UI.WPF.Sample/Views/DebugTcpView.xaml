@@ -1,0 +1,34 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Sample.Views.DebugTcpView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="TCP 调试" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="可写" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="connect / disconnect / write / read" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource WritableNoteStyle}">
+      <TextBlock Text="写无需确认；断开需确认。默认不自动连接，需本机有监听。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <TextBlock Text="设备" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected}" DisplayMemberPath="Name" Width="280"/>
+    </DockPanel>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding Link, StringFormat=链路：{0}}" Foreground="{DynamicResource ToolMutedBrush}" Margin="0,0,0,8"/>
+    <TextBox DockPanel.Dock="Top" Text="{Binding Payload, UpdateSourceTrigger=PropertyChanged}" Width="360" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+      <Button Content="连接" Command="{Binding ConnectCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="断开" Command="{Binding DisconnectCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="写入" Command="{Binding WriteCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="读取" Command="{Binding ReadCommand}" Style="{StaticResource ToolBtnStyle}"/>
+    </StackPanel>
+  </DockPanel>
+</UserControl>

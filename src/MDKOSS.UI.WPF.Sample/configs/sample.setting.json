@@ -1,0 +1,313 @@
+{
+  "projectName": "WPF 扩展示例",
+  "startPage": "index.html",
+  "monitoringPrefix": "http://127.0.0.1:5089/",
+  "cycleMs": 20,
+  "databasePath": "data/mdk.db",
+  "drivers": [
+    {
+      "id": "sim1",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000",
+        "card": "0",
+        "model": "VirtualCard",
+        "inBits": "32",
+        "outBits": "32",
+        "ioBitBase": "0",
+        "note": "仿真驱动：IO + 轴"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio1",
+      "name": "主 IO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "sim1|di.gpi.bit.0|启动",
+        "in.stopButton": "sim1|di.gpi.bit.1|停止",
+        "in.resetButton": "sim1|di.gpi.bit.2|复位",
+        "out.tower.red": "sim1|do.gpo.bit.0|红灯",
+        "out.tower.yellow": "sim1|do.gpo.bit.1|黄灯",
+        "out.tower.green": "sim1|do.gpo.bit.2|绿灯",
+        "out.ready": "sim1|do.gpo.bit.3|就绪"
+      }
+    },
+    {
+      "id": "sample-beacon",
+      "name": "Sample Beacon",
+      "type": "samplebeacon",
+      "enabled": true,
+      "parameters": {
+        "label": "WPF 扩展示例信标",
+        "note": "SampleExt 自定义设备（无板卡）"
+      }
+    },
+    {
+      "id": "serial1",
+      "name": "演示串口",
+      "type": "serialdev",
+      "enabled": true,
+      "parameters": {
+        "portName": "COM1",
+        "baudRate": "9600",
+        "dataBits": "8",
+        "parity": "None",
+        "stopBits": "One",
+        "readTimeout": "5000",
+        "writeTimeout": "5000",
+        "dtrEnable": "false",
+        "rtsEnable": "false",
+        "note": "不自动打开"
+      }
+    },
+    {
+      "id": "tcp1",
+      "name": "演示 TCP",
+      "type": "tcpdev",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "15100",
+        "connectTimeout": "3000",
+        "readTimeout": "3000",
+        "writeTimeout": "3000",
+        "noDelay": "false",
+        "keepAlive": "true",
+        "note": "不自动连接"
+      }
+    },
+    {
+      "id": "mysql1",
+      "name": "演示 MySQL",
+      "type": "mysqldev",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "3306",
+        "database": "",
+        "user": "root",
+        "password": "",
+        "connectTimeout": "5000",
+        "commandTimeout": "30000",
+        "charset": "utf8mb4",
+        "sslMode": "None",
+        "autoConnect": "false"
+      }
+    },
+    {
+      "id": "mod-1",
+      "name": "演示 Modbus Server",
+      "type": "devmodserver",
+      "enabled": true,
+      "parameters": {
+        "bindAddress": "127.0.0.1",
+        "port": "1502",
+        "unitId": "1",
+        "autoStart": "true"
+      }
+    },
+    {
+      "id": "modc-1",
+      "name": "演示 Modbus Client",
+      "type": "devmodclient",
+      "enabled": true,
+      "parameters": {
+        "host": "127.0.0.1",
+        "port": "1502",
+        "unitId": "1",
+        "connectTimeoutMs": "3000",
+        "readTimeoutMs": "3000",
+        "writeTimeoutMs": "3000",
+        "autoConnect": "true"
+      }
+    },
+    {
+      "id": "py-1",
+      "name": "演示 Python 脚本",
+      "type": "devpyscript",
+      "enabled": true,
+      "parameters": {
+        "pythonPath": "python",
+        "scriptPath": "configs/scripts/hello.py",
+        "arguments": "demo 1",
+        "timeoutMs": "30000",
+        "captureOutput": "true"
+      }
+    },
+    {
+      "id": "cam1",
+      "name": "核心相机占位",
+      "type": "cameradev",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "role": "demo"
+      }
+    },
+    {
+      "id": "cam-ext-1",
+      "name": "演示扩展相机",
+      "type": "extcamera",
+      "enabled": true,
+      "parameters": {
+        "backend": "sim",
+        "deviceIndex": "0",
+        "width": "1280",
+        "height": "720",
+        "exposureMs": "12",
+        "noisePx": "0.8"
+      }
+    },
+    {
+      "id": "vision-1",
+      "name": "演示视觉设备",
+      "type": "visiondev",
+      "enabled": true,
+      "parameters": {
+        "visionId": "vision-inspect",
+        "cameraDeviceId": "cam-ext-1",
+        "resultPrefix": "vision",
+        "generateTestImage": "true"
+      }
+    }
+  ],
+  "axes": [
+    {
+      "id": "axis-x",
+      "name": "X 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": { "axis": "0" }
+    },
+    {
+      "id": "axis-y",
+      "name": "Y 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": { "axis": "1" }
+    },
+    {
+      "id": "axis-z",
+      "name": "Z 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": { "axis": "2" }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "head-demo",
+      "name": "演示轴 XYZ",
+      "type": "xyz",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y",
+        "axis.Z": "axis-z",
+        "note": "SampleExt MotionTask 点动目标"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 100,
+      "parameters": {
+        "gpioDeviceId": "gpio1"
+      }
+    },
+    {
+      "name": "sample-motion-demo",
+      "type": "samplemotion",
+      "driverId": "sim1",
+      "intervalMs": 100,
+      "parameters": {
+        "platformDeviceId": "head-demo",
+        "axisLetter": "X",
+        "beaconDeviceId": "sample-beacon",
+        "targetPos": "5",
+        "jogVelocity": "2",
+        "jogTicks": "3"
+      }
+    }
+  ],
+  "vars": {
+    "machine.name": "WPF 扩展示例",
+    "machine.mode": "AUTO",
+    "machine.ready": true,
+    "user.name": "engineer",
+    "user.role": "工程师",
+    "task.operation.alias.red": "tower.red",
+    "task.operation.alias.yellow": "tower.yellow",
+    "task.operation.alias.green": "tower.green",
+    "alarm.test": false,
+    "vision.ok": false
+  },
+  "recipeVarKeys": [ "process.speed", "process.dwellMs" ],
+  "activeRecipeId": "rcp-fast",
+  "recipes": [
+    {
+      "id": "rcp-fast",
+      "name": "快速模式",
+      "description": "演示配方 A",
+      "vars": { "process.speed": 1.0, "process.dwellMs": 50 }
+    },
+    {
+      "id": "rcp-safe",
+      "name": "安全模式",
+      "description": "演示配方 B",
+      "vars": { "process.speed": 0.3, "process.dwellMs": 200 }
+    }
+  ],
+  "activeVisionId": "vision-inspect",
+  "alarms": [
+    {
+      "id": "alm-demo",
+      "code": "DEMO-1",
+      "name": "演示报警",
+      "level": "error",
+      "enabled": true,
+      "varKey": "alarm.test",
+      "op": "truthy",
+      "value": "",
+      "message": "演示报警",
+      "latch": true
+    }
+  ],
+  "visions": [
+    {
+      "id": "vision-inspect",
+      "name": "基础斑点检测",
+      "description": "演示视觉管线",
+      "cameraDeviceId": "cam-ext-1",
+      "pipeline": {
+        "version": 1,
+        "nodes": [
+          { "id": "n-start", "kind": "start", "x": 300, "y": 40, "order": 0, "props": {} },
+          { "id": "n-load", "kind": "vision.loadImage", "x": 300, "y": 120, "order": 1, "props": { "path": "" } },
+          { "id": "n-end", "kind": "end", "x": 300, "y": 200, "order": 2, "props": {} }
+        ],
+        "edges": [
+          { "from": "n-start", "to": "n-load", "port": "next" },
+          { "from": "n-load", "to": "n-end", "port": "next" }
+        ]
+      }
+    }
+  ]
+}

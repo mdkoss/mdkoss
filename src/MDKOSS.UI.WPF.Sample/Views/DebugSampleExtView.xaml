@@ -1,0 +1,35 @@
+<UserControl x:Class="MDKOSS.UI.WPF.Sample.Views.DebugSampleExtView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:prism="http://prismlibrary.com/"
+             prism:ViewModelLocator.AutoWireViewModel="True"
+             Background="{DynamicResource ToolBgBrush}">
+  <DockPanel Margin="20,12">
+    <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource ToolStatusStyle}" Text="{Binding Status}"/>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Text="SampleExt 联调" Style="{StaticResource ToolTitleStyle}"/>
+          <Border Style="{StaticResource ToolPillStyle}"><TextBlock Text="可写" Style="{StaticResource ToolPillTextStyle}"/></Border>
+        </StackPanel>
+        <TextBlock Text="pulse / reset / motion start·stop" Style="{StaticResource ToolSubStyle}"/>
+      </StackPanel>
+    </DockPanel>
+    <Border DockPanel.Dock="Top" Style="{StaticResource WritableNoteStyle}">
+      <TextBlock Text="脉冲无需确认；复位需确认。运动命令写 sample.motion.command。" TextWrapping="Wrap" Foreground="{DynamicResource ToolMutedBrush}"/>
+    </Border>
+    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,10">
+      <TextBlock Text="信标" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected}" DisplayMemberPath="Name" Width="280"/>
+    </DockPanel>
+    <TextBox DockPanel.Dock="Top" Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" Width="280" HorizontalAlignment="Left" Margin="0,0,0,10"/>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding BeaconMessage, StringFormat=信标：{0}}" Foreground="{DynamicResource ToolMutedBrush}" Margin="0,0,0,4"/>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding MotionPhase, StringFormat=运动：{0}}" Foreground="{DynamicResource ToolMutedBrush}" Margin="0,0,0,10"/>
+    <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+      <Button Content="脉冲" Command="{Binding PulseCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="复位" Command="{Binding ResetCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="运动开始" Command="{Binding MotionStartCommand}" Style="{StaticResource ToolBtnStyle}"/>
+      <Button Content="运动停止" Command="{Binding MotionStopCommand}" Style="{StaticResource ToolBtnStyle}"/>
+    </StackPanel>
+  </DockPanel>
+</UserControl>

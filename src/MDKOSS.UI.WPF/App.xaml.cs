@@ -37,6 +37,7 @@ public partial class App : PrismApplication
         {
             Log = msg => AppLog.Info(msg),
         });
+        MdkWpfHost.ExtraExtensions?.Invoke();
 
         if (!TryCreateRuntime(out var error))
         {
@@ -106,6 +107,8 @@ public partial class App : PrismApplication
         containerRegistry.RegisterDialog<UserDialog, UserDialogViewModel>(DialogNames.User);
         containerRegistry.RegisterDialog<AboutDialog, AboutDialogViewModel>(DialogNames.About);
         containerRegistry.RegisterDialogWindow<NavyDialogWindow>();
+
+        WpfUiExtensionHost.Apply(containerRegistry);
     }
 
     protected override void OnInitialized()

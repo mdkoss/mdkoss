@@ -263,6 +263,14 @@ Prism 导航名必须等于页面 id。`RegisterForNavigation<View, VM>("monitor
 
 在 `DeviceKind` 增加 `IsXxx(DeviceSnapshot)`，监控 / 调试页用同一谓词，避免各页各写一套 `type` 字符串。
 
+### 宿主里加扩展页（不要改本工程 App）
+
+示例见 [`MDKOSS.UI.WPF.Sample`](../MDKOSS.UI.WPF.Sample/README.md)：
+
+1. 实现 `IWpfUiExtension`，`ToolPage<View, VM>(pageId, group, label)`。
+2. `Program` 里先 `WpfUiExtensionHost.Register(...)`，再 `MdkWpfHost.ExtraExtensions` 注册 `IMdkExtension`，最后 `MdkWpfHost.Run`。
+3. 主题资源用 `pack://application:,,,/MDKOSS.UI.WPF;component/Themes/...`，否则从 Sample exe 加载会找不到字典。
+
 ---
 
 ## 8. 依赖与边界

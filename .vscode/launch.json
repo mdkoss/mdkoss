@@ -13,6 +13,17 @@
             "stopAtEntry": false
         },
         {
+            "name": ".NET Core Launch (UI.WPF.Sample)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build-ui-wpf-sample",
+            "program": "${workspaceFolder}/src/MDKOSS.UI.WPF.Sample/bin/Debug/net8.0-windows10.0.22621.0/win-x64/MDKOSS.UI.WPF.Sample.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/MDKOSS.UI.WPF.Sample/bin/Debug/net8.0-windows10.0.22621.0/win-x64",
+            "console": "internalConsole",
+            "stopAtEntry": false
+        },
+        {
             "name": ".NET Core Launch (Config.Wpf)",
             "type": "coreclr",
             "request": "launch",

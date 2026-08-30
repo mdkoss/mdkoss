@@ -30,6 +30,24 @@ public static class DeviceKind
     public static bool IsMysql(DeviceSnapshot d) =>
         d.Type is "mysqldev";
 
+    public static bool IsTcp(DeviceSnapshot d) =>
+        d.Type is "tcpdev";
+
+    public static bool IsPyScript(DeviceSnapshot d) =>
+        d.Type is "devpyscript";
+
+    public static bool IsModServer(DeviceSnapshot d) =>
+        d.Type is "devmodserver";
+
+    public static bool IsModClient(DeviceSnapshot d) =>
+        d.Type is "devmodclient";
+
+    public static bool IsModbus(DeviceSnapshot d) =>
+        IsModServer(d) || IsModClient(d);
+
+    public static bool IsSampleBeacon(DeviceSnapshot d) =>
+        d.Type is "samplebeacon";
+
     public static bool IsIoOut(string direction) =>
         direction is "out" or "do" or "vio";
 

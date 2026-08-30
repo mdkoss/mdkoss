@@ -4,60 +4,76 @@ public sealed record ToolPageDef(string Id, string Label);
 
 public sealed record ToolGroupDef(string Id, string Label, string ModeHint, IReadOnlyList<ToolPageDef> Pages);
 
+/// <summary>
+/// Built-in monitor / debug / man catalog. Hosts may <see cref="AddPage"/> before first navigation.
+/// </summary>
 public static class ToolCatalog
 {
-    public static readonly ToolGroupDef Monitor = new(
-        "monitor",
-        "监控",
-        "只读态势",
-        [
-            new("monitor_runtime", "总览"),
-            new("monitor_io", "IO"),
-            new("monitor_platform", "平台"),
-            new("monitor_axis", "轴"),
-            new("monitor_camera", "相机"),
-            new("monitor_vision", "视觉"),
-            new("monitor_task", "任务"),
-            new("monitor_alarm", "报警"),
-        ]);
+    private static readonly List<ToolPageDef> MonitorPages =
+    [
+        new("monitor_runtime", "总览"),
+        new("monitor_io", "IO"),
+        new("monitor_platform", "平台"),
+        new("monitor_axis", "轴"),
+        new("monitor_camera", "相机"),
+        new("monitor_vision", "视觉"),
+        new("monitor_task", "任务"),
+        new("monitor_alarm", "报警"),
+    ];
 
-    public static readonly ToolGroupDef Debug = new(
-        "debug",
-        "调试",
-        "可写联调",
-        [
-            new("debug_platform", "平台示教"),
-            new("debug_serial", "串口"),
-            new("debug_mysql", "MySQL"),
-            new("debug_axis", "轴"),
-            new("debug_io", "IO 强制"),
-            new("debug_camera", "相机"),
-            new("debug_vision", "视觉"),
-            new("debug_driver", "驱动"),
-            new("debug_db", "数据库"),
-            new("debug_machine", "整机"),
-            new("debug_alarm", "报警"),
-        ]);
+    private static readonly List<ToolPageDef> DebugPages =
+    [
+        new("debug_platform", "平台示教"),
+        new("debug_serial", "串口"),
+        new("debug_mysql", "MySQL"),
+        new("debug_axis", "轴"),
+        new("debug_io", "IO 强制"),
+        new("debug_camera", "相机"),
+        new("debug_vision", "视觉"),
+        new("debug_driver", "驱动"),
+        new("debug_db", "数据库"),
+        new("debug_machine", "整机"),
+        new("debug_alarm", "报警"),
+    ];
 
-    public static readonly ToolGroupDef Man = new(
-        "man",
-        "配置",
-        "配置编辑",
-        [
-            new("man_machine", "整机"),
-            new("man_driver", "驱动"),
-            new("man_device", "设备"),
-            new("man_axis", "轴"),
-            new("man_platform", "平台"),
-            new("man_gpio", "GPIO"),
-            new("man_task", "任务"),
-            new("man_vars", "变量"),
-            new("man_recipe", "配方"),
-            new("man_vision", "视觉"),
-            new("man_alarm", "报警"),
-        ]);
+    private static readonly List<ToolPageDef> ManPages =
+    [
+        new("man_machine", "整机"),
+        new("man_driver", "驱动"),
+        new("man_device", "设备"),
+        new("man_axis", "轴"),
+        new("man_platform", "平台"),
+        new("man_gpio", "GPIO"),
+        new("man_task", "任务"),
+        new("man_vars", "变量"),
+        new("man_recipe", "配方"),
+        new("man_vision", "视觉"),
+        new("man_alarm", "报警"),
+    ];
 
-    public static IReadOnlyList<ToolGroupDef> Groups { get; } = [Monitor, Debug, Man];
+    public static ToolGroupDef Monitor => new("monitor", "监控", "只读态势", MonitorPages);
+
+    public static ToolGroupDef Debug => new("debug", "调试", "可写联调", DebugPages);
+
+    public static ToolGroupDef Man => new("man", "配置", "配置编辑", ManPages);
+
+    public static IReadOnlyList<ToolGroupDef> Groups => [Monitor, Debug, Man];
+
+    public static void AddPage(string groupId, string pageId, string label)
+    {
+        if (string.IsNullOrWhiteSpace(groupId) || string.IsNullOrWhiteSpace(pageId))
+        {
+            return;
+        }
+
+        var list = ResolveList(groupId);
+        if (list.Any(p => string.Equals(p.Id, pageId, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        list.Add(new ToolPageDef(pageId.Trim(), string.IsNullOrWhiteSpace(label) ? pageId : label.Trim()));
+    }
 
     public static ToolGroupDef ResolveGroup(string? groupId)
     {
@@ -74,4 +90,12 @@ public static class ToolCatalog
     }
 
     public static string DefaultPageId(string groupId) => ResolveGroup(groupId).Pages[0].Id;
+
+    private static List<ToolPageDef> ResolveList(string groupId) =>
+        groupId.Trim().ToLowerInvariant() switch
+        {
+            "debug" => DebugPages,
+            "man" => ManPages,
+            _ => MonitorPages,
+        };
 }
