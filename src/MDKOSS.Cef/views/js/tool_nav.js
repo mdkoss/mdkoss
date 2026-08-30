@@ -149,6 +149,69 @@
       "</div>";
 
     document.body.insertBefore(bar, document.body.firstChild);
+
+    if (group === "monitor" || group === "debug") {
+      mountAlarmBar();
+    }
+  }
+
+  function mountAlarmBar() {
+    if (document.getElementById("toolAlarmBar")) return;
+    const bar = document.createElement("div");
+    bar.id = "toolAlarmBar";
+    bar.className = "tool-alarm-bar idle";
+    bar.innerHTML =
+      '<a class="alarm-bar-link" href="/monitor_alarm.html">' +
+      '<span class="alarm-bar-dot"></span>' +
+      '<span class="alarm-bar-text" id="toolAlarmText">报警：检测中…</span>' +
+      '<span class="alarm-bar-meta" id="toolAlarmMeta"></span>' +
+      "</a>";
+    const chrome = document.getElementById("toolChrome");
+    if (chrome && chrome.nextSibling) {
+      chrome.parentNode.insertBefore(bar, chrome.nextSibling);
+    } else if (chrome) {
+      chrome.parentNode.appendChild(bar);
+    } else {
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+
+    async function tick() {
+      const text = document.getElementById("toolAlarmText");
+      const meta = document.getElementById("toolAlarmMeta");
+      try {
+        const res = await fetch("/api/alarms", { cache: "no-store" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error("http");
+        const active = Number(data.activeCount ?? 0);
+        const errN = Number(data.errorCount ?? 0);
+        const warnN = Number(data.warnCount ?? 0);
+        const unacked = Number(data.unackedCount ?? 0);
+        bar.classList.remove("idle", "ok", "warn", "fault");
+        if (active <= 0) {
+          bar.classList.add("ok");
+          if (text) text.textContent = "无活动报警";
+          if (meta) meta.textContent = "";
+        } else {
+          bar.classList.add(errN > 0 ? "fault" : "warn");
+          if (text) {
+            text.textContent =
+              "活动报警 " +
+              active +
+              (errN ? " · 错误 " + errN : "") +
+              (warnN ? " · 警告 " + warnN : "");
+          }
+          if (meta) meta.textContent = unacked ? "未确认 " + unacked : "全部已确认";
+        }
+      } catch {
+        bar.classList.remove("ok", "warn", "fault");
+        bar.classList.add("idle");
+        if (text) text.textContent = "报警接口不可用";
+        if (meta) meta.textContent = "";
+      }
+    }
+
+    tick();
+    setInterval(tick, 2000);
   }
 
   if (document.readyState === "loading") {

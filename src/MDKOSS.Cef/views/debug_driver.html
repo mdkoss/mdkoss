@@ -8,17 +8,36 @@
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="debug" data-tool-page="debug_driver">
+  <div id="toast" class="toast" role="status"></div>
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">驱动 IO <span class="pill warn">可写</span></div>
-        <div class="sub">读驱动端口字 · GET/POST <code>/api/io/driver</code> · 点格切换位（地址点号，SIM 跟 <code>ioBitBase</code>） · <a class="link-btn" href="/debug_io.html">GPIO 别名 →</a></div>
+        <div class="title">驱动调试 <span class="pill warn">可写</span></div>
+        <div class="sub">诊断 · 端口字读写 · <a class="link-btn" href="/debug_io.html">GPIO 别名 →</a></div>
       </div>
       <a class="link-btn" href="/man_driver.html">驱动配置 →</a>
     </div>
 
-    <div class="card" style="margin-bottom:16px">
-      <div class="label">驱动</div>
+    <div class="writable-note">
+      调试模式可写端口位。生产强制请谨慎；写入会弹出确认。
+      <a href="/monitor_runtime.html">运行总览</a>
+    </div>
+
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="kpi-card"><div class="label">驱动数</div><div class="value" id="kpiTotal">0</div></div>
+      <div class="kpi-card"><div class="label">在线</div><div class="value" id="kpiOnline">0</div></div>
+      <div class="kpi-card"><div class="label">当前</div><div class="value" id="kpiCur" style="font-size:14px">—</div></div>
+      <div class="kpi-card"><div class="label">自检</div><div class="value" id="kpiDiag" style="font-size:14px">—</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <div class="section-head">
+        <h2 class="panel-title">驱动选择 / 诊断</h2>
+        <div class="btn-group compact-btns">
+          <button type="button" class="btn primary btn-sm" id="btnSelfCheck">自检读口</button>
+          <button type="button" class="btn btn-sm" id="btnRefresh">刷新</button>
+        </div>
+      </div>
       <div class="bit-toolbar">
         <div class="form-group">
           <label for="driverSel">Driver ID</label>
@@ -29,12 +48,9 @@
           <div id="driverMeta" class="bit-meta" style="margin:8px 0 0">—</div>
         </div>
       </div>
-      <div class="table-scroll" style="max-height:180px">
-        <table>
-          <thead><tr><th>Driver ID</th><th>类型</th><th>在线</th></tr></thead>
-          <tbody id="rows"><tr><td colspan="3" style="color:var(--muted)">加载中…</td></tr></tbody>
-        </table>
-      </div>
+      <div class="status-matrix" id="drvMatrix" style="margin-bottom:10px"></div>
+      <div class="label">诊断日志</div>
+      <div class="diag-log" id="diagLog"></div>
     </div>
 
     <div class="io-layout">
@@ -79,10 +95,9 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, fetchJson } = MdkTool;
+    const { esc, field, fetchJson, confirmWrite, toast, logLine, pillOnline } = MdkTool;
     const driverSel = document.getElementById("driverSel");
     const driverMeta = document.getElementById("driverMeta");
-    const rows = document.getElementById("rows");
     const diType = document.getElementById("diType");
     const doType = document.getElementById("doType");
     const diGrid = document.getElementById("diGrid");
@@ -91,6 +106,8 @@
     const doMeta = document.getElementById("doMeta");
     const ioMsg = document.getElementById("ioMsg");
     const lastUpdate = document.getElementById("lastUpdate");
+    const diagLog = document.getElementById("diagLog");
+    const drvMatrix = document.getElementById("drvMatrix");
 
     let lastDrivers = {};
 
@@ -108,20 +125,38 @@
       if (prev && lastDrivers[prev]) driverSel.value = prev;
       else if (entries.length) driverSel.selectedIndex = 0;
 
+      document.getElementById("kpiTotal").textContent = String(entries.length);
+      const onlineN = entries.filter(([, d]) => field(d, "isConnected", "IsConnected") === true).length;
+      document.getElementById("kpiOnline").textContent = String(onlineN);
+      document.getElementById("kpiCur").textContent = currentDriverId() || "—";
+
       if (!entries.length) {
-        rows.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">无驱动</td></tr>';
+        drvMatrix.innerHTML = '<div class="sub">无驱动</div>';
         driverMeta.textContent = "—";
         return;
       }
-      rows.innerHTML = entries.map(([id, d]) => {
+      drvMatrix.innerHTML = entries.map(([id, d]) => {
         const type = field(d, "type", "Type") ?? field(d, "name", "Name") ?? "—";
-        const online = field(d, "isConnected", "IsConnected");
-        return `<tr><td>${esc(id)}</td><td>${esc(type)}</td><td>${online === true ? "是" : online === false ? "否" : esc(online)}</td></tr>`;
+        const online = field(d, "isConnected", "IsConnected") === true;
+        const tone = online ? "ok" : "warn";
+        const sel = id === currentDriverId() ? " style=\"outline:2px solid var(--mode-band)\"" : "";
+        return `<button type="button" class="status-cell ${tone}" data-id="${esc(id)}"${sel} style="cursor:pointer;text-align:left;font:inherit">
+          <span class="sc-id">${esc(id)}</span>
+          <span class="sc-meta">${esc(type)}</span>
+          <span class="sc-state">${online ? "在线" : "离线"}</span>
+        </button>`;
       }).join("");
+      drvMatrix.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          driverSel.value = btn.getAttribute("data-id");
+          tickPorts();
+          renderDriverTable(lastDrivers);
+        });
+      });
       const cur = lastDrivers[currentDriverId()] || {};
       const type = field(cur, "type", "Type") ?? field(cur, "name", "Name") ?? "—";
       const online = field(cur, "isConnected", "IsConnected");
-      driverMeta.textContent = `${type} · ${online === true ? "在线" : "离线"}`;
+      driverMeta.innerHTML = `${esc(type)} · ${pillOnline(online === true ? true : online === false ? false : null)}`;
     }
 
     function renderGrid(el, metaEl, data, dir) {
@@ -155,6 +190,7 @@
       const bit = Number(btn.getAttribute("data-bit"));
       const type = dir === "di" ? diType.value : doType.value;
       const next = !btn.classList.contains("on");
+      if (!confirmWrite("确认写入驱动端口位？", `驱动: ${currentDriverId()}\n方向: ${dir}\n类型: ${type}\n位: ${bit}\n值: ${next}`)) return;
       ioMsg.textContent = "正在写入…";
       ioMsg.classList.remove("err");
       try {
@@ -172,15 +208,18 @@
         const data = await res.json().catch(() => ({}));
         if (!res.ok || !data.success) throw new Error(data.error || "http " + res.status);
         ioMsg.textContent = "写入 " + (data.address || "") + " = " + next;
+        logLine(diagLog, `WRITE ${dir} ${type} bit=${bit} → ${next}`, true);
         await tickPorts();
       } catch (e) {
         ioMsg.textContent = "写入失败: " + (e && e.message ? e.message : String(e));
         ioMsg.classList.add("err");
+        logLine(diagLog, "WRITE FAIL " + (e.message || e), false);
       }
     }
 
     async function tickPorts() {
       const id = currentDriverId();
+      document.getElementById("kpiCur").textContent = id || "—";
       if (!id) {
         diGrid.innerHTML = "";
         doGrid.innerHTML = "";
@@ -196,6 +235,35 @@
       renderGrid(doGrid, doMeta, dout, "do");
     }
 
+    async function selfCheck() {
+      const id = currentDriverId();
+      if (!id) {
+        toast("请先选择驱动", false);
+        return;
+      }
+      document.getElementById("kpiDiag").textContent = "检测中";
+      logLine(diagLog, `SELFCHECK start ${id}`, true);
+      try {
+        const [di, dout] = await Promise.all([
+          fetchPort("di", diType.value),
+          fetchPort("do", doType.value),
+        ]);
+        const diOk = !!(di && di.success);
+        const doOk = !!(dout && dout.success);
+        const online = field(lastDrivers[id] || {}, "isConnected", "IsConnected") === true;
+        const ok = diOk && doOk;
+        document.getElementById("kpiDiag").textContent = ok ? "通过" : "失败";
+        logLine(diagLog, `online=${online} DI=${diOk ? "OK" : di.error || "FAIL"} DO=${doOk ? "OK" : dout.error || "FAIL"}`, ok);
+        toast(ok ? "自检通过" : "自检失败", ok);
+        renderGrid(diGrid, diMeta, di, "di");
+        renderGrid(doGrid, doMeta, dout, "do");
+      } catch (e) {
+        document.getElementById("kpiDiag").textContent = "失败";
+        logLine(diagLog, "SELFCHECK " + (e.message || e), false);
+        toast(e.message || "自检失败", false);
+      }
+    }
+
     async function tick() {
       try {
         const data = await fetchJson("/api/status");
@@ -204,13 +272,15 @@
         await tickPorts();
         lastUpdate.textContent = new Date().toLocaleTimeString();
       } catch (e) {
-        rows.innerHTML = `<tr><td colspan="3" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
         ioMsg.textContent = "无法连接 /api/status";
         ioMsg.classList.add("err");
+        logLine(diagLog, e.message || "status fail", false);
       }
     }
 
-    driverSel.addEventListener("change", () => tickPorts());
+    document.getElementById("btnSelfCheck").onclick = selfCheck;
+    document.getElementById("btnRefresh").onclick = () => tick();
+    driverSel.addEventListener("change", () => { tickPorts(); renderDriverTable(lastDrivers); });
     diType.addEventListener("change", () => tickPorts());
     doType.addEventListener("change", () => tickPorts());
     tick();

@@ -12,82 +12,143 @@
     <div class="header">
       <div>
         <div class="title">相机状态监控 <span class="pill warn">只读</span></div>
-        <div class="sub" id="hdrSubtitle">cameradev / camera 设备</div>
+        <div class="sub" id="hdrSubtitle">全部相机一览 · Faceplate</div>
       </div>
       <a class="link-btn" id="lnkDebug" href="/debug_camera.html">相机调试 →</a>
     </div>
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group" style="flex:2">
-        <label>相机设备</label>
-        <select id="selCam"><option value="">— 选择 —</option></select>
-      </div>
+
+    <div class="readonly-note">
+      只读。抓图 / 参数试调请进入
+      <a id="lnkDebugNote" href="/debug_camera.html">相机调试</a>。
     </div>
-    <div class="grid">
-      <div class="card span-4"><div class="label">状态</div><div class="value" id="vState">—</div></div>
-      <div class="card span-4"><div class="label">类型</div><div class="value" id="vType">—</div></div>
-      <div class="card span-4"><div class="label">驱动在线</div><div class="value" id="vOnline">—</div></div>
+
+    <div class="kpi-strip" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="kpi-card"><div class="label">相机数</div><div class="value" id="kpiTotal">0</div></div>
+      <div class="kpi-card"><div class="label">在线</div><div class="value" id="kpiOnline">0</div></div>
+      <div class="kpi-card"><div class="label">运行中</div><div class="value" id="kpiRun">0</div></div>
+    </div>
+
+    <div class="grid runtime-dash">
       <div class="card span-12">
-        <div class="label">扩展状态（/api/extcamera/status）</div>
-        <pre id="extStatus" style="margin:8px 0 0;white-space:pre-wrap">—</pre>
+        <h2 class="panel-title">相机矩阵</h2>
+        <div class="status-matrix" id="camMatrix"></div>
+      </div>
+      <div class="card span-12">
+        <div class="section-head">
+          <h2 class="panel-title">Faceplate <span class="hint" id="fpTitle">未选择</span></h2>
+          <select id="selCam" style="max-width:260px"><option value="">— 选择 —</option></select>
+        </div>
+        <div class="faceplate-grid">
+          <div class="fp-kpi"><div class="label">状态</div><div class="value" id="vState" style="font-size:16px">—</div></div>
+          <div class="fp-kpi"><div class="label">类型</div><div class="value" id="vType" style="font-size:16px">—</div></div>
+          <div class="fp-kpi"><div class="label">驱动在线</div><div class="value" id="vOnline" style="font-size:16px">—</div></div>
+          <div class="fp-kpi"><div class="label">链路</div><div class="value" id="vLink" style="font-size:14px">—</div></div>
+        </div>
+        <div style="margin-top:12px">
+          <div class="label">扩展状态（/api/extcamera/status）</div>
+          <pre id="extStatus" style="margin:8px 0 0;white-space:pre-wrap;max-height:220px;overflow:auto">—</pre>
+        </div>
       </div>
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson } = MdkTool;
+    const { esc, field, qs, fetchJson, pillOnline } = MdkTool;
     const CAM = new Set(["cameradev", "camera", "extcamera"]);
     const sel = document.getElementById("selCam");
     let preferred = qs("deviceId", "");
+    let lastDevices = {};
 
     function isCam(t) { return CAM.has(String(t || "").toLowerCase()); }
 
-    function updateLink() {
-      const id = sel.value;
-      document.getElementById("lnkDebug").href = id
-        ? `/debug_camera.html?deviceId=${encodeURIComponent(id)}`
-        : "/debug_camera.html";
+    function setLinks(id) {
+      const href = id ? `/debug_camera.html?deviceId=${encodeURIComponent(id)}` : "/debug_camera.html";
+      document.getElementById("lnkDebug").href = href;
+      document.getElementById("lnkDebugNote").href = href;
     }
+
+    function listCams(devices) {
+      return Object.entries(devices || {})
+        .filter(([, d]) => isCam(field(d, "type", "Type")))
+        .map(([id, d]) => ({
+          id,
+          name: field(d, "name", "Name") || id,
+          type: field(d, "type", "Type") || "—",
+          state: String(field(d, "state", "State") || "—"),
+          online: field(d, "driverConnected", "DriverConnected") === true,
+          link: field(d, "connection", "Connection") || field(d, "driverType", "DriverType") || "—",
+          d,
+        }));
+    }
+
+    function renderMatrix(list) {
+      document.getElementById("kpiTotal").textContent = String(list.length);
+      document.getElementById("kpiOnline").textContent = String(list.filter((c) => c.online).length);
+      document.getElementById("kpiRun").textContent = String(list.filter((c) => /run/i.test(c.state)).length);
+      const box = document.getElementById("camMatrix");
+      if (!list.length) {
+        box.innerHTML = '<div class="sub">（无相机设备）</div>';
+        return;
+      }
+      box.innerHTML = list.map((c) => {
+        const tone = /fault|error/i.test(c.state) ? "fault" : c.online ? "ok" : "warn";
+        return `<button type="button" class="status-cell ${tone}" data-id="${esc(c.id)}" style="cursor:pointer;text-align:left;font:inherit">
+          <span class="sc-id">${esc(c.id)}</span>
+          <span class="sc-meta">${esc(c.name)} · ${esc(String(c.type))}</span>
+          <span class="sc-state">${c.online ? "在线" : "离线"} · ${esc(c.state)}</span>
+        </button>`;
+      }).join("");
+      box.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          sel.value = btn.getAttribute("data-id");
+          renderFaceplate();
+        });
+      });
+    }
+
+    async function renderFaceplate() {
+      const id = sel.value;
+      setLinks(id);
+      const c = listCams(lastDevices).find((x) => x.id === id);
+      if (!c) {
+        document.getElementById("fpTitle").textContent = "未选择";
+        return;
+      }
+      document.getElementById("fpTitle").textContent = `${c.name} · ${c.id}`;
+      document.getElementById("hdrSubtitle").textContent = `已选 ${c.name}`;
+      document.getElementById("vState").textContent = c.state;
+      document.getElementById("vType").textContent = String(c.type);
+      document.getElementById("vOnline").innerHTML = pillOnline(c.online);
+      document.getElementById("vLink").textContent = String(c.link);
+      try {
+        const ext = await fetch(`/api/extcamera/status?deviceId=${encodeURIComponent(id)}`, { cache: "no-store" });
+        const data = await ext.json().catch(() => ({}));
+        document.getElementById("extStatus").textContent = JSON.stringify(data, null, 2);
+      } catch {
+        document.getElementById("extStatus").textContent = "扩展状态不可用";
+      }
+    }
+
+    sel.addEventListener("change", renderFaceplate);
 
     async function tick() {
       try {
         const data = await fetchJson("/api/status");
-        const devices = field(data, "devices", "Devices") || {};
+        lastDevices = field(data, "devices", "Devices") || {};
+        const list = listCams(lastDevices);
         const cur = sel.value || preferred;
-        const opts = Object.entries(devices)
-          .filter(([, d]) => isCam(field(d, "type", "Type")))
-          .map(([id, d]) => `<option value="${esc(id)}">${esc(field(d, "name", "Name") || id)} (${esc(id)})</option>`);
-        sel.innerHTML = '<option value="">— 选择 —</option>' + opts.join("");
+        sel.innerHTML = '<option value="">— 选择 —</option>' +
+          list.map((c) => `<option value="${esc(c.id)}">${esc(c.name)} (${esc(c.id)})</option>`).join("");
         if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
-        else if (sel.options.length > 1) sel.selectedIndex = 1;
+        else if (list.length) sel.selectedIndex = 1;
         preferred = "";
-        updateLink();
-
-        const id = sel.value;
-        if (!id) {
-          document.getElementById("hdrSubtitle").textContent = opts.length ? "请选择相机" : "无相机设备";
-          return;
-        }
-        const d = devices[id];
-        document.getElementById("hdrSubtitle").textContent = `${field(d, "name", "Name") || id} · ${id}`;
-        document.getElementById("vState").textContent = String(field(d, "state", "State") || "—");
-        document.getElementById("vType").textContent = String(field(d, "type", "Type") || "—");
-        document.getElementById("vOnline").textContent =
-          field(d, "driverConnected", "DriverConnected") === true ? "是" :
-          field(d, "driverConnected", "DriverConnected") === false ? "否" : "—";
-
-        try {
-          const st = await fetchJson(`/api/extcamera/status?deviceId=${encodeURIComponent(id)}`);
-          document.getElementById("extStatus").textContent = JSON.stringify(st, null, 2);
-        } catch (e) {
-          document.getElementById("extStatus").textContent =
-            "扩展未加载或不可用: " + (e.message || e);
-        }
+        renderMatrix(list);
+        await renderFaceplate();
       } catch {
         document.getElementById("hdrSubtitle").textContent = "无法连接 /api/status";
       }
     }
-    sel.addEventListener("change", () => tick());
     tick();
     setInterval(tick, 1000);
   </script>

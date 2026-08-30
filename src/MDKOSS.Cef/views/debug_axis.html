@@ -22,6 +22,10 @@
         <a class="link-btn" id="lnkMonitor" href="/monitor_axis.html">只读监控 →</a>
       </div>
     </div>
+    <div class="writable-note">
+      调试模式可写。点动/步进无需确认；使能、去使能、绝对定位需确认。
+      <a id="lnkMonitorNote" href="/monitor_axis.html">轴监控（只读）</a>
+    </div>
     <div id="warnBar" class="warn-bar hidden">运行时未启动，仍可下发轴动作。</div>
 
     <div class="form-row platform-bar compact-bar">
@@ -145,7 +149,7 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, qs, fetchJson, postJson, toast, logLine, isAxisType, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum } = MdkTool;
+    const { esc, field, qs, fetchJson, postJson, toast, logLine, isAxisType, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum, confirmWrite } = MdkTool;
     const STEP_PRESETS = { continuous: 1, long: 10, medium: 1, short: 0.1 };
     const sel = document.getElementById("selAxis");
     const logBox = document.getElementById("logBox");
@@ -528,17 +532,25 @@
       }
     }
 
-    document.getElementById("btnEnable").onclick = () => action("enable");
-    document.getElementById("btnDisable").onclick = () => action("disable");
+    document.getElementById("btnEnable").onclick = () => {
+      if (!confirmWrite("确认使能当前轴？", "轴: " + (axisId() || "—"))) return;
+      action("enable");
+    };
+    document.getElementById("btnDisable").onclick = () => {
+      if (!confirmWrite("确认去使能当前轴？", "轴: " + (axisId() || "—"))) return;
+      action("disable");
+    };
     document.getElementById("btnStop").onclick = () => stopJog(true);
     document.getElementById("btnMove").onclick = () => {
       const target = Number(txtPos.value);
       if (!Number.isFinite(target)) { toast("目标位置无效", false); return; }
       if (!checkLimit(target)) return;
+      if (!confirmWrite("确认绝对定位？", "轴: " + (axisId() || "—") + "\n目标: " + target)) return;
       action("move", { position: target });
     };
     document.getElementById("btnMoveZero").onclick = () => {
       if (!checkLimit(0)) return;
+      if (!confirmWrite("确认定位到 0？", "轴: " + (axisId() || "—"))) return;
       txtPos.value = "0";
       action("move", { position: 0 });
     };

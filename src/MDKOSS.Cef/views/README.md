@@ -88,14 +88,14 @@ index ──popup_*──► monitor_* ──► debug_*
 |------|------|
 | `monitor_runtime.html` | 运行总览：驱动/设备状态矩阵（只读；写操作在 debug_machine） |
 | `monitor_io.html` | IO 灯盘（按设备分组）+ 明细表 |
-| `monitor_platform.html` | 平台轴位置/使能/故障（无点动） |
-| `monitor_axis.html` | 单轴状态（骨架） |
-| `monitor_camera.html` | 相机连接/取流状态 |
-| `monitor_vision.html` | 视觉设备与流程结果 |
-| `monitor_task.html` | 任务周期状态明细 |
+| `monitor_platform.html` | 全部平台矩阵 + 选中平台轴表 |
+| `monitor_axis.html` | 全轴一览 + Faceplate |
+| `monitor_camera.html` | 相机矩阵 + Faceplate |
+| `monitor_vision.html` | 视觉结果 KPI + 流程/变量 |
+| `monitor_task.html` | 节拍 KPI + 任务状态矩阵 |
 | `monitor_alarm.html` | 活动报警 / 未确认计数 |
 
-风格：`css/debug.css`；标题带「只读」徽章。
+风格：`theme-monitor` + `debug.css`；顶栏常驻报警条；标题带「只读」徽章。
 
 ---
 
@@ -110,10 +110,12 @@ index ──popup_*──► monitor_* ──► debug_*
 | `debug_axis.html` | 单轴使能 / 按住点动 / 步进 / 定位；轴一览与变量 |
 | `debug_camera.html` | 相机试调（extcamera + cameradev） |
 | `debug_vision.html` | 视觉 run / captureAndRun |
-| `debug_driver.html` | 驱动在线状态 |
-| `debug_io.html` | DO/VIO 强制输出 |
-| `debug_machine.html` | 整机启停复位 |
-| `debug_alarm.html` | 报警确认 / 复位 / 模拟触发 |
+| `debug_driver.html` | 驱动诊断自检 + 端口字读写（写入确认） |
+| `debug_io.html` | DO/VIO 强制输出（写入确认） |
+| `debug_machine.html` | 整机启停复位（危险确认） |
+| `debug_alarm.html` | 报警确认 / 复位 / 模拟触发（确认） |
+
+风格：`theme-debug` + 琥珀警示带；危险写操作二次确认。
 
 ---
 

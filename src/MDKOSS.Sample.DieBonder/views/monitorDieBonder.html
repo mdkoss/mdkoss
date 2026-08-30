@@ -6,53 +6,60 @@
   <title>MDKOSS 贴片循环监控</title>
   <style>
     :root {
-      --bg: #071018;
-      --text: #e8f4f2;
-      --muted: #7fa39c;
-      --ok: #35d08f;
-      --warn: #ffcc66;
-      --danger: #ff5d5d;
-      --line: #1a3340;
-      --accent: #2ec4b6;
+      --bg: #1a1f26;
+      --text: #e8edf2;
+      --muted: #9aa8b5;
+      --ok: #2db87c;
+      --warn: #d4a017;
+      --danger: #e05454;
+      --line: #3d4a57;
+      --accent: #00a3a1;
+      --panel: #2a323c;
+      --mode-band: #00a3a1;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background: radial-gradient(circle at top right, #12303a 0%, var(--bg) 42%);
+      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      border-top: 3px solid var(--mode-band);
     }
     .wrap { max-width: 1280px; margin: 0 auto; padding: 20px; }
     .header {
       display: flex; justify-content: space-between; align-items: flex-end;
       gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
     }
-    .title { font-size: 24px; font-weight: 700; }
+    .title { font-size: 22px; font-weight: 700; }
     .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
     .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-    button {
+    button, .link-btn {
       border: 1px solid var(--line);
-      background: #0d1f28;
+      background: #232a33;
       color: var(--text);
-      border-radius: 8px;
+      border-radius: 4px;
       padding: 9px 14px;
       font-weight: 600;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      font-size: 13px;
     }
-    button.primary { background: rgba(46,196,182,.18); border-color: rgba(46,196,182,.45); }
-    button.danger { background: rgba(255,93,93,.14); border-color: rgba(255,93,93,.4); }
-    button:hover { filter: brightness(1.12); }
+    button.primary { background: rgba(0,163,161,.18); border-color: var(--accent); color: var(--accent); }
+    button.danger { background: rgba(224,84,84,.14); border-color: rgba(224,84,84,.45); color: var(--danger); }
+    button:hover, .link-btn:hover { filter: brightness(1.08); }
     .grid {
       display: grid;
       grid-template-columns: 1.2fr 1fr;
-      gap: 14px;
+      gap: 12px;
     }
     @media (max-width: 960px) { .grid { grid-template-columns: 1fr; } }
     .card {
-      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 4px;
       padding: 14px;
     }
     .card h3 {
@@ -63,31 +70,31 @@
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      border-radius: 999px;
+      border-radius: 4px;
       font-size: 11px;
       border: 1px solid var(--line);
       color: var(--muted);
+      font-weight: 700;
     }
-    .badge.ok { color: var(--ok); border-color: rgba(53,208,143,.4); }
-    .badge.warn { color: var(--warn); border-color: rgba(255,204,102,.4); }
-    .badge.err { color: var(--danger); border-color: rgba(255,93,93,.4); }
+    .badge.ok { color: var(--ok); border-color: rgba(45,184,124,.45); background: rgba(45,184,124,.12); }
+    .badge.warn { color: var(--warn); border-color: rgba(212,160,23,.45); background: rgba(212,160,23,.12); }
+    .badge.err { color: var(--danger); border-color: rgba(224,84,84,.45); background: rgba(224,84,84,.12); }
     .kv { display: grid; grid-template-columns: 140px 1fr; gap: 6px 10px; font-size: 13px; }
     .kv .k { color: var(--muted); }
-    .kv .v { font-family: Consolas, "Cascadia Mono", monospace; }
+    .kv .v { font-family: Consolas, "Cascadia Mono", monospace; font-weight: 700; }
     .flow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
     .step {
       padding: 6px 10px;
-      border-radius: 8px;
+      border-radius: 4px;
       border: 1px solid var(--line);
       font-size: 12px;
       color: var(--muted);
-      background: #08151c;
+      background: #151a20;
     }
     .step.active {
       color: var(--text);
-      border-color: rgba(46,196,182,.55);
-      background: rgba(46,196,182,.16);
-      box-shadow: 0 0 0 1px rgba(46,196,182,.15);
+      border-color: rgba(0,163,161,.55);
+      background: rgba(0,163,161,.16);
     }
     .stats {
       display: grid;
@@ -96,13 +103,13 @@
       margin-top: 12px;
     }
     .stat {
-      background: #08151c;
+      background: #151a20;
       border: 1px solid var(--line);
-      border-radius: 10px;
+      border-radius: 4px;
       padding: 12px;
       text-align: center;
     }
-    .stat .n { font-size: 22px; font-weight: 700; }
+    .stat .n { font-size: 22px; font-weight: 700; font-family: Consolas, monospace; }
     .stat .l { font-size: 12px; color: var(--muted); margin-top: 4px; }
     .links { margin-top: 14px; font-size: 13px; color: var(--muted); }
     .links a { color: var(--accent); text-decoration: none; margin-right: 12px; }
@@ -110,8 +117,8 @@
     .msg {
       margin-top: 10px;
       padding: 10px 12px;
-      border-radius: 8px;
-      background: #08151c;
+      border-radius: 4px;
+      background: #151a20;
       border: 1px solid var(--line);
       font-size: 13px;
       min-height: 40px;
@@ -165,6 +172,10 @@
         <div class="links">
           <a href="/indexDieBonder.html">贴片机主界面</a>
           <a href="/index.html">系统主界面</a>
+          <a href="/monitor_runtime.html">运行总览</a>
+          <a href="/monitor_io.html">IO 监控</a>
+          <a href="/debug_platform.html?deviceId=head-bond">平台示教</a>
+          <a href="/debug_machine.html">整机调试</a>
           <a href="/monitor_io.html">IO 监控</a>
           <a href="/monitor_platform.html?deviceId=head-bond">贴装头监控</a>
           <a href="/debug_platform.html?deviceId=head-bond">贴装头示教</a>

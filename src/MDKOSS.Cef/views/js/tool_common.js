@@ -154,6 +154,86 @@
     while (box.childNodes.length > 80) box.removeChild(box.lastChild);
   }
 
+  /** Industrial write confirm. Returns true if user accepts.
+   *  Policy: one-shot dangerous writes (enable/disable/move/force/delete/execute) → confirm;
+   *  continuous/high-freq (jog hold, step, serial send, query/ping) → no confirm.
+   */
+  function confirmWrite(action, detail) {
+    const msg = detail ? action + "\n\n" + detail : action;
+    return window.confirm(msg);
+  }
+
+  function toneOnline(online, fault) {
+    if (fault) return "fault";
+    if (online === true) return "ok";
+    if (online === false) return "warn";
+    return "";
+  }
+
+  function pillOnline(online) {
+    if (online === true) return '<span class="pill ok">在线</span>';
+    if (online === false) return '<span class="pill warn">离线</span>';
+    return '<span class="pill">—</span>';
+  }
+
+  /**
+   * Sticky alarm strip under tool chrome (monitor / debug).
+   * Polls GET /api/alarms every 2s.
+   */
+  function startAlarmBar(options) {
+    const opts = options || {};
+    if (document.getElementById("toolAlarmBar")) return;
+    const bar = document.createElement("div");
+    bar.id = "toolAlarmBar";
+    bar.className = "tool-alarm-bar idle";
+    bar.innerHTML =
+      '<a class="alarm-bar-link" href="/monitor_alarm.html">' +
+      '<span class="alarm-bar-dot"></span>' +
+      '<span class="alarm-bar-text" id="toolAlarmText">报警：检测中…</span>' +
+      '<span class="alarm-bar-meta" id="toolAlarmMeta"></span>' +
+      "</a>";
+    const chrome = document.getElementById("toolChrome");
+    if (chrome && chrome.parentNode) {
+      chrome.parentNode.insertBefore(bar, chrome.nextSibling);
+    } else {
+      document.body.insertBefore(bar, document.body.firstChild);
+    }
+
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/alarms");
+        const active = Number(data.activeCount ?? 0);
+        const errN = Number(data.errorCount ?? 0);
+        const warnN = Number(data.warnCount ?? 0);
+        const unacked = Number(data.unackedCount ?? 0);
+        const text = document.getElementById("toolAlarmText");
+        const meta = document.getElementById("toolAlarmMeta");
+        bar.classList.remove("idle", "ok", "warn", "fault");
+        if (active <= 0) {
+          bar.classList.add("ok");
+          if (text) text.textContent = "无活动报警";
+          if (meta) meta.textContent = "";
+        } else {
+          bar.classList.add(errN > 0 ? "fault" : "warn");
+          if (text) {
+            text.textContent =
+              "活动报警 " + active + (errN ? " · 错误 " + errN : "") + (warnN ? " · 警告 " + warnN : "");
+          }
+          if (meta) meta.textContent = unacked ? "未确认 " + unacked : "全部已确认";
+        }
+      } catch {
+        bar.classList.remove("ok", "warn", "fault");
+        bar.classList.add("idle");
+        const text = document.getElementById("toolAlarmText");
+        if (text) text.textContent = "报警接口不可用";
+      }
+    }
+
+    tick();
+    const ms = opts.intervalMs || 2000;
+    setInterval(tick, ms);
+  }
+
   global.MdkTool = {
     esc,
     field,
@@ -170,5 +250,9 @@
     deleteJson,
     toast,
     logLine,
+    confirmWrite,
+    toneOnline,
+    pillOnline,
+    startAlarmBar,
   };
 })(window);

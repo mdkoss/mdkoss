@@ -17,6 +17,10 @@
       </div>
       <a class="link-btn" href="/monitor_alarm.html">只读监控 →</a>
     </div>
+    <div class="writable-note">
+      调试写操作会影响运行态。复位 / 模拟触发前请确认现场安全。
+      <a href="/monitor_alarm.html">报警监控（只读）</a>
+    </div>
     <div class="grid alarm-dash">
       <div class="card span-4"><div class="label">活动</div><div class="value" id="vActive">—</div></div>
       <div class="card span-4"><div class="label">未确认</div><div class="value" id="vUnacked">—</div></div>
@@ -48,10 +52,11 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, fetchJson, postJson, toast, logLine } = MdkTool;
+    const { esc, field, fetchJson, postJson, toast, logLine, confirmWrite } = MdkTool;
     const logBox = document.getElementById("logBox");
 
-    async function cmd(url, label, body) {
+    async function cmd(url, label, body, needConfirm) {
+      if (needConfirm && !confirmWrite("确认执行「" + label + "」？")) return;
       try {
         const data = body != null ? await postJson(url, body) : await postJson(url);
         toast(label + " 成功", true);
@@ -64,10 +69,14 @@
       }
     }
 
-    document.getElementById("btnAckAll").onclick = () => cmd("/api/alarms/ack", "全部确认", { all: true });
-    document.getElementById("btnReset").onclick = () => cmd("/api/alarms/reset", "复位锁存");
-    document.getElementById("btnTest").onclick = () => cmd("/api/alarms/test", "模拟触发");
-    document.getElementById("btnTaskReset").onclick = () => fetch("/api/task/reset", { method: "POST" }).then(() => cmd("/api/alarms/reset", "任务+报警复位"));
+    document.getElementById("btnAckAll").onclick = () => cmd("/api/alarms/ack", "全部确认", { all: true }, true);
+    document.getElementById("btnReset").onclick = () => cmd("/api/alarms/reset", "复位锁存", null, true);
+    document.getElementById("btnTest").onclick = () => cmd("/api/alarms/test", "模拟触发", null, true);
+    document.getElementById("btnTaskReset").onclick = async () => {
+      if (!confirmWrite("确认任务复位并复位报警锁存？")) return;
+      await fetch("/api/task/reset", { method: "POST" });
+      await cmd("/api/alarms/reset", "任务+报警复位");
+    };
     document.getElementById("btnRed").onclick = () => fetch("/api/task/lamp?color=red", { method: "POST" });
     document.getElementById("btnYellow").onclick = () => fetch("/api/task/lamp?color=yellow", { method: "POST" });
     document.getElementById("btnGreen").onclick = () => fetch("/api/task/lamp?color=green", { method: "POST" });

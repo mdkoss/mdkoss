@@ -12,30 +12,67 @@
     <div class="header">
       <div>
         <div class="title">任务状态监控 <span class="pill warn">只读</span></div>
-        <div class="sub">GET /api/tasks · task.operation / task.cycle</div>
+        <div class="sub">节拍 KPI · 任务矩阵 · cycle 变量</div>
       </div>
       <a class="link-btn" href="/debug_machine.html">整机调试 →</a>
     </div>
-    <div class="grid">
-      <div class="card span-4"><div class="label">操作任务</div><div class="value" id="opState">—</div></div>
-      <div class="card span-4"><div class="label">消息</div><div class="value" id="opMsg" style="font-size:14px">—</div></div>
-      <div class="card span-4"><div class="label">灯</div><div class="value" id="opLamp">—</div></div>
+
+    <div class="readonly-note">
+      本页只读。启停 / 复位请使用
+      <a href="/debug_machine.html">整机调试</a>
+      或主界面。
+    </div>
+
+    <div class="kpi-strip">
+      <div class="kpi-card"><div class="label">操作状态</div><div class="value" id="opState" style="font-size:18px">—</div></div>
+      <div class="kpi-card"><div class="label">三色灯</div><div class="value" id="opLamp" style="font-size:18px">—</div></div>
+      <div class="kpi-card"><div class="label">周期计数</div><div class="value" id="kpiCycle">—</div></div>
+      <div class="kpi-card"><div class="label">节拍 ms</div><div class="value" id="kpiCt">—</div></div>
+      <div class="kpi-card"><div class="label">故障</div><div class="value" id="kpiFault">—</div></div>
+    </div>
+
+    <div class="grid runtime-dash">
+      <div class="card span-6">
+        <div class="section-head">
+          <h2 class="panel-title">操作消息</h2>
+        </div>
+        <div class="value" id="opMsg" style="font-size:15px;font-weight:600">—</div>
+      </div>
+      <div class="card span-6">
+        <div class="section-head">
+          <h2 class="panel-title">节拍关键量</h2>
+        </div>
+        <div class="cycle-kpis" id="cycleKpis"></div>
+      </div>
+
       <div class="card span-12">
-        <div class="label">运行时任务</div>
-        <div class="table-scroll">
-          <table>
+        <div class="section-head">
+          <h2 class="panel-title">运行时任务</h2>
+        </div>
+        <div class="status-matrix" id="taskMatrix"></div>
+        <div class="table-scroll" style="max-height:220px;margin-top:10px">
+          <table class="overview-table">
             <thead><tr><th>名称</th><th>类型</th><th>间隔 ms</th><th>状态</th></tr></thead>
             <tbody id="taskRows"><tr><td colspan="4" style="color:var(--muted)">加载中…</td></tr></tbody>
           </table>
         </div>
       </div>
+
       <div class="card span-12">
-        <div class="label">周期变量（task.cycle.*）</div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>键</th><th>值</th></tr></thead>
-            <tbody id="cycleRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
-          </table>
+        <div class="section-head">
+          <h2 class="panel-title">周期变量明细</h2>
+          <div class="view-toggle">
+            <button type="button" class="active" id="btnCycleHide">收起</button>
+            <button type="button" id="btnCycleShow">展开</button>
+          </div>
+        </div>
+        <div class="detail-block" id="cycleBlock" hidden>
+          <div class="table-scroll" style="max-height:260px">
+            <table>
+              <thead><tr><th>键</th><th>值</th></tr></thead>
+              <tbody id="cycleRows"><tr><td colspan="2" style="color:var(--muted)">—</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -44,6 +81,32 @@
   <script src="/js/tool_nav.js"></script>
   <script>
     const { esc, field, fetchJson } = MdkTool;
+
+    const HIGHLIGHT = [
+      { key: "task.cycle.count", label: "count" },
+      { key: "task.cycle.ct", label: "ct" },
+      { key: "task.cycle.cycleTimeMs", label: "cycleTimeMs" },
+      { key: "task.cycle.lastMs", label: "lastMs" },
+      { key: "task.cycle.dev.fault", label: "dev.fault" },
+      { key: "task.cycle.task.fault", label: "task.fault" },
+      { key: "task.cycle.step", label: "step" },
+      { key: "task.cycle.state", label: "state" },
+    ];
+
+    function pickVar(vars, ...keys) {
+      for (const k of keys) {
+        if (vars[k] !== undefined && vars[k] !== null && vars[k] !== "") return vars[k];
+      }
+      return null;
+    }
+
+    function toneState(state) {
+      const s = String(state || "").toLowerCase();
+      if (/run|active|ok|idle/.test(s)) return "ok";
+      if (/fault|error|alarm/.test(s)) return "fault";
+      if (/stop|pause|wait/.test(s)) return "warn";
+      return "";
+    }
 
     async function tick() {
       try {
@@ -56,7 +119,39 @@
         document.getElementById("opMsg").textContent = vars["task.operation.message"] ?? "—";
         document.getElementById("opLamp").textContent = vars["task.operation.lamp"] ?? "—";
 
+        const cycleCount = pickVar(vars, "task.cycle.count", "task.cycle.cycleCount");
+        const ct = pickVar(vars, "task.cycle.ct", "task.cycle.cycleTimeMs", "task.cycle.lastMs");
+        const df = Number(vars["task.cycle.dev.fault"] || 0);
+        const tf = Number(vars["task.cycle.task.fault"] || 0);
+        document.getElementById("kpiCycle").textContent = cycleCount == null ? "—" : String(cycleCount);
+        document.getElementById("kpiCt").textContent = ct == null ? "—" : String(ct);
+        document.getElementById("kpiFault").textContent = String(df + tf);
+
+        const kpis = document.getElementById("cycleKpis");
+        const shown = HIGHLIGHT.filter((h) => vars[h.key] !== undefined);
+        kpis.innerHTML = (shown.length ? shown : HIGHLIGHT.slice(0, 4)).map((h) => {
+          const v = vars[h.key];
+          return `<div class="fp-kpi"><div class="label">${esc(h.label)}</div><div class="value" style="font-size:16px">${esc(v == null ? "—" : v)}</div></div>`;
+        }).join("");
+
         const tasks = field(tasksData, "tasks", "Tasks") || [];
+        const matrix = document.getElementById("taskMatrix");
+        if (!tasks.length) {
+          matrix.innerHTML = '<div class="sub">（无任务）</div>';
+        } else {
+          matrix.innerHTML = tasks.map((t) => {
+            const name = t.name ?? t.Name ?? "—";
+            const type = t.type ?? t.Type ?? "—";
+            const state = t.state ?? t.State ?? "—";
+            const tone = toneState(state);
+            return `<div class="status-cell ${tone}">
+              <span class="sc-id">${esc(name)}</span>
+              <span class="sc-meta">${esc(type)} · ${esc(t.intervalMs ?? t.IntervalMs ?? "—")} ms</span>
+              <span class="sc-state">${esc(state)}</span>
+            </div>`;
+          }).join("");
+        }
+
         const tbody = document.getElementById("taskRows");
         if (!tasks.length) {
           tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">无任务</td></tr>';
@@ -64,7 +159,7 @@
           tbody.innerHTML = tasks.map((t) => `<tr>
             <td>${esc(t.name ?? t.Name)}</td>
             <td>${esc(t.type ?? t.Type)}</td>
-            <td>${esc(t.intervalMs ?? t.IntervalMs)}</td>
+            <td class="num">${esc(t.intervalMs ?? t.IntervalMs)}</td>
             <td>${esc(t.state ?? t.State)}</td>
           </tr>`).join("");
         }
@@ -77,7 +172,7 @@
           cbody.innerHTML = cycleKeys.map((k) => {
             let v = vars[k];
             if (typeof v === "object") try { v = JSON.stringify(v); } catch { v = String(v); }
-            return `<tr><td>${esc(k)}</td><td style="font-family:monospace;font-size:12px;word-break:break-all">${esc(v)}</td></tr>`;
+            return `<tr><td class="mono">${esc(k)}</td><td class="mono" style="word-break:break-all">${esc(v)}</td></tr>`;
           }).join("");
         }
       } catch (e) {
@@ -85,6 +180,18 @@
           `<tr><td colspan="4" style="color:var(--danger)">${esc(e.message)}</td></tr>`;
       }
     }
+
+    document.getElementById("btnCycleHide").onclick = () => {
+      document.getElementById("cycleBlock").hidden = true;
+      document.getElementById("btnCycleHide").classList.add("active");
+      document.getElementById("btnCycleShow").classList.remove("active");
+    };
+    document.getElementById("btnCycleShow").onclick = () => {
+      document.getElementById("cycleBlock").hidden = false;
+      document.getElementById("btnCycleShow").classList.add("active");
+      document.getElementById("btnCycleHide").classList.remove("active");
+    };
+
     tick();
     setInterval(tick, 1000);
   </script>

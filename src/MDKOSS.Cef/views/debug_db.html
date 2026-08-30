@@ -11,10 +11,13 @@
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">SQLite 数据库维护</div>
+        <div class="title">SQLite 数据库维护 <span class="pill warn">可写</span></div>
         <div class="sub" id="dbPath">加载中…</div>
       </div>
       <button type="button" class="btn primary" id="btnRefreshAll">刷新全部</button>
+    </div>
+    <div class="writable-note">
+      调试模式可写。删除排单 / 配方 / 示教点需确认；保存会写入运行时库。
     </div>
 
     <div class="stats" id="statsRow">

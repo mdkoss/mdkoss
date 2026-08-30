@@ -12,39 +12,40 @@
     <div class="header">
       <div>
         <div class="title">平台状态监控 <span class="pill warn">只读</span></div>
-        <div class="sub" id="hdrSubtitle">选择平台设备查看轴位置 / 使能 / 在线状态</div>
+        <div class="sub" id="hdrSubtitle">全部平台一览 · 选中查看各轴</div>
       </div>
       <a class="link-btn" id="lnkTeach" href="/debug_platform.html">步进示教 →</a>
     </div>
 
-    <div class="form-row" style="margin-bottom:12px">
-      <div class="form-group" style="flex:2">
-        <label>平台设备</label>
-        <select id="selPlatform"><option value="">— 选择平台 —</option></select>
-      </div>
-      <div class="form-group">
-        <label>刷新</label>
-        <div class="value" style="font-size:12px;color:var(--muted)">1s 轮询</div>
-      </div>
+    <div class="readonly-note">
+      只读监控。示教 / 点动请使用
+      <a id="lnkTeachNote" href="/debug_platform.html">平台示教</a>。
     </div>
 
-    <div class="grid">
-      <div class="card span-4">
-        <div class="label">设备状态</div>
-        <div class="value" id="devState">—</div>
-      </div>
-      <div class="card span-4">
-        <div class="label">类型</div>
-        <div class="value" id="devType">—</div>
-      </div>
-      <div class="card span-4">
-        <div class="label">驱动</div>
-        <div class="value" id="devDriver">—</div>
-      </div>
+    <div class="kpi-strip" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+      <div class="kpi-card"><div class="label">平台数</div><div class="value" id="kpiPlat">0</div></div>
+      <div class="kpi-card"><div class="label">在线</div><div class="value" id="kpiOnline">0</div></div>
+      <div class="kpi-card"><div class="label">总轴数</div><div class="value" id="kpiAxes">0</div></div>
+      <div class="kpi-card"><div class="label">使能轴</div><div class="value" id="kpiEn">0</div></div>
+    </div>
+
+    <div class="grid runtime-dash">
       <div class="card span-12">
-        <div class="label">轴状态（platformAxes）</div>
+        <div class="section-head">
+          <h2 class="panel-title">平台一览</h2>
+        </div>
+        <div class="status-matrix" id="platMatrix"></div>
+      </div>
+
+      <div class="card span-12">
+        <div class="section-head">
+          <h2 class="panel-title">轴状态 <span class="hint" id="fpTitle">未选择</span></h2>
+          <div class="form-group" style="margin:0;min-width:200px">
+            <select id="selPlatform"><option value="">— 选择平台 —</option></select>
+          </div>
+        </div>
         <div class="table-scroll">
-          <table>
+          <table class="overview-table">
             <thead>
               <tr><th>轴</th><th>驱动</th><th>在线</th><th>使能</th><th>指令位</th><th>编码位</th><th>速度</th><th>状态位</th></tr>
             </thead>
@@ -55,59 +56,101 @@
     </div>
   </div>
   <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum } = MdkTool;
-    const PLATFORM = new Set(["platform","x","xy","xyz","xyzu","xyzuv","xyzuvw"]);
+    const { esc, field, qs, fetchJson, isPlatformType, axisStatusOf, renderAxisFlags, flagOn, fmtAxisNum, pillOnline } = MdkTool;
     const sel = document.getElementById("selPlatform");
-    const lnkTeach = document.getElementById("lnkTeach");
-    const q = new URLSearchParams(location.search);
-    let preferred = q.get("deviceId") || "";
+    let preferred = qs("deviceId", "");
+    let lastDevices = {};
 
-    function fillSelect(devices){
-      const cur = sel.value || preferred;
-      const opts = Object.entries(devices||{})
-        .filter(([,d])=>PLATFORM.has(String(field(d,"type","Type")||"").toLowerCase()))
-        .map(([id,d])=>{
-          const name = field(d,"name","Name") || id;
-          return `<option value="${esc(id)}">${esc(name)} (${esc(id)})</option>`;
+    function setTeach(id) {
+      const href = id ? `/debug_platform.html?deviceId=${encodeURIComponent(id)}` : "/debug_platform.html";
+      document.getElementById("lnkTeach").href = href;
+      document.getElementById("lnkTeachNote").href = href;
+    }
+
+    function platformList(devices) {
+      return Object.entries(devices || {})
+        .filter(([, d]) => isPlatformType(field(d, "type", "Type")))
+        .map(([id, d]) => {
+          const axes = field(d, "platformAxes", "PlatformAxes") || [];
+          const list = Array.isArray(axes) ? axes : Object.entries(axes).map(([letter, ax]) => ({ letter, ...ax }));
+          let onlineN = 0, enN = 0;
+          for (const ax of list) {
+            const online = ax.driverOnline ?? ax.DriverOnline ?? ax.driverConnected ?? ax.DriverConnected;
+            if (online === true) onlineN++;
+            const st = axisStatusOf(ax);
+            if (st && flagOn(st, "servoOn")) enN++;
+          }
+          const up = field(d, "driverConnected", "DriverConnected") === true;
+          return {
+            id,
+            name: field(d, "name", "Name") || id,
+            type: field(d, "type", "Type") || "—",
+            state: field(d, "state", "State") || "—",
+            up,
+            axisCount: list.length,
+            onlineN,
+            enN,
+            d,
+            list,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name, "zh"));
+    }
+
+    function renderMatrix(list) {
+      document.getElementById("kpiPlat").textContent = String(list.length);
+      document.getElementById("kpiOnline").textContent = String(list.filter((p) => p.up).length);
+      document.getElementById("kpiAxes").textContent = String(list.reduce((s, p) => s + p.axisCount, 0));
+      document.getElementById("kpiEn").textContent = String(list.reduce((s, p) => s + p.enN, 0));
+      const box = document.getElementById("platMatrix");
+      if (!list.length) {
+        box.innerHTML = '<div class="sub">（无平台设备）</div>';
+        return;
+      }
+      box.innerHTML = list.map((p) => {
+        const tone = p.up ? "ok" : "warn";
+        return `<button type="button" class="status-cell ${tone}" data-id="${esc(p.id)}" style="cursor:pointer;text-align:left;font:inherit">
+          <span class="sc-id">${esc(p.id)}</span>
+          <span class="sc-meta">${esc(p.name)} · ${esc(String(p.type))}</span>
+          <span class="sc-state">${p.up ? "在线" : "离线"} · ${p.axisCount} 轴 · 使能 ${p.enN}</span>
+        </button>`;
+      }).join("");
+      box.querySelectorAll("button[data-id]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          sel.value = btn.getAttribute("data-id");
+          renderDetail();
         });
-      sel.innerHTML = '<option value="">— 选择平台 —</option>' + opts.join("");
-      if (cur && [...sel.options].some(o=>o.value===cur)) sel.value = cur;
-      else if (sel.options.length > 1) sel.selectedIndex = 1;
+      });
+    }
+
+    function fillSelect(list) {
+      const cur = sel.value || preferred;
+      sel.innerHTML = '<option value="">— 选择平台 —</option>' +
+        list.map((p) => `<option value="${esc(p.id)}">${esc(p.name)} (${esc(p.id)})</option>`).join("");
+      if (cur && [...sel.options].some((o) => o.value === cur)) sel.value = cur;
+      else if (list.length) sel.selectedIndex = 1;
       preferred = "";
-      updateTeachLink();
     }
 
-    function updateTeachLink(){
+    function renderDetail() {
       const id = sel.value;
-      if (!lnkTeach) return;
-      lnkTeach.href = id ? `/debug_platform.html?deviceId=${encodeURIComponent(id)}` : "/debug_platform.html";
-    }
-
-    function renderDevice(id, devices){
-      updateTeachLink();
-      const d = devices?.[id];
-      if (!d) {
-        document.getElementById("hdrSubtitle").textContent = "未找到设备";
-        document.getElementById("devState").textContent = "—";
-        document.getElementById("devType").textContent = "—";
-        document.getElementById("devDriver").textContent = "—";
+      setTeach(id);
+      const list = platformList(lastDevices);
+      const p = list.find((x) => x.id === id);
+      if (!p) {
+        document.getElementById("fpTitle").textContent = "未选择";
         document.getElementById("axisRows").innerHTML = '<tr><td colspan="8" style="color:var(--muted)">无数据</td></tr>';
         return;
       }
-      const name = field(d,"name","Name") || id;
-      document.getElementById("hdrSubtitle").textContent = `${name} · ${id}`;
-      document.getElementById("devState").textContent = String(field(d,"state","State") || "—");
-      document.getElementById("devType").textContent = String(field(d,"type","Type") || "—");
-      document.getElementById("devDriver").textContent = String(field(d,"driverId","DriverId") || field(d,"driverType","DriverType") || "—");
-
-      const axes = field(d,"platformAxes","PlatformAxes") || [];
-      const list = Array.isArray(axes) ? axes : Object.entries(axes).map(([letter,ax])=>({letter,...ax}));
-      if (!list.length) {
+      document.getElementById("fpTitle").textContent = `${p.name} · ${p.id} · ${p.state}`;
+      document.getElementById("hdrSubtitle").textContent = `已选 ${p.name}`;
+      if (!p.list.length) {
         document.getElementById("axisRows").innerHTML = '<tr><td colspan="8" style="color:var(--muted)">无 platformAxes</td></tr>';
         return;
       }
-      document.getElementById("axisRows").innerHTML = list.map(ax=>{
+      document.getElementById("axisRows").innerHTML = p.list.map((ax) => {
         const letter = ax.axisLetter ?? ax.AxisLetter ?? ax.letter ?? ax.Letter ?? ax.axis ?? ax.Axis ?? "—";
         const driver = ax.driverId ?? ax.DriverId ?? "—";
         const axisId = ax.axisDeviceId ?? ax.AxisDeviceId ?? "";
@@ -118,29 +161,32 @@
         const enc = st ? fmtAxisNum(st.encPosition ?? st.EncPosition) : (ax.encPosition ?? ax.EncPosition ?? "—");
         const vel = st ? fmtAxisNum(st.velocity ?? st.Velocity) : (ax.velocity ?? ax.Velocity ?? ax.speed ?? "—");
         return `<tr>
-          <td>${esc(letter)}${axisId ? ` <span style="color:var(--muted);font-size:11px">${esc(axisId)}</span>` : ""}</td><td>${esc(driver)}</td>
-          <td>${online===true?"是":online===false?"否":esc(online)}</td>
-          <td>${enabled===true?"是":enabled===false?"否":esc(enabled)}</td>
-          <td>${esc(pos)}</td><td>${esc(enc)}</td><td>${esc(vel)}</td>
+          <td><strong>${esc(letter)}</strong>${axisId ? ` <span style="color:var(--muted);font-size:11px">${esc(axisId)}</span>` : ""}</td>
+          <td class="mono">${esc(driver)}</td>
+          <td>${pillOnline(online === true ? true : online === false ? false : null)}</td>
+          <td>${enabled === true ? '<span class="pill ok">ON</span>' : enabled === false ? '<span class="pill-off">OFF</span>' : esc(enabled)}</td>
+          <td class="num">${esc(pos)}</td><td class="num">${esc(enc)}</td><td class="num">${esc(vel)}</td>
           <td><div class="flag-row">${renderAxisFlags(st)}</div></td>
         </tr>`;
       }).join("");
     }
 
-    sel.addEventListener("change", () => tick());
+    sel.addEventListener("change", renderDetail);
 
-    async function tick(){
-      try{
-        const data = await (await fetch("/api/status",{cache:"no-store"})).json();
-        const devices = field(data,"devices","Devices") || {};
-        fillSelect(devices);
-        if (sel.value) renderDevice(sel.value, devices);
-      }catch{
+    async function tick() {
+      try {
+        const data = await fetchJson("/api/status");
+        lastDevices = field(data, "devices", "Devices") || {};
+        const list = platformList(lastDevices);
+        fillSelect(list);
+        renderMatrix(list);
+        renderDetail();
+      } catch {
         document.getElementById("hdrSubtitle").textContent = "无法连接 /api/status";
       }
     }
-    tick(); setInterval(tick, 1000);
+    tick();
+    setInterval(tick, 1000);
   </script>
-  <script src="/js/tool_nav.js"></script>
 </body>
 </html>
