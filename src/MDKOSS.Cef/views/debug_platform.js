@@ -629,11 +629,12 @@
       : "请选择平台设备";
     $("warnBar").classList.toggle("hidden", !state.platformId || state.isRunning !== false);
     const lnk = $("lnkMonitor");
-    if (lnk) {
-      lnk.href = state.platformId
-        ? "/monitor_platform.html?deviceId=" + encodeURIComponent(state.platformId)
-        : "/monitor_platform.html";
-    }
+    const href = state.platformId
+      ? "/monitor_platform.html?deviceId=" + encodeURIComponent(state.platformId)
+      : "/monitor_platform.html";
+    if (lnk) lnk.href = href;
+    const note = $("lnkMonitorNote");
+    if (note) note.href = href;
   }
 
   async function loadPlatforms() {

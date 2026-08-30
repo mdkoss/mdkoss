@@ -115,7 +115,11 @@ index ──popup_*──► monitor_* ──► debug_*
 | `debug_machine.html` | 整机启停复位（危险确认） |
 | `debug_alarm.html` | 报警确认 / 复位 / 模拟触发（确认） |
 
-风格：`theme-debug` + 琥珀警示带；危险写操作二次确认。
+风格：`theme-debug` + 琥珀警示带；页头统一「可写」徽章 + `writable-note`。
+
+确认策略（`MdkTool.confirmWrite`）：
+- **需确认**：使能/去使能、绝对定位、强制 IO、驱动位写、启停复位、报警复位/模拟、删除、MySQL Execute/断开、相机关闭、视觉 run、串口关闭
+- **无需确认**：点动按住、步进、发送/Query/Ping、状态刷新
 
 ---
 

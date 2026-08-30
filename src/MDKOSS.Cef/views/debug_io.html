@@ -238,7 +238,9 @@
       const cur = r ? parseBoolVal(r.valStr) : null;
       const next = cur === true ? false : true;
       const nextLabel = next ? "ON" : "OFF";
-      if (!confirm(`确认强制输出？\n设备: ${devId}\n点位: ${alias}\n写入: ${nextLabel}`)) return;
+      if (!(window.MdkTool && MdkTool.confirmWrite
+        ? MdkTool.confirmWrite("确认强制输出？", `设备: ${devId}\n点位: ${alias}\n写入: ${nextLabel}`)
+        : confirm(`确认强制输出？\n设备: ${devId}\n点位: ${alias}\n写入: ${nextLabel}`))) return;
       ioMsg.textContent = "正在写入…";
       ioMsg.classList.remove("err");
       try {
@@ -285,6 +287,7 @@
     tick();
     setInterval(tick, 1000);
   </script>
+  <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
 </body>
 </html>

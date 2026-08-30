@@ -230,9 +230,12 @@
 
     function updateMonitorLink() {
       const id = axisId();
-      document.getElementById("lnkMonitor").href = id
+      const href = id
         ? `/monitor_axis.html?deviceId=${encodeURIComponent(id)}`
         : "/monitor_axis.html";
+      document.getElementById("lnkMonitor").href = href;
+      const note = document.getElementById("lnkMonitorNote");
+      if (note) note.href = href;
     }
 
     function setPoll(ms) {

@@ -59,10 +59,10 @@
   <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
   <script>
-    const { esc, field, fetchJson, toast } = MdkTool;
+    const { esc, field, fetchJson, toast, confirmWrite } = MdkTool;
 
     async function cmd(path, label, needConfirm) {
-      if (needConfirm && !confirm("确认执行「" + label + "」？")) return;
+      if (needConfirm && !confirmWrite("确认执行「" + label + "」？", path)) return;
       try {
         const res = await fetch(path, { method: "POST" });
         const data = await res.json().catch(() => ({}));

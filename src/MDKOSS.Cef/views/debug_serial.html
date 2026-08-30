@@ -323,6 +323,10 @@
     }
 
     async function closePort() {
+      if (window.MdkTool && MdkTool.confirmWrite
+        && !MdkTool.confirmWrite("确认关闭串口？", "设备: " + getDeviceId())) {
+        return;
+      }
       try {
         await apiCall("close", "POST", { deviceId: getDeviceId() });
         updateStatus(false);
@@ -559,6 +563,7 @@
     updateHexHint();
     els.lastUpdate.textContent = new Date().toLocaleTimeString();
   </script>
+  <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
 </body>
 </html>

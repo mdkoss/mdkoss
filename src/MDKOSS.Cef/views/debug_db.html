@@ -290,7 +290,9 @@
 
   async function deleteOrder() {
     const id = document.getElementById("orderId").value.trim();
-    if (!id || !confirm("删除排单 " + id + "？")) return;
+    if (!id || !(window.MdkTool && MdkTool.confirmWrite
+      ? MdkTool.confirmWrite("确认删除排单？", "ID: " + id)
+      : confirm("删除排单 " + id + "？"))) return;
     await api("/api/orders/" + encodeURIComponent(id), { method: "DELETE" });
     clearOrderForm();
     log("已删除排单: " + id, true);
@@ -378,7 +380,9 @@
 
   async function deleteRecipe() {
     const id = document.getElementById("recipeId").value.trim();
-    if (!id || !confirm("删除配方 " + id + "？")) return;
+    if (!id || !(window.MdkTool && MdkTool.confirmWrite
+      ? MdkTool.confirmWrite("确认删除配方？", "ID: " + id)
+      : confirm("删除配方 " + id + "？"))) return;
     await api("/api/recipe/" + encodeURIComponent(id), { method: "DELETE" });
     selectedRecipeId = null;
     document.getElementById("recipeId").value = "";
@@ -491,7 +495,9 @@
     const platformId = document.getElementById("teachPlatform").value;
     const file = document.getElementById("teachFile").value || "default";
     const pointId = document.getElementById("teachPointId").value.trim();
-    if (!platformId || !pointId || !confirm("删除点 " + pointId + "？")) return;
+    if (!platformId || !pointId || !(window.MdkTool && MdkTool.confirmWrite
+      ? MdkTool.confirmWrite("确认删除示教点？", "平台: " + platformId + "\n点: " + pointId)
+      : confirm("删除点 " + pointId + "？"))) return;
     await api("/api/teach/point?platformId=" + encodeURIComponent(platformId)
       + "&file=" + encodeURIComponent(file)
       + "&pointId=" + encodeURIComponent(pointId), { method: "DELETE" });
@@ -571,6 +577,7 @@
   refreshAll();
 })();
 </script>
+  <script src="/js/tool_common.js"></script>
   <script src="/js/tool_nav.js"></script>
 </body>
 </html>
