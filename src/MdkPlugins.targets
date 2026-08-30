@@ -19,6 +19,7 @@
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Gts\MDKOSS.Drivers.Gts.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\MDKOSS.Drivers.S7.csproj" />
+    <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Drivers.Boards\MDKOSS.Drivers.Boards.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\MDKOSS.Extensions.Serial.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\MDKOSS.Extensions.Tcp.csproj" />
     <MdkPluginProject Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
@@ -34,6 +35,7 @@
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Gts\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Gts.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Dmc\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Dmc.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.S7\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.S7.dll" />
+    <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Drivers.Boards\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Drivers.Boards.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Serial\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Serial.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Tcp\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Tcp.dll" />
     <MdkPluginAssembly Include="$(MdkPluginsRoot)MDKOSS.Extensions.Mysql\bin\$(Configuration)\$(TargetFramework)\MDKOSS.Extensions.Mysql.dll" />

@@ -34,6 +34,9 @@ public sealed class DriverFactoryTests
         Assert.True(DriverFactory.IsSupported("modbus"));
         Assert.Contains("modbus", DriverFactory.RegisteredTypes);
         Assert.True(DriverFactory.IsSupported("modbus-tcp"));
+        Assert.True(DriverFactory.IsSupported("zmc"));
+        Assert.True(DriverFactory.IsSupported("gtn"));
+        Assert.Contains("zmc", DriverFactory.RegisteredTypes);
     }
 
     [Fact]
@@ -42,6 +45,7 @@ public sealed class DriverFactoryTests
         Assert.Contains("driver-sim", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("driver-dmc", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("driver-s7", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
+        Assert.Contains("driver-boards", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("modserver", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("serial", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);
         Assert.Contains("tcp", MDKOSS.Extensions.MdkExtensionHost.RegisteredIds);

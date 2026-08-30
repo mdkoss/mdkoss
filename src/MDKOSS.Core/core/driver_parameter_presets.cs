@@ -16,7 +16,11 @@ public static class DriverParameterPresets
 
     /// <summary>Known driver types that have a default JSON template.</summary>
     public static IReadOnlyList<string> KnownTypes { get; } =
-        ["sim", "vio", "gts", "dmc"];
+    [
+        "sim", "vio", "gts", "dmc", "s7", "s7-1200",
+        "zmc", "zmotion", "adt", "mpc", "emc", "gtn",
+        "adlink", "advantech", "galil", "inovance",
+    ];
 
     /// <summary>Raw default parameters JSON for <paramref name="type"/> (empty object when unknown).</summary>
     public static string DefaultJson(string? type) =>
@@ -26,6 +30,16 @@ public static class DriverParameterPresets
             "vio" => VioJson,
             "gts" => GtsJson,
             "dmc" => DmcJson,
+            "s7" or "s7-1200" => S7Json,
+            "zmc" or "zmotion" => BoardJson("zmc", "0", "正运动 ZMC"),
+            "adt" => BoardJson("adt", "0", "众为兴 ADT"),
+            "mpc" => BoardJson("mpc", "0", "摩信 MPC"),
+            "emc" => BoardJson("emc", "0", "雷赛 EtherCAT"),
+            "gtn" => BoardJson("gtn", "1", "固高 GTN"),
+            "adlink" => BoardJson("adlink", "0", "凌华 ADLINK"),
+            "advantech" => BoardJson("advantech", "0", "研华 PCI"),
+            "galil" => BoardJson("galil", "0", "Galil DMC"),
+            "inovance" => BoardJson("inovance", "0", "汇川 EtherCAT"),
             _ => "{}",
         };
 
@@ -120,6 +134,30 @@ public static class DriverParameterPresets
           "resetOnInit": "false",
           "sevonActiveLow": "true",
           "note": "DMC motion card"
+        }
+        """;
+
+    public const string S7Json =
+        """
+        {
+          "host": "",
+          "rack": "0",
+          "slot": "1",
+          "cpu": "S71200",
+          "simulate": "true",
+          "ioBitBase": "0",
+          "note": "Siemens S7 IO"
+        }
+        """;
+
+    private static string BoardJson(string type, string ioBitBase, string note) =>
+        $$"""
+        {
+          "card": "0",
+          "simulate": "true",
+          "ioBitBase": "{{ioBitBase}}",
+          "ip": "",
+          "note": "{{note}} ({{type}})"
         }
         """;
 }

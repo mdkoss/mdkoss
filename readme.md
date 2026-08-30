@@ -67,6 +67,8 @@ mdkoss/
     ├── MDKOSS.Drivers.Sim/       # sim 驱动插件
     ├── MDKOSS.Drivers.Gts/       # gts 驱动插件
     ├── MDKOSS.Drivers.Dmc/       # 雷赛 DMC 驱动插件
+    ├── MDKOSS.Drivers.S7/        # 西门子 S7 IO
+    ├── MDKOSS.Drivers.Boards/    # 正运动 / 众为兴 / 摩信 / EtherCAT 等
     ├── MDKOSS.Extensions.Serial/ # serialdev
     ├── MDKOSS.Extensions.Tcp/    # tcpdev
     ├── MDKOSS.Extensions.Mysql/  # mysqldev

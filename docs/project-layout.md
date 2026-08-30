@@ -9,6 +9,8 @@ src/
 ├── MDKOSS.Drivers.Sim/          # sim
 ├── MDKOSS.Drivers.Gts/          # gts
 ├── MDKOSS.Drivers.Dmc/          # LTDMC 绑定
+├── MDKOSS.Drivers.S7/           # 西门子 S7 IO
+├── MDKOSS.Drivers.Boards/       # 正运动/众为兴/摩信/EtherCAT 等 type（默认仿真）
 ├── MDKOSS.Extensions.Serial/
 ├── MDKOSS.Extensions.Tcp/
 ├── MDKOSS.Extensions.Mysql/
@@ -18,7 +20,7 @@ src/
 ├── MDKOSS.Cef/
 ├── MDKOSS.Cef.Extensions/       # 主界面监控组态（控件扩展包 + 布局 API）
 ├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
-├── MDKOSS.UI.WPF/               # Prism + WPF 主界面宿主
+├── MDKOSS.UI.WPF/               # Prism + WPF 主界面壳
 ├── MDKOSS.Tools.Calib/          # WPF 标定工具（Flow / MotionTask）
 ├── MDKOSS.Sample/               # SampleExt 扩展示例宿主
 ├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
@@ -41,7 +43,9 @@ src/
 |------|------|-----------|
 | `MDKOSS.Drivers.Sim` | `sim` | `SimDriverBootstrap` |
 | `MDKOSS.Drivers.Gts` | `gts` | `GtsDriverBootstrap` |
-| `MDKOSS.Drivers.Dmc` | （待 DrvDmc） | `DmcDriverBootstrap` |
+| `MDKOSS.Drivers.Dmc` | `dmc` | `DmcDriverBootstrap` |
+| `MDKOSS.Drivers.S7` | `s7` | `S7DriverBootstrap` |
+| `MDKOSS.Drivers.Boards` | `zmc` / `adt` / `mpc` / … | `BoardDriverBootstrap` |
 
 ## 设备扩展
 

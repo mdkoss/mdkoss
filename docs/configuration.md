@@ -47,6 +47,8 @@
 | `vio` | `DrvSim`（同插件注册） | 虚拟 IO 卡；默认参数 `inBits=128` / `outBits=128` |
 | `gts` | `DrvGts`（`MDKOSS.Drivers.Gts`） | GTS 运动卡驱动（gts.dll） |
 | `dmc` | `DrvDmc`（`MDKOSS.Drivers.Dmc`） | 雷赛 LTDMC；GPIO 地址同 GTS（`di.gpi.bit.n` / `do.gpo.bit.n`） |
+| `s7` / `s7-1200` | `DrvS7`（`MDKOSS.Drivers.S7`） | 西门子 S7 IO（非运动卡） |
+| `zmc` / `zmotion` / `adt` / `mpc` / `emc` / `gtn` / `adlink` / `advantech` / `galil` / `inovance` | `SimulatedCardDriver`（`MDKOSS.Drivers.Boards`） | 市面常用卡 type；默认仿真，真卡 DLL 用户自备。见 [drivers.md](./drivers.md) |
 
 各类型默认 `parameters` JSON 见 `DriverParameterPresets`（Config.Wpf「重置模板」/新建 Type 切换会写入）：
 
@@ -56,6 +58,8 @@
 | `vio` | `inBits=128` / `outBits=128` / `ioBitBase` / `model` / `note` |
 | `gts` | `cardNo` / `channel` / `openParam` / `resetOnInit` / `configPath` / `note` |
 | `dmc` | `card` / `configPath` / `resetOnInit` / `sevonActiveLow` / `note` |
+| `s7` / `s7-1200` | `host` / `rack` / `slot` / `cpu` / `simulate` / `ioBitBase` / `note` |
+| `zmc` / `zmotion` / `adt` / `mpc` / `emc` / `gtn` / `adlink` / `advantech` / `galil` / `inovance` | `card` / `simulate` / `ioBitBase` / `ip` / `note` |
 
 扩展新驱动：新建 `src/MDKOSS.Drivers.Xxx`，实现 `IDriver` + `IMdkExtension`（`registration.Driver`），宿主调用 `XxxDriverBootstrap.Register()`；并在 `DriverParameterPresets` 增加对应默认 JSON。
 
