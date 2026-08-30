@@ -1373,6 +1373,18 @@ public sealed class MdkRuntime : IDisposable
             Vars.Snapshot());
     }
 
+    /// <summary>Looks up a registered task by config name.</summary>
+    public bool TryGetTask(string name, out MTaskBase? task)
+    {
+        task = null;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        return _tasks.TryGetValue(name.Trim(), out task);
+    }
+
     /// <summary>Exposes task state for WinForms and monitoring tools.</summary>
     public IReadOnlyList<TaskSnapshot> GetTaskSnapshots()
     {

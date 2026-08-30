@@ -73,6 +73,17 @@ public sealed class FlowInterpreter
         PublishStatus();
     }
 
+    /// <summary>Aborts the current run and returns to idle (does not re-init locals).</summary>
+    public void Halt()
+    {
+        _waitUntilUtc = null;
+        _stack.Clear();
+        _whileActive.Clear();
+        _pc = null;
+        _state = FlowRunState.Idle;
+        PublishStatus();
+    }
+
     /// <summary>Execute up to <paramref name="maxSteps"/> nodes, stopping on delay/end/fault.</summary>
     public void Pump(int maxSteps = 256)
     {

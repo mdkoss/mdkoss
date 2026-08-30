@@ -5,7 +5,7 @@
 ## 分层
 
 ```text
-宿主（Sample / Cef.Sample / UI.WPF / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Modbus / Sample.Tools / Config.Wpf）
+宿主（Sample / Cef.Sample / UI.WPF / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Modbus / Sample.Tools / Config.Wpf / Tools.Calib）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 DiscoverAndRegister）
@@ -34,6 +34,7 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | `MDKOSS.Sample.Modbus` | Modbus IDriver 联调（默认 200 Holding） |
 | `MDKOSS.Sample.Tools` | 设备组件调试（轴 / IO / 串口 / TCP / 相机 / 视觉 / MySQL 等） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
+| `MDKOSS.Tools.Calib` | WPF 标定工具（配置加载；FlowTask 可编辑或继承 MotionTask） |
 | `MDKOSS.Iec61131` | Flow / 变量 / GPIO → IEC 61131-3（SCL + PLCopen XML） |
 | `MDKOSS.Sample.Iec61131` | 工位节拍示例 + 导出结果 |
 
@@ -49,6 +50,7 @@ Drivers.* / Extensions.*  （插件 DLL，构建写入 plugins/，运行时 Disc
 | [MDKOSS.Sample.Pnp](MDKOSS.Sample.Pnp/README.md) | 拾取放置 |
 | [MDKOSS.Sample.Modbus](MDKOSS.Sample.Modbus/README.md) | Modbus TCP Master Holding 联调 |
 | [MDKOSS.Sample.Tools](MDKOSS.Sample.Tools/README.md) | 设备组件调试入口 |
+| [MDKOSS.Tools.Calib](MDKOSS.Tools.Calib/README.md) | WPF 标定工具 |
 | [MDKOSS.Sample.Iec61131](MDKOSS.Sample.Iec61131/README.md) | Flow 工位节拍导出 IEC 61131 |
 
 各宿主 / 扩展若带 `README.md`，以项目内说明为准。

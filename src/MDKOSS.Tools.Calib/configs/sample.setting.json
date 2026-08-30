@@ -1,0 +1,117 @@
+{
+  "projectName": "标定工具",
+  "machineType": "Calib",
+  "monitoringPrefix": "http://127.0.0.1:5092/",
+  "cycleMs": 50,
+  "databasePath": "data/mdk.db",
+  "drivers": [
+    {
+      "id": "sim1",
+      "type": "sim",
+      "enabled": true,
+      "parameters": {
+        "ip": "127.0.0.1",
+        "port": "5000",
+        "card": "0",
+        "model": "VirtualCard",
+        "inBits": "32",
+        "outBits": "32",
+        "ioBitBase": "0",
+        "note": "仿真驱动"
+      }
+    }
+  ],
+  "devices": [
+    {
+      "id": "gpio1",
+      "name": "主 IO",
+      "type": "gpio",
+      "enabled": true,
+      "parameters": {
+        "in.startButton": "sim1|di.gpi.bit.0|启动",
+        "out.ready": "sim1|do.gpo.bit.3|就绪"
+      }
+    }
+  ],
+  "axes": [
+    {
+      "id": "axis-x",
+      "name": "X 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": { "axis": "0" }
+    },
+    {
+      "id": "axis-y",
+      "name": "Y 轴",
+      "type": "linear",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": { "axis": "1" }
+    }
+  ],
+  "platforms": [
+    {
+      "id": "platform-xy",
+      "name": "XY 平台",
+      "type": "xy",
+      "enabled": true,
+      "parameters": {
+        "axis.X": "axis-x",
+        "axis.Y": "axis-y"
+      }
+    }
+  ],
+  "tasks": [
+    {
+      "name": "calib-axis-offset",
+      "type": "calib.axisoffset",
+      "driverId": "sim1",
+      "intervalMs": 80,
+      "parameters": {
+        "calib": "true",
+        "displayName": "轴偏置标定",
+        "group": "轴",
+        "axisDeviceId": "axis-x",
+        "expectedPos": "10",
+        "settleTicks": "3"
+      }
+    },
+    {
+      "name": "calib-ninepoint",
+      "type": "calib.ninepoint",
+      "driverId": "sim1",
+      "intervalMs": 80,
+      "parameters": {
+        "calib": "true",
+        "displayName": "九点标定",
+        "group": "视觉",
+        "platformDeviceId": "platform-xy",
+        "originX": "0",
+        "originY": "0",
+        "pitch": "5",
+        "settleTicks": "2",
+        "maxResidual": "0.5"
+      }
+    },
+    {
+      "name": "calib-platform-flow",
+      "type": "flow",
+      "intervalMs": 50,
+      "parameters": {
+        "calib": "true",
+        "displayName": "平台 Flow 标定",
+        "group": "流程",
+        "loop": "false",
+        "autoStart": "false",
+        "flowFile": "configs/flows/platform-xy.flow.json"
+      }
+    }
+  ],
+  "vars": {
+    "machine.name": "标定工具",
+    "vision.x": 0,
+    "vision.y": 0
+  }
+}

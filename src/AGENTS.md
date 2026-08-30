@@ -9,7 +9,7 @@
 ## 分层与依赖
 
 ```
-宿主（Sample / Cef.Sample / UI.WPF / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Tools / Config.Wpf）
+宿主（Sample / Cef.Sample / UI.WPF / Sample.DieBonder / Sample.Dispenser / Sample.Pnp / Sample.Tools / Config.Wpf / Tools.Calib）
   → Core + Extensions
       ↑
 Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
@@ -36,6 +36,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 | `MDKOSS.Sample.Modbus` | Modbus IDriver 联调宿主（默认 200 Holding Register） |
 | `MDKOSS.Sample.Tools` | 设备组件调试宿主（轴 / IO / 串口 / TCP / 相机 / 视觉 / MySQL 等） |
 | `MDKOSS.Config.Wpf` | 离线配置编辑器 |
+| `MDKOSS.Tools.Calib` | WPF 标定工具（FlowTask 可编辑 / MotionTask 代码实现） |
 | `MDKOSS.Iec61131` | Flow 任务 / 变量 / GPIO 导出为 IEC 61131-3 |
 | `MDKOSS.Sample.Iec61131` | 工位节拍 IEC 导出示例 |
 

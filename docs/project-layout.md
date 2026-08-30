@@ -19,6 +19,7 @@ src/
 ├── MDKOSS.Cef.Extensions/       # 主界面监控组态（控件扩展包 + 布局 API）
 ├── MDKOSS.Cef.Sample/           # 通用 CEF 宿主
 ├── MDKOSS.UI.WPF/               # Prism + WPF 主界面宿主
+├── MDKOSS.Tools.Calib/          # WPF 标定工具（Flow / MotionTask）
 ├── MDKOSS.Sample/               # SampleExt 扩展示例宿主
 ├── MDKOSS.Sample.DieBonder/     # 半导体贴片机 Demo 宿主
 ├── MDKOSS.Sample.Dispenser/

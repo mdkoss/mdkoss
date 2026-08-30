@@ -18,13 +18,17 @@ public sealed class FlowTask : MTaskBase
         FlowDocument document,
         MVarStore vars,
         IFlowRuntimeHost? host = null,
-        bool loop = true)
+        bool loop = true,
+        bool autoStart = true)
         : base(name, intervalMs)
     {
         _vars = vars;
         _loop = loop;
         _interpreter = new FlowInterpreter(document, name, vars, host);
-        _interpreter.Reset();
+        if (autoStart)
+        {
+            _interpreter.Reset();
+        }
     }
 
     public FlowRunState FlowState => _interpreter.State;
@@ -42,8 +46,17 @@ public sealed class FlowTask : MTaskBase
         var name = string.IsNullOrWhiteSpace(config.Name) ? "flow" : config.Name.Trim();
         if (!config.Parameters.TryGetValue("flowJson", out var json) || string.IsNullOrWhiteSpace(json))
         {
-            // allow empty → empty start/end document
-            json = FlowDocument.CreateEmpty().ToJson();
+            if (config.Parameters.TryGetValue("flowFile", out var flowFile)
+                && !string.IsNullOrWhiteSpace(flowFile)
+                && TryReadFlowFile(flowFile, out var fileJson))
+            {
+                json = fileJson;
+            }
+            else
+            {
+                // allow empty → empty start/end document
+                json = FlowDocument.CreateEmpty().ToJson();
+            }
         }
 
         if (!FlowDocument.TryParse(json, out var doc, out var parseError))
@@ -64,7 +77,28 @@ public sealed class FlowTask : MTaskBase
             loop = loopParsed;
         }
 
-        return new FlowTask(name, config.IntervalMs, doc, vars, host, loop);
+        var autoStart = true;
+        if (config.Parameters.TryGetValue("autoStart", out var autoRaw)
+            && bool.TryParse(autoRaw, out var autoParsed))
+        {
+            autoStart = autoParsed;
+        }
+
+        return new FlowTask(name, config.IntervalMs, doc, vars, host, loop, autoStart);
+    }
+
+    /// <summary>Restarts the interpreter so an on-demand flow can run again.</summary>
+    public void Reset(bool reinitializeVariables = true)
+    {
+        _interpreter.Reset(reinitializeVariables);
+        State = MTaskState.Idle;
+    }
+
+    /// <summary>Stops a running / waiting flow and returns it to idle.</summary>
+    public void Halt()
+    {
+        _interpreter.Halt();
+        State = MTaskState.Stopped;
     }
 
     protected override Task TickAsync(CancellationToken cancellationToken)
@@ -87,5 +121,38 @@ public sealed class FlowTask : MTaskBase
         }
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>Resolves <c>flowFile</c> relative to the process base directory when not rooted.</summary>
+    public static bool TryReadFlowFile(string flowFile, out string json)
+    {
+        json = "";
+        if (string.IsNullOrWhiteSpace(flowFile))
+        {
+            return false;
+        }
+
+        var path = Path.IsPathRooted(flowFile)
+            ? flowFile
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, flowFile.Trim()));
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        json = File.ReadAllText(path);
+        return !string.IsNullOrWhiteSpace(json);
+    }
+
+    public static string ResolveFlowFilePath(string flowFile)
+    {
+        if (string.IsNullOrWhiteSpace(flowFile))
+        {
+            throw new ArgumentException("flowFile is empty.", nameof(flowFile));
+        }
+
+        return Path.IsPathRooted(flowFile)
+            ? flowFile
+            : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, flowFile.Trim()));
     }
 }
