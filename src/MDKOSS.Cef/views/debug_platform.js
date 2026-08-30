@@ -965,6 +965,10 @@
       showToast("请先选择平台", true);
       return;
     }
+    if (window.MdkTool && MdkTool.confirmWrite
+      && !MdkTool.confirmWrite("确认使能平台全部轴？", "平台: " + state.platformId)) {
+      return;
+    }
     deviceAction(state.platformId, "enable")
       .then(() => tick())
       .catch((e) => showToast(e.message, true));
@@ -974,15 +978,31 @@
       showToast("请先选择平台", true);
       return;
     }
+    if (window.MdkTool && MdkTool.confirmWrite
+      && !MdkTool.confirmWrite("确认去使能平台全部轴？", "平台: " + state.platformId)) {
+      return;
+    }
     stopAllJog();
     deviceAction(state.platformId, "disable")
       .then(() => tick())
       .catch((e) => showToast(e.message, true));
   });
   $("btnTeach").addEventListener("click", teachCurrent);
-  $("btnGoto").addEventListener("click", gotoPoint);
+  $("btnGoto").addEventListener("click", () => {
+    if (window.MdkTool && MdkTool.confirmWrite
+      && !MdkTool.confirmWrite("确认定位到示教点？", "点: " + (state.selectedPointId || "—") + "\n平台: " + (state.platformId || "—"))) {
+      return;
+    }
+    gotoPoint();
+  });
   $("btnRenamePoint").addEventListener("click", renamePoint);
-  $("btnDeletePoint").addEventListener("click", deletePoint);
+  $("btnDeletePoint").addEventListener("click", () => {
+    if (window.MdkTool && MdkTool.confirmWrite
+      && !MdkTool.confirmWrite("确认删除示教点？", "点: " + (state.selectedPointId || "—"))) {
+      return;
+    }
+    deletePoint();
+  });
   $("btnAddPoint").addEventListener("click", () => {
     const id = "P" + state.teachPoints.length;
     state.teachPoints.push({ id, name: id, axes: {} });
