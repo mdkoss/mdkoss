@@ -1,5 +1,5 @@
 /* MDKOSS tool shared UI (monitor_* / debug_* / man_*)
- * Colors come from theme-gray.css / theme-white.css.
+ * Colors come from theme-monitor.css / theme-debug.css / theme-man.css.
  */
 
 /* --- base controls --- */
@@ -1337,6 +1337,7 @@ body[data-tool-group] .alarm-row {
 
 body[data-tool-group] .card {
   padding: 12px 14px;
+  border-radius: var(--radius, 4px);
 }
 
 body[data-tool-group] .btn.green {
@@ -1850,5 +1851,254 @@ body[data-tool-group="man"] .recipe-dialog-empty {
 
 @media (max-width: 900px) {
   body[data-tool-group="man"] .man-layout { grid-template-columns: 1fr; }
+}
+
+/* --- industrial mode chrome / faceplate / LED / matrix --- */
+.tool-mode-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.tool-page-link,
+.tool-home,
+.tool-cross-link {
+  border-radius: var(--radius, 4px);
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius, 4px);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  border: 1px solid var(--mode-band, var(--accent));
+  background: var(--mode-band, var(--accent));
+  color: var(--mode-band-text, #fff);
+}
+
+.status-matrix {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.status-cell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 4px);
+  padding: 10px 12px;
+  background: var(--matrix-off, var(--panel2));
+  min-height: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .12s, background .12s;
+}
+a.status-cell:hover {
+  border-color: var(--accent);
+}
+.status-cell.ok { background: var(--matrix-ok); border-color: rgba(45, 184, 124, 0.35); }
+.status-cell.warn { background: var(--matrix-warn); border-color: rgba(212, 160, 23, 0.4); }
+.status-cell.fault { background: var(--matrix-fault); border-color: rgba(224, 84, 84, 0.45); }
+.status-cell .sc-id {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: ui-monospace, Consolas, monospace;
+  word-break: break-all;
+}
+.status-cell .sc-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.status-cell .sc-state {
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: auto;
+}
+
+.led-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.led-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 4px);
+  background: var(--input-bg);
+  padding: 10px 12px;
+}
+.led-group-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.led-group-title .hint {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+}
+.led-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.led-cell {
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 4px);
+  padding: 8px 6px;
+  text-align: center;
+  background: var(--panel2);
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.led-cell.on {
+  background: rgba(45, 184, 124, 0.16);
+  border-color: rgba(45, 184, 124, 0.45);
+}
+.led-cell.off {
+  background: var(--panel2);
+}
+.led-cell.unk {
+  background: var(--matrix-warn, var(--panel2));
+}
+.led-cell.offline {
+  opacity: .55;
+}
+.led-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin: 0 auto;
+  background: var(--led-off, var(--line));
+  border: 1px solid var(--line);
+}
+.led-cell.on .led-dot {
+  background: var(--led-on, var(--ok));
+  border-color: var(--led-on, var(--ok));
+}
+.led-cell.unk .led-dot {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+.led-alias {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  word-break: break-all;
+}
+.led-addr {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.view-toggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 4px);
+  overflow: hidden;
+}
+.view-toggle button {
+  border: none;
+  background: var(--btn-bg);
+  color: var(--muted);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  border-right: 1px solid var(--line);
+}
+.view-toggle button:last-child { border-right: none; }
+.view-toggle button.active {
+  background: var(--mode-band, var(--accent));
+  color: var(--mode-band-text, #fff);
+}
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1100px) {
+  .kpi-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .kpi-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.kpi-card {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 4px);
+  padding: 10px 12px;
+}
+.kpi-card .label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.kpi-card .value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.readonly-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--mode-band, var(--accent));
+  background: var(--panel);
+  border-radius: var(--radius, 4px);
+  font-size: 12px;
+  color: var(--muted);
+}
+.readonly-note a { color: var(--accent); font-weight: 700; }
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  flex-wrap: wrap;
+}
+.section-head .panel-title { margin: 0; }
+
+.detail-block[hidden] { display: none !important; }
+
+body[data-tool-group="monitor"] .runtime-dash {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: auto;
+  gap: 10px;
+  overflow: auto;
+}
+body[data-tool-group="monitor"] .runtime-dash > .card.span-12 { grid-column: span 12; }
+body[data-tool-group="monitor"] .runtime-dash > .card.span-6 { grid-column: span 6; }
+@media (max-width: 960px) {
+  body[data-tool-group="monitor"] .runtime-dash > .card.span-6 { grid-column: span 12; }
 }
 

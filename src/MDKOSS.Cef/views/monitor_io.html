@@ -1,63 +1,101 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDKOSS IO 监控</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-monitor.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="monitor" data-tool-page="monitor_io">
   <div class="wrap">
     <div class="header">
-      <div class="title">IO 监控（DI / DO） <span class="pill warn">只读</span></div>
-      <div class="sub">数据：/api/status · 只读 · <a class="link-btn" href="/debug_io.html">强制输出 →</a></div>
+      <div>
+        <div class="title">IO 监控 <span class="pill warn">只读</span></div>
+        <div class="sub">灯盘按设备分组 · 数据 /api/status</div>
+      </div>
+      <div class="header-actions" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="view-toggle" role="group" aria-label="视图">
+          <button type="button" class="active" data-view="led" id="btnViewLed">灯盘</button>
+          <button type="button" data-view="table" id="btnViewTable">明细</button>
+        </div>
+        <a class="link-btn" href="/debug_io.html">强制输出 →</a>
+      </div>
     </div>
 
-    <div class="io-layout">
-      <div class="card">
-        <h2 class="panel-title">数字输入 <span class="hint">DI</span></h2>
-        <input type="search" class="filter" id="diFilter" placeholder="筛选：设备 ID、别名、驱动、地址、状态…" autocomplete="off" />
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>设备 ID</th>
-                <th>别名</th>
-                <th>驱动 ID</th>
-                <th>地址</th>
-                <th>驱动在线</th>
-                <th>读值</th>
-              </tr>
-            </thead>
-            <tbody id="diRows"></tbody>
-          </table>
+    <div class="readonly-note">
+      监控为只读。强制写入请进入
+      <a href="/debug_io.html">IO 强制</a>
+      或
+      <a href="/debug_driver.html">驱动端口字</a>。
+    </div>
+
+    <div class="form-row" style="margin-bottom:12px">
+      <div class="form-group grow">
+        <label>筛选</label>
+        <input type="search" class="filter" id="ioFilter" placeholder="设备 ID、别名、驱动、地址…" autocomplete="off" style="margin:0" />
+      </div>
+      <div class="form-group shrink">
+        <label>上次刷新</label>
+        <div class="value" id="lastUpdate" style="font-size:14px">—</div>
+      </div>
+    </div>
+
+    <div id="ledView">
+      <div class="io-layout">
+        <div class="card">
+          <h2 class="panel-title">数字输入 DI</h2>
+          <div class="led-panel" id="diLedPanel"></div>
+        </div>
+        <div class="card">
+          <h2 class="panel-title">数字输出 DO</h2>
+          <div class="led-panel" id="doLedPanel"></div>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <h2 class="panel-title">数字输出 <span class="hint">DO · 只读（写入请用 debug_io）</span></h2>
-        <input type="search" class="filter" id="doFilter" placeholder="筛选：设备 ID、别名、驱动、地址、状态…" autocomplete="off" />
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>设备 ID</th>
-                <th>别名</th>
-                <th>驱动 ID</th>
-                <th>地址</th>
-                <th>驱动在线</th>
-                <th>读值</th>
+    <div id="tableView" hidden>
+      <div class="io-layout">
+        <div class="card">
+          <h2 class="panel-title">数字输入 <span class="hint">DI</span></h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>设备 ID</th>
+                  <th>别名</th>
+                  <th>驱动 ID</th>
+                  <th>地址</th>
+                  <th>驱动在线</th>
+                  <th>读值</th>
                 </tr>
-            </thead>
-            <tbody id="doRows"></tbody>
-          </table>
+              </thead>
+              <tbody id="diRows"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="panel-title">数字输出 <span class="hint">DO · 只读</span></h2>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>设备 ID</th>
+                  <th>别名</th>
+                  <th>驱动 ID</th>
+                  <th>地址</th>
+                  <th>驱动在线</th>
+                  <th>读值</th>
+                </tr>
+              </thead>
+              <tbody id="doRows"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="msg" id="ioMsg"></div>
-    <div class="footer">上次刷新：<span id="lastUpdate">-</span></div>
   </div>
 
   <script>
@@ -109,13 +147,17 @@
 
     const diRows = document.getElementById("diRows");
     const doRows = document.getElementById("doRows");
-    const diFilter = document.getElementById("diFilter");
-    const doFilter = document.getElementById("doFilter");
+    const diLedPanel = document.getElementById("diLedPanel");
+    const doLedPanel = document.getElementById("doLedPanel");
+    const ioFilter = document.getElementById("ioFilter");
     const lastUpdate = document.getElementById("lastUpdate");
     const ioMsg = document.getElementById("ioMsg");
+    const ledView = document.getElementById("ledView");
+    const tableView = document.getElementById("tableView");
 
     let lastDi = [];
     let lastDo = [];
+    let viewMode = "led";
 
     function rowKey(r) {
       return r.devId + "\0" + r.alias;
@@ -129,26 +171,54 @@
       return hay.includes(q);
     }
 
-    function applyDiFilter() {
-      const q = diFilter.value.trim().toLowerCase();
-      const trs = diRows.querySelectorAll("tr[data-key]");
-      trs.forEach((tr) => {
-        const key = tr.getAttribute("data-key");
-        const r = lastDi.find((x) => rowKey(x) === key);
-        if (!r) return;
-        tr.classList.toggle("hidden", !rowMatches(r, q));
-      });
+    function filtered(list) {
+      const q = ioFilter.value.trim().toLowerCase();
+      return list.filter((r) => rowMatches(r, q));
     }
 
-    function applyDoFilter() {
-      const q = doFilter.value.trim().toLowerCase();
-      const trs = doRows.querySelectorAll("tr[data-key]");
-      trs.forEach((tr) => {
-        const key = tr.getAttribute("data-key");
-        const r = lastDo.find((x) => rowKey(x) === key);
-        if (!r) return;
-        tr.classList.toggle("hidden", !rowMatches(r, q));
-      });
+    function groupByDevice(list) {
+      const map = new Map();
+      for (const r of list) {
+        if (!map.has(r.devId)) map.set(r.devId, []);
+        map.get(r.devId).push(r);
+      }
+      return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    }
+
+    function ledClass(r) {
+      const b = parseBoolVal(r.valStr);
+      let cls = "led-cell";
+      if (!r.online) cls += " offline";
+      if (b === true) cls += " on";
+      else if (b === false) cls += " off";
+      else cls += " unk";
+      return cls;
+    }
+
+    function renderLed(panel, list, emptyText) {
+      const groups = groupByDevice(filtered(list));
+      if (!groups.length) {
+        panel.innerHTML = `<div class="sub">${escapeHtml(emptyText)}</div>`;
+        return;
+      }
+      panel.innerHTML = groups.map(([devId, pts]) => {
+        const onlineN = pts.filter((p) => p.online).length;
+        const cells = pts.map((r) => {
+          const b = parseBoolVal(r.valStr);
+          const state = b === true ? "ON" : b === false ? "OFF" : escapeHtml(r.valStr);
+          return `<div class="${ledClass(r)}" title="${escapeHtml(r.drv + " " + r.addr)}">
+            <span class="led-dot"></span>
+            <span class="led-alias">${escapeHtml(r.alias)}</span>
+            <span class="led-addr">${state} · ${escapeHtml(r.addr)}</span>
+          </div>`;
+        }).join("");
+        return `<div class="led-group">
+          <div class="led-group-title">${escapeHtml(devId)}
+            <span class="hint">${pts.length} 点 · 驱动在线 ${onlineN}/${pts.length}</span>
+          </div>
+          <div class="led-grid">${cells}</div>
+        </div>`;
+      }).join("");
     }
 
     function statusCell(online) {
@@ -158,52 +228,43 @@
     function valueCell(valStr) {
       const b = parseBoolVal(valStr);
       if (b === true) {
-        return `<td class="mono"><span class="pill-on">ON</span> <span style="color:var(--muted)">${escapeHtml(valStr)}</span></td>`;
+        return `<td class="mono"><span class="pill-on">ON</span></td>`;
       }
       if (b === false) {
-        return `<td class="mono"><span class="pill-off">OFF</span> <span style="color:var(--muted)">${escapeHtml(valStr)}</span></td>`;
+        return `<td class="mono"><span class="pill-off">OFF</span></td>`;
       }
       return `<td class="mono"><span class="pill-unk">${escapeHtml(valStr)}</span></td>`;
     }
 
-    function renderDi(list) {
-      lastDi = list;
-      if (!list.length) {
-        diRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">（无 DI 映射或暂无数据）</td></tr>';
+    function renderTable(tbody, list, emptyText) {
+      const rows = filtered(list);
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted)">${escapeHtml(emptyText)}</td></tr>`;
         return;
       }
-      diRows.innerHTML = list
-        .map(
-          (r) => `<tr data-key="${escapeHtml(rowKey(r))}">
-          <td class="mono">${escapeHtml(r.devId)}</td>
-          <td>${escapeHtml(r.alias)}</td>
-          <td class="mono">${escapeHtml(r.drv)}</td>
-          <td class="mono">${escapeHtml(r.addr)}</td>
-          ${statusCell(r.online)}
-          ${valueCell(r.valStr)}
-        </tr>`
-        )
-        .join("");
-      applyDiFilter();
+      tbody.innerHTML = rows.map((r) => `<tr data-key="${escapeHtml(rowKey(r))}">
+        <td class="mono">${escapeHtml(r.devId)}</td>
+        <td>${escapeHtml(r.alias)}</td>
+        <td class="mono">${escapeHtml(r.drv)}</td>
+        <td class="mono">${escapeHtml(r.addr)}</td>
+        ${statusCell(r.online)}
+        ${valueCell(r.valStr)}
+      </tr>`).join("");
     }
 
-    function renderDo(list) {
-      lastDo = list;
-      if (!list.length) {
-        doRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">（无 DO 映射或暂无数据）</td></tr>';
-        return;
-      }
-      doRows.innerHTML = list
-        .map((r) => `<tr data-key="${escapeHtml(rowKey(r))}">
-          <td class="mono">${escapeHtml(r.devId)}</td>
-          <td>${escapeHtml(r.alias)}</td>
-          <td class="mono">${escapeHtml(r.drv)}</td>
-          <td class="mono">${escapeHtml(r.addr)}</td>
-          ${statusCell(r.online)}
-          ${valueCell(r.valStr)}
-        </tr>`)
-        .join("");
-      applyDoFilter();
+    function refreshViews() {
+      renderLed(diLedPanel, lastDi, "（无 DI 映射）");
+      renderLed(doLedPanel, lastDo, "（无 DO 映射）");
+      renderTable(diRows, lastDi, "（无 DI 映射）");
+      renderTable(doRows, lastDo, "（无 DO 映射）");
+    }
+
+    function setView(mode) {
+      viewMode = mode;
+      ledView.hidden = mode !== "led";
+      tableView.hidden = mode !== "table";
+      document.getElementById("btnViewLed").classList.toggle("active", mode === "led");
+      document.getElementById("btnViewTable").classList.toggle("active", mode === "table");
     }
 
     async function tick() {
@@ -213,12 +274,15 @@
         const data = await res.json();
         const devicesObj = snapshotField(data, "devices", "Devices");
         const all = collectPoints(devicesObj);
-        const di = all.filter((r) => r.dir === "in");
-        const dout = all.filter((r) => r.dir === "out");
-        renderDi(di);
-        renderDo(dout);
+        lastDi = all.filter((r) => r.dir === "in");
+        lastDo = all.filter((r) => r.dir === "out");
+        refreshViews();
         lastUpdate.textContent = new Date().toLocaleTimeString();
-      } catch (err) {
+        ioMsg.textContent = "";
+        ioMsg.classList.remove("err");
+      } catch {
+        diLedPanel.innerHTML = '<div class="sub">无法加载</div>';
+        doLedPanel.innerHTML = '<div class="sub">无法加载</div>';
         diRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">无法加载</td></tr>';
         doRows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">无法加载</td></tr>';
         ioMsg.textContent = "无法连接 /api/status";
@@ -226,9 +290,11 @@
       }
     }
 
-    diFilter.addEventListener("input", applyDiFilter);
-    doFilter.addEventListener("input", applyDoFilter);
+    ioFilter.addEventListener("input", refreshViews);
+    document.getElementById("btnViewLed").addEventListener("click", () => setView("led"));
+    document.getElementById("btnViewTable").addEventListener("click", () => setView("table"));
 
+    setView("led");
     tick();
     setInterval(tick, 1000);
   </script>

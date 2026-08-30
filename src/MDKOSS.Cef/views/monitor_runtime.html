@@ -1,155 +1,142 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MDKOSS 监控面板</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <title>MDKOSS 运行总览</title>
+  <link rel="stylesheet" href="/css/theme-monitor.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="monitor" data-tool-page="monitor_runtime">
   <div class="wrap">
     <div class="header">
       <div>
-        <div class="title">MDKOSS Runtime Monitor</div>
+        <div class="title">运行总览 <span class="pill warn">只读</span></div>
+        <div class="sub">组件态势矩阵 · 自动刷新 1s</div>
       </div>
-      <div class="sub">自动刷新间隔：1s</div>
+      <div class="header-actions">
+        <a class="link-btn" href="/debug_machine.html">整机调试 →</a>
+        <a class="link-btn" href="/monitor_alarm.html">报警 →</a>
+      </div>
     </div>
-    <div class="grid runtime-dash">
-      <div class="card span-3">
+
+    <div class="readonly-note">
+      本页只读。启停 / 复位 / 三色灯请使用
+      <a href="/debug_machine.html">整机调试</a>；
+      切换配方请使用
+      <a href="/man_recipe.html">配方配置</a> 或主界面。
+    </div>
+
+    <div class="kpi-strip">
+      <div class="kpi-card">
         <div class="label">项目</div>
-        <div class="value" id="projectName">-</div>
+        <div class="value" id="projectName" style="font-size:16px">—</div>
       </div>
-      <div class="card span-3">
+      <div class="kpi-card">
         <div class="label">运行状态</div>
-        <div id="runtimeStatus"><span class="pill warn">UNKNOWN</span></div>
+        <div class="value" id="runtimeStatus"><span class="pill warn">—</span></div>
       </div>
-      <div class="card span-3">
-        <div class="label">在线驱动数</div>
+      <div class="kpi-card">
+        <div class="label">驱动在线</div>
         <div class="value" id="driverOnlineCount">0</div>
       </div>
-      <div class="card span-3">
-        <div class="label">最后更新</div>
-        <div class="value" id="lastUpdate" style="font-size:22px">-</div>
+      <div class="kpi-card">
+        <div class="label">设备在线</div>
+        <div class="value" id="deviceOnlineCount">0</div>
       </div>
-
-      <div class="card span-6">
-        <div class="label">驱动状态</div>
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th>Driver ID</th><th>Type</th><th>Status</th></tr></thead>
-            <tbody id="driverRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card span-6">
-        <div class="label">设备状态</div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>Device ID</th>
-                <th>名称</th>
-                <th>类型</th>
-                <th>状态</th>
-                <th>驱动/链路</th>
-                <th>在线</th>
-                <th>调试</th>
-              </tr>
-            </thead>
-            <tbody id="deviceRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card span-6">
-        <div class="label">GPIO IO</div>
-        <div class="io-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>设备 ID</th>
-                <th>别名</th>
-                <th>方向</th>
-                <th>驱动 ID</th>
-                <th>地址</th>
-                <th>驱动在线</th>
-                <th>读值</th>
-              </tr>
-            </thead>
-            <tbody id="gpioIoRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card span-6">
-        <div class="label">运行变量</div>
-        <div class="vars-wrap">
-          <table class="vars-table">
-            <thead><tr><th>键</th><th>值</th></tr></thead>
-            <tbody id="varsRows"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card span-6">
-        <div class="label">配方</div>
-        <div class="value" id="activeRecipeLabel" style="font-size:18px;margin-bottom:8px">—</div>
-        <div class="op-row" id="recipeButtons"></div>
-        <div class="footer" id="recipeMeta">接口: <code>/api/recipe</code></div>
-      </div>
-
-      <div class="card span-6">
-        <div class="label">任务操作</div>
-        <div class="op-row">
-          <button class="btn green" onclick="sendTaskAction('/api/task/start')">启动任务</button>
-          <button class="btn red" onclick="sendTaskAction('/api/task/stop')">停止任务</button>
-          <button class="btn yellow" onclick="sendTaskAction('/api/task/reset')">复位任务</button>
-        </div>
-        <div class="op-row">
-          <button class="btn red" onclick="sendTaskAction('/api/task/lamp?color=red')">红灯</button>
-          <button class="btn yellow" onclick="sendTaskAction('/api/task/lamp?color=yellow')">黄灯</button>
-          <button class="btn green" onclick="sendTaskAction('/api/task/lamp?color=green')">绿灯</button>
-        </div>
-        <div class="footer" id="taskOperationState">状态: -</div>
+      <div class="kpi-card">
+        <div class="label">更新</div>
+        <div class="value" id="lastUpdate" style="font-size:16px">—</div>
       </div>
     </div>
+
+    <div class="grid runtime-dash">
+      <div class="card span-12">
+        <div class="section-head">
+          <h2 class="panel-title">驱动状态矩阵</h2>
+          <span class="hint" id="driverHint">0</span>
+        </div>
+        <div class="status-matrix" id="driverMatrix"></div>
+      </div>
+
+      <div class="card span-12">
+        <div class="section-head">
+          <h2 class="panel-title">设备状态矩阵</h2>
+          <span class="hint" id="deviceHint">0</span>
+        </div>
+        <div class="status-matrix" id="deviceMatrix"></div>
+      </div>
+
+      <div class="card span-6">
+        <div class="section-head">
+          <h2 class="panel-title">任务 / 灯色</h2>
+          <a class="link-btn" href="/monitor_task.html">任务明细 →</a>
+        </div>
+        <div class="info-row"><span class="info-label">操作状态</span><span class="info-value" id="opState">—</span></div>
+        <div class="info-row"><span class="info-label">说明</span><span class="info-value" id="opMsg">—</span></div>
+        <div class="info-row"><span class="info-label">三色灯</span><span class="info-value" id="opLamp">—</span></div>
+        <div class="info-row"><span class="info-label">当前配方</span><span class="info-value" id="activeRecipeLabel">—</span></div>
+      </div>
+
+      <div class="card span-6">
+        <div class="section-head">
+          <h2 class="panel-title">IO 摘要</h2>
+          <a class="link-btn" href="/monitor_io.html">IO 监控 →</a>
+        </div>
+        <div class="info-row"><span class="info-label">DI 点数</span><span class="info-value" id="diCount">0</span></div>
+        <div class="info-row"><span class="info-label">DO 点数</span><span class="info-value" id="doCount">0</span></div>
+        <div class="info-row"><span class="info-label">DI 为 ON</span><span class="info-value" id="diOnCount">0</span></div>
+        <div class="info-row"><span class="info-label">DO 为 ON</span><span class="info-value" id="doOnCount">0</span></div>
+      </div>
+
+      <div class="card span-12">
+        <div class="section-head">
+          <h2 class="panel-title">明细表 <span class="hint">可选展开</span></h2>
+          <div class="view-toggle" role="group" aria-label="明细">
+            <button type="button" class="active" data-detail="hide" id="btnDetailHide">收起</button>
+            <button type="button" data-detail="show" id="btnDetailShow">展开</button>
+          </div>
+        </div>
+        <div class="detail-block" id="detailBlock" hidden>
+          <div class="io-layout" style="margin-top:8px">
+            <div>
+              <div class="label" style="margin-bottom:6px">驱动列表</div>
+              <div class="table-scroll" style="max-height:220px">
+                <table>
+                  <thead><tr><th>Driver ID</th><th>Type</th><th>Status</th></tr></thead>
+                  <tbody id="driverRows"></tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <div class="label" style="margin-bottom:6px">设备列表</div>
+              <div class="table-scroll" style="max-height:220px">
+                <table>
+                  <thead>
+                    <tr><th>ID</th><th>名称</th><th>类型</th><th>状态</th><th>在线</th><th>入口</th></tr>
+                  </thead>
+                  <tbody id="deviceRows"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="footer">接口: <code>/api/status</code> ·
-      <a class="link-btn" href="/monitor_alarm.html">报警</a> ·
-      <a class="link-btn" href="/monitor_vision.html">视觉</a> ·
-      <a class="link-btn" href="/debug_platform.html">平台示教</a> ·
-      <a class="link-btn" href="/monitor_platform.html">平台监控</a>
+      <a class="link-btn" href="/monitor_io.html">IO</a> ·
+      <a class="link-btn" href="/monitor_platform.html">平台</a> ·
+      <a class="link-btn" href="/monitor_task.html">任务</a> ·
+      <a class="link-btn" href="/debug_machine.html">整机调试</a>
     </div>
   </div>
 
   <script>
-    /** Reads camelCase or PascalCase snapshot fields (matches System.Text.Json naming). */
     function snapshotField(data, camel, pascal) {
       const a = data[camel];
-      if (a !== undefined && a !== null) {
-        return a;
-      }
+      if (a !== undefined && a !== null) return a;
       return data[pascal];
-    }
-
-    const projectName = document.getElementById("projectName");
-    const runtimeStatus = document.getElementById("runtimeStatus");
-    const driverOnlineCount = document.getElementById("driverOnlineCount");
-    const driverRows = document.getElementById("driverRows");
-    const deviceRows = document.getElementById("deviceRows");
-    const gpioIoRows = document.getElementById("gpioIoRows");
-    const varsRows = document.getElementById("varsRows");
-    const lastUpdate = document.getElementById("lastUpdate");
-    const taskOperationState = document.getElementById("taskOperationState");
-    const activeRecipeLabel = document.getElementById("activeRecipeLabel");
-    const recipeButtons = document.getElementById("recipeButtons");
-    const recipeMeta = document.getElementById("recipeMeta");
-
-    function setStatus(isRunning) {
-      runtimeStatus.innerHTML = isRunning
-        ? '<span class="pill ok">RUNNING</span>'
-        : '<span class="pill warn">STOPPED</span>';
     }
 
     function escapeHtml(s) {
@@ -160,165 +147,183 @@
         .replace(/"/g, "&quot;");
     }
 
-    function formatVarValue(v) {
-      if (v === null || v === undefined) {
-        return "";
-      }
-      if (typeof v === "object") {
-        try {
-          return JSON.stringify(v);
-        } catch {
-          return String(v);
-        }
-      }
-      return String(v);
+    function parseBoolVal(valStr) {
+      if (valStr === null || valStr === undefined) return null;
+      const t = String(valStr).trim().toLowerCase();
+      if (t === "true" || t === "1" || t === "on" || t === "yes") return true;
+      if (t === "false" || t === "0" || t === "off" || t === "no") return false;
+      return null;
     }
 
-    function renderVars(vars) {
-      const obj = vars && typeof vars === "object" ? vars : {};
-      const keys = Object.keys(obj).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-      if (!keys.length) {
-        varsRows.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">（无变量）</td></tr>';
+    const PLATFORM = new Set(["platform", "x", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
+    const AXIS = new Set(["axis"]);
+
+    function deviceLinks(id, type) {
+      const t = String(type || "").toLowerCase();
+      if (PLATFORM.has(t)) {
+        return `<a class="link-btn" href="/monitor_platform.html?deviceId=${encodeURIComponent(id)}">监控</a>
+                <a class="link-btn" href="/debug_platform.html?deviceId=${encodeURIComponent(id)}">调试</a>`;
+      }
+      if (AXIS.has(t)) {
+        return `<a class="link-btn" href="/monitor_axis.html?deviceId=${encodeURIComponent(id)}">监控</a>
+                <a class="link-btn" href="/debug_axis.html?deviceId=${encodeURIComponent(id)}">调试</a>`;
+      }
+      if (t === "gpio" || t === "vio") {
+        return `<a class="link-btn" href="/monitor_io.html">IO</a>
+                <a class="link-btn" href="/debug_io.html">强制</a>`;
+      }
+      if (t.includes("camera") || t === "cameradev" || t === "extcamera") {
+        return `<a class="link-btn" href="/monitor_camera.html">监控</a>
+                <a class="link-btn" href="/debug_camera.html">调试</a>`;
+      }
+      return "—";
+    }
+
+    function toneFromOnline(online, faultHint) {
+      if (faultHint) return "fault";
+      if (online) return "ok";
+      return "warn";
+    }
+
+    function renderDriverMatrix(drivers) {
+      const entries = Object.entries(drivers || {});
+      document.getElementById("driverHint").textContent = String(entries.length);
+      const box = document.getElementById("driverMatrix");
+      if (!entries.length) {
+        box.innerHTML = '<div class="sub">（无驱动）</div>';
+        return 0;
+      }
+      let online = 0;
+      box.innerHTML = entries.map(([id, d]) => {
+        const up = !!(d.isConnected ?? d.IsConnected);
+        if (up) online++;
+        const type = d.type ?? d.Type ?? "-";
+        const tone = toneFromOnline(up, false);
+        return `<a class="status-cell ${tone}" href="/debug_driver.html">
+          <span class="sc-id">${escapeHtml(id)}</span>
+          <span class="sc-meta">${escapeHtml(String(type))}</span>
+          <span class="sc-state">${up ? "在线" : "离线"}</span>
+        </a>`;
+      }).join("");
+      return online;
+    }
+
+    function renderDeviceMatrix(devices) {
+      const entries = Object.entries(devices || {});
+      document.getElementById("deviceHint").textContent = String(entries.length);
+      const box = document.getElementById("deviceMatrix");
+      if (!entries.length) {
+        box.innerHTML = '<div class="sub">（无设备）</div>';
+        return 0;
+      }
+      let online = 0;
+      box.innerHTML = entries.map(([id, d]) => {
+        const up = !!(d.driverConnected ?? d.DriverConnected);
+        if (up) online++;
+        const name = d.name ?? d.Name ?? id;
+        const type = d.type ?? d.Type ?? "-";
+        const state = String(d.state ?? d.State ?? "");
+        const fault = /fault|error|alarm|err/i.test(state);
+        const tone = fault ? "fault" : toneFromOnline(up, false);
+        const href = PLATFORM.has(String(type).toLowerCase())
+          ? `/monitor_platform.html?deviceId=${encodeURIComponent(id)}`
+          : AXIS.has(String(type).toLowerCase())
+            ? `/monitor_axis.html?deviceId=${encodeURIComponent(id)}`
+            : "/monitor_runtime.html#devices";
+        return `<a class="status-cell ${tone}" href="${href}">
+          <span class="sc-id">${escapeHtml(id)}</span>
+          <span class="sc-meta">${escapeHtml(String(name))} · ${escapeHtml(String(type))}</span>
+          <span class="sc-state">${up ? "在线" : "离线"}${state ? " · " + escapeHtml(state) : ""}</span>
+        </a>`;
+      }).join("");
+      return online;
+    }
+
+    function renderDriverRows(drivers) {
+      const entries = Object.entries(drivers || {});
+      const rows = document.getElementById("driverRows");
+      if (!entries.length) {
+        rows.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">（无驱动）</td></tr>';
         return;
       }
-      varsRows.innerHTML = keys.map((k) => {
-        const display = formatVarValue(obj[k]);
-        return `<tr><td class="var-key">${escapeHtml(k)}</td><td class="var-value">${escapeHtml(display)}</td></tr>`;
-      }).join("");
-    }
-
-    function renderDrivers(drivers) {
-      const entries = Object.entries(drivers || {});
-      let online = 0;
-      driverRows.innerHTML = entries.map(([id, d]) => {
-        const up = !!d.isConnected;
-        if (up) online++;
+      rows.innerHTML = entries.map(([id, d]) => {
+        const up = !!(d.isConnected ?? d.IsConnected);
         return `<tr>
-          <td>${escapeHtml(id)}</td>
-          <td>${escapeHtml(d.type || "-")}</td>
-          <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "Connected" : "Disconnected"}</td>
+          <td class="mono">${escapeHtml(id)}</td>
+          <td>${escapeHtml(String(d.type ?? d.Type ?? "-"))}</td>
+          <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "在线" : "离线"}</td>
         </tr>`;
       }).join("");
-      driverOnlineCount.textContent = String(online);
-      if (!entries.length) {
-        driverRows.innerHTML = '<tr><td colspan="3" style="color:var(--muted)">No drivers</td></tr>';
-      }
     }
 
-    function renderGpioIo(devices) {
-      const flat = [];
-      const obj = devices && typeof devices === "object" ? devices : {};
-      for (const [devId, d] of Object.entries(obj)) {
-        const pts = d.gpioIoPoints ?? d.GpioIoPoints;
-        if (!Array.isArray(pts) || !pts.length) {
-          continue;
-        }
-        for (const p of pts) {
-          const alias = p.alias ?? p.Alias ?? "-";
-          const dir = p.direction ?? p.Direction ?? "-";
-          const drv = p.driverId ?? p.DriverId ?? "-";
-          const addr = p.address ?? p.Address ?? "-";
-          const online = !!(p.driverOnline ?? p.DriverOnline);
-          const val = p.value ?? p.Value;
-          const valStr = val === null || val === undefined ? "—" : String(val);
-          flat.push({ devId, alias, dir, drv, addr, online, valStr });
-        }
-      }
-      if (!flat.length) {
-        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">（无 GPIO 映射或暂无数据）</td></tr>';
+    function renderDeviceRows(devices) {
+      const entries = Object.entries(devices || {});
+      const rows = document.getElementById("deviceRows");
+      if (!entries.length) {
+        rows.innerHTML = '<tr><td colspan="6" style="color:var(--muted)">（无设备）</td></tr>';
         return;
       }
-      gpioIoRows.innerHTML = flat
-        .map(
-          (r) => `<tr>
-          <td>${escapeHtml(r.devId)}</td>
-          <td>${escapeHtml(r.alias)}</td>
-          <td>${escapeHtml(r.dir)}</td>
-          <td>${escapeHtml(r.drv)}</td>
-          <td>${escapeHtml(r.addr)}</td>
-          <td><span class="dot ${r.online ? "ok" : ""}"></span>${r.online ? "Yes" : "No"}</td>
-          <td style="font-family:ui-monospace,Consolas,monospace;font-size:12px">${escapeHtml(r.valStr)}</td>
-        </tr>`
-        )
-        .join("");
-    }
-
-    const PLATFORM_TYPES = new Set(["platform", "xy", "xyz", "xyzu", "xyzuv", "xyzuvw"]);
-
-    function isPlatformDeviceType(type) {
-      return PLATFORM_TYPES.has(String(type || "").toLowerCase());
-    }
-
-    function renderDevices(devices) {
-      const entries = Object.entries(devices || {});
-      deviceRows.innerHTML = entries.map(([id, d]) => {
-        const up = !!d.driverConnected;
+      rows.innerHTML = entries.map(([id, d]) => {
+        const up = !!(d.driverConnected ?? d.DriverConnected);
         const name = d.name ?? d.Name ?? "-";
         const type = d.type ?? d.Type ?? "-";
         const state = d.state ?? d.State ?? "-";
-        const driverType = d.driverType ?? d.DriverType ?? "-";
-        const debugCell = isPlatformDeviceType(type)
-          ? `<a class="link-btn" href="/debug_platform.html?deviceId=${encodeURIComponent(id)}">步进示教</a>
-             <a class="link-btn" href="/monitor_platform.html?deviceId=${encodeURIComponent(id)}">监控</a>`
-          : "—";
         return `<tr>
-          <td>${escapeHtml(id)}</td>
+          <td class="mono">${escapeHtml(id)}</td>
           <td>${escapeHtml(String(name))}</td>
           <td>${escapeHtml(String(type))}</td>
           <td>${escapeHtml(String(state))}</td>
-          <td>${escapeHtml(String(driverType))}</td>
-          <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "Yes" : "No"}</td>
-          <td>${debugCell}</td>
+          <td><span class="dot ${up ? "ok" : ""}"></span>${up ? "是" : "否"}</td>
+          <td>${deviceLinks(id, type)}</td>
         </tr>`;
       }).join("");
-      if (!entries.length) {
-        deviceRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">（无设备）</td></tr>';
-      }
     }
 
-    async function loadRecipes() {
+    function summarizeIo(devices) {
+      let di = 0, dout = 0, diOn = 0, doOn = 0;
+      const obj = devices && typeof devices === "object" ? devices : {};
+      for (const d of Object.values(obj)) {
+        const pts = d.gpioIoPoints ?? d.GpioIoPoints;
+        if (!Array.isArray(pts)) continue;
+        for (const p of pts) {
+          const dir = String(p.direction ?? p.Direction ?? "").toLowerCase();
+          const b = parseBoolVal(p.value ?? p.Value);
+          if (dir === "in") {
+            di++;
+            if (b === true) diOn++;
+          } else if (dir === "out") {
+            dout++;
+            if (b === true) doOn++;
+          }
+        }
+      }
+      document.getElementById("diCount").textContent = String(di);
+      document.getElementById("doCount").textContent = String(dout);
+      document.getElementById("diOnCount").textContent = String(diOn);
+      document.getElementById("doOnCount").textContent = String(doOn);
+    }
+
+    async function loadRecipeLabel() {
       try {
         const res = await fetch("/api/recipe", { cache: "no-store" });
         if (!res.ok) throw new Error("http " + res.status);
         const data = await res.json();
         const activeId = snapshotField(data, "activeRecipeId", "ActiveRecipeId") || "";
         const recipes = snapshotField(data, "recipes", "Recipes") || [];
-        const keys = snapshotField(data, "recipeVarKeys", "RecipeVarKeys") || [];
         const active = recipes.find((r) => String(r.id ?? r.Id ?? "").toLowerCase() === String(activeId).toLowerCase());
         const activeName = active ? (active.name ?? active.Name ?? activeId) : (activeId || "未选择");
-        activeRecipeLabel.textContent = activeId ? `${activeName} (${activeId})` : "未选择";
-        recipeMeta.textContent = `配方键 ${keys.length} 项 · 共 ${recipes.length} 个配方 · 接口 /api/recipe`;
-        if (!recipes.length) {
-          recipeButtons.innerHTML = '<span style="color:var(--muted);font-size:13px">（未配置 recipes）</span>';
-          return;
-        }
-        recipeButtons.innerHTML = recipes.map((r) => {
-          const id = r.id ?? r.Id ?? "";
-          const name = r.name ?? r.Name ?? id;
-          const isActive = String(id).toLowerCase() === String(activeId).toLowerCase();
-          return `<button class="btn${isActive ? " green" : ""}" type="button" data-recipe-id="${escapeHtml(id)}">${escapeHtml(name)}</button>`;
-        }).join("");
-        recipeButtons.querySelectorAll("button[data-recipe-id]").forEach((btn) => {
-          btn.addEventListener("click", () => applyRecipe(btn.getAttribute("data-recipe-id")));
-        });
+        document.getElementById("activeRecipeLabel").textContent = activeId
+          ? `${activeName} (${activeId})`
+          : "未选择";
       } catch {
-        activeRecipeLabel.textContent = "无法加载";
-        recipeButtons.innerHTML = "";
-        recipeMeta.textContent = "无法连接 /api/recipe";
+        document.getElementById("activeRecipeLabel").textContent = "无法加载";
       }
     }
 
-    async function applyRecipe(recipeId) {
-      if (!recipeId) return;
-      recipeMeta.textContent = "切换配方中…";
-      try {
-        const res = await fetch(`/api/recipe/apply?id=${encodeURIComponent(recipeId)}`, { method: "POST" });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok || data.success === false) throw new Error(data.error || "apply_failed");
-        await Promise.all([tick(), loadRecipes()]);
-      } catch {
-        recipeMeta.textContent = "切换配方失败";
-      }
+    function setStatus(isRunning) {
+      document.getElementById("runtimeStatus").innerHTML = isRunning
+        ? '<span class="pill ok">运行</span>'
+        : '<span class="pill warn">停止</span>';
     }
 
     async function tick() {
@@ -326,40 +331,41 @@
         const res = await fetch("/api/status", { cache: "no-store" });
         if (!res.ok) throw new Error("http " + res.status);
         const data = await res.json();
-        projectName.textContent = snapshotField(data, "projectName", "ProjectName") || "-";
+        document.getElementById("projectName").textContent =
+          snapshotField(data, "projectName", "ProjectName") || "—";
         setStatus(!!snapshotField(data, "isRunning", "IsRunning"));
-        renderDrivers(snapshotField(data, "drivers", "Drivers"));
-        const devicesObj = snapshotField(data, "devices", "Devices");
-        renderDevices(devicesObj);
-        renderGpioIo(devicesObj);
+        const drivers = snapshotField(data, "drivers", "Drivers");
+        const devices = snapshotField(data, "devices", "Devices");
+        document.getElementById("driverOnlineCount").textContent = String(renderDriverMatrix(drivers));
+        document.getElementById("deviceOnlineCount").textContent = String(renderDeviceMatrix(devices));
+        renderDriverRows(drivers);
+        renderDeviceRows(devices);
+        summarizeIo(devices);
         const vars = snapshotField(data, "vars", "Vars") || {};
-        renderVars(vars);
-        const state = vars["task.operation.state"] ?? "unknown";
-        const lamp = vars["task.operation.lamp"] ?? "red";
-        const message = vars["task.operation.message"] ?? "-";
-        taskOperationState.textContent = `状态: ${state} | 灯色: ${lamp} | 说明: ${message}`;
-        lastUpdate.textContent = new Date().toLocaleTimeString();
-      } catch (err) {
-        runtimeStatus.innerHTML = '<span class="pill warn">UNREACHABLE</span>';
-        varsRows.innerHTML = '<tr><td colspan="2" style="color:var(--muted)">无法加载</td></tr>';
-        gpioIoRows.innerHTML = '<tr><td colspan="7" style="color:var(--muted)">无法加载</td></tr>';
+        document.getElementById("opState").textContent = vars["task.operation.state"] ?? "—";
+        document.getElementById("opMsg").textContent = vars["task.operation.message"] ?? "—";
+        document.getElementById("opLamp").textContent = vars["task.operation.lamp"] ?? "—";
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleTimeString();
+      } catch {
+        document.getElementById("runtimeStatus").innerHTML = '<span class="pill warn">不可达</span>';
       }
     }
 
-    async function sendTaskAction(url) {
-      try {
-        const res = await fetch(url, { method: "POST" });
-        if (!res.ok) throw new Error("http " + res.status);
-        await tick();
-      } catch (err) {
-        taskOperationState.textContent = "状态: 操作失败";
-      }
-    }
+    document.getElementById("btnDetailHide").addEventListener("click", () => {
+      document.getElementById("detailBlock").hidden = true;
+      document.getElementById("btnDetailHide").classList.add("active");
+      document.getElementById("btnDetailShow").classList.remove("active");
+    });
+    document.getElementById("btnDetailShow").addEventListener("click", () => {
+      document.getElementById("detailBlock").hidden = false;
+      document.getElementById("btnDetailShow").classList.add("active");
+      document.getElementById("btnDetailHide").classList.remove("active");
+    });
 
     tick();
-    loadRecipes();
+    loadRecipeLabel();
     setInterval(tick, 1000);
-    setInterval(loadRecipes, 3000);
+    setInterval(loadRecipeLabel, 5000);
   </script>
   <script src="/js/tool_nav.js"></script>
 </body>

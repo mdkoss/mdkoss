@@ -1,0 +1,143 @@
+/* 配置 · Config — 冷白工控底 + 钢蓝强调 */
+:root {
+  --bg: #eef1f4;
+  --panel: #ffffff;
+  --panel2: #f7f9fb;
+  --text: #1a2332;
+  --muted: #5a6a7a;
+  --line: #c5ced8;
+  --accent: #2b5ea7;
+  --accent-soft: rgba(43, 94, 167, 0.1);
+  --ok: #047857;
+  --warn: #b45309;
+  --danger: #b91c1c;
+  --input-bg: #ffffff;
+  --btn-bg: #e4e9ef;
+  --btn-hover: #d4dce6;
+  --table-head: #e4eaf0;
+  --log-bg: #e8edf2;
+  --chrome-bg: #f4f6f8;
+  --chrome-home: #e4e9ef;
+  --chrome-home-hover: #d4dce6;
+  --toast-bg: #ffffff;
+  --shadow: none;
+  --radius: 4px;
+  --top-h: 52px;
+  --bottom-h: 72px;
+  --mono: #1e3a5f;
+  --mode-band: #2b5ea7;
+  --mode-band-text: #ffffff;
+  --led-on: #047857;
+  --led-off: #c5ced8;
+  --led-fault: #b91c1c;
+  --matrix-ok: #d1fae5;
+  --matrix-warn: #fef3c7;
+  --matrix-fault: #fee2e2;
+  --matrix-off: #e8edf2;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: var(--radius);
+}
+
+.tool-chrome {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--line);
+  border-top: 3px solid var(--mode-band);
+}
+
+.tool-home {
+  background: var(--chrome-home);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+.tool-home:hover { background: var(--chrome-home-hover); }
+
+.tool-group-label {
+  color: var(--mode-band-text);
+  background: var(--mode-band);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+}
+
+.toast {
+  background: var(--toast-bg);
+  color: var(--text);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+.toast.err { color: var(--danger); border-color: var(--danger); background: #fef2f2; }
+.toast.ok { color: var(--ok); border-color: var(--ok); background: #ecfdf5; }
+
+.btn.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn.primary:hover:not(:disabled) {
+  background: rgba(43, 94, 167, 0.16);
+}
+
+.tool-page-link.active {
+  color: var(--mode-band-text);
+  background: var(--mode-band);
+  border-color: var(--mode-band);
+  border-radius: var(--radius);
+}
+.tool-cross-link {
+  border-radius: var(--radius);
+}
+.tool-cross-link.active {
+  color: var(--mode-band-text);
+  border-color: var(--mode-band);
+  background: var(--mode-band);
+}
+
+input, select, textarea {
+  border-color: var(--line);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(43, 94, 167, 0.25);
+}
+
+/* 配置页列表项 */
+.recipe-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel2);
+  color: var(--text);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.recipe-option:hover { background: var(--accent-soft); }
+.recipe-option.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.recipe-option-name { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.recipe-option-meta { font-size: 11px; color: var(--muted); }
+.recipe-dialog-empty { color: var(--muted); font-size: 12px; padding: 16px; text-align: center; }
+
+.pill.warn {
+  color: var(--mode-band-text);
+  border-color: var(--mode-band);
+  background: var(--mode-band);
+  font-weight: 700;
+}

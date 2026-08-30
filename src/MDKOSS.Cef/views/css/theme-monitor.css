@@ -1,0 +1,138 @@
+/* 监控 · Operate — 深工业灰 + 青绿强调（西门子 SIMATIC 风格） */
+:root {
+  --bg: #1a1f26;
+  --panel: #232a33;
+  --panel2: #2a323c;
+  --text: #e8edf2;
+  --muted: #9aa8b5;
+  --line: #3d4a57;
+  --accent: #00a3a1;
+  --accent-soft: rgba(0, 163, 161, 0.18);
+  --ok: #2db87c;
+  --warn: #d4a017;
+  --danger: #e05454;
+  --input-bg: #151a20;
+  --btn-bg: #2f3844;
+  --btn-hover: #3a4554;
+  --table-head: #252d38;
+  --log-bg: #12171d;
+  --chrome-bg: #14191f;
+  --chrome-home: #2a323c;
+  --chrome-home-hover: #343e4a;
+  --toast-bg: #2a323c;
+  --shadow: none;
+  --radius: 4px;
+  --top-h: 52px;
+  --bottom-h: 72px;
+  --mono: #b8e8e6;
+  --mode-band: #00a3a1;
+  --mode-band-text: #041414;
+  --led-on: #2db87c;
+  --led-off: #3d4a57;
+  --led-fault: #e05454;
+  --matrix-ok: #1a4a38;
+  --matrix-warn: #4a3a12;
+  --matrix-fault: #4a1e1e;
+  --matrix-off: #2a323c;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: var(--radius);
+}
+
+.tool-chrome {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--line);
+  border-top: 3px solid var(--mode-band);
+}
+
+.tool-home {
+  background: var(--chrome-home);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+.tool-home:hover { background: var(--chrome-home-hover); }
+
+.tool-group-label {
+  color: var(--mode-band);
+  background: var(--accent-soft);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(0, 163, 161, 0.35);
+}
+
+.toast {
+  background: var(--toast-bg);
+  color: var(--text);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+.toast.err {
+  color: var(--danger);
+  background: #2a1818;
+  border-color: var(--danger);
+}
+.toast.ok {
+  color: var(--ok);
+  background: #142820;
+  border-color: var(--ok);
+}
+
+.btn.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn.primary:hover:not(:disabled) {
+  background: rgba(0, 163, 161, 0.28);
+}
+
+.tool-page-link.active {
+  color: #041414;
+  background: var(--mode-band);
+  border-color: var(--mode-band);
+  border-radius: var(--radius);
+}
+.tool-cross-link {
+  border-radius: var(--radius);
+}
+.tool-cross-link.active {
+  color: #041414;
+  border-color: var(--mode-band);
+  background: var(--mode-band);
+}
+
+input, select, textarea {
+  border-color: var(--line);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 163, 161, 0.35);
+}
+
+pre, .teach-preview-box, .vars-table td.var-key, .vars-table td.var-value,
+.footer code, code {
+  color: var(--mono);
+}
+
+.pill.ok {
+  color: var(--ok);
+  border-color: rgba(45, 184, 124, 0.45);
+  background: rgba(45, 184, 124, 0.12);
+}
+.pill.warn {
+  color: var(--warn);
+  border-color: rgba(212, 160, 23, 0.45);
+  background: rgba(212, 160, 23, 0.12);
+}

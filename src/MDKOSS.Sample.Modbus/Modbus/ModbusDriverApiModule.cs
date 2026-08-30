@@ -124,12 +124,20 @@ public sealed class ModbusDriverApiModule : MonitoringApiModule
         }
 
         var snap = HoldingRegisterBank.Read(driver, start, count);
+        var drvCfg = Runtime.Setting.Drivers.FirstOrDefault(d =>
+            string.Equals(d.Id, driverId, StringComparison.OrdinalIgnoreCase));
+        string? Param(string key)
+            => drvCfg?.Parameters is { } p && p.TryGetValue(key, out var v) ? v : null;
         var payload = JsonSerializer.Serialize(new
         {
             success = true,
             driverId,
             driverName = driver.Name,
             connected = snap.Connected,
+            host = Param("host"),
+            port = Param("port"),
+            unitId = Param("unitId"),
+            simulate = string.Equals(Param("simulate"), "true", StringComparison.OrdinalIgnoreCase),
             start = snap.Start,
             count = snap.Values.Count,
             okCount = snap.OkCount,

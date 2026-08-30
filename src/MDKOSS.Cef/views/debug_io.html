@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDKOSS IO 强制输出</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-debug.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="debug" data-tool-page="debug_io">
@@ -233,6 +233,8 @@
       const r = lastDo.find((x) => x.devId === devId && x.alias === alias);
       const cur = r ? parseBoolVal(r.valStr) : null;
       const next = cur === true ? false : true;
+      const nextLabel = next ? "ON" : "OFF";
+      if (!confirm(`确认强制输出？\n设备: ${devId}\n点位: ${alias}\n写入: ${nextLabel}`)) return;
       ioMsg.textContent = "正在写入…";
       ioMsg.classList.remove("err");
       try {

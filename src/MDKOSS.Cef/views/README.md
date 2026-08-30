@@ -23,11 +23,14 @@
 
 | 页面组 | 主题文件 | 风格 |
 |--------|----------|------|
-| `index` / `popup_*` | `css/theme-navy.css` + `css/main.css` | 深色 · 深蓝 |
-| `monitor_*` / `debug_*` | `css/theme-gray.css` + `css/debug.css` | 浅色 · 灰色 |
-| `man_*` | `css/theme-white.css` + `css/debug.css` | 白色 · 白底 |
+| `index` / `popup_*` | `css/theme-navy.css` + `css/main.css` | 深色 · 深蓝（操作员 HMI） |
+| `monitor_*` | `css/theme-monitor.css` + `css/debug.css` | 深工业灰 · 青绿色带 · 只读态势 |
+| `debug_*` | `css/theme-debug.css` + `css/debug.css` | 深工业灰 · 琥珀警示带 · 可写联调 |
+| `man_*` | `css/theme-man.css` + `css/debug.css` | 冷白 · 钢蓝色带 · 配置编辑 |
 
+`theme-gray.css` / `theme-white.css` 保留为兼容别名（分别转发到 monitor / man）。
 主题文件只定义 CSS 变量与少量覆盖；控件结构统一在 `debug.css`（工具页）/ `main.css`（HMI）。
+顶栏 `tool_nav.js` 按分组显示模式提示（只读态势 / 可写联调 / 配置编辑）。
 
 ```
 index ──popup_*──► monitor_* ──► debug_*
@@ -83,8 +86,8 @@ index ──popup_*──► monitor_* ──► debug_*
 
 | 页面 | 功能 |
 |------|------|
-| `monitor_runtime.html` | 运行时总览：驱动/设备/IO 摘要 |
-| `monitor_io.html` | IO 点表详细监视 |
+| `monitor_runtime.html` | 运行总览：驱动/设备状态矩阵（只读；写操作在 debug_machine） |
+| `monitor_io.html` | IO 灯盘（按设备分组）+ 明细表 |
 | `monitor_platform.html` | 平台轴位置/使能/故障（无点动） |
 | `monitor_axis.html` | 单轴状态（骨架） |
 | `monitor_camera.html` | 相机连接/取流状态 |

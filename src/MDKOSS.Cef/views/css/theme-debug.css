@@ -1,0 +1,140 @@
+/* 调试 · Commission — 深工业灰 + 琥珀警示带（联调可写） */
+:root {
+  --bg: #1c1a16;
+  --panel: #2a2620;
+  --panel2: #322e26;
+  --text: #f2ece3;
+  --muted: #a89a86;
+  --line: #524636;
+  --accent: #e0a21a;
+  --accent-soft: rgba(224, 162, 26, 0.16);
+  --ok: #2db87c;
+  --warn: #e0a21a;
+  --danger: #e05454;
+  --input-bg: #16130f;
+  --btn-bg: #3a342a;
+  --btn-hover: #4a4234;
+  --table-head: #2e291f;
+  --log-bg: #12100c;
+  --chrome-bg: #16130f;
+  --chrome-home: #322e26;
+  --chrome-home-hover: #3e3930;
+  --toast-bg: #322e26;
+  --shadow: none;
+  --radius: 4px;
+  --top-h: 52px;
+  --bottom-h: 72px;
+  --mono: #f0d9a0;
+  --mode-band: #e0a21a;
+  --mode-band-text: #1c1406;
+  --led-on: #2db87c;
+  --led-off: #524636;
+  --led-fault: #e05454;
+  --matrix-ok: #1a4a38;
+  --matrix-warn: #4a3a12;
+  --matrix-fault: #4a1e1e;
+  --matrix-off: #322e26;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.card {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  box-shadow: none;
+  backdrop-filter: none;
+  border-radius: var(--radius);
+}
+
+.tool-chrome {
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--line);
+  border-top: 3px solid var(--mode-band);
+}
+
+.tool-home {
+  background: var(--chrome-home);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+.tool-home:hover { background: var(--chrome-home-hover); }
+
+.tool-group-label {
+  color: var(--mode-band-text);
+  background: var(--mode-band);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  font-weight: 800;
+}
+
+.toast {
+  background: var(--toast-bg);
+  color: var(--text);
+  box-shadow: none;
+  border: 1px solid var(--line);
+}
+.toast.err {
+  color: var(--danger);
+  background: #2a1818;
+  border-color: var(--danger);
+}
+.toast.ok {
+  color: var(--ok);
+  background: #142820;
+  border-color: var(--ok);
+}
+
+.btn.primary {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btn.primary:hover:not(:disabled) {
+  background: rgba(224, 162, 26, 0.28);
+}
+.btn.danger {
+  background: rgba(224, 84, 84, 0.18);
+  border-color: rgba(224, 84, 84, 0.5);
+  color: var(--danger);
+}
+
+.tool-page-link.active {
+  color: var(--mode-band-text);
+  background: var(--mode-band);
+  border-color: var(--mode-band);
+  border-radius: var(--radius);
+  font-weight: 800;
+}
+.tool-cross-link {
+  border-radius: var(--radius);
+}
+.tool-cross-link.active {
+  color: var(--mode-band-text);
+  border-color: var(--mode-band);
+  background: var(--mode-band);
+}
+
+input, select, textarea {
+  border-color: var(--line);
+  color: var(--text);
+  border-radius: var(--radius);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(224, 162, 26, 0.35);
+}
+
+pre, .teach-preview-box, .vars-table td.var-key, .vars-table td.var-value,
+.footer code, code {
+  color: var(--mono);
+}
+
+.pill.warn {
+  color: var(--mode-band-text);
+  border-color: var(--mode-band);
+  background: var(--mode-band);
+  font-weight: 800;
+}

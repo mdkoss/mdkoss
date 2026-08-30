@@ -1,6 +1,7 @@
 /**
  * Unified tool chrome for monitor_* / debug_* / man_* pages.
  * Auto-detects from path or body[data-tool-group][data-tool-page].
+ * Themes: theme-monitor / theme-debug / theme-man (+ mode band via CSS).
  */
 (function () {
   const GROUPS = {
@@ -86,9 +87,15 @@
     const cfg = GROUPS[group];
     if (!cfg) return;
 
+    const themeMap = { monitor: "monitor", debug: "debug", man: "man" };
+    const modeHint = {
+      monitor: "只读 · 态势",
+      debug: "可写 · 联调",
+      man: "配置编辑",
+    };
     document.body.setAttribute("data-tool-group", group);
     document.body.setAttribute("data-tool-page", page);
-    document.body.setAttribute("data-theme", group === "man" ? "white" : "gray");
+    document.body.setAttribute("data-theme", themeMap[group] || group);
 
     // Remove ad-hoc page navs to avoid duplicates
     document.querySelectorAll(".header nav.nav, .header .nav").forEach((n) => n.remove());
@@ -97,11 +104,18 @@
 
     const bar = document.createElement("div");
     bar.id = "toolChrome";
-    bar.className = "tool-chrome";
+    bar.className = "tool-chrome mode-" + group;
     bar.innerHTML =
       '<div class="tool-chrome-inner">' +
       '<a class="tool-home" href="/">主界面</a>' +
-      '<span class="tool-group-label">' + cfg.label + "</span>" +
+      '<span class="tool-group-label" title="' +
+      (modeHint[group] || "") +
+      '">' +
+      cfg.label +
+      "</span>" +
+      '<span class="tool-mode-hint">' +
+      (modeHint[group] || "") +
+      "</span>" +
       '<nav class="tool-pages" aria-label="' + cfg.label + '页面">' +
       cfg.pages
         .map((p) => {

@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MDKOSS 整机手动</title>
-  <link rel="stylesheet" href="/css/theme-gray.css" />
+  <link rel="stylesheet" href="/css/theme-debug.css" />
   <link rel="stylesheet" href="/css/debug.css" />
 </head>
 <body data-tool-group="debug" data-tool-page="debug_machine">
@@ -16,6 +16,10 @@
         <div class="sub">启停复位 · 运行摘要 · 快捷跳转</div>
       </div>
       <a class="link-btn" href="/">主界面</a>
+    </div>
+        <div class="readonly-note" style="border-left-color:var(--mode-band)">
+      调试模式可写。生产启停优先使用主界面；此处用于联调与维护。
+      <a href="/monitor_runtime.html">运行总览（只读）</a>
     </div>
     <div class="grid">
       <div class="card span-3"><div class="label">项目</div><div class="value" id="vProject">—</div></div>
@@ -57,7 +61,8 @@
   <script>
     const { esc, field, fetchJson, toast } = MdkTool;
 
-    async function cmd(path, label) {
+    async function cmd(path, label, needConfirm) {
+      if (needConfirm && !confirm("确认执行「" + label + "」？")) return;
       try {
         const res = await fetch(path, { method: "POST" });
         const data = await res.json().catch(() => ({}));
@@ -68,10 +73,10 @@
         toast(e.message || "失败", false);
       }
     }
-    document.getElementById("btnStart").onclick = () => cmd("/api/task/start", "启动");
-    document.getElementById("btnPause").onclick = () => cmd("/api/task/pause", "暂停");
-    document.getElementById("btnStop").onclick = () => cmd("/api/task/stop", "停止");
-    document.getElementById("btnReset").onclick = () => cmd("/api/task/reset", "复位");
+    document.getElementById("btnStart").onclick = () => cmd("/api/task/start", "启动", true);
+    document.getElementById("btnPause").onclick = () => cmd("/api/task/pause", "暂停", false);
+    document.getElementById("btnStop").onclick = () => cmd("/api/task/stop", "停止", true);
+    document.getElementById("btnReset").onclick = () => cmd("/api/task/reset", "复位", true);
 
     async function tick() {
       try {
