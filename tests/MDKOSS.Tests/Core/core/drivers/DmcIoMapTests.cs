@@ -1,5 +1,5 @@
 using MDKOSS.Core.Drivers;
-using MDKOSS.Drivers.Dmc;
+using MDKOSS.Drivers.Boards;
 
 namespace MDKOSS.Tests.Core.Drivers;
 

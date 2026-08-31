@@ -1,7 +1,7 @@
 using MDKOSS.Core.Drivers;
 using MDKOSS.Extensions;
 
-namespace MDKOSS.Drivers.Gts;
+namespace MDKOSS.Drivers.Boards;
 
 /// <summary>GTS motion-card driver plugin (config type <c>gts</c>).</summary>
 public sealed class GtsDriverExtension : IMdkExtension

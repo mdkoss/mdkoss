@@ -2,7 +2,7 @@
 
 PC 上位机（点胶 / PNP / 贴片）侧常见卡型，以及 MDKOSS 的 `drivers[].type`。
 
-厂商 SDK **不进仓库**。`gts` / `dmc` 已接原生 DLL；本表其余卡由 `MDKOSS.Drivers.Boards` 先注册 type，默认仿真。
+厂商 SDK **不进仓库**。板卡 type 统一由 `MDKOSS.Drivers.Boards` 注册：`gts` / `dmc` 已接原生 DLL，其余卡默认仿真。
 
 ## 怎么选 type
 
@@ -10,9 +10,9 @@ PC 上位机（点胶 / PNP / 贴片）侧常见卡型，以及 MDKOSS 的 `driv
 |----------|-----------|------|
 | 无卡 / 先调工艺 | `sim` | Sim |
 | 虚拟 IO 卡 | `vio` | Sim |
-| 固高 GTS 脉冲（GTS-400 / 800 等） | `gts` | Gts |
+| 固高 GTS 脉冲（GTS-400 / 800 等） | `gts` | Boards |
 | 固高 EtherCAT / GLink | `gtn` | Boards |
-| 雷赛脉冲 LTDMC（DMC1000 / 2410 / 3000） | `dmc` | Dmc |
+| 雷赛脉冲 LTDMC（DMC1000 / 2410 / 3000） | `dmc` | Boards |
 | 雷赛 EtherCAT 主站 | `emc` | Boards |
 | 正运动 ZMC / 总线控制器 | `zmc` 或 `zmotion` | Boards |
 | 众为兴 ADT-8948 / 8960 | `adt` | Boards |

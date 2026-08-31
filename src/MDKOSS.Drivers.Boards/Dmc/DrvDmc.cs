@@ -5,7 +5,7 @@ using MDKOSS.Core;
 using MDKOSS.Core.Drivers;
 using LTDMC = csLTDMC.LTDMC;
 
-namespace MDKOSS.Drivers.Dmc;
+namespace MDKOSS.Drivers.Boards;
 
 /// <summary>
 /// Leadshine LTDMC driver. GPIO addresses use the same <see cref="DriverIoAddress"/> form as GTS/SIM

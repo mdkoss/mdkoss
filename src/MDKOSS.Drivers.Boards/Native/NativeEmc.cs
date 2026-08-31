@@ -3,7 +3,7 @@ using MDKOSS.Core;
 
 namespace MDKOSS.Drivers.Boards;
 
-/// <summary>雷赛 EtherCAT / 总线 LTDMC。函数签名与 <c>MDKOSS.Drivers.Dmc</c> 相同，仅占用 <c>emc</c> type。</summary>
+/// <summary>雷赛 EtherCAT / 总线 LTDMC。函数签名与 <see cref="DrvDmc"/> 相同，仅占用 <c>emc</c> type。</summary>
 internal sealed class NativeEmc : NativeMotionBackend
 {
     private ushort _card;

@@ -65,10 +65,8 @@ mdkoss/
     ├── MDKOSS.Core/              # 运行时内核（无内置板卡实现）
     ├── MDKOSS.Extensions/        # IMdkExtension 接入层
     ├── MDKOSS.Drivers.Sim/       # sim 驱动插件
-    ├── MDKOSS.Drivers.Gts/       # gts 驱动插件
-    ├── MDKOSS.Drivers.Dmc/       # 雷赛 DMC 驱动插件
     ├── MDKOSS.Drivers.S7/        # 西门子 S7 IO
-    ├── MDKOSS.Drivers.Boards/    # 正运动 / 众为兴 / 摩信 / EtherCAT 等
+    ├── MDKOSS.Drivers.Boards/    # gts / 雷赛 dmc / 正运动 / 众为兴 / 摩信 / EtherCAT 等
     ├── MDKOSS.Extensions.Serial/ # serialdev
     ├── MDKOSS.Extensions.Tcp/    # tcpdev
     ├── MDKOSS.Extensions.Mysql/  # mysqldev
@@ -140,8 +138,8 @@ mdkoss/
 - `src/MDKOSS.Core/core/drivers/idriver.cs` + `driver_factory.cs`  
   驱动统一接口与工厂；具体实现不在 Core 内，由插件 Bootstrap 注册 `type`。
 
-- `src/MDKOSS.Drivers.Sim` / `Gts` / `Dmc`  
-  仿真、固高、雷赛板卡插件（`DrvSim` / `DrvGts` / `DrvDmc`），构建产物进入 `plugins/`。
+- `src/MDKOSS.Drivers.Sim` / `Boards`  
+  仿真插件（`DrvSim`）与板卡插件（固高 `DrvGts`、雷赛 `DrvDmc` 及目录卡），构建产物进入 `plugins/`。
 
 - `src/MDKOSS.Core/server/monitoringserver.cs`  
   轻量监控服务，提供主界面、IO/平台/串口等监控与调试页，以及 `/api/status`、`/api/devices`、`/api/io/write` 等；串口等扩展 API 由对应 Extensions HTTP 模块注册。详见 [docs/monitoring-api.md](./docs/monitoring-api.md) 与 `src/MDKOSS.Cef/views/README.md`。

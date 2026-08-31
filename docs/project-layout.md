@@ -7,10 +7,8 @@ src/
 ├── MDKOSS.Core/                 # IDriver + DriverFactory（无内置板卡实现）
 ├── MDKOSS.Extensions/           # IMdkExtension 接入层
 ├── MDKOSS.Drivers.Sim/          # sim
-├── MDKOSS.Drivers.Gts/          # gts
-├── MDKOSS.Drivers.Dmc/          # LTDMC 绑定
 ├── MDKOSS.Drivers.S7/           # 西门子 S7 IO
-├── MDKOSS.Drivers.Boards/       # 正运动/众为兴/摩信/EtherCAT 等 type（默认仿真）
+├── MDKOSS.Drivers.Boards/       # gts / dmc + 正运动/众为兴/摩信/EtherCAT 等 type
 ├── MDKOSS.Extensions.Serial/
 ├── MDKOSS.Extensions.Tcp/
 ├── MDKOSS.Extensions.Mysql/
@@ -42,9 +40,9 @@ src/
 | 项目 | type | Bootstrap |
 |------|------|-----------|
 | `MDKOSS.Drivers.Sim` | `sim` | `SimDriverBootstrap` |
-| `MDKOSS.Drivers.Gts` | `gts` | `GtsDriverBootstrap` |
-| `MDKOSS.Drivers.Dmc` | `dmc` | `DmcDriverBootstrap` |
 | `MDKOSS.Drivers.S7` | `s7` | `S7DriverBootstrap` |
+| `MDKOSS.Drivers.Boards` | `gts` | `GtsDriverBootstrap` |
+| `MDKOSS.Drivers.Boards` | `dmc` | `DmcDriverBootstrap` |
 | `MDKOSS.Drivers.Boards` | `zmc` / `adt` / `mpc` / … | `BoardDriverBootstrap` |
 
 ## 设备扩展

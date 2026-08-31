@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using MDKOSS.Core;
+using MDKOSS.Core.Drivers;
 
-namespace MDKOSS.Core.Drivers;
+namespace MDKOSS.Drivers.Boards;
 
 /// <summary>
 /// GTS motion driver implementation backed by gts.dll.
@@ -27,7 +29,7 @@ public sealed class DrvGts : IDriver
 
     public bool IsConnected { get; private set; }
 
-    public void Initialize(MDKOSS.Core.MdkSetting.DriverConfig config)
+    public void Initialize(MdkSetting.DriverConfig config)
     {
         _cardNo = GetShort(config, "cardNo", 1);
         _channel = GetShort(config, "channel", 0);
@@ -996,7 +998,7 @@ public sealed class DrvGts : IDriver
         return rest[(dotIdx + 1)..];
     }
 
-    private static short GetShort(MDKOSS.Core.MdkSetting.DriverConfig config, string key, short defaultValue)
+    private static short GetShort(MdkSetting.DriverConfig config, string key, short defaultValue)
     {
         if (!config.Parameters.TryGetValue(key, out var raw))
         {
@@ -1008,7 +1010,7 @@ public sealed class DrvGts : IDriver
             : defaultValue;
     }
 
-    private static bool GetBool(MDKOSS.Core.MdkSetting.DriverConfig config, string key, bool defaultValue)
+    private static bool GetBool(MdkSetting.DriverConfig config, string key, bool defaultValue)
     {
         if (!config.Parameters.TryGetValue(key, out var raw))
         {

@@ -23,7 +23,7 @@ Drivers.* / Extensions.*  （插件 DLL，运行时扫 plugins/）
 |------|------|
 | `MDKOSS.Core` | `MdkRuntime`、`IDriver`、设备基类、任务调度、`MVarStore`、监控 HTTP/API、SQLite |
 | `MDKOSS.Extensions` | 扩展接入层（注册表 / Host） |
-| `MDKOSS.Drivers.Sim` / `Gts` / `Dmc` / `S7` / `Boards` | 仿真 / 固高 / 雷赛 / S7 / 市面常用卡 |
+| `MDKOSS.Drivers.Sim` / `S7` / `Boards` | 仿真 / S7 / 板卡（固高 `gts`、雷赛 `dmc` 与市面常用卡） |
 | `MDKOSS.Extensions.Serial` / `Tcp` / `Mysql` / `Camera` / `PyScript` / `ModServer` | 可选设备（ModServer 另注册 `modbus` IDriver） |
 | `MDKOSS.Cef` | CefSharp 壳 + `views/` HMI |
 | `MDKOSS.Cef.Extensions` | 主界面监控组态（`index_hmi` / `man_hmi` / `/api/hmi`；控件见 `views/widgets`） |

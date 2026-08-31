@@ -1,6 +1,6 @@
 using MDKOSS.Core.Drivers;
 
-namespace MDKOSS.Drivers.Dmc;
+namespace MDKOSS.Drivers.Boards;
 
 /// <summary>
 /// Maps <see cref="DriverIoAddress"/> onto LTDMC general / axis IO.

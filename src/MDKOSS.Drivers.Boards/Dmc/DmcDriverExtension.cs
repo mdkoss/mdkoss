@@ -1,7 +1,7 @@
 using MDKOSS.Core.Drivers;
 using MDKOSS.Extensions;
 
-namespace MDKOSS.Drivers.Dmc;
+namespace MDKOSS.Drivers.Boards;
 
 /// <summary>DMC / LTDMC motion-card driver plugin (config type <c>dmc</c>).</summary>
 public sealed class DmcDriverExtension : IMdkExtension

@@ -85,10 +85,8 @@ MDKOSS.sln
 ├── src/MDKOSS.Core/           # 运行时内核（core/、server/、tasks/、host/）
 ├── src/MDKOSS.Extensions/           # 扩展接入接口（IMdkExtension / Host）
 ├── src/MDKOSS.Drivers.Sim/          # sim 驱动插件
-├── src/MDKOSS.Drivers.Gts/          # gts 驱动插件
-├── src/MDKOSS.Drivers.Dmc/          # LTDMC 原生绑定
 ├── src/MDKOSS.Drivers.S7/           # 西门子 S7 IO
-├── src/MDKOSS.Drivers.Boards/       # 正运动 / 众为兴 / 摩信 / EtherCAT 等 type
+├── src/MDKOSS.Drivers.Boards/       # gts / dmc（LTDMC 绑定）+ 正运动 / 众为兴 / 摩信 / EtherCAT 等 type
 ├── src/MDKOSS.Extensions.Serial/    # serialdev
 ├── src/MDKOSS.Extensions.Tcp/       # tcpdev
 ├── src/MDKOSS.Extensions.Mysql/     # mysqldev
