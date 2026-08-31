@@ -149,7 +149,7 @@ _modules.AddRange(MonitoringModuleRegistry.CreateModules(runtime));
 | `serialdev` | `SerialDevice` | `SerialDeviceParameterSet` | open/close/write/read/status | `/api/serial/*` | MDKOSS.Extensions.Serial |
 | `tcpdev` | `TcpDevice` | `TcpDeviceParameterSet` | connect/disconnect/write/read/status | `/api/tcp/*` | MDKOSS.Extensions.Tcp |
 | `mysqldev` | `MysqlDevice` | `MysqlDeviceParameters` | connect/disconnect/ping/query/execute/scalar/status | `/api/mysql/*` | MDKOSS.Extensions.Mysql |
-| `extcamera` | `ExtCameraDevice` | `ExtCameraDeviceParameters` | open/close/trigger/status | `/api/extcamera/*` | MDKOSS.Extensions.Camera |
+| `extcamera` | `ExtCameraDevice` | `ExtCameraDeviceParameters` | open/close/trigger/startgrab/param/list/status | `/api/extcamera/*` | MDKOSS.Extensions.Camera |
 | `devpyscript` | `PyScriptDevice` | `PyScriptDeviceParameters` | run/kill/status | `/api/pyscript/*` | MDKOSS.Extensions.PyScript |
 | `devmodserver` | `ModServerDevice` | `ModServerDeviceParameters` | start/stop/status/寄存器读写 | `/api/modserver/*` | MDKOSS.Extensions.ModServer |
 

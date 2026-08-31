@@ -36,12 +36,18 @@ public static class DeviceParameterPresets
             "x" => PlatformDeviceParameterSet.DefaultParameters("x", drv),
             // Platforms bind Axis device ids via axis.X …; DefaultParameters ignores drv for cameradev.
             "cameradev" => new(StringComparer.OrdinalIgnoreCase) { ["role"] = "downlook" },
+            // backend: sim / file / uvc / hik / daheng / huaray / mindvision / basler / flir / tis
             "extcamera" => new(StringComparer.OrdinalIgnoreCase)
             {
                 ["backend"] = "sim",
                 ["deviceIndex"] = "0",
+                ["serialNumber"] = "",
                 ["width"] = "1280",
                 ["height"] = "720",
+                ["exposureUs"] = "10000",
+                ["gain"] = "0",
+                ["triggerMode"] = "continuous",
+                ["fallbackToSim"] = "true",
             },
             "visiondev" or "vision" => new(StringComparer.OrdinalIgnoreCase)
             {

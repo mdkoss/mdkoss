@@ -26,8 +26,39 @@
         "deviceIndex": "0",
         "width": "1280",
         "height": "720",
-        "exposureMs": "12",
+        "exposureUs": "12000",
         "noisePx": "0.8"
+      }
+    },
+    {
+      "id": "cam-hik-1",
+      "name": "HikRobot Downlook",
+      "type": "extcamera",
+      "enabled": false,
+      "parameters": {
+        "backend": "hik",
+        "deviceIndex": "0",
+        "serialNumber": "",
+        "width": "2448",
+        "height": "2048",
+        "exposureUs": "8000",
+        "gain": "2",
+        "triggerMode": "software",
+        "pixelFormat": "BayerRG8",
+        "timeoutMs": "2000",
+        "saveDir": "data/captures",
+        "fallbackToSim": "true"
+      }
+    },
+    {
+      "id": "cam-file-1",
+      "name": "Offline Replay",
+      "type": "extcamera",
+      "enabled": false,
+      "parameters": {
+        "backend": "file",
+        "sourcePath": "data/captures",
+        "autoOpen": "true"
       }
     }
   ],

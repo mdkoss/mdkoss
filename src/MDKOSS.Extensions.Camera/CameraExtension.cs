@@ -5,13 +5,14 @@ namespace MDKOSS.Extensions.Camera;
 
 /// <summary>
 /// Camera device extension package (config type <c>extcamera</c>).
+/// Covers the area-scan cameras listed in <see cref="CameraCatalog"/>.
 /// Register via <see cref="MdkExtensionHost"/> or <see cref="CameraExtensionBootstrap"/>.
 /// </summary>
 public sealed class CameraExtension : IMdkExtension
 {
     public string Id => "camera";
 
-    public string DisplayName => "Extension Camera (sim)";
+    public string DisplayName => "Extension Camera (area-scan)";
 
     public void Register(IExtensionRegistration registration)
     {

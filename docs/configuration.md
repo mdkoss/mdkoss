@@ -45,8 +45,8 @@
 |------|------|------|
 | `sim` | `DrvSim`（`MDKOSS.Drivers.Sim`） | 软件仿真：内存 DI/DO、轴等 |
 | `vio` | `DrvSim`（同插件注册） | 虚拟 IO 卡；默认参数 `inBits=128` / `outBits=128` |
-| `gts` | `DrvGts`（`MDKOSS.Drivers.Gts`） | GTS 运动卡驱动（gts.dll） |
-| `dmc` | `DrvDmc`（`MDKOSS.Drivers.Dmc`） | 雷赛 LTDMC；GPIO 地址同 GTS（`di.gpi.bit.n` / `do.gpo.bit.n`） |
+| `gts` | `DrvGts`（`MDKOSS.Drivers.Boards`） | GTS 运动卡驱动（gts.dll） |
+| `dmc` | `DrvDmc`（`MDKOSS.Drivers.Boards`） | 雷赛 LTDMC；GPIO 地址同 GTS（`di.gpi.bit.n` / `do.gpo.bit.n`） |
 | `s7` / `s7-1200` | `DrvS7`（`MDKOSS.Drivers.S7`） | 西门子 S7 IO（非运动卡） |
 | `zmc` / `zmotion` / `adt` / `mpc` / `emc` / `gtn` / `adlink` / `advantech` / `galil` / `inovance` | `SimulatedCardDriver`（`MDKOSS.Drivers.Boards`） | 市面常用卡 type；默认仿真，真卡 DLL 用户自备。见 [drivers.md](./drivers.md) |
 
@@ -100,7 +100,7 @@
 | `serialdev` | Extensions.Serial | `devices` | RS-232C 串口 |
 | `tcpdev` | Extensions.Tcp | TCP 客户端/服务端通信 |
 | `mysqldev` | Extensions.Mysql | MySQL 客户端连接 / Query / Execute |
-| `extcamera` | Extensions.Camera | 扩展相机（仿真 open/trigger；见 `src/MDKOSS.Extensions.Camera`） |
+| `extcamera` | Extensions.Camera | 面阵相机（仿真 / 图像回放 / UVC / 海康 / 大恒 / 华睿 / 迈德威视 / Basler / FLIR / 映美精；见 `src/MDKOSS.Extensions.Camera`） |
 | `devpyscript` | Extensions.PyScript | 外部进程执行 Python 脚本（见 `src/MDKOSS.Extensions.PyScript`） |
 | `devmodserver` | Extensions.ModServer | Modbus TCP Server/Slave（见 `src/MDKOSS.Extensions.ModServer`） |
 
@@ -158,15 +158,40 @@
 
 ### extcamera parameters
 
+`backend` 选择相机型号族（`CameraCatalog`）。厂商 SDK 不随仓库分发，运行时 DLL 缺失时按 `fallbackToSim` 降级为仿真：
+
+| `backend` | 厂商 / 类别 | 运行时 DLL |
+|---|---|---|
+| `sim` | 内置仿真（默认） | — |
+| `file` | 本地图像回放 | — |
+| `uvc` | 通用 USB 相机（OpenCV） | — |
+| `hik` | 海康机器人 MVS | `MvCameraControl.dll` |
+| `daheng` | 大恒 Galaxy | `GxIAPI.dll` |
+| `huaray` | 华睿 IMV | `MVSDKmd.dll` |
+| `mindvision` | 迈德威视 | `MVCAMSDK_X64.dll` |
+| `basler` | Basler pylon | `PylonC.dll` |
+| `flir` | Teledyne FLIR Spinnaker | `SpinnakerC_v140.dll` |
+| `tis` | 映美精 | `tisgrabber_x64.dll` |
+
 | 参数 | 说明 | 默认 |
 |------|------|------|
-| `backend` | 后端标记（示例实现 `sim`） | `sim` |
-| `deviceIndex` | 设备序号 | `0` |
-| `width` / `height` | 分辨率 | `1280` / `720` |
-| `exposureMs` | 曝光（ms，仿真占位） | `10` |
+| `backend` | 上表 key 或别名（`mvs` / `galaxy` / `pylon` …） | `sim` |
+| `deviceIndex` | SDK 枚举序号 | `0` |
+| `serialNumber` | 按序列号选相机，优先于 `deviceIndex` | （空） |
+| `nativeDll` | 覆盖运行时 DLL 文件名 | 目录默认值 |
+| `width` / `height` | ROI / 分辨率，`0` 保持相机当前值 | `1280` / `720` |
+| `exposureUs` | 曝光（μs），兼容旧的 `exposureMs` | `10000` |
+| `gain` | 增益，`0` 不下发 | `0` |
+| `triggerMode` | `continuous` / `software` / `hardware` | `continuous` |
+| `pixelFormat` | GenICam 枚举符号（`Mono8` / `BGR8` / `BayerRG8`…） | （空） |
+| `timeoutMs` | 单次取图超时 | `2000` |
+| `autoOpen` / `fallbackToSim` | Start 时自动打开 / 打开失败降级仿真 | `true` / `true` |
+| `sourcePath` | `file` 后端的图片或目录；`uvc` 后端的流地址 | （空） |
+| `saveDir` / `saveFormat` | 取图落盘目录与格式 | （空）/ `png` |
 | `noisePx` | 仿真偏移噪声幅度 | `0.5` |
 
 解析：`ExtCameraDeviceParameters`（`src/MDKOSS.Extensions.Camera`）。与 Core 内置 `cameradev` 占位设备不同。
+配置 `saveDir` 后每次取图会写入 `device.{name}.{id}.lastImagePath`，`visiondev` 可直接取用。
 
 ### devpyscript parameters
 

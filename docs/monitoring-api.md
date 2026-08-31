@@ -101,10 +101,15 @@ TCP 相关端点由 `TcpApiModule` 提供，前缀 `/api/tcp/`（与 serial 模�
 
 | 路由 | 方法 | 说明 |
 |------|------|------|
-| `/api/extcamera/status` | GET | 查询 `deviceId` 对应扩展相机状态 |
+| `/api/extcamera/catalog` | GET | 支持的相机型号族（`backend` 取值） |
+| `/api/extcamera/status` | GET | 查询 `deviceId` 状态（含 `effectiveBackend` / `lastError`） |
+| `/api/extcamera/list` | GET | 枚举该后端 SDK 下可见的相机 |
+| `/api/extcamera/image` | GET | 最近一帧图像（`format=png\|jpg`，二进制） |
 | `/api/extcamera/open` | POST | 打开相机会话 |
 | `/api/extcamera/close` | POST | 关闭相机会话 |
+| `/api/extcamera/startgrab` / `stopgrab` | POST | 起停取流 |
 | `/api/extcamera/trigger` | POST | 触发采集（可选 `recipe`） |
+| `/api/extcamera/param` | POST | 运行时调 `exposureUs` / `gain` / `triggerMode` |
 
 ### Modbus TCP Server（MDKOSS.Extensions.ModServer）
 

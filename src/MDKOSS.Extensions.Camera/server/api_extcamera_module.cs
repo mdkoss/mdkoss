@@ -4,13 +4,20 @@ using MDKOSS.Extensions.Camera;
 
 namespace MDKOSS.Core.Monitor;
 
-/// <summary>Handles /api/extcamera/* — open, close, trigger, status for extension cameras.</summary>
+/// <summary>
+/// Handles /api/extcamera/* — catalog, enumeration, open/close, trigger, live image and
+/// runtime exposure/gain/trigger tuning for extension cameras.
+/// </summary>
 public sealed class ExtCameraApiModule : MonitoringApiModule
 {
     private sealed class DeviceRequest
     {
         public string? DeviceId { get; set; }
         public string? Recipe { get; set; }
+        public double? ExposureUs { get; set; }
+        public double? ExposureMs { get; set; }
+        public double? Gain { get; set; }
+        public string? TriggerMode { get; set; }
     }
 
     public ExtCameraApiModule(MdkRuntime runtime) : base(runtime) { }
@@ -22,21 +29,61 @@ public sealed class ExtCameraApiModule : MonitoringApiModule
         string remainingPath,
         CancellationToken cancellationToken)
     {
-        var actionPath = remainingPath.Trim('/');
+        var actionPath = remainingPath.Trim('/').ToLowerInvariant();
         var isGet = string.Equals(context.Request.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase);
         var isPost = string.Equals(context.Request.HttpMethod, "POST", StringComparison.OrdinalIgnoreCase);
 
-        if (actionPath.Equals("status", StringComparison.OrdinalIgnoreCase) && isGet)
+        if (isGet)
         {
-            var deviceId = context.Request.QueryString?["deviceId"];
-            if (string.IsNullOrWhiteSpace(deviceId))
+            switch (actionPath)
             {
-                await WriteErrorAsync(context.Response, "missing_device_id", cancellationToken).ConfigureAwait(false);
-                return true;
-            }
+                case "catalog":
+                case "backends":
+                    await WriteJsonAsync(
+                            context.Response,
+                            new { success = true, backends = CameraCatalog.All },
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    return true;
+                case "status":
+                case "list":
+                case "image":
+                {
+                    var deviceId = context.Request.QueryString?["deviceId"];
+                    if (!TryResolve(deviceId, out var camera))
+                    {
+                        await WriteErrorAsync(
+                                context.Response,
+                                string.IsNullOrWhiteSpace(deviceId) ? "missing_device_id" : "device_not_found",
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        return true;
+                    }
 
-            await WriteStatusAsync(context.Response, deviceId, cancellationToken).ConfigureAwait(false);
-            return true;
+                    if (actionPath == "status")
+                    {
+                        await WriteJsonAsync(
+                                context.Response,
+                                Merge(ExtCameraDeviceActions.Snapshot(camera)),
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        return true;
+                    }
+
+                    if (actionPath == "list")
+                    {
+                        await WriteJsonAsync(
+                                context.Response,
+                                new { success = true, deviceId = camera.Id, devices = camera.Enumerate() },
+                                cancellationToken)
+                            .ConfigureAwait(false);
+                        return true;
+                    }
+
+                    await WriteImageAsync(context, camera, cancellationToken).ConfigureAwait(false);
+                    return true;
+                }
+            }
         }
 
         if (!isPost)
@@ -53,34 +100,63 @@ public sealed class ExtCameraApiModule : MonitoringApiModule
             return true;
         }
 
-        if (!Runtime.TryGetDevice(req.DeviceId, out var dev) || dev is not ExtCameraDevice camera)
+        if (!TryResolve(req.DeviceId, out var device))
         {
             await WriteErrorAsync(context.Response, "device_not_found", cancellationToken).ConfigureAwait(false);
             return true;
         }
 
-        switch (actionPath.ToLowerInvariant())
+        switch (actionPath)
         {
             case "open":
-                camera.Open();
+                if (!device.Open())
+                {
+                    await WriteErrorAsync(context.Response, Reason(device, "open_failed"), cancellationToken)
+                        .ConfigureAwait(false);
+                    return true;
+                }
+
                 await WriteSuccessAsync(context.Response, "open", cancellationToken).ConfigureAwait(false);
                 return true;
             case "close":
-                camera.Close();
+                device.Close();
                 await WriteSuccessAsync(context.Response, "close", cancellationToken).ConfigureAwait(false);
+                return true;
+            case "startgrab":
+                if (!device.StartGrab())
+                {
+                    await WriteErrorAsync(context.Response, Reason(device, "start_grab_failed"), cancellationToken)
+                        .ConfigureAwait(false);
+                    return true;
+                }
+
+                await WriteSuccessAsync(context.Response, "startgrab", cancellationToken).ConfigureAwait(false);
+                return true;
+            case "stopgrab":
+                device.StopGrab();
+                await WriteSuccessAsync(context.Response, "stopgrab", cancellationToken).ConfigureAwait(false);
+                return true;
+            case "param":
+                await WriteParamAsync(context.Response, device, req, cancellationToken).ConfigureAwait(false);
                 return true;
             case "trigger":
             case "capture":
             {
-                var result = camera.TriggerCapture(req.Recipe ?? "default");
+                var result = device.TriggerCapture(req.Recipe ?? "default");
                 if (result is null)
                 {
-                    await WriteErrorAsync(context.Response, "camera_not_open", cancellationToken).ConfigureAwait(false);
+                    await WriteErrorAsync(
+                            context.Response,
+                            device.IsOpen ? Reason(device, "grab_failed") : "camera_not_open",
+                            cancellationToken)
+                        .ConfigureAwait(false);
                     return true;
                 }
 
-                var payload = JsonSerializer.Serialize(new { success = true, action = "trigger", result }, SnapshotJsonOptions);
-                await WriteResponseAsync(context.Response, "application/json; charset=utf-8", payload, cancellationToken)
+                await WriteJsonAsync(
+                        context.Response,
+                        new { success = true, action = "trigger", result },
+                        cancellationToken)
                     .ConfigureAwait(false);
                 return true;
             }
@@ -90,32 +166,101 @@ public sealed class ExtCameraApiModule : MonitoringApiModule
         }
     }
 
-    private async Task WriteStatusAsync(
+    private async Task WriteParamAsync(
         HttpListenerResponse response,
-        string deviceId,
+        ExtCameraDevice camera,
+        DeviceRequest req,
         CancellationToken cancellationToken)
     {
-        if (!Runtime.TryGetDevice(deviceId, out var dev) || dev is not ExtCameraDevice camera)
+        if (!camera.IsOpen)
         {
-            await WriteErrorAsync(response, "device_not_found", cancellationToken).ConfigureAwait(false);
+            await WriteErrorAsync(response, "camera_not_open", cancellationToken).ConfigureAwait(false);
             return;
         }
 
-        var payload = JsonSerializer.Serialize(new
+        var applied = new List<string>();
+        var exposureUs = req.ExposureUs ?? (req.ExposureMs is { } ms ? ms * 1000 : null);
+        if (exposureUs is { } us && camera.SetExposure(us))
         {
-            success = true,
-            deviceId = camera.Id,
-            isOpen = camera.IsOpen,
-            backend = camera.Parameters.Backend,
-            deviceIndex = camera.Parameters.DeviceIndex,
-            width = camera.Parameters.Width,
-            height = camera.Parameters.Height,
-            exposureMs = camera.Parameters.ExposureMs,
-            captureCount = camera.CaptureCount,
-            lastResult = camera.LastResult
-        }, SnapshotJsonOptions);
+            applied.Add("exposureUs");
+        }
 
-        await WriteResponseAsync(response, "application/json; charset=utf-8", payload, cancellationToken)
+        if (req.Gain is { } gain && camera.SetGain(gain))
+        {
+            applied.Add("gain");
+        }
+
+        if (!string.IsNullOrWhiteSpace(req.TriggerMode)
+            && camera.SetTrigger(ExtCameraDeviceParameters.ParseTrigger(req.TriggerMode)))
+        {
+            applied.Add("triggerMode");
+        }
+
+        if (applied.Count == 0)
+        {
+            await WriteErrorAsync(response, Reason(camera, "no_parameter_applied"), cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        await WriteJsonAsync(response, new { success = true, action = "param", applied }, cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private async Task WriteImageAsync(
+        HttpListenerContext context,
+        ExtCameraDevice camera,
+        CancellationToken cancellationToken)
+    {
+        var format = context.Request.QueryString?["format"] ?? "png";
+        var bytes = camera.EncodeLastFrame(format);
+        if (bytes.Length == 0)
+        {
+            await WriteErrorAsync(context.Response, "no_frame", cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        var response = context.Response;
+        response.ContentType = CameraPixel.ContentType(format);
+        response.ContentLength64 = bytes.Length;
+        await response.OutputStream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+        response.OutputStream.Close();
+    }
+
+    private bool TryResolve(string? deviceId, out ExtCameraDevice camera)
+    {
+        camera = null!;
+        if (string.IsNullOrWhiteSpace(deviceId) || !Runtime.TryGetDevice(deviceId, out var dev))
+        {
+            return false;
+        }
+
+        if (dev is not ExtCameraDevice found)
+        {
+            return false;
+        }
+
+        camera = found;
+        return true;
+    }
+
+    private static string Reason(ExtCameraDevice camera, string fallback) =>
+        string.IsNullOrWhiteSpace(camera.LastError) ? fallback : camera.LastError;
+
+    private static Dictionary<string, object?> Merge(object snapshot)
+    {
+        var map = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["success"] = true };
+        foreach (var property in snapshot.GetType().GetProperties())
+        {
+            map[property.Name] = property.GetValue(snapshot);
+        }
+
+        return map;
+    }
+
+    private Task WriteJsonAsync(HttpListenerResponse response, object payload, CancellationToken cancellationToken)
+    {
+        var json = JsonSerializer.Serialize(payload, SnapshotJsonOptions);
+        return WriteResponseAsync(response, "application/json; charset=utf-8", json, cancellationToken);
     }
 }

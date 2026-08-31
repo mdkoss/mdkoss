@@ -18,11 +18,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\MDKOSS.Config.Wpf\MDKOSS.Config.Wpf.csproj" />
-    <ProjectReference Include="..\..\src\MDKOSS.Drivers.Dmc\MDKOSS.Drivers.Dmc.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Drivers.Sim\MDKOSS.Drivers.Sim.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Drivers.S7\MDKOSS.Drivers.S7.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Drivers.Boards\MDKOSS.Drivers.Boards.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Iec61131\MDKOSS.Iec61131.csproj" />
+    <ProjectReference Include="..\..\src\MDKOSS.Extensions.Camera\MDKOSS.Extensions.Camera.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Extensions.ModServer\MDKOSS.Extensions.ModServer.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Extensions.Mysql\MDKOSS.Extensions.Mysql.csproj" />
     <ProjectReference Include="..\..\src\MDKOSS.Sample\MDKOSS.Sample.csproj" />
