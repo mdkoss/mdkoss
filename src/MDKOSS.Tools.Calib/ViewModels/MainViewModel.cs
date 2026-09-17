@@ -234,6 +234,7 @@ public sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         SelectedSummary = $"{Selected.Title}  [{Selected.Kind} / {Selected.Type}]";
+        CalibCatalog.EnsureDeviceBindingParams(Selected.Config);
         foreach (var kv in Selected.Config.Parameters
                      .Where(p => !CalibCatalog.HiddenParamKeys.Contains(p.Key))
                      .OrderBy(p => p.Key, StringComparer.OrdinalIgnoreCase))

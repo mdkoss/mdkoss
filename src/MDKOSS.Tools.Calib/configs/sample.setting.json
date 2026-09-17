@@ -31,6 +31,16 @@
         "in.startButton": "sim1|di.gpi.bit.0|启动",
         "out.ready": "sim1|do.gpo.bit.3|就绪"
       }
+    },
+    {
+      "id": "cam1",
+      "name": "标定相机",
+      "type": "cameradev",
+      "driverId": "sim1",
+      "enabled": true,
+      "parameters": {
+        "role": "calib"
+      }
     }
   ],
   "axes": [
@@ -88,6 +98,10 @@
         "displayName": "九点标定",
         "group": "视觉",
         "platformDeviceId": "platform-xy",
+        "cameraDeviceId": "cam1",
+        "transformMode": "affine",
+        "resultPrefix": "vision",
+        "pixelScale": "10",
         "originX": "0",
         "originY": "0",
         "pitch": "5",

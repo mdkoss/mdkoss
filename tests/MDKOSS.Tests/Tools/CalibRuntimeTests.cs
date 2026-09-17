@@ -294,6 +294,132 @@ public sealed class CalibRuntimeTests
         }
     }
 
+    [Fact]
+    public async Task Runtime_ninepoint_requires_camera_and_writes_matrix()
+    {
+        var dbPath = Path.Combine(Path.GetTempPath(), $"mdkoss-calib-9pt-{Guid.NewGuid():N}.db");
+        var setting = new MdkSetting
+        {
+            ProjectName = "calib-9pt",
+            MonitoringPrefix = $"http://127.0.0.1:{GetFreeLoopbackPort()}/",
+            DatabasePath = dbPath,
+            Drivers = [new MdkSetting.DriverConfig { Id = "sim1", Type = "sim", Enabled = true }],
+            Devices =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "cam1",
+                    Name = "标定相机",
+                    Type = "cameradev",
+                    DriverId = "sim1",
+                    Enabled = true,
+                },
+            ],
+            Axes =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "axis-x",
+                    Name = "X",
+                    Type = "linear",
+                    DriverId = "sim1",
+                    Enabled = true,
+                    Parameters = { ["axis"] = "0" },
+                },
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "axis-y",
+                    Name = "Y",
+                    Type = "linear",
+                    DriverId = "sim1",
+                    Enabled = true,
+                    Parameters = { ["axis"] = "1" },
+                },
+            ],
+            Platforms =
+            [
+                new MdkSetting.DeviceConfig
+                {
+                    Id = "platform-xy",
+                    Name = "XY",
+                    Type = "xy",
+                    Enabled = true,
+                    Parameters = { ["axis.X"] = "axis-x", ["axis.Y"] = "axis-y" },
+                },
+            ],
+            Tasks =
+            [
+                new MdkSetting.TaskConfig
+                {
+                    Name = "calib-ninepoint",
+                    Type = "calib.ninepoint",
+                    DriverId = "sim1",
+                    IntervalMs = 20,
+                    Parameters =
+                    {
+                        ["calib"] = "true",
+                        ["platformDeviceId"] = "platform-xy",
+                        ["cameraDeviceId"] = "cam1",
+                        ["transformMode"] = "affine",
+                        ["pixelScale"] = "10",
+                        ["originX"] = "0",
+                        ["originY"] = "0",
+                        ["pitch"] = "5",
+                        ["settleTicks"] = "1",
+                        ["maxResidual"] = "0.5",
+                    },
+                },
+            ],
+        };
+
+        using var rt = new MdkRuntime(setting);
+        rt.Initialize();
+        Assert.True(rt.TryGetTask("calib-ninepoint", out var raw));
+        Assert.IsType<NinePointCalibTask>(raw);
+        rt.Start();
+        try
+        {
+            rt.Vars.Set("task.calib-ninepoint.command", "start");
+            var deadline = DateTime.UtcNow.AddSeconds(8);
+            string? phase = null;
+            while (DateTime.UtcNow < deadline)
+            {
+                phase = rt.Vars.Get<string>("task.calib-ninepoint.phase");
+                if (string.Equals(phase, "Done", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(phase, "Fault", StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                await Task.Delay(40);
+            }
+
+            Assert.Equal("Done", phase);
+            Assert.True(rt.Vars.Get<bool>("task.calib-ninepoint.calib.ok"));
+            Assert.Equal("cam1", rt.Vars.Get<string>("task.calib-ninepoint.calib.cameraDeviceId"));
+            Assert.Equal("platform-xy", rt.Vars.Get<string>("task.calib-ninepoint.calib.platformDeviceId"));
+            var matrix = rt.Vars.Get<string>("task.calib-ninepoint.calib.matrix");
+            Assert.False(string.IsNullOrWhiteSpace(matrix));
+            Assert.Contains(';', matrix);
+            Assert.Equal(9, rt.Vars.Get<int>("task.calib-ninepoint.calib.points"));
+        }
+        finally
+        {
+            await rt.StopAsync();
+            try
+            {
+                if (File.Exists(dbPath))
+                {
+                    File.Delete(dbPath);
+                }
+            }
+            catch
+            {
+                // ignore lock
+            }
+        }
+    }
+
     private static int GetFreeLoopbackPort()
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);

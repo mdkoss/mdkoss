@@ -9,6 +9,7 @@ public static class CalibStore
     public static Dictionary<string, string> CollectVisibleParams(MdkSetting.TaskConfig config)
     {
         ArgumentNullException.ThrowIfNull(config);
+        CalibCatalog.EnsureDeviceBindingParams(config);
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var kv in config.Parameters)
         {

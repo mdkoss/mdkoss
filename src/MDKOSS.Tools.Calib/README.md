@@ -54,7 +54,7 @@ UI 下发 `task.{name}.command` = `start` / `stop` / `reset`。
 |------|------|----------|
 | `calib.axisoffset` | 单轴使能 → 定位 → 编码器减目标 | `axisDeviceId` `expectedPos` `settleTicks` |
 | `calib.platformoffset` | 平台单轴使能 → 定位 → 偏置 | `platformDeviceId` `axisLetter` `expectedPos` |
-| `calib.ninepoint` | 平台 3×3 九点，均值偏置与残差 | `platformDeviceId` `originX/Y` `pitch` `maxResidual` |
+| `calib.ninepoint` | 平台 3×3 九点：指定相机+平台，拟合像素→平台矩阵 | `platformDeviceId` `cameraDeviceId` `transformMode`(`rigid`/`affine`/`perspective`) `originX/Y` `pitch` `maxResidual` |
 
 不要把上述 type 写进 DieBonder / Dispenser / Pnp / Sample 的 setting。
 

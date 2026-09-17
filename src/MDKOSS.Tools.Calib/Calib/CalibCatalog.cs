@@ -85,4 +85,36 @@ public static class CalibCatalog
 
         return raw.Trim() is "1" or "true" or "True" or "yes" or "on";
     }
+
+    /// <summary>
+    /// Ensures nine-point (and platform) calib tasks expose camera/platform binding keys
+    /// in the parameter grid even when older settings omitted them.
+    /// </summary>
+    public static void EnsureDeviceBindingParams(MdkSetting.TaskConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        var type = (config.Type ?? "").Trim();
+        if (type.Equals("calib.ninepoint", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("calibninepoint", StringComparison.OrdinalIgnoreCase))
+        {
+            EnsureKey(config, "platformDeviceId", "");
+            EnsureKey(config, "cameraDeviceId", "");
+            EnsureKey(config, "transformMode", "affine");
+            return;
+        }
+
+        if (type.Equals("calib.platformoffset", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("calibplatformoffset", StringComparison.OrdinalIgnoreCase))
+        {
+            EnsureKey(config, "platformDeviceId", "");
+        }
+    }
+
+    private static void EnsureKey(MdkSetting.TaskConfig config, string key, string defaultValue)
+    {
+        if (!config.Parameters.ContainsKey(key))
+        {
+            config.Parameters[key] = defaultValue;
+        }
+    }
 }

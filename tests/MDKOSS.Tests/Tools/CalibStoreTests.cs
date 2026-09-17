@@ -33,6 +33,28 @@ public sealed class CalibStoreTests
     }
 
     [Fact]
+    public void CollectVisibleParams_injects_ninepoint_device_bindings()
+    {
+        var config = new MdkSetting.TaskConfig
+        {
+            Name = "calib-ninepoint",
+            Type = "calib.ninepoint",
+            Parameters =
+            {
+                ["calib"] = "true",
+                ["displayName"] = "九点",
+                ["pitch"] = "5",
+            },
+        };
+
+        var visible = CalibStore.CollectVisibleParams(config);
+        Assert.True(visible.ContainsKey("platformDeviceId"));
+        Assert.True(visible.ContainsKey("cameraDeviceId"));
+        Assert.Equal("affine", visible["transformMode"]);
+        Assert.Equal("5", visible["pitch"]);
+    }
+
+    [Fact]
     public void CollectResults_reads_calib_prefix()
     {
         var snap = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)

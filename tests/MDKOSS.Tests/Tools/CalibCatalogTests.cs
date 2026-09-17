@@ -45,4 +45,20 @@ public sealed class CalibCatalogTests
         Assert.True(CalibCatalog.IsFlowKind(list[0].Type));
         Assert.Equal("MotionTask", CalibCatalog.KindLabel(list[1]));
     }
+
+    [Fact]
+    public void EnsureDeviceBindingParams_adds_camera_and_platform_for_ninepoint()
+    {
+        var task = new MdkSetting.TaskConfig
+        {
+            Name = "calib-ninepoint",
+            Type = "calib.ninepoint",
+            Parameters = { ["pitch"] = "5" },
+        };
+
+        CalibCatalog.EnsureDeviceBindingParams(task);
+        Assert.True(task.Parameters.ContainsKey("platformDeviceId"));
+        Assert.True(task.Parameters.ContainsKey("cameraDeviceId"));
+        Assert.Equal("affine", task.Parameters["transformMode"]);
+    }
 }
