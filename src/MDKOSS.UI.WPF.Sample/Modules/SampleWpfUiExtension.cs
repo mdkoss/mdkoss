@@ -16,8 +16,5 @@ public sealed class SampleWpfUiExtension : IWpfUiExtension
         ArgumentNullException.ThrowIfNull(ui);
         ui.ToolPage<MonitorSampleExtView, MonitorSampleExtViewModel>("monitor_sampleext", "monitor", "扩展示例");
         ui.ToolPage<DebugSampleExtView, DebugSampleExtViewModel>("debug_sampleext", "debug", "扩展示例");
-        ui.ToolPage<DebugTcpView, DebugTcpViewModel>("debug_tcp", "debug", "TCP");
-        ui.ToolPage<DebugPyScriptView, DebugPyScriptViewModel>("debug_pyscript", "debug", "Python");
-        ui.ToolPage<DebugModbusView, DebugModbusViewModel>("debug_modbus", "debug", "Modbus");
     }
 }

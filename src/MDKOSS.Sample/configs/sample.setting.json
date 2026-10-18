@@ -42,6 +42,25 @@
   ],
   "tasks": [
     {
+      "name": "task-operation",
+      "type": "operation",
+      "intervalMs": 100,
+      "parameters": {}
+    },
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
+      "name": "poll-motion",
+      "type": "pollDriver",
+      "driverId": "drv-motion",
+      "intervalMs": 200,
+      "parameters": {}
+    },
+    {
       "name": "sample-motion-demo",
       "type": "samplemotion",
       "driverId": "drv-motion",

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS Modbus 调试</title>
+  <link rel="stylesheet" href="/css/theme-debug.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="debug" data-tool-page="debug_modbus">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Modbus 调试 <span class="pill warn">可写</span></div>
+        <div class="sub">Server <code>/api/modserver</code> · Client <code>/api/modclient</code> · 类型 <code>devmodserver</code> / <code>devmodclient</code></div>
+      </div>
+    </div>
+    <div class="writable-note">读 Holding 无需确认；停止、断开与写入需确认。Server 默认可自动监听，Client 连本机 1502。</div>
+    <div class="card">
+      <div class="form-row">
+        <div class="form-group">
+          <label>设备</label>
+          <select id="deviceId"></select>
+        </div>
+        <div class="form-group">
+          <label>地址</label>
+          <input id="address" type="number" value="0" />
+        </div>
+        <div class="form-group">
+          <label>数量</label>
+          <input id="count" type="number" value="4" />
+        </div>
+        <div class="form-group">
+          <label>写入值（逗号分隔）</label>
+          <input id="values" value="1,2,3,4" />
+        </div>
+      </div>
+      <div class="btn-group">
+        <button id="btnStart" class="btn primary" type="button">启动 / 连接</button>
+        <button id="btnStop" class="btn danger" type="button">停止 / 断开</button>
+        <button id="btnRead" class="btn" type="button">读 Holding</button>
+        <button id="btnWrite" class="btn" type="button">写 Holding</button>
+      </div>
+      <p class="meta" id="role" style="margin-top:12px;color:var(--muted)">—</p>
+      <pre id="log" style="margin-top:8px;white-space:pre-wrap;min-height:140px"></pre>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const T = window.MdkTool;
+    const types = {};
+    const els = {
+      deviceId: document.getElementById("deviceId"),
+      address: document.getElementById("address"),
+      count: document.getElementById("count"),
+      values: document.getElementById("values"),
+      role: document.getElementById("role"),
+      log: document.getElementById("log"),
+    };
+    function deviceId() { return (els.deviceId.value || "").trim(); }
+    function isClient() { return types[deviceId()] === "devmodclient"; }
+    function api() { return isClient() ? "/api/modclient" : "/api/modserver"; }
+    function show(obj) { els.log.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2); }
+    function paintRole() {
+      const id = deviceId();
+      els.role.textContent = id ? ((isClient() ? "Client" : "Server") + " · " + api() + " · " + id) : "无 Modbus 设备";
+    }
+    function body(extra) {
+      return Object.assign({ deviceId: deviceId() }, extra || {});
+    }
+    async function loadDevices() {
+      const preferred = T.qs("deviceId", "") || "mod-1";
+      try {
+        const data = await T.fetchJson("/api/status");
+        const devices = data.devices || data.Devices || {};
+        const opts = Object.entries(devices)
+          .filter(([, d]) => {
+            const t = String(d.type || d.Type || "").toLowerCase();
+            return t === "devmodserver" || t === "devmodclient";
+          })
+          .map(([id, d]) => {
+            const t = String(d.type || d.Type || "").toLowerCase();
+            types[id] = t;
+            return { id, label: (d.name || d.Name || id) + " (" + t + ")" };
+          });
+        if (!opts.length) {
+          types[preferred] = "devmodserver";
+          opts.push({ id: preferred, label: preferred });
+        }
+        els.deviceId.innerHTML = opts.map((o) => '<option value="' + T.esc(o.id) + '">' + T.esc(o.label) + "</option>").join("");
+        if (opts.some((o) => o.id === preferred)) els.deviceId.value = preferred;
+      } catch {
+        types[preferred] = "devmodserver";
+        els.deviceId.innerHTML = '<option value="' + T.esc(preferred) + '">' + T.esc(preferred) + "</option>";
+      }
+      paintRole();
+    }
+    document.getElementById("btnStart").onclick = async () => {
+      const action = isClient() ? "connect" : "start";
+      try {
+        const data = await T.postJson(api() + "/" + action, body());
+        T.toast(action + " 成功", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnStop").onclick = async () => {
+      const action = isClient() ? "disconnect" : "stop";
+      if (!T.confirmWrite(action)) return;
+      try {
+        const data = await T.postJson(api() + "/" + action, body());
+        T.toast(action + " 成功", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnRead").onclick = async () => {
+      try {
+        const data = await T.postJson(api() + "/readholding", body({
+          address: Number(els.address.value) || 0,
+          count: Number(els.count.value) || 1,
+        }));
+        T.toast("已读取", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "读取失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnWrite").onclick = async () => {
+      if (!T.confirmWrite("写入 Holding")) return;
+      const values = els.values.value.split(",").map((s) => Number(s.trim()) || 0);
+      try {
+        const data = await T.postJson(api() + "/writeholding", body({
+          address: Number(els.address.value) || 0,
+          values,
+        }));
+        T.toast("已写入", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "写入失败", false); show(e.data || e.message); }
+    };
+    els.deviceId.addEventListener("change", paintRole);
+    loadDevices();
+  </script>
+</body>
+</html>

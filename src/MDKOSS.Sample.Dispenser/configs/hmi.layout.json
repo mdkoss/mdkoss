@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "title": "点胶机内置组态",
+  "canvasWidth": 1180,
+  "canvasHeight": 520,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 420, "h": 36, "props": { "text": "点胶机内置组态", "align": "left", "fontSize": 22 } },
+    { "id": "w-phase", "type": "value", "x": 24, "y": 72, "w": 220, "h": 72, "props": { "var": "task.dispense.phase", "label": "点胶阶段" } },
+    { "id": "w-point", "type": "value", "x": 260, "y": 72, "w": 180, "h": 72, "props": { "var": "task.dispense.pointIndex", "label": "当前点" } },
+    { "id": "w-total", "type": "value", "x": 456, "y": 72, "w": 160, "h": 72, "props": { "var": "task.dispense.pointTotal", "label": "总点数" } },
+    { "id": "w-lamp", "type": "lamp", "x": 640, "y": 72, "w": 140, "h": 72, "props": { "var": "task.dispense.valve", "label": "点胶阀" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 756, "h": 56, "props": { "var": "task.dispense.pointIndex", "label": "点阵进度", "min": 0, "max": 9 } },
+    { "id": "w-run", "type": "status", "x": 24, "y": 240, "w": 200, "h": 44, "props": { "var": "task.dispense.run", "label": "循环运行", "okWhen": "truthy" } },
+    { "id": "w-fault", "type": "status", "x": 240, "y": 240, "w": 200, "h": 44, "props": { "var": "task.cycle.dev.fault", "label": "设备故障", "okWhen": "zero" } },
+    { "id": "w-recipe", "type": "value", "x": 460, "y": 228, "w": 220, "h": 72, "props": { "var": "recipe.activeName", "label": "配方" } },
+    { "id": "w-xyz", "type": "value", "x": 696, "y": 228, "w": 160, "h": 72, "props": { "var": "task.dispense.z", "label": "Z", "unit": "mm" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 320, "w": 120, "h": 44, "props": { "text": "启动", "method": "POST", "url": "/api/dispense/start", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 156, "y": 320, "w": 120, "h": 44, "props": { "text": "停止", "method": "POST", "url": "/api/dispense/stop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 288, "y": 320, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/dispense/reset", "style": "reset" } }
+  ]
+}

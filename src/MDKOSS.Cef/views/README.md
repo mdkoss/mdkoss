@@ -106,6 +106,9 @@ index ──popup_*──► monitor_* ──► debug_*
 | `debug_platform.html` | 平台步进示教/点动（见 `_docs/debug_platform.md`） |
 | `debug_serial.html` | 串口收发调试 |
 | `debug_mysql.html` | MySQL 连接 / Query / Execute |
+| `debug_tcp.html` | TCP 连接与收发（`tcpdev`） |
+| `debug_pyscript.html` | Python 脚本运行 / 停止（`devpyscript`） |
+| `debug_modbus.html` | Modbus Server / Client Holding 读写 |
 | `debug_db.html` | 数据库维护 |
 | `debug_axis.html` | 单轴使能 / 按住点动 / 步进 / 定位；轴一览与变量 |
 | `debug_camera.html` | 相机试调（extcamera + cameradev） |

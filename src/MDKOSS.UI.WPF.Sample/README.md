@@ -15,11 +15,11 @@
 | SampleExt 自定义设备 | `sample-beacon` / `samplemotion` | `monitor_sampleext` · `debug_sampleext` |
 | 轴 / 平台 / IO | `axis-*` · `head-demo` · `gpio1` | UI.WPF 内置 `monitor_*` / `debug_*` |
 | 串口 | `serial1` | `debug_serial` |
-| TCP | `tcp1` | **本工程** `debug_tcp` |
+| TCP | `tcp1` | UI.WPF 内置 `debug_tcp` |
 | MySQL | `mysql1` | `debug_mysql` |
 | 相机 / 视觉 | `cam1` · `cam-ext-1` · `vision-1` | `debug_camera` · `debug_vision` |
-| Python | `py-1` | **本工程** `debug_pyscript` |
-| Modbus Server/Client | `mod-1` · `modc-1` | **本工程** `debug_modbus` |
+| Python | `py-1` | UI.WPF 内置 `debug_pyscript` |
+| Modbus Server/Client | `mod-1` · `modc-1` | UI.WPF 内置 `debug_modbus` |
 
 ```text
 src/MDKOSS.UI.WPF.Sample/
@@ -44,4 +44,4 @@ VS Code：`.NET Core Launch (UI.WPF.Sample)`。
 
 监控 HTTP：`http://127.0.0.1:5089/`（避免与 UI.WPF 5083、CEF Sample 5081 冲突）。
 
-手测：主界面 → 关于进监控总览 → 切到「扩展示例」看信标 KPI → 调试页脉冲 / 运动 → TCP / Python / Modbus 页能列出对应设备。
+手测：主界面 → 关于进监控总览 → 切到「扩展示例」看信标 KPI → 调试页脉冲 / 运动。TCP / Python / Modbus 在 UI.WPF 内置调试页。组态页 `/index_hmi.html` 绑定信标与运动变量。

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "title": "Modbus 联调",
+  "canvasWidth": 1180,
+  "canvasHeight": 480,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 420, "h": 36, "props": { "text": "Modbus 内置组态", "align": "left", "fontSize": 22 } },
+    { "id": "w-machine", "type": "value", "x": 24, "y": 72, "w": 220, "h": 72, "props": { "var": "machine.state", "label": "整机状态" } },
+    { "id": "w-op", "type": "value", "x": 260, "y": 72, "w": 220, "h": 72, "props": { "var": "task.operation.state", "label": "操作状态" } },
+    { "id": "w-io", "type": "value", "x": 496, "y": 72, "w": 180, "h": 72, "props": { "var": "task.cycle.io.online", "label": "在线驱动" } },
+    { "id": "w-lamp", "type": "lamp", "x": 696, "y": 72, "w": 120, "h": 72, "props": { "var": "task.operation.lamp", "label": "塔灯" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 792, "h": 56, "props": { "var": "task.cycle.io.online", "label": "驱动在线", "min": 0, "max": 2 } },
+    { "id": "w-offline", "type": "status", "x": 24, "y": 240, "w": 220, "h": 44, "props": { "var": "task.cycle.io.offline", "label": "驱动离线", "okWhen": "zero" } },
+    { "id": "w-fault", "type": "status", "x": 260, "y": 240, "w": 220, "h": 44, "props": { "var": "task.cycle.dev.fault", "label": "设备故障", "okWhen": "zero" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 308, "w": 120, "h": 44, "props": { "text": "启动", "method": "POST", "url": "/api/task/start", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 156, "y": 308, "w": 120, "h": 44, "props": { "text": "停止", "method": "POST", "url": "/api/task/stop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 288, "y": 308, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/task/reset", "style": "reset" } },
+    { "id": "w-fill", "type": "button", "x": 420, "y": 308, "w": 160, "h": 44, "props": { "text": "填充测试图案", "method": "POST", "url": "/api/modbusdrv/fill", "style": "default" } }
+  ]
+}

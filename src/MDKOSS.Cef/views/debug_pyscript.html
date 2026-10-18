@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS Python 调试</title>
+  <link rel="stylesheet" href="/css/theme-debug.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="debug" data-tool-page="debug_pyscript">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Python 调试 <span class="pill warn">可写</span></div>
+        <div class="sub">运行 / 停止 / 状态 · API: <code>/api/pyscript/*</code> · 类型 <code>devpyscript</code></div>
+      </div>
+    </div>
+    <div class="writable-note">运行无需确认；停止进程需确认。需要本机 PATH 上的 python。默认脚本 <code>configs/scripts/hello.py</code>。</div>
+    <div class="card">
+      <div class="form-group">
+        <label>设备</label>
+        <select id="deviceId"></select>
+      </div>
+      <div class="form-group">
+        <label>参数</label>
+        <input id="arguments" value="demo 1" />
+      </div>
+      <div class="btn-group">
+        <button id="btnRun" class="btn primary" type="button">运行</button>
+        <button id="btnKill" class="btn danger" type="button">停止</button>
+        <button id="btnStatus" class="btn" type="button">状态</button>
+      </div>
+      <pre id="log" style="margin-top:12px;white-space:pre-wrap;min-height:160px"></pre>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const T = window.MdkTool;
+    const els = {
+      deviceId: document.getElementById("deviceId"),
+      arguments: document.getElementById("arguments"),
+      log: document.getElementById("log"),
+    };
+    function deviceId() { return (els.deviceId.value || "").trim(); }
+    function show(obj) { els.log.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2); }
+    async function status() {
+      const id = deviceId();
+      if (!id) { show("无 devpyscript"); return; }
+      try {
+        const data = await T.fetchJson("/api/pyscript/status?deviceId=" + encodeURIComponent(id));
+        if (data.arguments && !els.arguments.value) els.arguments.value = data.arguments;
+        show(data);
+      } catch (e) { show(e.data || e.message); }
+    }
+    async function loadDevices() {
+      const preferred = T.qs("deviceId", "") || "py-1";
+      try {
+        const data = await T.fetchJson("/api/status");
+        const devices = data.devices || data.Devices || {};
+        const opts = Object.entries(devices)
+          .filter(([, d]) => String(d.type || d.Type || "").toLowerCase() === "devpyscript")
+          .map(([id, d]) => ({ id, label: (d.name || d.Name || id) + " (" + id + ")" }));
+        if (!opts.length) opts.push({ id: preferred, label: preferred });
+        els.deviceId.innerHTML = opts.map((o) => '<option value="' + T.esc(o.id) + '">' + T.esc(o.label) + "</option>").join("");
+        if (opts.some((o) => o.id === preferred)) els.deviceId.value = preferred;
+      } catch {
+        els.deviceId.innerHTML = '<option value="' + T.esc(preferred) + '">' + T.esc(preferred) + "</option>";
+      }
+      await status();
+    }
+    document.getElementById("btnRun").onclick = async () => {
+      try {
+        const data = await T.postJson("/api/pyscript/run", { deviceId: deviceId(), arguments: els.arguments.value });
+        T.toast("运行完成", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "运行失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnKill").onclick = async () => {
+      if (!T.confirmWrite("停止 Python")) return;
+      try {
+        const data = await T.postJson("/api/pyscript/kill", { deviceId: deviceId() });
+        T.toast("已停止", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "停止失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnStatus").onclick = status;
+    els.deviceId.addEventListener("change", status);
+    loadDevices();
+  </script>
+</body>
+</html>

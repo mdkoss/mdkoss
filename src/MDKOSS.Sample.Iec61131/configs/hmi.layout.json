@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "title": "工位节拍",
+  "canvasWidth": 1180,
+  "canvasHeight": 480,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 420, "h": 36, "props": { "text": "工位节拍内置组态", "align": "left", "fontSize": 22 } },
+    { "id": "w-flow", "type": "value", "x": 24, "y": 72, "w": 240, "h": 72, "props": { "var": "task.station-cycle.flow.state", "label": "Flow 状态" } },
+    { "id": "w-pc", "type": "value", "x": 280, "y": 72, "w": 220, "h": 72, "props": { "var": "task.station-cycle.flow.pc", "label": "当前步" } },
+    { "id": "w-done", "type": "value", "x": 516, "y": 72, "w": 180, "h": 72, "props": { "var": "recipe.doneCount", "label": "完成件数" } },
+    { "id": "w-lamp", "type": "lamp", "x": 716, "y": 72, "w": 120, "h": 72, "props": { "var": "task.operation.lamp", "label": "塔灯" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 812, "h": 56, "props": { "var": "recipe.doneCount", "label": "计件", "min": 0, "max": 3 } },
+    { "id": "w-ready", "type": "status", "x": 24, "y": 240, "w": 200, "h": 44, "props": { "var": "machine.ready", "label": "就绪", "okWhen": "truthy" } },
+    { "id": "w-fault", "type": "status", "x": 240, "y": 240, "w": 240, "h": 44, "props": { "var": "task.station-cycle.flow.lastError", "label": "Flow 错误", "okWhen": "equals", "okValue": "" } },
+    { "id": "w-machine", "type": "value", "x": 500, "y": 228, "w": 200, "h": 72, "props": { "var": "machine.state", "label": "整机" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 308, "w": 120, "h": 44, "props": { "text": "启动", "method": "POST", "url": "/api/task/start", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 156, "y": 308, "w": 120, "h": 44, "props": { "text": "停止", "method": "POST", "url": "/api/task/stop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 288, "y": 308, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/task/reset", "style": "reset" } }
+  ]
+}

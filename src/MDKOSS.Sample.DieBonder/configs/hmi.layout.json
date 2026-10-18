@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "title": "贴片机内置组态",
+  "canvasWidth": 1180,
+  "canvasHeight": 520,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 420, "h": 36, "props": { "text": "贴片机内置组态", "align": "left", "fontSize": 22 } },
+    { "id": "w-phase", "type": "value", "x": 24, "y": 72, "w": 220, "h": 72, "props": { "var": "task.bond.phase", "label": "贴装阶段" } },
+    { "id": "w-msg", "type": "value", "x": 260, "y": 72, "w": 280, "h": 72, "props": { "var": "task.bond.message", "label": "循环消息" } },
+    { "id": "w-ok", "type": "value", "x": 556, "y": 72, "w": 160, "h": 72, "props": { "var": "task.pnp.okCount", "label": "OK" } },
+    { "id": "w-lamp", "type": "lamp", "x": 736, "y": 72, "w": 120, "h": 72, "props": { "var": "task.operation.lamp", "label": "塔灯" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 832, "h": 56, "props": { "var": "task.pnp.okCount", "label": "贴装计数", "min": 0, "max": 64 } },
+    { "id": "w-tray", "type": "status", "x": 24, "y": 240, "w": 220, "h": 44, "props": { "var": "task.pnp.trayChangeRequest", "label": "换盘请求", "okWhen": "falsy" } },
+    { "id": "w-fault", "type": "status", "x": 260, "y": 240, "w": 200, "h": 44, "props": { "var": "task.cycle.dev.fault", "label": "设备故障", "okWhen": "zero" } },
+    { "id": "w-recipe", "type": "value", "x": 480, "y": 228, "w": 220, "h": 72, "props": { "var": "recipe.activeName", "label": "配方" } },
+    { "id": "w-machine", "type": "value", "x": 716, "y": 228, "w": 180, "h": 72, "props": { "var": "machine.state", "label": "整机" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 320, "w": 120, "h": 44, "props": { "text": "启动", "method": "POST", "url": "/api/bond/start", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 156, "y": 320, "w": 120, "h": 44, "props": { "text": "停止", "method": "POST", "url": "/api/bond/stop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 288, "y": 320, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/bond/reset", "style": "reset" } },
+    { "id": "w-traybtn", "type": "button", "x": 420, "y": 320, "w": 120, "h": 44, "props": { "text": "换盘", "method": "POST", "url": "/api/bond/traychange", "style": "default" } }
+  ]
+}

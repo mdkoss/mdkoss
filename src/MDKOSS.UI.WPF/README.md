@@ -159,7 +159,7 @@ Prism 导航名必须等于页面 id。`RegisterForNavigation<View, VM>("monitor
 | `debug_platform` | 平台使能 + 分轴 Jog / 步进 |
 | `debug_io` | DO 拨动（确认） |
 | `debug_driver` | 地址读；写需确认 |
-| `debug_serial` / `debug_mysql` / `debug_camera` / `debug_vision` | `ExecuteAction` |
+| `debug_serial` / `debug_tcp` / `debug_mysql` / `debug_pyscript` / `debug_modbus` / `debug_camera` / `debug_vision` | `ExecuteAction` |
 | `debug_alarm` | 确认 / 复位 / 模拟触发 |
 | `debug_db` | 工单 / 配方只读一览 |
 

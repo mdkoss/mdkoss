@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MDKOSS TCP 调试</title>
+  <link rel="stylesheet" href="/css/theme-debug.css" />
+  <link rel="stylesheet" href="/css/debug.css" />
+</head>
+<body data-tool-group="debug" data-tool-page="debug_tcp">
+  <div id="toast" class="toast" role="status"></div>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">TCP 调试 <span class="pill warn">可写</span></div>
+        <div class="sub">连接 / 收发 · API: <code>/api/tcp/*</code> · 类型 <code>tcpdev</code></div>
+      </div>
+    </div>
+    <div class="writable-note">调试模式可写。写入与读取无需确认；断开连接需确认。默认不自动连接。</div>
+    <div class="layout">
+      <div class="card">
+        <h2 class="panel-title">连接</h2>
+        <div class="form-group">
+          <label>设备</label>
+          <select id="deviceId"></select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>主机</label>
+            <input id="host" value="127.0.0.1" />
+          </div>
+          <div class="form-group">
+            <label>端口</label>
+            <input id="port" type="number" value="15100" />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button id="btnConnect" class="btn primary" type="button">连接</button>
+          <button id="btnDisconnect" class="btn danger" type="button">断开</button>
+          <button id="btnRefresh" class="btn" type="button">刷新</button>
+        </div>
+        <p class="meta" id="statusLine" style="margin-top:12px;color:var(--muted)">—</p>
+      </div>
+      <div class="card">
+        <h2 class="panel-title">收发</h2>
+        <div class="form-group">
+          <label>发送文本</label>
+          <input id="payload" value="hello" />
+        </div>
+        <div class="btn-group">
+          <button id="btnWrite" class="btn primary" type="button">写入</button>
+          <button id="btnRead" class="btn" type="button">读取</button>
+        </div>
+        <pre id="log" style="margin-top:12px;white-space:pre-wrap;min-height:120px"></pre>
+      </div>
+    </div>
+  </div>
+  <script src="/js/tool_common.js"></script>
+  <script src="/js/tool_nav.js"></script>
+  <script>
+    const T = window.MdkTool;
+    const els = {
+      deviceId: document.getElementById("deviceId"),
+      host: document.getElementById("host"),
+      port: document.getElementById("port"),
+      payload: document.getElementById("payload"),
+      statusLine: document.getElementById("statusLine"),
+      log: document.getElementById("log"),
+    };
+    function deviceId() { return (els.deviceId.value || "").trim(); }
+    function config() {
+      return {
+        host: els.host.value.trim() || "127.0.0.1",
+        port: Number(els.port.value) || 15100,
+        connectTimeout: 3000,
+        readTimeout: 3000,
+        writeTimeout: 3000,
+        keepAlive: true,
+      };
+    }
+    function show(obj) { els.log.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2); }
+    async function refresh() {
+      const id = deviceId();
+      if (!id) { els.statusLine.textContent = "无 tcpdev"; return; }
+      try {
+        const st = await T.fetchJson("/api/tcp/status?deviceId=" + encodeURIComponent(id));
+        if (st.host) els.host.value = st.host;
+        if (st.port) els.port.value = st.port;
+        els.statusLine.textContent = (st.isConnected ? "已连接" : "未连接")
+          + " · " + (st.host || "") + ":" + (st.port || "")
+          + " · 待读 " + (st.bytesToRead ?? 0);
+      } catch (e) {
+        els.statusLine.textContent = e.message || "状态失败";
+      }
+    }
+    async function loadDevices() {
+      const preferred = T.qs("deviceId", "") || "tcp1";
+      try {
+        const data = await T.fetchJson("/api/status");
+        const devices = data.devices || data.Devices || {};
+        const opts = Object.entries(devices)
+          .filter(([, d]) => String(d.type || d.Type || "").toLowerCase() === "tcpdev")
+          .map(([id, d]) => ({ id, label: (d.name || d.Name || id) + " (" + id + ")" }));
+        if (!opts.length) opts.push({ id: preferred, label: preferred });
+        els.deviceId.innerHTML = opts.map((o) => '<option value="' + T.esc(o.id) + '">' + T.esc(o.label) + "</option>").join("");
+        if (opts.some((o) => o.id === preferred)) els.deviceId.value = preferred;
+      } catch {
+        els.deviceId.innerHTML = '<option value="' + T.esc(preferred) + '">' + T.esc(preferred) + "</option>";
+      }
+      await refresh();
+    }
+    document.getElementById("btnConnect").onclick = async () => {
+      try {
+        const data = await T.postJson("/api/tcp/connect", { deviceId: deviceId(), config: config() });
+        T.toast("已连接", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "连接失败", false); show(e.data || e.message); }
+      await refresh();
+    };
+    document.getElementById("btnDisconnect").onclick = async () => {
+      if (!T.confirmWrite("断开 TCP")) return;
+      try {
+        const data = await T.postJson("/api/tcp/disconnect", { deviceId: deviceId() });
+        T.toast("已断开", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "断开失败", false); }
+      await refresh();
+    };
+    document.getElementById("btnWrite").onclick = async () => {
+      try {
+        const data = await T.postJson("/api/tcp/write", { deviceId: deviceId(), data: els.payload.value });
+        T.toast("已写入", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "写入失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnRead").onclick = async () => {
+      try {
+        const data = await T.postJson("/api/tcp/read", { deviceId: deviceId() });
+        T.toast("已读取", true);
+        show(data);
+      } catch (e) { T.toast(e.message || "读取失败", false); show(e.data || e.message); }
+    };
+    document.getElementById("btnRefresh").onclick = refresh;
+    els.deviceId.addEventListener("change", refresh);
+    loadDevices();
+  </script>
+</body>
+</html>

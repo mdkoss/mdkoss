@@ -48,6 +48,20 @@
       "driverId": "drv-modbus",
       "intervalMs": 200,
       "parameters": {}
+    },
+    {
+      "name": "task-operation",
+      "type": "operation",
+      "enabled": true,
+      "intervalMs": 100,
+      "parameters": { "gpioDeviceId": "gpio-modbus" }
+    },
+    {
+      "name": "task-cycle",
+      "type": "cycle",
+      "enabled": true,
+      "intervalMs": 200,
+      "parameters": {}
     }
   ],
   "vars": {},

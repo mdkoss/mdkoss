@@ -77,6 +77,9 @@ public sealed class MonitoringServer : IDisposable
         RegisterViewsPage(_staticPages, "/debug_alarm.html");
         RegisterViewsPage(_staticPages, "/debug_vision.html");
         RegisterViewsPage(_staticPages, "/debug_mysql.html");
+        RegisterViewsPage(_staticPages, "/debug_tcp.html");
+        RegisterViewsPage(_staticPages, "/debug_pyscript.html");
+        RegisterViewsPage(_staticPages, "/debug_modbus.html");
         RegisterViewsPage(_staticPages, "/man_driver.html");
         RegisterViewsPage(_staticPages, "/man_device.html");
         RegisterViewsPage(_staticPages, "/man_axis.html");

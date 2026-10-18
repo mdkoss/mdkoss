@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "title": "WPF 扩展示例",
+  "canvasWidth": 1180,
+  "canvasHeight": 520,
+  "widgets": [
+    { "id": "w-title", "type": "label", "x": 24, "y": 20, "w": 420, "h": 36, "props": { "text": "WPF 扩展示例组态", "align": "left", "fontSize": 22 } },
+    { "id": "w-beacon", "type": "value", "x": 24, "y": 72, "w": 220, "h": 72, "props": { "var": "sample.beacon.label", "label": "信标" } },
+    { "id": "w-pulse", "type": "value", "x": 260, "y": 72, "w": 180, "h": 72, "props": { "var": "sample.beacon.pulseCount", "label": "脉冲" } },
+    { "id": "w-phase", "type": "value", "x": 456, "y": 72, "w": 200, "h": 72, "props": { "var": "sample.motion.phase", "label": "运动阶段" } },
+    { "id": "w-lamp", "type": "lamp", "x": 676, "y": 72, "w": 120, "h": 72, "props": { "var": "task.operation.lamp", "label": "塔灯" } },
+    { "id": "w-progress", "type": "progress", "x": 24, "y": 164, "w": 772, "h": 56, "props": { "var": "sample.motion.cycleCount", "label": "运动循环", "min": 0, "max": 20 } },
+    { "id": "w-vision", "type": "status", "x": 24, "y": 240, "w": 200, "h": 44, "props": { "var": "vision.ok", "label": "视觉", "okWhen": "truthy" } },
+    { "id": "w-io", "type": "status", "x": 240, "y": 240, "w": 200, "h": 44, "props": { "var": "task.cycle.io.offline", "label": "驱动 IO", "okWhen": "zero" } },
+    { "id": "w-alarm", "type": "status", "x": 456, "y": 240, "w": 200, "h": 44, "props": { "var": "alarm.activeCount", "label": "活动报警", "okWhen": "zero" } },
+    { "id": "w-start", "type": "button", "x": 24, "y": 308, "w": 140, "h": 44, "props": { "text": "运动启动", "method": "POST", "url": "/api/sampleext/motionstart", "style": "start" } },
+    { "id": "w-stop", "type": "button", "x": 176, "y": 308, "w": 140, "h": 44, "props": { "text": "运动停止", "method": "POST", "url": "/api/sampleext/motionstop", "style": "stop" } },
+    { "id": "w-reset", "type": "button", "x": 328, "y": 308, "w": 120, "h": 44, "props": { "text": "复位", "method": "POST", "url": "/api/sampleext/reset", "style": "reset" } },
+    { "id": "w-pulse-btn", "type": "button", "x": 460, "y": 308, "w": 140, "h": 44, "props": { "text": "信标脉冲", "method": "POST", "url": "/api/sampleext/pulse", "style": "default" } }
+  ]
+}

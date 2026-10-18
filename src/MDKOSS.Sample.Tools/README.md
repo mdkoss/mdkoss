@@ -12,12 +12,12 @@
 | `axis-x` … `axis-u` | linear / rotary | `/debug_axis.html?deviceId=axis-x` |
 | `platform-xy` / `xyz` / `xyzu` | 平台 | `/debug_platform.html?deviceId=platform-xyz` |
 | `serial1` | serialdev | `/debug_serial.html`（不自动打开） |
-| `tcp1` | tcpdev | `/api/tcp`（不自动连接） |
+| `tcp1` | tcpdev | `/debug_tcp.html`（不自动连接） |
 | `mysql1` | mysqldev | `/debug_mysql.html`（不自动连接） |
-| `mod-1` / `modc-1` | devmodserver / devmodclient | `/api/modserver` · `/api/modclient` |
+| `mod-1` / `modc-1` | devmodserver / devmodclient | `/debug_modbus.html` |
 | `cam1` / `cam-ext-1` | cameradev / extcamera | `/debug_camera.html` |
 | `vision-1` | visiondev | `/debug_vision.html` |
-| `py-1` | devpyscript | `/api/pyscript`（`configs/scripts/hello.py`） |
+| `py-1` | devpyscript | `/debug_pyscript.html`（`configs/scripts/hello.py`） |
 
 ```text
 src/MDKOSS.Sample.Tools/

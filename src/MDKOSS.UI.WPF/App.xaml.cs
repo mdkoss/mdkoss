@@ -77,6 +77,9 @@ public partial class App : PrismApplication
         containerRegistry.RegisterForNavigation<DebugViews.DebugPlatformView, DebugPlatformViewModel>("debug_platform");
         containerRegistry.RegisterForNavigation<DebugViews.DebugSerialView, DebugSerialViewModel>("debug_serial");
         containerRegistry.RegisterForNavigation<DebugViews.DebugMysqlView, DebugMysqlViewModel>("debug_mysql");
+        containerRegistry.RegisterForNavigation<DebugViews.DebugTcpView, DebugTcpViewModel>("debug_tcp");
+        containerRegistry.RegisterForNavigation<DebugViews.DebugPyScriptView, DebugPyScriptViewModel>("debug_pyscript");
+        containerRegistry.RegisterForNavigation<DebugViews.DebugModbusView, DebugModbusViewModel>("debug_modbus");
         containerRegistry.RegisterForNavigation<DebugViews.DebugAxisView, DebugAxisViewModel>("debug_axis");
         containerRegistry.RegisterForNavigation<DebugViews.DebugIoView, DebugIoViewModel>("debug_io");
         containerRegistry.RegisterForNavigation<DebugViews.DebugCameraView, DebugCameraViewModel>("debug_camera");
