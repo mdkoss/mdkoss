@@ -27,7 +27,7 @@ dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj 
 
 5. **停止** → `POST /api/dispense/stop`；**复位** → `POST /api/dispense/reset`（清计数与日志，阶段回 Idle）。
 
-默认加载 `configs/` 下按文件名排序的第一个 `*.setting.json`（当前只有仿真 `sample.setting.json`）。运动与 IO 均为 `type: sim`。
+默认加载 `configs/` 下按文件名排序的第一个 `*.setting.json`（当前是仿真 `sample.setting.json`；可选真卡见下方「真卡配置」）。默认运动与 IO 均为 `type: sim`。
 
 ---
 
@@ -125,3 +125,33 @@ run-dispenser.bat -- --console
 |------|------|------|
 | `calib-head-xy` | `configs/flows/calib-head-xy.flow.json` | `head-dispense` X |
 | `calib-z-height` | `configs/flows/calib-z-height.flow.json` | `head-dispense` Z |
+
+## 7. 真卡配置
+
+**真卡未在本版本验证。** 没有雷赛卡与 `LTDMC.dll` 时不要加载本节文件；对外演示请用仿真 `sample.setting.json`。
+
+可选文件：`configs/x-dmc.setting.json`（文件名排在 `sample.setting.json` 之后，**不会**成为 `dotnet run` 默认）。内容约定：
+
+| 项 | 取值 |
+|----|------|
+| `drv-motion` | `type: dmc`，参数仅用 `card` / `crd` / `configPath` / `resetOnInit` / `sevonActiveLow` |
+| `drv-io` | 仍为 `sim`（运动真卡、IO 仍仿真，未整机联调） |
+| `checkWorkpieceIo` | `true`；`task.dispense.workpiecePresent` 默认 `false` |
+| 自动循环 | `task.dispense.run` 为 `false`，上电不自动 `start` |
+| 急停 | `gpio-machine` 仅有 `safetyDoor`，**没有急停输入** → 本文件只允许点动，不称为可产线循环 |
+
+加载方式（不改 Core 选文件规则）：真机试验时临时移走或改名 `sample.setting.json`，使 `x-dmc.setting.json` 成为 `configs/` 下第一个 `*.setting.json`；或显式传 `--setting configs/x-dmc.setting.json`。
+
+操作顺序：先打开 `/debug_platform.html?deviceId=head-dispense` 点动，确认方向与限位，再谈循环。Config.Wpf 可直接打开该 JSON（驱动类型 `dmc` 已注册）。
+
+## 8. 点胶包里有什么文件
+
+| 路径 | 作用 |
+|------|------|
+| `run-dispenser.bat`（仓库根） | 一键启动本样例 |
+| `configs/sample.setting.json` | 默认仿真配置 |
+| `configs/x-dmc.setting.json` | 可选雷赛运动配置（未实机验证） |
+| `configs/hmi.layout.json` | HMI 组态 |
+| `views/indexDispenser.html` | 机型主界面 |
+| `Dispenser/*` | 点胶任务 / API / 扩展注册 |
+| `README.md` | 本说明 |
