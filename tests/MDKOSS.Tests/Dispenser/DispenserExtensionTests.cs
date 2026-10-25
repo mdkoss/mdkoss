@@ -39,6 +39,10 @@ public sealed class DispenserExtensionTests
         Assert.Contains("sample-dispenser", MdkExtensionHost.RegisteredIds);
     }
 
+    /// <summary>
+    /// Same start path as the HMI: POST /api/dispense/start, then Done with valve off.
+    /// Covers default recipe shape grid-2x2 (2×2); interval shortened so CI stays under timeout.
+    /// </summary>
     [Fact]
     public async Task Runtime_serves_dispense_api_and_completes_grid()
     {
@@ -49,6 +53,7 @@ public sealed class DispenserExtensionTests
             ProjectName = "dispenser-test",
             MonitoringPrefix = $"http://127.0.0.1:{port}/",
             DatabasePath = db,
+            ActiveRecipeId = "grid-2x2",
             Drivers =
             [
                 new MdkSetting.DriverConfig { Id = "d1", Type = "sim", Enabled = true },
@@ -101,7 +106,8 @@ public sealed class DispenserExtensionTests
                         ["platformDeviceId"] = "head-dispense",
                         ["gpioDeviceId"] = "gpio-machine",
                         ["valveAlias"] = "valve",
-                        ["rows"] = "1",
+                        ["checkWorkpieceIo"] = "false",
+                        ["rows"] = "2",
                         ["cols"] = "2",
                         ["dwellTicks"] = "1",
                     },
@@ -110,7 +116,7 @@ public sealed class DispenserExtensionTests
             Vars = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
             {
                 ["task.dispense.workpiecePresent"] = true,
-                ["dispense.rows"] = 1,
+                ["dispense.rows"] = 2,
                 ["dispense.cols"] = 2,
                 ["dispense.dwellTicks"] = 1,
             },
@@ -130,7 +136,7 @@ public sealed class DispenserExtensionTests
                 start.EnsureSuccessStatusCode();
             }
 
-            var deadline = DateTime.UtcNow.AddSeconds(8);
+            var deadline = DateTime.UtcNow.AddSeconds(15);
             string? phase = null;
             while (DateTime.UtcNow < deadline)
             {
@@ -145,7 +151,8 @@ public sealed class DispenserExtensionTests
             }
 
             Assert.Equal("Done", phase, StringComparer.OrdinalIgnoreCase);
-            Assert.Equal(2, Convert.ToInt32(rt.Vars.Get<object>("task.dispense.okCount")));
+            Assert.Equal(4, Convert.ToInt32(rt.Vars.Get<object>("task.dispense.okCount")));
+            Assert.False(Convert.ToBoolean(rt.Vars.Get<object>("task.dispense.valve")));
 
             using (var status = await http.GetAsync($"http://127.0.0.1:{port}/api/dispense/dashboard"))
             {
@@ -154,6 +161,16 @@ public sealed class DispenserExtensionTests
                 using var doc = JsonDocument.Parse(json);
                 Assert.True(doc.RootElement.GetProperty("success").GetBoolean());
                 Assert.Equal("Done", doc.RootElement.GetProperty("phase").GetString(), StringComparer.OrdinalIgnoreCase);
+                var valve = doc.RootElement.GetProperty("valve");
+                var valveOn = valve.ValueKind switch
+                {
+                    JsonValueKind.True => true,
+                    JsonValueKind.False => false,
+                    JsonValueKind.String => bool.TryParse(valve.GetString(), out var b) && b,
+                    JsonValueKind.Number => valve.GetInt32() != 0,
+                    _ => false,
+                };
+                Assert.False(valveOn);
             }
 
             using var page = await http.GetAsync($"http://127.0.0.1:{port}/indexDispenser.html");

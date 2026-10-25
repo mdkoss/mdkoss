@@ -334,11 +334,13 @@ CEF / WPF 模式请查看 `logs/` 与窗体；浏览器亦可直接访问上述 
 
 近期已补齐：产品版本 1.2.0（`MdkProduct` / GitHub Release）、驱动与扩展插件化（`plugins/`）、宿主 **Cef.Sample** / **Sample** / **Sample.DieBonder** / **Sample.Dispenser** / **Sample.Pnp** / **Sample.Modbus** / **Config.Wpf**、HMI `views/` 与监控 API、SQLite 排单/配方、流程任务、`tests/MDKOSS.Tests` 与 GitHub Actions。
 
-可选后续方向：
+接下来六周只做三件工程（详见 [`plan/README.md`](plan/README.md)）：
 
-- 为 axis / cameradev 等补充与 JSON 对齐的强类型参数块（GPIO / platform / vio 已分文件解析）
-- 监控 HTTP 鉴权、HTTPS、或 WebSocket 推送快照
-- 更完整的错误码分层与本地化文案
+1. 仿真点胶能被外人在 10 分钟内跑完一个点阵循环
+2. 调试器打成可转发的压缩包，作为获客入口
+3. 点胶增加一份真卡配置（默认雷赛 `dmc`）
+
+鉴权、HTTPS、WebSocket、错误码分层、贴片 / PNP 功能本窗口不开发。
 
 ---
 

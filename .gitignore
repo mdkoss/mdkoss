@@ -23,3 +23,9 @@ _build_verify/
 
 # Android（本地工程，不上传）
 /android
+
+# 本机发布包（调试器压缩包等，不上传）
+/artifacts/
+
+# 本地计划（不上传）
+/plan/

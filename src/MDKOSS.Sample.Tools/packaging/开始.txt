@@ -1,0 +1,20 @@
+MDKOSS 设备组件调试（仿真包）
+============================
+
+系统要求
+- Windows x64
+- .NET 8 桌面运行时（Desktop Runtime）
+- Microsoft Visual C++ 2019 x64 运行库（CEF 需要）
+
+启动
+1. 解压本目录全部文件到任意文件夹（保持相对路径）。
+2. 双击 MDKOSS.Sample.Tools.exe
+   或在本目录执行：MDKOSS.Sample.Tools.exe --console
+3. 浏览器打开：http://127.0.0.1:5088/index_tools.html
+
+说明
+- 默认全部为仿真驱动，无需板卡。
+- 先看 IO 页与轴 / 平台页即可；组件表见仓库内
+  src/MDKOSS.Sample.Tools/README.md
+- 真机只改 configs 里对应驱动的 type / 参数，不要改本说明。
+- 若 5088 被占用，改 configs 中 *.setting.json 的 monitoringPrefix 后重启。
