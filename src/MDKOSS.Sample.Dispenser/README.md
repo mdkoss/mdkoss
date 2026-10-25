@@ -29,6 +29,21 @@ dotnet run --project src/MDKOSS.Sample.Dispenser/MDKOSS.Sample.Dispenser.csproj 
 
 默认加载 `configs/` 下按文件名排序的第一个 `*.setting.json`（当前是仿真 `sample.setting.json`；可选真卡见下方「真卡配置」）。默认运动与 IO 均为 `type: sim`。
 
+一键冒烟（冷机到 `Done`、断言阀关；本机 CI 外再跑）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\smoke-dispenser.ps1
+```
+
+### 常见失败
+
+| 现象 | 处理 |
+|------|------|
+| 端口 5082 占用 | 改 `monitoringPrefix` 或结束占用进程 |
+| 缺 .NET 8 / VC++ | 安装 [.NET 8 桌面运行时](https://dotnet.microsoft.com/download/dotnet/8.0) 与 [VC++ 2015–2022 x64](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)（不必装 IDE） |
+| 页面「连接失败」 | 确认 `--console` 已起、防火墙未拦回环 |
+| 卡在 WaitWorkpiece | 确认加载的是 `sample.setting.json` 且 `checkWorkpieceIo=false` |
+
 ---
 
 ## 1. 机型组件
@@ -149,6 +164,7 @@ run-dispenser.bat -- --console
 | 路径 | 作用 |
 |------|------|
 | `run-dispenser.bat`（仓库根） | 一键启动本样例 |
+| `smoke-dispenser.ps1`（仓库根） | 冷机冒烟到 Done（阀关） |
 | `configs/sample.setting.json` | 默认仿真配置 |
 | `configs/x-dmc.setting.json` | 可选雷赛运动配置（未实机验证） |
 | `configs/hmi.layout.json` | HMI 组态 |

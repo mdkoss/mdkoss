@@ -1,4 +1,5 @@
 {
+  "_comment": "仿真默认配置：运动 drv-motion 与 IO drv-io 均为 type=sim；默认配方 grid-2x2。勿与可选真卡 x-dmc.setting.json 混淆（本文件名排在前，dotnet run 默认加载本文件）。",
   "projectName": "三轴点胶机",
   "startPage": "indexDispenser.html",
   "monitoringPrefix": "http://127.0.0.1:5082/",
