@@ -43,7 +43,29 @@ dotnet run --project src/MDKOSS.Sample.Tools/MDKOSS.Sample.Tools.csproj -- --con
 
 接真机：把对应设备的 `simulate` / 端口 / 主机改掉即可；运动与 IO 默认走 `sim`，无需板卡。
 
-## 3. 标定
+## 3. 打转发包
+
+现场工程师不打开解决方案：解压 zip 后进 `http://127.0.0.1:5088/index_tools.html`，默认全仿真看 IO / 轴。
+
+发布（Windows PowerShell，仓库根）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File src/MDKOSS.Sample.Tools/publish-tools.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File src/MDKOSS.Sample.Tools/verify-tools-pack.ps1
+```
+
+产物：`artifacts/MDKOSS.Tools-sim-win-x64.zip`（目录已 gitignore）。包内含 `开始.txt`、`plugins/`、`configs/`、`views/` 与 CEF 运行库。
+
+收件人只需安装：
+
+- .NET 8 **桌面**运行时（Desktop Runtime，框架依赖发布，**不**自包含整套 .NET）
+- Microsoft Visual C++ 2019 x64（CEF 需要）
+
+打开首页后优先 IO 页（`/debug_io.html`）与轴 / 平台页；完整组件表见上文「覆盖的组件」。CEF 随包分发，体积偏大属预期。
+
+换机验收备忘见包内 `换机检查.txt`（对应第 4 周门禁：禁止开仓修代码，只允许装运行库）。
+
+## 4. 标定
 
 `type=flow` 且 `calib=true`、`autoStart=false`。用 [MDKOSS.Tools.Calib](../MDKOSS.Tools.Calib/README.md) 打开本配置执行；参数与结果写入 SQLite。
 
